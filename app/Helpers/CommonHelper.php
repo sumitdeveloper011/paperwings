@@ -158,11 +158,222 @@ class CommonHelper
     }
 
     /**
-     * Sanitize input
+     * Sanitize input - Basic sanitization
      */
     public static function sanitizeInput($input): string
     {
         return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+    }
+
+    /**
+     * Sanitize email
+     */
+    public static function sanitizeEmail($email): string
+    {
+        return filter_var(trim($email), FILTER_SANITIZE_EMAIL);
+    }
+
+    /**
+     * Sanitize URL
+     */
+    public static function sanitizeUrl($url): string
+    {
+        return filter_var(trim($url), FILTER_SANITIZE_URL);
+    }
+
+    /**
+     * Sanitize phone number
+     */
+    public static function sanitizePhone($phone): string
+    {
+        return preg_replace('/[^0-9+\-\(\)\s]/', '', trim($phone));
+    }
+
+    /**
+     * Sanitize name (letters, spaces, hyphens, apostrophes only)
+     */
+    public static function sanitizeName($name): string
+    {
+        return preg_replace('/[^a-zA-Z\s\-\']/', '', trim($name));
+    }
+
+    /**
+     * Sanitize username (alphanumeric, underscores, hyphens only)
+     */
+    public static function sanitizeUsername($username): string
+    {
+        return preg_replace('/[^a-zA-Z0-9_-]/', '', trim($username));
+    }
+
+    /**
+     * Sanitize array of inputs
+     */
+    public static function sanitizeArray($array): array
+    {
+        $sanitized = [];
+        foreach ($array as $key => $value) {
+            if (is_array($value)) {
+                $sanitized[$key] = self::sanitizeArray($value);
+            } else {
+                $sanitized[$key] = self::sanitizeInput($value);
+            }
+        }
+        return $sanitized;
+    }
+
+    /**
+     * Validate and sanitize request data
+     */
+    public static function validateAndSanitize(Request $request, array $rules, array $customMessages = []): array
+    {
+        $validator = Validator::make($request->all(), $rules, $customMessages);
+        
+        if ($validator->fails()) {
+            return [
+                'success' => false,
+                'errors' => $validator->errors(),
+                'message' => 'Validation failed'
+            ];
+        }
+
+        $sanitizedData = self::sanitizeArray($validator->validated());
+        
+        return [
+            'success' => true,
+            'data' => $sanitizedData
+        ];
+    }
+
+    /**
+     * Check for SQL injection attempts
+     */
+    public static function detectSqlInjection($input): bool
+    {
+        $sqlPatterns = [
+            '/\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b/i',
+            '/[\'";]/',
+            '/--/',
+            '/\/\*.*\*\//',
+            '/xp_/i',
+            '/sp_/i'
+        ];
+
+        foreach ($sqlPatterns as $pattern) {
+            if (preg_match($pattern, $input)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for XSS attempts
+     */
+    public static function detectXss($input): bool
+    {
+        $xssPatterns = [
+            '/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i',
+            '/javascript:/i',
+            '/on\w+\s*=/i',
+            '/<iframe/i',
+            '/<object/i',
+            '/<embed/i',
+            '/<form/i',
+            '/<input/i',
+            '/<textarea/i',
+            '/<select/i'
+        ];
+
+        foreach ($xssPatterns as $pattern) {
+            if (preg_match($pattern, $input)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Secure password validation
+     */
+    public static function validatePassword($password): array
+    {
+        $errors = [];
+        
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters long';
+        }
+        
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Password must contain at least one uppercase letter';
+        }
+        
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Password must contain at least one lowercase letter';
+        }
+        
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one number';
+        }
+        
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one special character';
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors
+        ];
+    }
+
+    /**
+     * Generate secure random token
+     */
+    public static function generateSecureToken($length = 32): string
+    {
+        return bin2hex(random_bytes($length));
+    }
+
+    /**
+     * Check if user has specific role
+     */
+    public static function hasRole($user, $role): bool
+    {
+        return $user && $user->hasRole($role);
+    }
+
+    /**
+     * Check if user has any of the specified roles
+     */
+    public static function hasAnyRole($user, array $roles): bool
+    {
+        return $user && $user->hasAnyRole($roles);
+    }
+
+    /**
+     * Check if user has all specified roles
+     */
+    public static function hasAllRoles($user, array $roles): bool
+    {
+        return $user && $user->hasAllRoles($roles);
+    }
+
+    /**
+     * Log security event
+     */
+    public static function logSecurityEvent($event, $user = null, $context = []): void
+    {
+        $logData = array_merge([
+            'event' => $event,
+            'user_id' => $user ? $user->id : null,
+            'user_email' => $user ? $user->email : null,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'timestamp' => now()->toISOString()
+        ], $context);
+
+        Log::channel('security')->info('Security Event: ' . $event, $logData);
     }
 
     /**

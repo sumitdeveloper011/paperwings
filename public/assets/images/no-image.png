@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8C7B75;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3E2F2F;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="#D7CCC8" stroke-width="2"/>
+  
+  <!-- Feather icon -->
+  <path d="M30 25 Q50 15 70 25 Q60 35 50 45 Q40 35 30 25" fill="none" stroke="#FAF9F6" stroke-width="3" stroke-linecap="round"/>
+  <path d="M35 30 Q50 25 65 30 Q55 35 50 40 Q45 35 35 30" fill="none" stroke="#FAF9F6" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Text "PW" -->
+  <text x="50" y="70" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#FAF9F6">PW</text>
+</svg> 

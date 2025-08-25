@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -22,6 +23,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'uuid',
+        'status',
     ];
 
     /**
@@ -44,6 +47,45 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'status' => 'integer',
         ];
+    }
+
+    /**
+     * Boot function to generate UUID before creating user
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'uuid';
+    }
+
+    /**
+     * Check if user is active
+     */
+    public function isActive()
+    {
+        return $this->status === 1;
+    }
+
+    /**
+     * Check if user is inactive
+     */
+    public function isInactive()
+    {
+        return $this->status === 0;
     }
 }
