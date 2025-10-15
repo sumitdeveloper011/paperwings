@@ -78,7 +78,7 @@ class SliderRepository implements SliderRepositoryInterface
      */
     public function getActive(): Collection
     {
-        return $this->model->active()->ordered()->get();
+        return $this->model->where('status', 1)->ordered()->get();
     }
 
     /**
@@ -86,7 +86,7 @@ class SliderRepository implements SliderRepositoryInterface
      */
     public function getInactive(): Collection
     {
-        return $this->model->inactive()->ordered()->get();
+        return $this->model->where('status', 0)->ordered()->get();
     }
 
     /**

@@ -83,8 +83,8 @@
                                                 @csrf
                                                 @method('PATCH')
                                                 <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                                    <option value="active" {{ $slider->status === 'active' ? 'selected' : '' }}>Active</option>
-                                                    <option value="inactive" {{ $slider->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                                    <option value="1" {{ $slider->status === '1' ? 'selected' : '' }}>Active</option>
+                                                    <option value="0" {{ $slider->status === '0' ? 'selected' : '' }}>Inactive</option>
                                                 </select>
                                             </form>
                                         </td>

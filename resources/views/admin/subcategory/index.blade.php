@@ -77,8 +77,8 @@
                                                 @csrf
                                                 @method('PATCH')
                                                 <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                                    <option value="active" {{ $subCategory->status === 'active' ? 'selected' : '' }}>Active</option>
-                                                    <option value="inactive" {{ $subCategory->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                                    <option value="1" {{ $subCategory->status === '1' ? 'selected' : '' }}>Active</option>
+                                                    <option value="0" {{ $subCategory->status === '0' ? 'selected' : '' }}>Inactive</option>
                                                 </select>
                                             </form>
                                         </td>

@@ -20,7 +20,7 @@ class Category extends Model
     ];
 
     protected $casts = [
-        'status' => 'string',
+        'status' => 'integer',
     ];
 
     // Boot method to generate UUID and slug automatically
@@ -52,7 +52,7 @@ class Category extends Model
 
     public function activeSubCategories(): HasMany
     {
-        return $this->hasMany(SubCategory::class)->where('status', 'active');
+        return $this->hasMany(SubCategory::class)->where('status', 1);
     }
 
     public function products(): HasMany
@@ -62,24 +62,24 @@ class Category extends Model
 
     public function activeProducts(): HasMany
     {
-        return $this->hasMany(Product::class)->where('status', 'active');
+        return $this->hasMany(Product::class)->where('status', 1);
     }
 
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 1);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('status', 'inactive');
+        return $query->where('status', 0);
     }
 
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 'active' 
+        return $this->status === 1 
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }

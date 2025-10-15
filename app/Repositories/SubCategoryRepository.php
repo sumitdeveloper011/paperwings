@@ -87,7 +87,7 @@ class SubCategoryRepository implements SubCategoryRepositoryInterface
      */
     public function getActive(): Collection
     {
-        return $this->model->with('category')->active()->orderBy('name')->get();
+        return $this->model->with('category')->where('status', 1)->orderBy('name')->get();
     }
 
     /**
@@ -95,7 +95,7 @@ class SubCategoryRepository implements SubCategoryRepositoryInterface
      */
     public function getInactive(): Collection
     {
-        return $this->model->with('category')->inactive()->orderBy('name')->get();
+        return $this->model->with('category')->where('status', 0)->orderBy('name')->get();
     }
 
     /**

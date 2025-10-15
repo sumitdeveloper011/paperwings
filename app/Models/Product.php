@@ -30,7 +30,7 @@ class Product extends Model
         'total_price' => 'decimal:2',
         'accordion_data' => 'array',
         'images' => 'array',
-        'status' => 'string',
+        'status' => 'integer',
         'category_id' => 'integer',
         'subcategory_id' => 'integer',
         'brand_id' => 'integer'
@@ -76,12 +76,12 @@ class Product extends Model
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 1);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('status', 'inactive');
+        return $query->where('status', 0);
     }
 
     public function scopeByCategory($query, $categoryId)
@@ -118,7 +118,7 @@ class Product extends Model
     // Other accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 'active' 
+        return $this->status === 1 
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }

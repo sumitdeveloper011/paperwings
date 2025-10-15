@@ -59,7 +59,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
             'slug' => 'nullable|string|max:255|unique:categories,slug',
-            'status' => 'required|in:active,inactive',
+            'status' => 'required|in:1,0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
@@ -75,7 +75,6 @@ class CategoryController extends Controller
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
-
         $this->categoryRepository->create($validated);
 
         return redirect()->route('admin.categories.index')
@@ -106,7 +105,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'slug' => 'nullable|string|max:255|unique:categories,slug,' . $category->id,
-            'status' => 'required|in:active,inactive',
+            'status' => 'required|in:1,0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
@@ -156,7 +155,7 @@ class CategoryController extends Controller
     public function updateStatus(Request $request, Category $category): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         $this->categoryRepository->updateStatus($category, $validated['status']);

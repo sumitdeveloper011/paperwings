@@ -24,7 +24,7 @@ class SubCategory extends Model
     ];
 
     protected $casts = [
-        'status' => 'string',
+        'status' => 'integer',
         'category_id' => 'integer'
     ];
 
@@ -58,12 +58,12 @@ class SubCategory extends Model
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 1);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('status', 'inactive');
+        return $query->where('status', 0);
     }
 
     public function scopeByCategory($query, $categoryId)
@@ -84,7 +84,7 @@ class SubCategory extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 'active' 
+        return $this->status === 1 
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }

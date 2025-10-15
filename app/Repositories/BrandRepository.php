@@ -107,4 +107,20 @@ class BrandRepository implements BrandRepositoryInterface
     {
         return $this->model->whereNull('image')->orderBy('name')->get();
     }
+
+    /**
+     * Get active brands
+     */
+    public function getActive(): Collection
+    {
+        return $this->model->where('status', 1)->orderBy('name')->get();
+    }
+    
+    /**
+     * Get inactive brands
+     */
+    public function getInactive(): Collection
+    {
+        return $this->model->where('status', 0)->orderBy('name')->get();
+    }
 }

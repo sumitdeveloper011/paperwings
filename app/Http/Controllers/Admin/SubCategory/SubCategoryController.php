@@ -78,7 +78,7 @@ class SubCategoryController extends Controller
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255|unique:subcategories,name',
             'slug' => 'nullable|string|max:255|unique:subcategories,slug',
-            'status' => 'required|in:active,inactive',
+            'status' => 'required|in:1,0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
@@ -129,7 +129,7 @@ class SubCategoryController extends Controller
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255|unique:subcategories,name,' . $subcategory->id,
             'slug' => 'nullable|string|max:255|unique:subcategories,slug,' . $subcategory->id,
-            'status' => 'required|in:active,inactive',
+            'status' => 'required|in:1,0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
@@ -179,7 +179,7 @@ class SubCategoryController extends Controller
     public function updateStatus(Request $request, SubCategory $subcategory): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         $this->subCategoryRepository->updateStatus($subcategory, $validated['status']);

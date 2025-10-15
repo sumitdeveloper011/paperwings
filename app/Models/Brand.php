@@ -15,12 +15,14 @@ class Brand extends Model
         'uuid',
         'name',
         'slug',
-        'image'
+        'image',
+        'status'
     ];
 
     protected $casts = [
         'name' => 'string',
-        'slug' => 'string'
+        'slug' => 'string',
+        'status' => 'integer'
     ];
 
     // Boot method to generate UUID and slug automatically
@@ -52,7 +54,7 @@ class Brand extends Model
 
     public function activeProducts(): HasMany
     {
-        return $this->hasMany(Product::class)->where('status', 'active');
+        return $this->hasMany(Product::class)->where('status', 1);
     }
 
     // Accessors

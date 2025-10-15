@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('sub_heading')->nullable();
             $table->json('buttons')->nullable(); // Store up to 2 buttons with name and url
             $table->integer('sort_order')->default(0);
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->tinyInteger('status')->default(1)->comment('0 means de-activate,1 means active');
             $table->timestamps();
 
             $table->index(['status', 'sort_order']);

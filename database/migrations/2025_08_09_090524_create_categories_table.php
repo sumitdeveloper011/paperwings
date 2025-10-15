@@ -16,7 +16,7 @@ return new class extends Migration
             $table->uuid()->unique()->index();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->boolean('status')->default(true);
+            $table->tinyInteger('status')->default(1)->comment('0 means de-activate,1 means active');
             $table->string('image')->nullable();
             $table->timestamps();
             

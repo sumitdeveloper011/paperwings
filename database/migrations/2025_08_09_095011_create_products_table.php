@@ -24,7 +24,7 @@ return new class extends Migration
             $table->text('short_description');
             $table->json('accordion_data')->nullable(); // For accordion sections
             $table->json('images')->nullable(); // For multiple images
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->tinyInteger('status')->default(1)->comment('1: Active, 0: Inactive');
             $table->timestamps();
 
             $table->index(['category_id', 'subcategory_id', 'brand_id']);

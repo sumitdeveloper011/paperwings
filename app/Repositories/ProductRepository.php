@@ -94,7 +94,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function getActive(): Collection
     {
         return $this->model->with(['category', 'subCategory', 'brand'])
-                          ->active()
+                          ->where('status', 1)
                           ->orderBy('name')
                           ->get();
     }
@@ -105,7 +105,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function getInactive(): Collection
     {
         return $this->model->with(['category', 'subCategory', 'brand'])
-                          ->inactive()
+                          ->where('status', 0)
                           ->orderBy('name')
                           ->get();
     }

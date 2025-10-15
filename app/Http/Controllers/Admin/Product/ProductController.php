@@ -100,7 +100,7 @@ class ProductController extends Controller
     {
         $categories = $this->categoryRepository->getActive();
         $subCategories = $this->subCategoryRepository->getActive();
-        $brands = $this->brandRepository->all();
+        $brands = $this->brandRepository->getActive();
         
         return view('admin.product.create', compact('categories', 'subCategories', 'brands'));
     }
@@ -112,8 +112,8 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'subcategory_id' => 'nullable|exists:subcategories,id',
-            'brand_id' => 'nullable|exists:brands,id',
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'brand_id' => 'required|exists:brands,id',
             'name' => 'required|string|max:255|unique:products,name',
             'slug' => 'nullable|string|max:255|unique:products,slug',
             'total_price' => 'required|numeric|min:0',
@@ -124,7 +124,7 @@ class ProductController extends Controller
             'accordion_data.*.content' => 'required_with:accordion_data|string',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         // Handle multiple image uploads
@@ -204,7 +204,7 @@ class ProductController extends Controller
             'accordion_data.*.content' => 'required_with:accordion_data|string',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-            'status' => 'required|in:active,inactive',
+            'status' => 'required|in:1,0',
             'keep_existing_images' => 'nullable|boolean'
         ]);
 
@@ -287,7 +287,7 @@ class ProductController extends Controller
     public function updateStatus(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         $this->productRepository->updateStatus($product, $validated['status']);

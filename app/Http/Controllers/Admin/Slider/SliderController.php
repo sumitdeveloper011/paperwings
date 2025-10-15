@@ -52,7 +52,7 @@ class SliderController extends Controller
             'button_2_name' => 'nullable|string|max:100',
             'button_2_url' => 'nullable|url|max:255',
             'sort_order' => 'nullable|integer|min:1',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         // Handle image upload
@@ -118,7 +118,7 @@ class SliderController extends Controller
             'button_2_name' => 'nullable|string|max:100',
             'button_2_url' => 'nullable|url|max:255',
             'sort_order' => 'nullable|integer|min:1',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         // Handle image upload
@@ -181,7 +181,7 @@ class SliderController extends Controller
     public function updateStatus(Request $request, Slider $slider): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:1,0'
         ]);
 
         $this->sliderRepository->updateStatus($slider, $validated['status']);

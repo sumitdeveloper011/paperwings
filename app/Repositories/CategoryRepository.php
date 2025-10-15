@@ -86,7 +86,7 @@ class CategoryRepository implements CategoryRepositoryInterface
      */
     public function getActive(): Collection
     {
-        return $this->model->active()->orderBy('name')->get();
+        return $this->model->where('status', 1)->orderBy('name')->get();
     }
 
     /**
@@ -94,7 +94,7 @@ class CategoryRepository implements CategoryRepositoryInterface
      */
     public function getInactive(): Collection
     {
-        return $this->model->inactive()->orderBy('name')->get();
+        return $this->model->where('status', 0)->orderBy('name')->get();
     }
 
     /**
