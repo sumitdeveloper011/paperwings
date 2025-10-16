@@ -2,17 +2,18 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Repositories\Interfaces\CategoryRepositoryInterface;
-use App\Repositories\CategoryRepository;
-use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
-use App\Repositories\SubCategoryRepository;
-use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Repositories\BrandRepository;
+use App\Repositories\CategoryRepository;
+use App\Repositories\Interfaces\BrandRepositoryInterface;
+use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
-use App\Repositories\ProductRepository;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
+use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
+use App\Repositories\ProductRepository;
 use App\Repositories\SliderRepository;
+use App\Repositories\SubCategoryRepository;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +35,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Schema::defaultStringLength(191);
     }
 }

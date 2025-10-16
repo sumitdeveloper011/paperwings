@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -13,10 +13,11 @@ class Category extends Model
 
     protected $fillable = [
         'uuid',
+        'category_id',
         'name',
         'slug',
         'status',
-        'image'
+        'image',
     ];
 
     protected $casts = [
@@ -45,19 +46,19 @@ class Category extends Model
     }
 
     // Relationships
-    public function subCategories(): HasMany
-    {
-        return $this->hasMany(SubCategory::class);
-    }
+    // public function subCategories(): HasMany
+    // {
+    //     return $this->hasMany(SubCategory::class);
+    // }
 
-    public function activeSubCategories(): HasMany
-    {
-        return $this->hasMany(SubCategory::class)->where('status', 1);
-    }
+    // public function activeSubCategories(): HasMany
+    // {
+    //     return $this->hasMany(SubCategory::class)->where('status', 1);
+    // }
 
     public function products(): HasMany
     {
-        return $this->hasMany(Product::class);
+        return $this->hasMany(Product::class, 'category_id', 'category_id');
     }
 
     public function activeProducts(): HasMany
@@ -79,14 +80,14 @@ class Category extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 1 
+        return $this->status === 1
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
+        return $this->image ? asset('storage/'.$this->image) : asset('assets/images/no-image.png');
     }
 
     // Route key binding

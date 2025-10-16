@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
@@ -13,17 +13,19 @@ class Product extends Model
 
     protected $fillable = [
         'uuid',
+        'product_id',
         'category_id',
-        'subcategory_id',
+        // 'subcategory_id',
         'brand_id',
         'name',
         'slug',
         'total_price',
         'description',
         'short_description',
+        'barcode',
         'accordion_data',
         'images',
-        'status'
+        'status',
     ];
 
     protected $casts = [
@@ -32,8 +34,9 @@ class Product extends Model
         'images' => 'array',
         'status' => 'integer',
         'category_id' => 'integer',
+        'barcode' => 'integer',
         'subcategory_id' => 'integer',
-        'brand_id' => 'integer'
+        'brand_id' => 'integer',
     ];
 
     // Boot method to generate UUID and slug automatically
@@ -60,7 +63,7 @@ class Product extends Model
     // Relationships
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class, 'category_id', 'category_id');
     }
 
     public function subCategory(): BelongsTo
@@ -118,7 +121,7 @@ class Product extends Model
     // Other accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 1 
+        return $this->status === 1
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }
@@ -126,18 +129,20 @@ class Product extends Model
     public function getMainImageAttribute()
     {
         if ($this->images && is_array($this->images) && count($this->images) > 0) {
-            return asset('storage/' . $this->images[0]);
+            return asset('storage/'.$this->images[0]);
         }
+
         return asset('assets/images/no-image.png');
     }
 
     public function getImageUrlsAttribute()
     {
         if ($this->images && is_array($this->images)) {
-            return collect($this->images)->map(function($image) {
-                return asset('storage/' . $image);
+            return collect($this->images)->map(function ($image) {
+                return asset('storage/'.$image);
             })->toArray();
         }
+
         return [];
     }
 
@@ -148,6 +153,7 @@ class Product extends Model
             $parts[] = $this->brand->name;
         }
         $parts[] = $this->name;
+
         return implode(' - ', $parts);
     }
 
@@ -155,8 +161,9 @@ class Product extends Model
     {
         $path = $this->category->name;
         if ($this->subCategory) {
-            $path .= ' > ' . $this->subCategory->name;
+            $path .= ' > '.$this->subCategory->name;
         }
+
         return $path;
     }
 

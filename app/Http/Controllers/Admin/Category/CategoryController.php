@@ -5,19 +5,23 @@ namespace App\Http\Controllers\Admin\Category;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
-use Illuminate\Http\Request;
+use App\Services\EposNowService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class CategoryController extends Controller
 {
     protected CategoryRepositoryInterface $categoryRepository;
 
-    public function __construct(CategoryRepositoryInterface $categoryRepository)
+    protected $eposNow;
+
+    public function __construct(CategoryRepositoryInterface $categoryRepository, EposNowService $eposNow)
     {
         $this->categoryRepository = $categoryRepository;
+        $this->eposNow = $eposNow;
     }
 
     /**
@@ -25,8 +29,49 @@ class CategoryController extends Controller
      */
     public function index(Request $request): View
     {
+
+        // $categories = $this->eposNow->getCategories();
+
+        // foreach ($categories as $cat) {
+
+        //     $arr = [
+        //         'uuid' => Str::uuid(),
+        //         'category_id' => $cat['Id'],
+        //         'name' => $cat['Name'],
+        //         'slug' => Str::slug($cat['Name']),
+        //         'status' => 1,
+        //         'image' => $cat['ImageUrl'] ? $cat['ImageUrl'] : null,
+        //     ];
+        //     $existing = Category::where('category_id', $cat['Id'])->first();
+
+        //     if (! $existing) {
+        //         $this->categoryRepository->create($arr);
+        //     }
+        //     // $this->categoryRepository->create($arr);
+
+        // }
+        // dd($arr);
+
+        // dd('sdf');
+
+        // foreach ($categories as $cat) {
+        //     $imageData = $this->eposNow->uploadCategoryImage($cat['Id'], 'jpg', 'string');
+        //     $categoryId = $cat['Id'];
+        //     dump($cat);
+        //     dump($imageData['CategoryImages'][0]['PreSignedUrl']);
+
+        //     $imageData = file_get_contents($imageData['CategoryImages'][0]['PreSignedUrl']);
+        //     if ($imageData === false) {
+        //         dd('Failed to download image. URL may be expired: '.$imageData['CategoryImages'][0]['PreSignedUrl']);
+        //     }
+        //     dump('sdf');
+        //     // $imageData = file_get_contents($imageData['CategoryImages'][0]['PreSignedUrl']);
+        //     file_put_contents(public_path("images/categories/{$categoryId}.jpg"), $imageData);
+        // }
+        // dd('$categories');
+
         $search = $request->get('search');
-        
+
         if ($search) {
             $categories = $this->categoryRepository->search($search);
             $categories = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -60,13 +105,13 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255|unique:categories,name',
             'slug' => 'nullable|string|max:255|unique:categories,slug',
             'status' => 'required|in:1,0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         // Handle image upload
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
+            $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
             $imagePath = $image->storeAs('categories', $imageName, 'public');
             $validated['image'] = $imagePath;
         }
@@ -78,7 +123,7 @@ class CategoryController extends Controller
         $this->categoryRepository->create($validated);
 
         return redirect()->route('admin.categories.index')
-                        ->with('success', 'Category created successfully!');
+            ->with('success', 'Category created successfully!');
     }
 
     /**
@@ -103,10 +148,10 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
-            'slug' => 'nullable|string|max:255|unique:categories,slug,' . $category->id,
+            'name' => 'required|string|max:255|unique:categories,name,'.$category->id,
+            'slug' => 'nullable|string|max:255|unique:categories,slug,'.$category->id,
             'status' => 'required|in:1,0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         // Handle image upload
@@ -117,7 +162,7 @@ class CategoryController extends Controller
             }
 
             $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
+            $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
             $imagePath = $image->storeAs('categories', $imageName, 'public');
             $validated['image'] = $imagePath;
         }
@@ -130,7 +175,7 @@ class CategoryController extends Controller
         $this->categoryRepository->update($category, $validated);
 
         return redirect()->route('admin.categories.index')
-                        ->with('success', 'Category updated successfully!');
+            ->with('success', 'Category updated successfully!');
     }
 
     /**
@@ -146,7 +191,7 @@ class CategoryController extends Controller
         $this->categoryRepository->delete($category);
 
         return redirect()->route('admin.categories.index')
-                        ->with('success', 'Category deleted successfully!');
+            ->with('success', 'Category deleted successfully!');
     }
 
     /**
@@ -155,12 +200,12 @@ class CategoryController extends Controller
     public function updateStatus(Request $request, Category $category): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:1,0'
+            'status' => 'required|in:1,0',
         ]);
 
         $this->categoryRepository->updateStatus($category, $validated['status']);
 
         return redirect()->back()
-                        ->with('success', 'Category status updated successfully!');
+            ->with('success', 'Category status updated successfully!');
     }
 }
