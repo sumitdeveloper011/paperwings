@@ -2,140 +2,217 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">{{ $category->name }}</h1>
-                <p class="content-subtitle">Category details</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-tag"></i>
+                    {{ $category->name }}
+                </h1>
+                <p class="page-header__subtitle">Category details and information</p>
             </div>
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Categories
-                    </a>
-                </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-edit"></i>
+                    <span>Edit</span>
+                </a>
+                <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Categories</span>
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Category Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @if($category->image)
-                                <div class="col-md-4 mb-3">
-                                    <img src="{{ $category->image_url }}" alt="{{ $category->name }}" 
-                                         class="img-fluid rounded shadow-sm">
-                                </div>
-                            @endif
-                            <div class="{{ $category->image ? 'col-md-8' : 'col-md-12' }}">
-                                <dl class="row">
-                                    <dt class="col-sm-3">Name:</dt>
-                                    <dd class="col-sm-9">{{ $category->name }}</dd>
-                                    
-                                    <dt class="col-sm-3">Slug:</dt>
-                                    <dd class="col-sm-9"><code>{{ $category->slug }}</code></dd>
-                                    
-                                    <dt class="col-sm-3">Status:</dt>
-                                    <dd class="col-sm-9">
-                                        @if($category->status === 'active')
-                                            <span class="badge bg-success">Active</span>
-                                        @else
-                                            <span class="badge bg-danger">Inactive</span>
-                                        @endif
-                                    </dd>
-                                    
-                                    <dt class="col-sm-3">UUID:</dt>
-                                    <dd class="col-sm-9">
-                                        <small class="text-muted font-monospace">{{ $category->uuid }}</small>
-                                    </dd>
-                                </dl>
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Category Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    @if($category->image)
+                        <div class="category-image-large">
+                            <img src="{{ $category->image_url }}" 
+                                 alt="{{ $category->name }}" 
+                                 class="category-image-large__img">
+                        </div>
+                    @endif
+                    
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-tag"></i>
+                                Name
+                            </div>
+                            <div class="detail-item__value">
+                                {{ $category->name }}
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-link"></i>
+                                Slug
+                            </div>
+                            <div class="detail-item__value">
+                                <code class="code-block">{{ $category->slug }}</code>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-toggle-on"></i>
+                                Status
+                            </div>
+                            <div class="detail-item__value">
+                                @if($category->status === '1')
+                                    <span class="badge badge--success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Active
+                                    </span>
+                                @else
+                                    <span class="badge badge--danger">
+                                        <i class="fas fa-times-circle"></i>
+                                        Inactive
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-fingerprint"></i>
+                                UUID
+                            </div>
+                            <div class="detail-item__value">
+                                <code class="code-block code-block--small">{{ $category->uuid }}</code>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Timestamps</h5>
-                    </div>
-                    <div class="card-body">
-                        <dl class="row">
-                            <dt class="col-sm-5">Created:</dt>
-                            <dd class="col-sm-7">
-                                {{ $category->created_at->format('M d, Y') }}<br>
-                                <small class="text-muted">{{ $category->created_at->format('g:i A') }}</small>
-                            </dd>
-                            
-                            <dt class="col-sm-5">Last Updated:</dt>
-                            <dd class="col-sm-7">
-                                {{ $category->updated_at->format('M d, Y') }}<br>
-                                <small class="text-muted">{{ $category->updated_at->format('g:i A') }}</small>
-                            </dd>
-                            
-                            <dt class="col-sm-5">Time Ago:</dt>
-                            <dd class="col-sm-7">
-                                <small class="text-muted">{{ $category->updated_at->diffForHumans() }}</small>
-                            </dd>
-                        </dl>
-                    </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Timestamps Card -->
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-clock"></i>
+                        Timestamps
+                    </h3>
                 </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-primary">
-                                <i class="fas fa-edit"></i> Edit Category
-                            </a>
-                            
-                            <form method="POST" action="{{ route('admin.categories.updateStatus', $category) }}" class="mb-2">
-                                @csrf
-                                @method('PATCH')
-                                <input type="hidden" name="status" value="{{ $category->status === 'active' ? 'inactive' : 'active' }}">
-                                <button type="submit" class="btn btn-outline-{{ $category->status === 'active' ? 'warning' : 'success' }} w-100">
-                                    <i class="fas fa-{{ $category->status === 'active' ? 'pause' : 'play' }}"></i>
-                                    {{ $category->status === 'active' ? 'Deactivate' : 'Activate' }}
-                                </button>
-                            </form>
-                            
-                            <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" 
-                                  onsubmit="return confirm('Are you sure you want to delete this category? This action cannot be undone.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger w-100">
-                                    <i class="fas fa-trash"></i> Delete Category
-                                </button>
-                            </form>
+                <div class="modern-card__body">
+                    <div class="timestamp-list">
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Created</div>
+                                <div class="timestamp-item__value">
+                                    {{ $category->created_at->format('M d, Y') }}
+                                    <small>{{ $category->created_at->format('g:i A') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Last Updated</div>
+                                <div class="timestamp-item__value">
+                                    {{ $category->updated_at->format('M d, Y') }}
+                                    <small>{{ $category->updated_at->format('g:i A') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Time Ago</div>
+                                <div class="timestamp-item__value">
+                                    {{ $category->updated_at->diffForHumans() }}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                @if(!$category->image)
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-image fa-3x text-muted mb-3"></i>
-                            <h6 class="text-muted">No Image</h6>
-                            <p class="text-muted small">Add an image to make this category more visually appealing</p>
-                            <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-sm btn-outline-primary">
+            <!-- Actions Card -->
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-bolt"></i>
+                        Quick Actions
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="action-list">
+                        <a href="{{ route('admin.categories.edit', $category) }}" class="action-list__item action-list__item--primary">
+                            <i class="fas fa-edit"></i>
+                            <span>Edit Category</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        
+                        <form method="POST" action="{{ route('admin.categories.updateStatus', $category) }}" class="action-list__form">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="{{ $category->status === '1' ? '0' : '1' }}">
+                            <button type="submit" class="action-list__item action-list__item--{{ $category->status === '1' ? 'warning' : 'success' }}">
+                                <i class="fas fa-{{ $category->status === '1' ? 'pause' : 'play' }}"></i>
+                                <span>{{ $category->status === '1' ? 'Deactivate' : 'Activate' }}</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </form>
+                        
+                        <form method="POST" 
+                              action="{{ route('admin.categories.destroy', $category) }}" 
+                              class="action-list__form"
+                              onsubmit="return confirm('Are you sure you want to delete this category? This action cannot be undone.')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="action-list__item action-list__item--danger">
+                                <i class="fas fa-trash"></i>
+                                <span>Delete Category</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Card (if no image) -->
+            @if(!$category->image)
+                <div class="modern-card modern-card--empty">
+                    <div class="modern-card__body">
+                        <div class="empty-state empty-state--compact">
+                            <div class="empty-state__icon">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <h4 class="empty-state__title">No Image</h4>
+                            <p class="empty-state__text">Add an image to make this category more visually appealing</p>
+                            <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-plus"></i>
                                 Add Image
                             </a>
                         </div>
                     </div>
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>

@@ -19,7 +19,8 @@ class AdminUserSeeder extends Seeder
             ['email' => 'admin@paperwings.com'],
             [
                 'uuid' => Str::uuid()->toString(),
-                'name' => 'Admin User',
+                'first_name' => 'Admin',
+                'last_name' => 'User',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'status' => 1, // Active

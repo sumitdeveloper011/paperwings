@@ -24,12 +24,7 @@ class CategoryController extends Controller
         $this->eposNow = $eposNow;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request): View
-    {
-
+    public function getCategoriesForEposNow(Request $request): RedirectResponse{
         // $categories = $this->eposNow->getCategories();
 
         // foreach ($categories as $cat) {
@@ -52,7 +47,7 @@ class CategoryController extends Controller
         // }
         // dd($arr);
 
-        // dd('sdf');
+        // // dd('sdf');
 
         // foreach ($categories as $cat) {
         //     $imageData = $this->eposNow->uploadCategoryImage($cat['Id'], 'jpg', 'string');
@@ -69,7 +64,12 @@ class CategoryController extends Controller
         //     file_put_contents(public_path("images/categories/{$categoryId}.jpg"), $imageData);
         // }
         // dd('$categories');
-
+    }
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): View
+    {
         $search = $request->get('search');
 
         if ($search) {

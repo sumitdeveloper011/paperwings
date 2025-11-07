@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -41,14 +43,17 @@ class ProductController extends Controller
         $this->eposNow = $eposNow;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request): View
-    {
+    public function getProductsForEposNow(Request $request): RedirectResponse{
+        //Get Images
+        $images = $this->saveEposNowProductImage();
+        dd($images);
 
+        
         // // get all products of page 1
-        // $products = $this->eposNow->getProducts();
+        // $page = 1;
+        // for($i = 1; $i <= 53; $i++) {
+        //     dump('page: '.$i);
+        // $products = $this->eposNow->getProducts($i);
         // $count = 1;
 
         // foreach ($products as $product) {
@@ -75,19 +80,26 @@ class ProductController extends Controller
         //             $arr['slug'] = $slug;
         //             $count++;
         //         }
-        //         $existing = Product::where('product_id', $product['Id'])->first();
-        //         if (! $existing) {
-        //             $this->productRepository->create($arr);
-        //         }
+        //         //$existing = Product::where('product_id', $product['Id'])->first();
+        //         // if (! $existing) {
+        //              $this->productRepository->create($arr);
+        //         // }
         //     }
-        //     // $this->categoryRepository->create($arr);
+
+        // //     // $this->categoryRepository->create($arr);
 
         // }
-
+        // }
         // dd('$products');
 
         // //*********************** */
+    }
 
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): View
+    {
         $search = $request->get('search');
         $categoryId = $request->get('category_id');
         $subCategoryId = $request->get('subcategory_id');
@@ -362,5 +374,68 @@ class ProductController extends Controller
                 'name' => $subCategory->name,
             ];
         }));
+    }
+
+    public function saveEposNowProductImage()
+    {
+        try {
+            //$productId = '28002347';
+
+            $productId = '28028587';
+            // --- Step 1: API details ---
+            $apiUrl = "https://api.eposnowhq.com/api/v4/ProductImage/{$productId}";
+            $authHeader = 'Basic Wlc3QzBNSDAzSEZHUDhLU041MVdQVlBISU02MVdBVE46Tk9QWDNXSkoyVTZZTUZRNDJZNDJMMzI2OUcwQ0hTTU4=';
+    
+            // --- Step 2: Get image metadata from Epos Now ---
+            $response = Http::withHeaders([
+                'accept' => 'application/json',
+                'Authorization' => $authHeader,
+            ])->get($apiUrl);
+    
+            if (!$response->successful()) {
+                Log::error("EposNow API error ({$response->status()}): ".$response->body());
+                return null;
+            }
+    
+            $data = $response->json();
+            if (empty($data['ImageUrls'])) {
+                Log::info("No image found for Product ID {$productId}");
+                return null;
+            }
+    
+            // --- Step 3: pick the main image URL ---
+            $mainImage = collect($data['ImageUrls'])->firstWhere('MainImage', true);
+            if (!$mainImage || empty($mainImage['ImageUrl'])) {
+                Log::info("Main image missing for Product ID {$productId}");
+                return null;
+            }
+    
+            $imageUrl = $mainImage['ImageUrl'];
+    
+            // --- Step 4: Stream the image safely to a file ---
+            $filename = $productId.'_'.basename(parse_url($imageUrl, PHP_URL_PATH));
+            $savePath = "public/eposnow_images/{$filename}";
+            $localFullPath = storage_path('app/'.$savePath);
+    
+            // Make sure directory exists
+            if (!is_dir(dirname($localFullPath))) {
+                mkdir(dirname($localFullPath), 0775, true);
+            }
+    
+            // Stream download (binary-safe)
+            Http::sink($localFullPath)->get($imageUrl);
+    
+            // --- Step 5: Verify file & return public URL ---
+            if (!file_exists($localFullPath) || filesize($localFullPath) === 0) {
+                Log::warning("Downloaded image empty or missing for {$productId}");
+                return null;
+            }
+    
+            return Storage::url($savePath);
+    
+        } catch (\Throwable $e) {
+            Log::error("EposNow image save failed: ".$e->getMessage());
+            return null;
+        }
     }
 }

@@ -2,117 +2,201 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">Add Category</h1>
-                <p class="content-subtitle">Create a new category</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-plus-circle"></i>
+                    Add Category
+                </h1>
+                <p class="page-header__subtitle">Create a new product category</p>
             </div>
-            <div class="col-auto">
-                <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Categories
+            <div class="page-header__actions">
+                <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Categories</span>
                 </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Category Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="{{ route('admin.categories.store') }}" enctype="multipart/form-data">
-                            @csrf
-                            
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Category Name *</label>
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                       id="name" name="name" value="{{ old('name') }}" required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Category Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <form method="POST" action="{{ route('admin.categories.store') }}" enctype="multipart/form-data" class="modern-form">
+                        @csrf
+                        
+                        <div class="form-group-modern">
+                            <label for="name" class="form-label-modern">
+                                Category Name <span class="required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-tag input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('name') is-invalid @enderror" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ old('name') }}" 
+                                       placeholder="Enter category name"
+                                       required>
                             </div>
+                            @error('name')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
 
-                            <div class="mb-3">
-                                <label for="slug" class="form-label">Slug</label>
-                                <input type="text" class="form-control @error('slug') is-invalid @enderror" 
-                                       id="slug" name="slug" value="{{ old('slug') }}" 
-                                       placeholder="Leave empty to auto-generate">
-                                <div class="form-text">If left empty, slug will be auto-generated from category name</div>
-                                @error('slug')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                        <div class="form-group-modern">
+                            <label for="slug" class="form-label-modern">
+                                Slug
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-link input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('slug') is-invalid @enderror" 
+                                       id="slug" 
+                                       name="slug" 
+                                       value="{{ old('slug') }}" 
+                                       placeholder="category-slug (auto-generated if empty)">
                             </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                If left empty, slug will be auto-generated from category name
+                            </div>
+                            @error('slug')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
 
-                            <div class="mb-3">
-                                <label for="status" class="form-label">Status *</label>
-                                <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
+                        <div class="form-group-modern">
+                            <label for="status" class="form-label-modern">
+                                Status <span class="required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-toggle-on input-icon"></i>
+                                <select class="form-input-modern @error('status') is-invalid @enderror" 
+                                        id="status" 
+                                        name="status" 
+                                        required>
                                     <option value="">Select Status</option>
                                     <option value="1" {{ old('status') === '1' ? 'selected' : '' }}>Active</option>
                                     <option value="0" {{ old('status') === '0' ? 'selected' : '' }}>Inactive</option>
                                 </select>
-                                @error('status')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
-
-                            <div class="mb-3">
-                                <label for="image" class="form-label">Category Image</label>
-                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
-                                       id="image" name="image" accept="image/*">
-                                <div class="form-text">Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB</div>
-                                @error('image')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3" id="imagePreview" style="display: none;">
-                                <label class="form-label">Image Preview</label>
-                                <div>
-                                    <img id="previewImg" src="" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                            @error('status')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
                                 </div>
-                            </div>
+                            @enderror
+                        </div>
 
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Create Category
-                                </button>
-                                <a href="{{ route('admin.categories.index') }}" class="btn btn-secondary">
-                                    Cancel
-                                </a>
+                        <div class="form-group-modern">
+                            <label for="image" class="form-label-modern">
+                                Category Image
+                            </label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" 
+                                       class="file-upload-input @error('image') is-invalid @enderror" 
+                                       id="image" 
+                                       name="image" 
+                                       accept="image/*">
+                                <label for="image" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Image</span>
+                                </label>
                             </div>
-                        </form>
-                    </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
+                            </div>
+                            @error('image')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group-modern" id="imagePreview" style="display: none;">
+                            <label class="form-label-modern">Image Preview</label>
+                            <div class="image-preview">
+                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i>
+                                Create Category
+                            </button>
+                            <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Tips</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-unstyled">
-                            <li class="mb-2">
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Choose a descriptive category name
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Slug will be auto-generated if left empty
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Use high-quality images for better presentation
-                            </li>
-                            <li>
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Set status to 'Active' to make it visible
-                            </li>
-                        </ul>
-                    </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <ul class="tips-list">
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Descriptive Name</strong>
+                                <p>Choose a clear and descriptive category name</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Auto Slug</strong>
+                                <p>Slug will be auto-generated if left empty</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Quality Images</strong>
+                                <p>Use high-quality images for better presentation</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Status</strong>
+                                <p>Set status to 'Active' to make it visible</p>
+                            </div>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -120,6 +204,7 @@
 </div>
 
 <script>
+// Image Preview
 document.getElementById('image').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('imagePreview');
@@ -137,10 +222,15 @@ document.getElementById('image').addEventListener('change', function(e) {
     }
 });
 
+function removeImagePreview() {
+    document.getElementById('image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+}
+
 // Auto-generate slug from name
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');
-    if (!slugField.value) {
+    if (!slugField.value || slugField.dataset.autoGenerated === 'true') {
         const slug = e.target.value
             .toLowerCase()
             .replace(/[^a-z0-9 -]/g, '')
@@ -148,7 +238,13 @@ document.getElementById('name').addEventListener('input', function(e) {
             .replace(/-+/g, '-')
             .trim('-');
         slugField.value = slug;
+        slugField.dataset.autoGenerated = 'true';
     }
+});
+
+// Mark slug as manually edited
+document.getElementById('slug').addEventListener('input', function() {
+    this.dataset.autoGenerated = 'false';
 });
 </script>
 @endsection

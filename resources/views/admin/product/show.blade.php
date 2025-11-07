@@ -2,21 +2,25 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">{{ $product->name }}</h1>
-                <p class="content-subtitle">Product Details</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-box"></i>
+                    {{ $product->name }}
+                </h1>
+                <p class="page-header__subtitle">Product details and information</p>
             </div>
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit Product
-                    </a>
-                    <a href="{{ route('admin.products.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Products
-                    </a>
-                </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-edit"></i>
+                    <span>Edit</span>
+                </a>
+                <a href="{{ route('admin.products.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Products</span>
+                </a>
             </div>
         </div>
     </div>
@@ -26,13 +30,14 @@
             <!-- Left Column - Product Details -->
             <div class="col-lg-8">
                 <!-- Basic Information -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-info-circle me-2"></i>Product Information
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-info-circle"></i>
+                            Product Information
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Name:</strong>
@@ -74,13 +79,14 @@
                 </div>
 
                 <!-- Pricing Information -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-dollar-sign me-2"></i>Pricing Details
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-dollar-sign"></i>
+                            Pricing Details
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="row text-center">
                             <div class="col-md-4">
                                 <div class="border rounded p-3">
@@ -106,13 +112,14 @@
 
                 <!-- Additional Information (Accordion) -->
                 @if($product->accordion_data && count($product->accordion_data) > 0)
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-list me-2"></i>Additional Information
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-list"></i>
+                            Additional Information
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="accordion" id="productAccordion">
                             @foreach($product->accordion_data as $index => $item)
                                 <div class="accordion-item">
@@ -138,13 +145,14 @@
 
                 <!-- Product Images -->
                 @if($product->images && count($product->images) > 0)
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-images me-2"></i>Product Images ({{ count($product->images) }})
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-images"></i>
+                            Product Images ({{ count($product->images) }})
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="row g-3">
                             @foreach($product->images as $index => $image)
                                 <div class="col-md-4 col-sm-6">
@@ -166,13 +174,14 @@
             <!-- Right Column - Categories & Metadata -->
             <div class="col-lg-4">
                 <!-- Categories & Brand -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-tags me-2"></i>Categories & Brand
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-tags"></i>
+                            Categories & Brand
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="mb-3">
                             <strong>Category:</strong>
                             <div class="mt-1">
@@ -206,13 +215,14 @@
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-cog me-2"></i>Quick Actions
-                        </h5>
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-bolt"></i>
+                            Quick Actions
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="d-grid gap-2">
                             <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-primary">
                                 <i class="fas fa-edit me-2"></i>Edit Product
@@ -241,13 +251,14 @@
                 </div>
 
                 <!-- Product Statistics -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-bar me-2"></i>Product Statistics
-                        </h5>
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-chart-bar"></i>
+                            Product Statistics
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="modern-card__body">
                         <div class="row text-center">
                             <div class="col-6">
                                 <div class="border-end">

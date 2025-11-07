@@ -2,21 +2,25 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">Edit Product</h1>
-                <p class="content-subtitle">Update product: {{ $product->name }}</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-edit"></i>
+                    Edit Product
+                </h1>
+                <p class="page-header__subtitle">Update product: {{ $product->name }}</p>
             </div>
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <a href="{{ route('admin.products.show', $product) }}" class="btn btn-outline-info">
-                        <i class="fas fa-eye"></i> View Product
-                    </a>
-                    <a href="{{ route('admin.products.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Products
-                    </a>
-                </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.products.show', $product) }}" class="btn btn-outline-info btn-icon">
+                    <i class="fas fa-eye"></i>
+                    <span>View</span>
+                </a>
+                <a href="{{ route('admin.products.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Products</span>
+                </a>
             </div>
         </div>
     </div>
@@ -30,13 +34,14 @@
                 <!-- Left Column - Main Product Information -->
                 <div class="col-lg-8">
                     <!-- Basic Information -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-info-circle me-2"></i>Basic Information
-                            </h5>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-info-circle"></i>
+                                Basic Information
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="row">
                                 <div class="col-md-8">
                                     <div class="mb-3">
@@ -93,13 +98,14 @@
                     </div>
 
                     <!-- Pricing Information -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-dollar-sign me-2"></i>Pricing Information
-                            </h5>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-dollar-sign"></i>
+                                Pricing Information
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="mb-3">
@@ -140,16 +146,21 @@
                     </div>
 
                     <!-- Accordion Data -->
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-list me-2"></i>Additional Information (Accordion)
-                            </h5>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="addAccordionItem">
-                                <i class="fas fa-plus"></i> Add Section
-                            </button>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <div class="modern-card__header-content">
+                                <h3 class="modern-card__title">
+                                    <i class="fas fa-list"></i>
+                                    Additional Information (Accordion)
+                                </h3>
+                            </div>
+                            <div class="modern-card__header-actions">
+                                <button type="button" class="btn btn-sm btn-primary" id="addAccordionItem">
+                                    <i class="fas fa-plus"></i> Add Section
+                                </button>
+                            </div>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div id="accordionContainer">
                                 @php
                                     $accordionData = old('accordion_data', $product->accordion_data ?? []);
@@ -183,13 +194,14 @@
 
                     <!-- Current Images -->
                     @if($product->images && count($product->images) > 0)
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-images me-2"></i>Current Images
-                            </h5>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-images"></i>
+                                Current Images
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="row g-3">
                                 @foreach($product->images as $index => $image)
                                     <div class="col-md-4 col-sm-6">
@@ -217,13 +229,14 @@
                     @endif
 
                     <!-- Product Images -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-camera me-2"></i>{{ $product->images && count($product->images) > 0 ? 'Add More Images' : 'Upload Images' }}
-                            </h5>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-camera"></i>
+                                {{ $product->images && count($product->images) > 0 ? 'Add More Images' : 'Upload Images' }}
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="mb-3">
                                 <label for="images" class="form-label">Upload Images</label>
                                 <input type="file" class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror" 
@@ -245,13 +258,14 @@
                 <!-- Right Column - Categories & Relationships -->
                 <div class="col-lg-4">
                     <!-- Category & Brand Selection -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-tags me-2"></i>Categories & Brand
-                            </h5>
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-tags"></i>
+                                Categories & Brand
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="mb-3">
                                 <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
                                 <select class="form-select @error('category_id') is-invalid @enderror" 
@@ -303,13 +317,14 @@
                     </div>
 
                     <!-- Quick Actions -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-save me-2"></i>Actions
-                            </h5>
+                    <div class="modern-card">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-save"></i>
+                                Actions
+                            </h3>
                         </div>
-                        <div class="card-body">
+                        <div class="modern-card__body">
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-save me-2"></i>Update Product
@@ -332,66 +347,6 @@
     </div>
 </div>
 
-<style>
-.accordion-item-wrapper {
-    background-color: #f8f9fa;
-    transition: all 0.3s ease;
-}
-
-.accordion-item-wrapper:hover {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.image-preview-item {
-    position: relative;
-    border: 2px dashed #dee2e6;
-    border-radius: 0.375rem;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.image-preview-item:hover {
-    border-color: #0d6efd;
-}
-
-.image-preview-item img {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
-}
-
-.image-remove-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(220, 53, 69, 0.9);
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.image-remove-btn:hover {
-    background: rgba(220, 53, 69, 1);
-}
-
-#imagePreviewContainer:empty::after {
-    content: "No new images selected. Choose images using the file input above.";
-    display: block;
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-    padding: 2rem;
-    border: 2px dashed #dee2e6;
-    border-radius: 0.375rem;
-    background-color: #f8f9fa;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

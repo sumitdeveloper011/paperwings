@@ -2,153 +2,186 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">{{ $brand->name }}</h1>
-                <p class="content-subtitle">Brand details</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-award"></i>
+                    {{ $brand->name }}
+                </h1>
+                <p class="page-header__subtitle">Brand details and information</p>
             </div>
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <a href="{{ route('admin.brands.edit', $brand) }}" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Brands
-                    </a>
-                </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.brands.edit', $brand) }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-edit"></i>
+                    <span>Edit</span>
+                </a>
+                <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Brands</span>
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Brand Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @if($brand->image)
-                                <div class="col-md-4 mb-3">
-                                    <img src="{{ $brand->image_url }}" alt="{{ $brand->name }}" 
-                                         class="img-fluid rounded shadow-sm">
-                                </div>
-                            @endif
-                            <div class="{{ $brand->image ? 'col-md-8' : 'col-md-12' }}">
-                                <dl class="row">
-                                    <dt class="col-sm-3">Name:</dt>
-                                    <dd class="col-sm-9">{{ $brand->name }}</dd>
-                                    
-                                    <dt class="col-sm-3">Slug:</dt>
-                                    <dd class="col-sm-9"><code>{{ $brand->slug }}</code></dd>
-                                    
-                                    <dt class="col-sm-3">UUID:</dt>
-                                    <dd class="col-sm-9">
-                                        <small class="text-muted font-monospace">{{ $brand->uuid }}</small>
-                                    </dd>
-                                </dl>
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Brand Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    @if($brand->image)
+                        <div class="category-image-large">
+                            <img src="{{ $brand->image_url }}" 
+                                 alt="{{ $brand->name }}" 
+                                 class="category-image-large__img">
+                        </div>
+                    @endif
+                    
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-award"></i>
+                                Name
+                            </div>
+                            <div class="detail-item__value">
+                                {{ $brand->name }}
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-link"></i>
+                                Slug
+                            </div>
+                            <div class="detail-item__value">
+                                <code class="code-block">{{ $brand->slug }}</code>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-fingerprint"></i>
+                                UUID
+                            </div>
+                            <div class="detail-item__value">
+                                <code class="code-block code-block--small">{{ $brand->uuid }}</code>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                @if($brand->image)
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">Brand Logo</h5>
-                        </div>
-                        <div class="card-body text-center">
-                            <img src="{{ $brand->image_url }}" alt="{{ $brand->name }}" 
-                                 class="img-fluid rounded shadow" style="max-height: 300px;">
-                        </div>
-                    </div>
-                @endif
             </div>
-            
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Timestamps</h5>
-                    </div>
-                    <div class="card-body">
-                        <dl class="row">
-                            <dt class="col-sm-5">Created:</dt>
-                            <dd class="col-sm-7">
-                                {{ $brand->created_at->format('M d, Y') }}<br>
-                                <small class="text-muted">{{ $brand->created_at->format('g:i A') }}</small>
-                            </dd>
-                            
-                            <dt class="col-sm-5">Last Updated:</dt>
-                            <dd class="col-sm-7">
-                                {{ $brand->updated_at->format('M d, Y') }}<br>
-                                <small class="text-muted">{{ $brand->updated_at->format('g:i A') }}</small>
-                            </dd>
-                            
-                            <dt class="col-sm-5">Time Ago:</dt>
-                            <dd class="col-sm-7">
-                                <small class="text-muted">{{ $brand->updated_at->diffForHumans() }}</small>
-                            </dd>
-                        </dl>
-                    </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Timestamps Card -->
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-clock"></i>
+                        Timestamps
+                    </h3>
                 </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <a href="{{ route('admin.brands.edit', $brand) }}" class="btn btn-primary">
-                                <i class="fas fa-edit"></i> Edit Brand
-                            </a>
-                            
-                            <form method="POST" action="{{ route('admin.brands.destroy', $brand) }}" 
-                                  onsubmit="return confirm('Are you sure you want to delete this brand? This action cannot be undone.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger w-100">
-                                    <i class="fas fa-trash"></i> Delete Brand
-                                </button>
-                            </form>
+                <div class="modern-card__body">
+                    <div class="timestamp-list">
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Created</div>
+                                <div class="timestamp-item__value">
+                                    {{ $brand->created_at->format('M d, Y') }}
+                                    <small>{{ $brand->created_at->format('g:i A') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Last Updated</div>
+                                <div class="timestamp-item__value">
+                                    {{ $brand->updated_at->format('M d, Y') }}
+                                    <small>{{ $brand->updated_at->format('g:i A') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="timestamp-item">
+                            <div class="timestamp-item__icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="timestamp-item__content">
+                                <div class="timestamp-item__label">Time Ago</div>
+                                <div class="timestamp-item__value">
+                                    {{ $brand->updated_at->diffForHumans() }}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                @if(!$brand->image)
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-image fa-3x text-muted mb-3"></i>
-                            <h6 class="text-muted">No Logo</h6>
-                            <p class="text-muted small">Add a logo to make this brand more recognizable</p>
-                            <a href="{{ route('admin.brands.edit', $brand) }}" class="btn btn-sm btn-outline-primary">
+            <!-- Actions Card -->
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-bolt"></i>
+                        Quick Actions
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="action-list">
+                        <a href="{{ route('admin.brands.edit', $brand) }}" class="action-list__item action-list__item--primary">
+                            <i class="fas fa-edit"></i>
+                            <span>Edit Brand</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        
+                        <form method="POST" 
+                              action="{{ route('admin.brands.destroy', $brand) }}" 
+                              class="action-list__form"
+                              onsubmit="return confirm('Are you sure you want to delete this brand? This action cannot be undone.')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="action-list__item action-list__item--danger">
+                                <i class="fas fa-trash"></i>
+                                <span>Delete Brand</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Card (if no image) -->
+            @if(!$brand->image)
+                <div class="modern-card modern-card--empty">
+                    <div class="modern-card__body">
+                        <div class="empty-state empty-state--compact">
+                            <div class="empty-state__icon">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <h4 class="empty-state__title">No Logo</h4>
+                            <p class="empty-state__text">Add a logo to make this brand more recognizable</p>
+                            <a href="{{ route('admin.brands.edit', $brand) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-plus"></i>
                                 Add Logo
                             </a>
                         </div>
                     </div>
-                @endif
-
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Brand Stats</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6">
-                                <div class="border-end">
-                                    <h5 class="text-primary mb-1">{{ \Str::length($brand->name) }}</h5>
-                                    <small class="text-muted">Characters</small>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <h5 class="text-success mb-1">{{ \Str::wordCount($brand->name) }}</h5>
-                                <small class="text-muted">Words</small>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 </div>

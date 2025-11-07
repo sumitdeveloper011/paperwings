@@ -2,128 +2,192 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">Sub Categories</h1>
-                <p class="content-subtitle">Manage your sub categories</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-layer-group"></i>
+                    Sub Categories
+                </h1>
+                <p class="page-header__subtitle">Manage and organize your product subcategories</p>
             </div>
-            <div class="col-auto">
-                <a href="{{ route('admin.subcategories.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add Sub Category
+            <div class="page-header__actions">
+                <a href="{{ route('admin.subcategories.create') }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Sub Category</span>
                 </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <div class="card">
-            <div class="card-header">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <h5 class="card-title mb-0">All Sub Categories</h5>
-                    </div>
-                    <div class="col-auto">
-                        <form method="GET" class="d-flex gap-2">
-                            <select name="category_id" class="form-select" onchange="this.form.submit()">
-                                <option value="">All Categories</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
-                                        {{ $category->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <input type="text" name="search" class="form-control" placeholder="Search subcategories..." value="{{ $search }}">
-                            <button type="submit" class="btn btn-outline-primary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            @if($search || $categoryId)
-                                <a href="{{ route('admin.subcategories.index') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times"></i>
-                                </a>
-                            @endif
-                        </form>
-                    </div>
-                </div>
+    <!-- Main Content Card -->
+    <div class="modern-card">
+        <div class="modern-card__header">
+            <div class="modern-card__header-content">
+                <h3 class="modern-card__title">
+                    <i class="fas fa-list"></i>
+                    All Sub Categories
+                </h3>
+                <p class="modern-card__subtitle">{{ $subCategories->total() }} total subcategories</p>
             </div>
-            <div class="card-body">
-                @if($subCategories->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Name</th>
-                                    <th>Category</th>
-                                    <th>Slug</th>
-                                    <th>Status</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($subCategories as $subCategory)
-                                    <tr>
-                                        <td>
-                                            <img src="{{ $subCategory->image_url }}" alt="{{ $subCategory->name }}" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover;">
-                                        </td>
-                                        <td>{{ $subCategory->name }}</td>
-                                        <td>
-                                            <span class="badge bg-info">{{ $subCategory->category->name }}</span>
-                                        </td>
-                                        <td>{{ $subCategory->slug }}</td>
-                                        <td>
-                                            <form method="POST" action="{{ route('admin.subcategories.updateStatus', $subCategory) }}" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                                    <option value="1" {{ $subCategory->status === '1' ? 'selected' : '' }}>Active</option>
-                                                    <option value="0" {{ $subCategory->status === '0' ? 'selected' : '' }}>Inactive</option>
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td>{{ $subCategory->created_at->format('M d, Y') }}</td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('admin.subcategories.show', $subCategory) }}" class="btn btn-sm btn-outline-info">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('admin.subcategories.edit', $subCategory) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form method="POST" action="{{ route('admin.subcategories.destroy', $subCategory) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this subcategory?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {{ $subCategories->links() }}
-                @else
-                    <div class="text-center py-4">
-                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No Sub Categories Found</h5>
-                        @if($search)
-                            <p class="text-muted">No subcategories found matching "{{ $search }}"</p>
-                            <a href="{{ route('admin.subcategories.index') }}" class="btn btn-outline-primary">View All Sub Categories</a>
-                        @elseif($categoryId)
-                            <p class="text-muted">No subcategories found in selected category</p>
-                            <a href="{{ route('admin.subcategories.index') }}" class="btn btn-outline-primary">View All Sub Categories</a>
-                        @else
-                            <p class="text-muted">Start by creating your first subcategory</p>
-                            <a href="{{ route('admin.subcategories.create') }}" class="btn btn-primary">Add Sub Category</a>
+            <div class="modern-card__header-actions">
+                <form method="GET" class="search-form">
+                    <div class="search-form__wrapper">
+                        <select name="category_id" class="form-select-modern" onchange="this.form.submit()" style="width: 200px; margin-right: 0.5rem;">
+                            <option value="">All Categories</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <i class="fas fa-search search-form__icon"></i>
+                        <input type="text" name="search" class="search-form__input" 
+                               placeholder="Search subcategories..." value="{{ $search }}">
+                        @if($search || $categoryId)
+                            <a href="{{ route('admin.subcategories.index') }}" class="search-form__clear">
+                                <i class="fas fa-times"></i>
+                            </a>
                         @endif
                     </div>
-                @endif
+                </form>
             </div>
+        </div>
+
+        <div class="modern-card__body">
+            @if($subCategories->count() > 0)
+                <div class="modern-table-wrapper">
+                    <table class="modern-table">
+                        <thead class="modern-table__head">
+                            <tr>
+                                <th class="modern-table__th">
+                                    <span>Image</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Name</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Category</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Slug</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Status</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Created</span>
+                                </th>
+                                <th class="modern-table__th modern-table__th--actions">
+                                    <span>Actions</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="modern-table__body">
+                            @foreach($subCategories as $subCategory)
+                                <tr class="modern-table__row">
+                                    <td class="modern-table__td">
+                                        <div class="category-image">
+                                            <img src="{{ $subCategory->image_url }}" 
+                                                 alt="{{ $subCategory->name }}" 
+                                                 class="category-image__img"
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
+                                        </div>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <div class="category-name">
+                                            <strong>{{ $subCategory->name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <span class="badge badge--info">
+                                            <i class="fas fa-tag"></i>
+                                            {{ $subCategory->category->name }}
+                                        </span>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <code class="category-slug">{{ $subCategory->slug }}</code>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <form method="POST" action="{{ route('admin.subcategories.updateStatus', $subCategory) }}" class="status-form">
+                                            @csrf
+                                            @method('PATCH')
+                                            <select name="status" class="status-select" onchange="this.form.submit()">
+                                                <option value="1" {{ $subCategory->status === '1' ? 'selected' : '' }}>Active</option>
+                                                <option value="0" {{ $subCategory->status === '0' ? 'selected' : '' }}>Inactive</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <div class="category-date">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            {{ $subCategory->created_at->format('M d, Y') }}
+                                        </div>
+                                    </td>
+                                    <td class="modern-table__td modern-table__td--actions">
+                                        <div class="action-buttons">
+                                            <a href="{{ route('admin.subcategories.show', $subCategory) }}" 
+                                               class="action-btn action-btn--view" 
+                                               title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.subcategories.edit', $subCategory) }}" 
+                                               class="action-btn action-btn--edit" 
+                                               title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" 
+                                                  action="{{ route('admin.subcategories.destroy', $subCategory) }}" 
+                                                  class="action-form"
+                                                  onsubmit="return confirm('Are you sure you want to delete this subcategory?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if($subCategories->hasPages())
+                    <div class="pagination-wrapper">
+                        {{ $subCategories->links() }}
+                    </div>
+                @endif
+            @else
+                <div class="empty-state">
+                    <div class="empty-state__icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <h3 class="empty-state__title">No Sub Categories Found</h3>
+                    @if($search)
+                        <p class="empty-state__text">No subcategories found matching "{{ $search }}"</p>
+                        <a href="{{ route('admin.subcategories.index') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i>
+                            View All Sub Categories
+                        </a>
+                    @elseif($categoryId)
+                        <p class="empty-state__text">No subcategories found in selected category</p>
+                        <a href="{{ route('admin.subcategories.index') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i>
+                            View All Sub Categories
+                        </a>
+                    @else
+                        <p class="empty-state__text">Start by creating your first subcategory</p>
+                        <a href="{{ route('admin.subcategories.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add Sub Category
+                        </a>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 </div>

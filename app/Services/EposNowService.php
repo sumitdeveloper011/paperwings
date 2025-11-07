@@ -58,9 +58,10 @@ class EposNowService
     //     return $response->json();
     // }
 
-    public function getProducts(int $page = 1)
+    public function getProducts($page)
     {
         $url = "{$this->baseUrl}/Product?page={$page}";
+        dump($url);
 
         return $this->makeRequest($url);
     }

@@ -2,134 +2,233 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">Edit Brand</h1>
-                <p class="content-subtitle">Update brand information</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-edit"></i>
+                    Edit Brand
+                </h1>
+                <p class="page-header__subtitle">Update brand information</p>
             </div>
-            <div class="col-auto">
-                <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Brands
+            <div class="page-header__actions">
+                <a href="{{ route('admin.brands.show', $brand) }}" class="btn btn-outline-info btn-icon">
+                    <i class="fas fa-eye"></i>
+                    <span>View</span>
+                </a>
+                <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Brands</span>
                 </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Brand Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="{{ route('admin.brands.update', $brand) }}" enctype="multipart/form-data">
-                            @csrf
-                            @method('PUT')
-                            
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Brand Name *</label>
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                       id="name" name="name" value="{{ old('name', $brand->name) }}" required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Brand Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <form method="POST" action="{{ route('admin.brands.update', $brand) }}" enctype="multipart/form-data" class="modern-form">
+                        @csrf
+                        @method('PUT')
+                        
+                        <div class="form-group-modern">
+                            <label for="name" class="form-label-modern">
+                                Brand Name <span class="required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-award input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('name') is-invalid @enderror" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ old('name', $brand->name) }}" 
+                                       placeholder="Enter brand name"
+                                       required>
                             </div>
-
-                            <div class="mb-3">
-                                <label for="slug" class="form-label">Slug</label>
-                                <input type="text" class="form-control @error('slug') is-invalid @enderror" 
-                                       id="slug" name="slug" value="{{ old('slug', $brand->slug) }}">
-                                <div class="form-text">If left empty, slug will be auto-generated from brand name</div>
-                                @error('slug')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            @if($brand->image)
-                                <div class="mb-3">
-                                    <label class="form-label">Current Logo/Image</label>
-                                    <div>
-                                        <img src="{{ $brand->image_url }}" alt="{{ $brand->name }}" 
-                                             class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
-                                    </div>
+                            @error('name')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
                                 </div>
-                            @endif
+                            @enderror
+                        </div>
 
-                            <div class="mb-3">
-                                <label for="image" class="form-label">
-                                    {{ $brand->image ? 'Replace Logo/Image' : 'Brand Logo/Image' }}
+                        <div class="form-group-modern">
+                            <label for="slug" class="form-label-modern">
+                                Slug
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-link input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('slug') is-invalid @enderror" 
+                                       id="slug" 
+                                       name="slug" 
+                                       value="{{ old('slug', $brand->slug) }}" 
+                                       placeholder="brand-slug">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                If left empty, slug will be auto-generated from brand name
+                            </div>
+                            @error('slug')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        @if($brand->image)
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Current Logo</label>
+                                <div class="current-image">
+                                    <img src="{{ $brand->image_url }}" 
+                                         alt="{{ $brand->name }}" 
+                                         class="current-image__img">
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="form-group-modern">
+                            <label for="image" class="form-label-modern">
+                                {{ $brand->image ? 'Replace Logo/Image' : 'Brand Logo/Image' }}
+                            </label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" 
+                                       class="file-upload-input @error('image') is-invalid @enderror" 
+                                       id="image" 
+                                       name="image" 
+                                       accept="image/*">
+                                <label for="image" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>{{ $brand->image ? 'Replace Logo' : 'Choose Logo' }}</span>
                                 </label>
-                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
-                                       id="image" name="image" accept="image/*">
-                                <div class="form-text">Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB</div>
-                                @error('image')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
-
-                            <div class="mb-3" id="imagePreview" style="display: none;">
-                                <label class="form-label">New Image Preview</label>
-                                <div>
-                                    <img id="previewImg" src="" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
+                            </div>
+                            @error('image')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
                                 </div>
-                            </div>
+                            @enderror
+                        </div>
 
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Update Brand
+                        <div class="form-group-modern" id="imagePreview" style="display: none;">
+                            <label class="form-label-modern">New Logo Preview</label>
+                            <div class="image-preview">
+                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                    <i class="fas fa-times"></i>
                                 </button>
-                                <a href="{{ route('admin.brands.show', $brand) }}" class="btn btn-outline-info">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
-                                <a href="{{ route('admin.brands.index') }}" class="btn btn-secondary">
-                                    Cancel
-                                </a>
                             </div>
-                        </form>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i>
+                                Update Brand
+                            </button>
+                            <a href="{{ route('admin.brands.show', $brand) }}" class="btn btn-outline-info btn-lg">
+                                <i class="fas fa-eye"></i>
+                                View
+                            </a>
+                            <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Brand Details
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-fingerprint"></i>
+                                UUID
+                            </div>
+                            <div class="detail-item__value">
+                                <code class="code-block code-block--small">{{ $brand->uuid }}</code>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-plus-circle"></i>
+                                Created
+                            </div>
+                            <div class="detail-item__value">
+                                {{ $brand->created_at->format('M d, Y g:i A') }}
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-item__label">
+                                <i class="fas fa-edit"></i>
+                                Updated
+                            </div>
+                            <div class="detail-item__value">
+                                {{ $brand->updated_at->format('M d, Y g:i A') }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Brand Details</h5>
-                    </div>
-                    <div class="card-body">
-                        <dl class="row">
-                            <dt class="col-sm-4">UUID:</dt>
-                            <dd class="col-sm-8"><small class="text-muted">{{ $brand->uuid }}</small></dd>
-                            
-                            <dt class="col-sm-4">Created:</dt>
-                            <dd class="col-sm-8">{{ $brand->created_at->format('M d, Y g:i A') }}</dd>
-                            
-                            <dt class="col-sm-4">Updated:</dt>
-                            <dd class="col-sm-8">{{ $brand->updated_at->format('M d, Y g:i A') }}</dd>
-                        </dl>
-                    </div>
-                </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Tips</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-unstyled">
-                            <li class="mb-2">
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Changing the name will update the slug
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Uploading a new image will replace the current one
-                            </li>
-                            <li>
-                                <i class="fas fa-lightbulb text-warning me-2"></i>
-                                Maintain brand consistency across updates
-                            </li>
-                        </ul>
-                    </div>
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <ul class="tips-list">
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Name Update</strong>
+                                <p>Changing the name will update the slug</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Logo Replacement</strong>
+                                <p>Uploading a new logo will replace the current one</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Consistency</strong>
+                                <p>Maintain brand consistency across updates</p>
+                            </div>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -137,6 +236,7 @@
 </div>
 
 <script>
+// Image Preview
 document.getElementById('image').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('imagePreview');
@@ -154,16 +254,29 @@ document.getElementById('image').addEventListener('change', function(e) {
     }
 });
 
+function removeImagePreview() {
+    document.getElementById('image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+}
+
 // Auto-generate slug from name
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');
-    const slug = e.target.value
-        .toLowerCase()
-        .replace(/[^a-z0-9 -]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim('-');
-    slugField.value = slug;
+    if (!slugField.value || slugField.dataset.autoGenerated === 'true') {
+        const slug = e.target.value
+            .toLowerCase()
+            .replace(/[^a-z0-9 -]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim('-');
+        slugField.value = slug;
+        slugField.dataset.autoGenerated = 'true';
+    }
+});
+
+// Mark slug as manually edited
+document.getElementById('slug').addEventListener('input', function() {
+    this.dataset.autoGenerated = 'false';
 });
 </script>
 @endsection
