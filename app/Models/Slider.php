@@ -23,7 +23,7 @@ class Slider extends Model
     protected $casts = [
         'buttons' => 'array',
         'sort_order' => 'integer',
-        'status' => 'string'
+        'status' => 'integer'
     ];
 
     // Boot method to generate UUID automatically
@@ -47,12 +47,12 @@ class Slider extends Model
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 1);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('status', 'inactive');
+        return $query->where('status', 0);
     }
 
     public function scopeOrdered($query)
@@ -63,7 +63,7 @@ class Slider extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 'active' 
+        return $this->status == 1 
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }

@@ -17,6 +17,10 @@
                     <i class="fas fa-plus"></i>
                     <span>Add Category</span>
                 </a>
+                <a href="{{ route('admin.categories.getCategoriesForEposNow') }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-download"></i>
+                    <span>Get Categories from EposNow</span>
+                </a>
             </div>
         </div>
     </div>
@@ -141,7 +145,7 @@
                 <!-- Pagination -->
                 @if($categories->hasPages())
                     <div class="pagination-wrapper">
-                        {{ $categories->links() }}
+                        {{ $categories->links('components.pagination') }}
                     </div>
                 @endif
             @else

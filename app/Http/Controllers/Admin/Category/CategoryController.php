@@ -24,46 +24,32 @@ class CategoryController extends Controller
         $this->eposNow = $eposNow;
     }
 
-    public function getCategoriesForEposNow(Request $request): RedirectResponse{
-        // $categories = $this->eposNow->getCategories();
-
-        // foreach ($categories as $cat) {
-
-        //     $arr = [
-        //         'uuid' => Str::uuid(),
-        //         'category_id' => $cat['Id'],
-        //         'name' => $cat['Name'],
-        //         'slug' => Str::slug($cat['Name']),
-        //         'status' => 1,
-        //         'image' => $cat['ImageUrl'] ? $cat['ImageUrl'] : null,
-        //     ];
-        //     $existing = Category::where('category_id', $cat['Id'])->first();
-
-        //     if (! $existing) {
-        //         $this->categoryRepository->create($arr);
-        //     }
-        //     // $this->categoryRepository->create($arr);
-
-        // }
-        // dd($arr);
-
-        // // dd('sdf');
-
-        // foreach ($categories as $cat) {
-        //     $imageData = $this->eposNow->uploadCategoryImage($cat['Id'], 'jpg', 'string');
-        //     $categoryId = $cat['Id'];
-        //     dump($cat);
-        //     dump($imageData['CategoryImages'][0]['PreSignedUrl']);
-
-        //     $imageData = file_get_contents($imageData['CategoryImages'][0]['PreSignedUrl']);
-        //     if ($imageData === false) {
-        //         dd('Failed to download image. URL may be expired: '.$imageData['CategoryImages'][0]['PreSignedUrl']);
-        //     }
-        //     dump('sdf');
-        //     // $imageData = file_get_contents($imageData['CategoryImages'][0]['PreSignedUrl']);
-        //     file_put_contents(public_path("images/categories/{$categoryId}.jpg"), $imageData);
-        // }
-        // dd('$categories');
+    public function getCategoriesForEposNow(Request $request): RedirectResponse
+    {
+        try {
+            $categories = $this->eposNow->getCategories();
+            
+            foreach ($categories as $cat) {
+                $arr = [
+                    'uuid' => Str::uuid(),
+                    'category_id' => $cat['Id'],
+                    'name' => $cat['Name'],
+                    'slug' => Str::slug($cat['Name']),
+                    'status' => 1,
+                    'image' => $cat['ImageUrl'] ? $cat['ImageUrl'] : null,
+                ];
+                $existing = Category::where('category_id', $cat['Id'])->first();
+                if (! $existing) {
+                    $this->categoryRepository->create($arr);
+                }
+            }
+            
+            return redirect()->route('admin.categories.index')
+                ->with('success', 'Categories imported successfully from EposNow!');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.categories.index')
+                ->with('error', 'Failed to import categories: ' . $e->getMessage());
+        }
     }
     /**
      * Display a listing of the resource.

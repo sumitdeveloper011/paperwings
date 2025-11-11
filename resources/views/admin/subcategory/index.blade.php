@@ -158,7 +158,7 @@
                 <!-- Pagination -->
                 @if($subCategories->hasPages())
                     <div class="pagination-wrapper">
-                        {{ $subCategories->links() }}
+                        {{ $subCategories->links('components.pagination') }}
                     </div>
                 @endif
             @else

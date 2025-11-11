@@ -3,68 +3,25 @@
 <!-- Slider Section -->
 <section class="slider-section">
         <div class="slider">
-            <!-- Slide 1 -->
-            <div class="slider__slide" style="background-image: url('{{ asset('assets/frontend/images/banner-1.jpg') }}');">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <div class="slider__content">
-                                <div class="slider__tagline">Find The Very Best</div>
-                                <h1 class="slider__heading">Stock Up With Our Stationery</h1>
-                                <div class="slider__pricing">
-                                    <div class="slider__price">Minimum 50 Reams @ $3.75/Ream</div>
-                                    <div class="slider__gst">($4.01/Ream Incl. GST)</div>
+            @if($sliders && $sliders->count() > 0)
+                @foreach($sliders as $slider)
+                    <div class="slider__slide" style="background-image: url('{{ asset('storage/' . $slider->image) }}');">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <div class="slider__content">
+                                        <div class="slider__tagline">{{ $slider->sub_heading }}</div>
+                                        <h1 class="slider__heading">{{ $slider->heading }}</h1>
+                                        <a href="{{ $slider->buttons[0]['url'] }}" class="slider__btn">
+                                            {{ $slider->buttons[0]['name'] }} <i class="fas fa-arrow-right"></i>
+                                        </a>
+                                    </div>
                                 </div>
-                                <a href="#" class="slider__btn">
-                                    Buy Now <i class="fas fa-arrow-right"></i>
-                                </a>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Slide 2 -->
-            <div class="slider__slide" style="background-image: url('{{ asset('assets/frontend/images/banner-2.jpg') }}');">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <div class="slider__content">
-                                <div class="slider__tagline">Premium Quality</div>
-                                <h1 class="slider__heading">Office Supplies & Equipment</h1>
-                                <div class="slider__pricing">
-                                    <div class="slider__price">Bulk Orders Available</div>
-                                    <div class="slider__gst">Corporate Discounts</div>
-                                </div>
-                                <a href="#" class="slider__btn">
-                                    Shop Now <i class="fas fa-arrow-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Slide 3 -->
-            <div class="slider__slide" style="background-image: url('{{ asset('assets/frontend/images/banner-3.jpg') }}');">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <div class="slider__content">
-                                <div class="slider__tagline">Creative Solutions</div>
-                                <h1 class="slider__heading">Art & Craft Materials</h1>
-                                <div class="slider__pricing">
-                                    <div class="slider__price">Professional Grade</div>
-                                    <div class="slider__gst">Student & Artist Friendly</div>
-                                </div>
-                                <a href="#" class="slider__btn">
-                                    Explore <i class="fas fa-arrow-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                @endforeach
+            @endif
         </div>
     </section>
     
@@ -80,54 +37,22 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/stationery.jpg') }}" alt="Books & Stationery" class="category__img">
+                @if($categories && $categories->count() > 0)
+                @foreach($categories as $category)
+                    <div class="col-lg-2 col-md-4 col-sm-6">
+                        <div class="category-item">
+                            <div class="category__image">
+                                <a href="#">
+                                    <img src="{{ asset('storage/' . $category->image) }}" alt="{{ $category->name }}" class="category__img">
+                                </a>
+                            </div>
+                            <h3 class="category__name">
+                                <a href="#">{{ $category->name }}</a>
+                            </h3>
                         </div>
-                        <h3 class="category__name">Books & Stationery</h3>
                     </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/pens.jpg') }}" alt="Pens & Pencils" class="category__img">
-                        </div>
-                        <h3 class="category__name">Pens & Pencils</h3>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/paper.jpg') }}" alt="Paper & Card" class="category__img">
-                        </div>
-                        <h3 class="category__name">Paper & Card</h3>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/notebooks.jpg') }}" alt="Notebooks" class="category__img">
-                        </div>
-                        <h3 class="category__name">Notebooks</h3>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/calendar.jpg') }}" alt="Calendars" class="category__img">
-                        </div>
-                        <h3 class="category__name">Calendars</h3>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-4 col-sm-6">
-                    <div class="category-item">
-                        <div class="category__image">
-                            <img src="{{ asset('assets/frontend/images/school supplies.jpg') }}" alt="School Supplies" class="category__img">
-                        </div>
-                        <h3 class="category__name">School Supplies</h3>
-                    </div>
-                </div>
+                @endforeach
+                @endif
             </div>
         </div>
     </section>

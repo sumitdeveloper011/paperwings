@@ -1224,6 +1224,24 @@
     color: var(--teal);
 }
 
+/* Category Link Styles */
+.category__image a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+}
+
+.category__name a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.category-item:hover .category__name a {
+    color: var(--teal);
+}
+
 /* Responsive Categories */
 @media (max-width: 768px) {
     .categories-section {

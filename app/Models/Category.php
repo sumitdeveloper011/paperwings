@@ -77,6 +77,11 @@ class Category extends Model
         return $query->where('status', 0);
     }
 
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('name', 'asc');
+    }
+
     // Accessors
     public function getStatusBadgeAttribute()
     {

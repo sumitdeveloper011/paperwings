@@ -48,7 +48,7 @@
                         <i class="fas fa-user-cog"></i>
                         <span>Profile</span>
                     </a>
-                    <a href="#" class="dropdown-item">
+                    <a href="{{ route('admin.settings.index') }}" class="dropdown-item">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
                     </a>

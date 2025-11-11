@@ -43,56 +43,46 @@ class ProductController extends Controller
         $this->eposNow = $eposNow;
     }
 
-    public function getProductsForEposNow(Request $request): RedirectResponse{
-        //Get Images
-        $images = $this->saveEposNowProductImage();
-        dd($images);
+    public function getProductsForEposNow(Request $request): RedirectResponse
+    {
+        try{
+            for($i = 1; $i <= 53; $i++) {
+                $products = $this->eposNow->getProducts($i);
+                foreach ($products as $product) {
+                    $arr = [
+                        'uuid' => Str::uuid(),
+                        'product_id' => $product['Id'],
+                        'category_id' => $product['CategoryId'],
+                        'brand_id' => $product['BrandId'],
+                        'name' => $product['Name'],
+                        'slug' => Str::slug($product['Name']),
+                        'total_price' => $product['SalePrice'] ?? 0.00,
+                        'description' => $product['Description'] ?? null,
+                        'short_description' => null,
+                        'barcode' => $product['Barcode'] ?? null,
+                        'accordion_data' => null,
+                        'images' => $product['ProductImages'] ?? null,
+                        'status' => 1,
+                    ];
 
-        
-        // // get all products of page 1
-        // $page = 1;
-        // for($i = 1; $i <= 53; $i++) {
-        //     dump('page: '.$i);
-        // $products = $this->eposNow->getProducts($i);
-        // $count = 1;
-
-        // foreach ($products as $product) {
-
-        //     $arr = [
-        //         'uuid' => Str::uuid(),
-        //         'product_id' => $product['Id'],
-        //         'category_id' => $product['CategoryId'],
-        //         'brand_id' => $product['BrandId'],
-        //         'name' => $product['Name'],
-        //         'slug' => Str::slug($product['Name']),
-        //         'total_price' => $product['SalePrice'] ?? 0.00,
-        //         'description' => $product['Description'] ?? null,
-        //         'short_description' => null,
-        //         'barcode' => $product['Barcode'] ?? null,
-        //         'accordion_data' => null,
-        //         'images' => $product['ProductImages'] ?? null,
-        //         'status' => 1,
-        //     ];
-
-        //     if ($product['CategoryId']) {
-        //         if (Product::where('slug', $arr['slug'])->exists()) {
-        //             $slug = $arr['slug'].'-'.$count;
-        //             $arr['slug'] = $slug;
-        //             $count++;
-        //         }
-        //         //$existing = Product::where('product_id', $product['Id'])->first();
-        //         // if (! $existing) {
-        //              $this->productRepository->create($arr);
-        //         // }
-        //     }
-
-        // //     // $this->categoryRepository->create($arr);
-
-        // }
-        // }
-        // dd('$products');
-
-        // //*********************** */
+                    if ($product['CategoryId']) {
+                        if (Product::where('slug', $arr['slug'])->exists()) {
+                            $slug = $arr['slug'].'-'.$arr['slug'];
+                            $arr['slug'] = $slug;
+                        }
+                        $existing = Product::where('product_id', $product['Id'])->first();
+                        if (! $existing) {
+                            $this->productRepository->create($arr);
+                        }
+                    }
+                }
+            }
+            return redirect()->route('admin.products.index')
+                    ->with('success', 'Products imported successfully from EposNow!');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.products.index')
+                ->with('error', 'Failed to import products: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -148,8 +138,6 @@ class ProductController extends Controller
         $categories = $this->categoryRepository->getActive();
         $subCategories = $this->subCategoryRepository->getActive();
         $brands = $this->brandRepository->all();
-        // dd($products);
-
         return view('admin.product.index', compact(
             'products', 'search', 'categories', 'subCategories', 'brands',
             'categoryId', 'subCategoryId', 'brandId'

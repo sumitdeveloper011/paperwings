@@ -17,6 +17,10 @@
                     <i class="fas fa-plus"></i>
                     <span>Add Product</span>
                 </a>
+                <a href="{{ route('admin.products.getProductsForEposNow') }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-download"></i>
+                    <span>Get Products from EposNow</span>
+                </a>
             </div>
         </div>
     </div>
@@ -200,7 +204,7 @@
                 <!-- Pagination -->
                 @if($products->hasPages())
                     <div class="pagination-wrapper">
-                        {{ $products->links() }}
+                        {{ $products->links('components.pagination') }}
                     </div>
                 @endif
             @else

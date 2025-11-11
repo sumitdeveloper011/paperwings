@@ -2,172 +2,245 @@
 
 @section('content')
 <div class="admin-content">
-    <div class="content-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="content-title">Edit Slider</h1>
-                <p class="content-subtitle">Update slider: {{ $slider->heading }}</p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-edit"></i>
+                    Edit Slider
+                </h1>
+                <p class="page-header__subtitle">Update slider: {{ $slider->heading }}</p>
             </div>
-            <div class="col-auto">
-                <div class="btn-group" role="group">
-                    <a href="{{ route('admin.sliders.show', $slider) }}" class="btn btn-outline-info">
-                        <i class="fas fa-eye"></i> View Slider
-                    </a>
-                    <a href="{{ route('admin.sliders.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Sliders
-                    </a>
-                </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.sliders.show', $slider) }}" class="btn btn-outline-info btn-icon">
+                    <i class="fas fa-eye"></i>
+                    <span>View</span>
+                </a>
+                <a href="{{ route('admin.sliders.index') }}" class="btn btn-outline-secondary btn-icon">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Sliders</span>
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="content-body">
-        <form action="{{ route('admin.sliders.update', $slider) }}" method="POST" enctype="multipart/form-data" id="sliderForm">
-            @csrf
-            @method('PUT')
-            
-            <div class="row">
-                <!-- Left Column - Main Slider Information -->
-                <div class="col-lg-8">
-                    <!-- Basic Information -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-info-circle me-2"></i>Slider Information
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="mb-3">
-                                        <label for="heading" class="form-label">Heading <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control @error('heading') is-invalid @enderror" 
-                                               id="heading" name="heading" value="{{ old('heading', $slider->heading) }}" required>
-                                        @error('heading')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <div class="modern-card modern-card--glass">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Slider Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <form method="POST" action="{{ route('admin.sliders.update', $slider) }}" enctype="multipart/form-data" class="modern-form" id="sliderForm">
+                        @csrf
+                        @method('PUT')
+                        
+                        <div class="form-group-modern">
+                            <label for="heading" class="form-label-modern">
+                                Heading <span class="required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-heading input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('heading') is-invalid @enderror" 
+                                       id="heading" 
+                                       name="heading" 
+                                       value="{{ old('heading', $slider->heading) }}" 
+                                       placeholder="Enter slider heading"
+                                       required>
+                            </div>
+                            @error('heading')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                        <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
-                                            <option value="1" {{ old('status', $slider->status) == '1' ? 'selected' : '' }}>Active</option>
-                                            <option value="0" {{ old('status', $slider->status) == '0' ? 'selected' : '' }}>Inactive</option>
+                            @enderror
+                        </div>
+
+                        <div class="form-group-modern">
+                            <label for="sub_heading" class="form-label-modern">
+                                Sub Heading
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-text-height input-icon"></i>
+                                <input type="text" 
+                                       class="form-input-modern @error('sub_heading') is-invalid @enderror" 
+                                       id="sub_heading" 
+                                       name="sub_heading" 
+                                       value="{{ old('sub_heading', $slider->sub_heading) }}" 
+                                       placeholder="Enter sub heading (optional)">
+                            </div>
+                            @error('sub_heading')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label for="status" class="form-label-modern">
+                                        Status <span class="required">*</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-toggle-on input-icon"></i>
+                                        <select class="form-input-modern @error('status') is-invalid @enderror" 
+                                                id="status" 
+                                                name="status" 
+                                                required>
+                                            <option value="">Select Status</option>
+                                            <option value="1" {{ old('status', $slider->status) == 1 ? 'selected' : '' }}>Active</option>
+                                            <option value="0" {{ old('status', $slider->status) == 0 ? 'selected' : '' }}>Inactive</option>
                                         </select>
-                                        @error('status')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
                                     </div>
+                                    @error('status')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
                             </div>
-
-                            <div class="mb-3">
-                                <label for="sub_heading" class="form-label">Sub Heading</label>
-                                <input type="text" class="form-control @error('sub_heading') is-invalid @enderror" 
-                                       id="sub_heading" name="sub_heading" value="{{ old('sub_heading', $slider->sub_heading) }}">
-                                @error('sub_heading')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="sort_order" class="form-label">Sort Order</label>
-                                <input type="number" class="form-control @error('sort_order') is-invalid @enderror" 
-                                       id="sort_order" name="sort_order" value="{{ old('sort_order', $slider->sort_order) }}" min="1">
-                                <small class="form-text text-muted">Current order: {{ $slider->sort_order }}</small>
-                                @error('sort_order')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label for="sort_order" class="form-label-modern">
+                                        Sort Order
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-sort-numeric-down input-icon"></i>
+                                        <input type="number" 
+                                               class="form-input-modern @error('sort_order') is-invalid @enderror" 
+                                               id="sort_order" 
+                                               name="sort_order" 
+                                               value="{{ old('sort_order', $slider->sort_order) }}" 
+                                               min="1"
+                                               placeholder="Auto-assigned if empty">
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Current order: {{ $slider->sort_order }}
+                                    </div>
+                                    @error('sort_order')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Current Image -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-image me-2"></i>Current Image
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="text-center mb-3">
-                                <img src="{{ $slider->image_url }}" alt="{{ $slider->heading }}" 
-                                     class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                        <!-- Current Image -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Current Image</label>
+                            <div class="image-preview">
+                                <img src="{{ $slider->image_url }}" alt="{{ $slider->heading }}" class="image-preview__img">
                             </div>
-                            <p class="text-muted text-center mb-0">
-                                <small>Current image will be replaced if you upload a new one</small>
-                            </p>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Current image will be replaced if you upload a new one
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Update Image -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-camera me-2"></i>Update Image
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="image" class="form-label">Upload New Image</label>
-                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
-                                       id="image" name="image" accept="image/*">
-                                <small class="form-text text-muted">Leave empty to keep current image. Recommended size: 1920x800px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB.</small>
-                                @error('image')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                        <div class="form-group-modern">
+                            <label for="image" class="form-label-modern">
+                                Update Image
+                            </label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" 
+                                       class="file-upload-input @error('image') is-invalid @enderror" 
+                                       id="image" 
+                                       name="image" 
+                                       accept="image/*">
+                                <label for="image" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose New Image</span>
+                                </label>
                             </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Leave empty to keep current image. Recommended size: 1920x800px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
+                            </div>
+                            @error('image')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group-modern" id="imagePreview" style="display: none;">
+                            <label class="form-label-modern">New Image Preview</label>
+                            <div class="image-preview">
+                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Button Configuration -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-mouse-pointer"></i>
+                                Button Configuration (Max 2 Buttons)
+                            </label>
                             
-                            <div id="imagePreview" class="text-center" style="display: none;">
-                                <img id="previewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 300px;">
-                                <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-danger" id="removeImage">
-                                        <i class="fas fa-times"></i> Remove New Image
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Button Configuration -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-mouse-pointer me-2"></i>Button Configuration (Max 2 Buttons)
-                            </h5>
-                        </div>
-                        <div class="card-body">
                             @php
-                                $button1 = old('button_1_name') ? ['name' => old('button_1_name'), 'url' => old('button_1_url')] : ($slider->first_button ?? ['name' => '', 'url' => '']);
-                                $button2 = old('button_2_name') ? ['name' => old('button_2_name'), 'url' => old('button_2_url')] : ($slider->second_button ?? ['name' => '', 'url' => '']);
+                                $button1 = old('button_1_name') ? ['name' => old('button_1_name'), 'url' => old('button_1_url')] : ($slider->buttons[0] ?? ['name' => '', 'url' => '']);
+                                $button2 = old('button_2_name') ? ['name' => old('button_2_name'), 'url' => old('button_2_url')] : ($slider->buttons[1] ?? ['name' => '', 'url' => '']);
                             @endphp
 
                             <!-- Button 1 -->
-                            <div class="border rounded p-3 mb-3">
-                                <h6 class="mb-3">
-                                    <i class="fas fa-1 me-2"></i>Button 1
+                            <div class="modern-card" style="margin-bottom: 1rem; padding: 1rem;">
+                                <h6 style="margin-bottom: 1rem; color: var(--text-primary);">
+                                    <i class="fas fa-1"></i> Button 1
                                 </h6>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="button_1_name" class="form-label">Button Name</label>
-                                            <input type="text" class="form-control @error('button_1_name') is-invalid @enderror" 
-                                                   id="button_1_name" name="button_1_name" value="{{ $button1['name'] }}"
-                                                   placeholder="e.g., Shop Now, Learn More">
+                                        <div class="form-group-modern">
+                                            <label for="button_1_name" class="form-label-modern">Button Name</label>
+                                            <div class="input-wrapper">
+                                                <i class="fas fa-tag input-icon"></i>
+                                                <input type="text" 
+                                                       class="form-input-modern @error('button_1_name') is-invalid @enderror" 
+                                                       id="button_1_name" 
+                                                       name="button_1_name" 
+                                                       value="{{ $button1['name'] }}"
+                                                       placeholder="e.g., Shop Now, Learn More">
+                                            </div>
                                             @error('button_1_name')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="form-error">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    {{ $message }}
+                                                </div>
                                             @enderror
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="button_1_url" class="form-label">Button URL</label>
-                                            <input type="url" class="form-control @error('button_1_url') is-invalid @enderror" 
-                                                   id="button_1_url" name="button_1_url" value="{{ $button1['url'] }}"
-                                                   placeholder="https://example.com">
+                                        <div class="form-group-modern">
+                                            <label for="button_1_url" class="form-label-modern">Button URL</label>
+                                            <div class="input-wrapper">
+                                                <i class="fas fa-link input-icon"></i>
+                                                <input type="url" 
+                                                       class="form-input-modern @error('button_1_url') is-invalid @enderror" 
+                                                       id="button_1_url" 
+                                                       name="button_1_url" 
+                                                       value="{{ $button1['url'] }}"
+                                                       placeholder="https://example.com">
+                                            </div>
                                             @error('button_1_url')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="form-error">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    {{ $message }}
+                                                </div>
                                             @enderror
                                         </div>
                                     </div>
@@ -175,98 +248,147 @@
                             </div>
 
                             <!-- Button 2 -->
-                            <div class="border rounded p-3">
-                                <h6 class="mb-3">
-                                    <i class="fas fa-2 me-2"></i>Button 2
+                            <div class="modern-card" style="padding: 1rem;">
+                                <h6 style="margin-bottom: 1rem; color: var(--text-primary);">
+                                    <i class="fas fa-2"></i> Button 2
                                 </h6>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="button_2_name" class="form-label">Button Name</label>
-                                            <input type="text" class="form-control @error('button_2_name') is-invalid @enderror" 
-                                                   id="button_2_name" name="button_2_name" value="{{ $button2['name'] }}"
-                                                   placeholder="e.g., Contact Us, View Details">
+                                        <div class="form-group-modern">
+                                            <label for="button_2_name" class="form-label-modern">Button Name</label>
+                                            <div class="input-wrapper">
+                                                <i class="fas fa-tag input-icon"></i>
+                                                <input type="text" 
+                                                       class="form-input-modern @error('button_2_name') is-invalid @enderror" 
+                                                       id="button_2_name" 
+                                                       name="button_2_name" 
+                                                       value="{{ $button2['name'] }}"
+                                                       placeholder="e.g., Contact Us, View Details">
+                                            </div>
                                             @error('button_2_name')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="form-error">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    {{ $message }}
+                                                </div>
                                             @enderror
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="button_2_url" class="form-label">Button URL</label>
-                                            <input type="url" class="form-control @error('button_2_url') is-invalid @enderror" 
-                                                   id="button_2_url" name="button_2_url" value="{{ $button2['url'] }}"
-                                                   placeholder="https://example.com">
+                                        <div class="form-group-modern">
+                                            <label for="button_2_url" class="form-label-modern">Button URL</label>
+                                            <div class="input-wrapper">
+                                                <i class="fas fa-link input-icon"></i>
+                                                <input type="url" 
+                                                       class="form-input-modern @error('button_2_url') is-invalid @enderror" 
+                                                       id="button_2_url" 
+                                                       name="button_2_url" 
+                                                       value="{{ $button2['url'] }}"
+                                                       placeholder="https://example.com">
+                                            </div>
                                             @error('button_2_url')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="form-error">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    {{ $message }}
+                                                </div>
                                             @enderror
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="alert alert-info mt-3">
-                                <i class="fas fa-info-circle me-2"></i>
+                            <div class="form-hint" style="margin-top: 1rem;">
+                                <i class="fas fa-info-circle"></i>
                                 <strong>Note:</strong> Both button name and URL are required for a button to be created. Leave both empty to remove a button.
                             </div>
                         </div>
-                    </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="fas fa-save"></i>
+                                Update Slider
+                            </button>
+                            <a href="{{ route('admin.sliders.show', $slider) }}" class="btn btn-outline-info btn-lg">
+                                <i class="fas fa-eye"></i>
+                                View Slider
+                            </a>
+                            <a href="{{ route('admin.sliders.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </div>
 
-                <!-- Right Column - Preview & Actions -->
-                <div class="col-lg-4">
-                    <!-- Live Preview -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-eye me-2"></i>Live Preview
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div id="sliderPreview" class="position-relative bg-light rounded" style="min-height: 200px; background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }}); background-size: cover; background-position: center;">
-                                <!-- Preview Content -->
-                                <div id="previewContent" class="position-absolute top-50 start-50 translate-middle text-center w-100">
-                                    <h3 id="previewHeading" class="text-white mb-2">{{ $slider->heading }}</h3>
-                                    <p id="previewSubHeading" class="text-white-50 mb-3" style="{{ $slider->sub_heading ? '' : 'display: none;' }}">{{ $slider->sub_heading }}</p>
-                                    <div id="previewButtons" class="d-flex gap-2 justify-content-center flex-wrap">
-                                        @if($slider->has_buttons)
-                                            @foreach($slider->buttons as $index => $button)
-                                                <a href="#" class="preview-button {{ $index === 0 ? '' : 'secondary' }}">{{ $button['name'] }}</a>
-                                            @endforeach
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-save me-2"></i>Actions
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Update Slider
-                                </button>
-                                <a href="{{ route('admin.sliders.show', $slider) }}" class="btn btn-outline-info">
-                                    <i class="fas fa-eye me-2"></i>View Slider
-                                </a>
-                                <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                                    <i class="fas fa-undo me-2"></i>Reset Changes
-                                </button>
-                                <a href="{{ route('admin.sliders.index') }}" class="btn btn-outline-danger">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
+        <!-- Sidebar - Live Preview -->
+        <div class="col-lg-4">
+            <div class="modern-card modern-card--glass">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-eye"></i>
+                        Live Preview
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div id="sliderPreview" class="position-relative bg-light rounded" style="min-height: 200px; border: 2px dashed var(--border-color); background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }}); background-size: cover; background-position: center;">
+                        <!-- Preview Content -->
+                        <div id="previewContent" class="position-absolute top-50 start-50 translate-middle text-center w-100">
+                            <h3 id="previewHeading" class="text-white mb-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">{{ $slider->heading }}</h3>
+                            <p id="previewSubHeading" class="text-white-50 mb-3" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5); {{ $slider->sub_heading ? '' : 'display: none;' }}">{{ $slider->sub_heading }}</p>
+                            <div id="previewButtons" class="d-flex gap-2 justify-content-center flex-wrap">
+                                @if($slider->has_buttons)
+                                    @foreach($slider->buttons as $index => $button)
+                                        <a href="#" class="preview-button {{ $index === 0 ? '' : 'secondary' }}">{{ $button['name'] }}</a>
+                                    @endforeach
+                                @endif
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </form>
+
+            <div class="modern-card modern-card--glass" style="margin-top: 1.5rem;">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <ul class="tips-list">
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Clear Heading</strong>
+                                <p>Use a compelling heading to grab attention</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Quality Images</strong>
+                                <p>Use high-resolution images (1920x800px recommended)</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Call-to-Action</strong>
+                                <p>Add buttons to guide users to important pages</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Sort Order</strong>
+                                <p>Lower numbers appear first in the slider</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -279,29 +401,32 @@
 }
 
 .preview-button {
-    background-color: rgba(0, 123, 255, 0.8);
-    border: 2px solid #007bff;
+    background-color: rgba(55, 78, 148, 0.9);
+    border: 2px solid var(--primary-color);
     color: white;
     padding: 8px 16px;
-    border-radius: 4px;
+    border-radius: 0.5rem;
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s ease;
+    display: inline-block;
 }
 
 .preview-button:hover {
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: white;
     text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(55, 78, 148, 0.3);
 }
 
 .preview-button.secondary {
-    background-color: rgba(108, 117, 125, 0.8);
-    border-color: #6c757d;
+    background-color: rgba(128, 188, 192, 0.9);
+    border-color: var(--secondary-color);
 }
 
 .preview-button.secondary:hover {
-    background-color: #6c757d;
+    background-color: var(--secondary-color);
 }
 </style>
 
@@ -310,7 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('image');
     const imagePreview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
-    const removeImageBtn = document.getElementById('removeImage');
     const sliderPreview = document.getElementById('sliderPreview');
     
     // Form inputs for live preview
@@ -337,12 +461,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Remove image functionality
-    removeImageBtn.addEventListener('click', function() {
+    function removeImagePreview() {
         imageInput.value = '';
         imagePreview.style.display = 'none';
         // Reset to original image
         sliderPreview.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }})`;
-    });
+    }
+    window.removeImagePreview = removeImagePreview;
 
     // Live preview updates
     function updatePreview() {
@@ -450,11 +575,5 @@ document.addEventListener('DOMContentLoaded', function() {
         this.classList.add('was-validated');
     });
 });
-
-function resetForm() {
-    if (confirm('Are you sure you want to reset the form? All changes will be lost.')) {
-        location.reload();
-    }
-}
 </script>
 @endsection

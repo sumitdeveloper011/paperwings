@@ -7,15 +7,15 @@
         <div class="page-header__content">
             <div class="page-header__title-section">
                 <h1 class="page-header__title">
-                    <i class="fas fa-award"></i>
-                    Brands
+                    <i class="fas fa-file-alt"></i>
+                    Pages
                 </h1>
-                <p class="page-header__subtitle">Manage and organize your product brands</p>
+                <p class="page-header__subtitle">Manage your website pages</p>
             </div>
             <div class="page-header__actions">
-                <a href="{{ route('admin.brands.create') }}" class="btn btn-primary btn-icon">
+                <a href="{{ route('admin.pages.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
-                    <span>Add Brand</span>
+                    <span>Add Page</span>
                 </a>
             </div>
         </div>
@@ -27,18 +27,18 @@
             <div class="modern-card__header-content">
                 <h3 class="modern-card__title">
                     <i class="fas fa-list"></i>
-                    All Brands
+                    All Pages
                 </h3>
-                <p class="modern-card__subtitle">{{ $brands->total() }} total brands</p>
+                <p class="modern-card__subtitle">{{ $pages->total() }} total pages</p>
             </div>
             <div class="modern-card__header-actions">
                 <form method="GET" class="search-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
                         <input type="text" name="search" class="search-form__input" 
-                               placeholder="Search brands..." value="{{ $search }}">
+                               placeholder="Search pages..." value="{{ $search }}">
                         @if($search)
-                            <a href="{{ route('admin.brands.index') }}" class="search-form__clear">
+                            <a href="{{ route('admin.pages.index') }}" class="search-form__clear">
                                 <i class="fas fa-times"></i>
                             </a>
                         @endif
@@ -48,16 +48,19 @@
         </div>
 
         <div class="modern-card__body">
-            @if($brands->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
+            @if($pages->count() > 0)
+                <div class="modern-table-wrapper modern-table-wrapper--enhanced">
+                    <table class="modern-table modern-table--enhanced">
+                        <thead class="modern-table__head modern-table__head--sticky">
                             <tr>
-                                <th class="modern-table__th">
-                                    <span>Logo</span>
+                                <th class="modern-table__th" width="120">
+                                    <span>Image</span>
                                 </th>
                                 <th class="modern-table__th">
-                                    <span>Name</span>
+                                    <span>Title</span>
+                                </th>
+                                <th class="modern-table__th">
+                                    <span>Sub Title</span>
                                 </th>
                                 <th class="modern-table__th">
                                     <span>Slug</span>
@@ -71,49 +74,57 @@
                             </tr>
                         </thead>
                         <tbody class="modern-table__body">
-                            @foreach($brands as $brand)
-                                <tr class="modern-table__row">
+                            @foreach($pages as $index => $page)
+                                <tr class="modern-table__row modern-table__row--animated" style="animation-delay: {{ $index * 0.05 }}s;">
                                     <td class="modern-table__td">
-                                        <div class="category-image">
-                                            <img src="{{ $brand->image_url }}" 
-                                                 alt="{{ $brand->name }}" 
+                                        <div class="category-image category-image--enhanced">
+                                            <img src="{{ $page->image_url }}" 
+                                                 alt="{{ $page->title }}" 
                                                  class="category-image__img"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
+                                            <div class="category-image__overlay">
+                                                <a href="{{ $page->image_url }}" target="_blank" class="category-image__view">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="modern-table__td">
                                         <div class="category-name">
-                                            <strong>{{ $brand->name }}</strong>
+                                            <strong>{{ $page->title }}</strong>
                                         </div>
                                     </td>
                                     <td class="modern-table__td">
-                                        <code class="category-slug">{{ $brand->slug }}</code>
+                                        <span class="text-muted">{{ $page->sub_title ?? '-' }}</span>
+                                    </td>
+                                    <td class="modern-table__td">
+                                        <code class="category-slug">{{ $page->slug }}</code>
                                     </td>
                                     <td class="modern-table__td">
                                         <div class="category-date">
                                             <i class="fas fa-calendar-alt"></i>
-                                            {{ $brand->created_at->format('M d, Y') }}
+                                            {{ $page->created_at->format('M d, Y') }}
                                         </div>
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('admin.brands.show', $brand) }}" 
-                                               class="action-btn action-btn--view" 
+                                        <div class="action-buttons action-buttons--enhanced">
+                                            <a href="{{ route('admin.pages.show', $page) }}" 
+                                               class="action-btn action-btn--view action-btn--ripple" 
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('admin.brands.edit', $brand) }}" 
-                                               class="action-btn action-btn--edit" 
+                                            <a href="{{ route('admin.pages.edit', $page) }}" 
+                                               class="action-btn action-btn--edit action-btn--ripple" 
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <form method="POST" 
-                                                  action="{{ route('admin.brands.destroy', $brand) }}" 
+                                                  action="{{ route('admin.pages.destroy', $page) }}" 
                                                   class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this brand?')">
+                                                  onsubmit="return confirm('Are you sure you want to delete this page?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
+                                                <button type="submit" class="action-btn action-btn--delete action-btn--ripple" title="Delete">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -126,28 +137,28 @@
                 </div>
 
                 <!-- Pagination -->
-                @if($brands->hasPages())
+                @if($pages->hasPages())
                     <div class="pagination-wrapper">
-                        {{ $brands->links('components.pagination') }}
+                        {{ $pages->links('components.pagination') }}
                     </div>
                 @endif
             @else
-                <div class="empty-state">
+                <div class="empty-state empty-state--enhanced">
                     <div class="empty-state__icon">
-                        <i class="fas fa-award"></i>
+                        <i class="fas fa-file-alt"></i>
                     </div>
-                    <h3 class="empty-state__title">No Brands Found</h3>
+                    <h3 class="empty-state__title">No Pages Found</h3>
                     @if($search)
-                        <p class="empty-state__text">No brands found matching "{{ $search }}"</p>
-                        <a href="{{ route('admin.brands.index') }}" class="btn btn-outline-primary">
+                        <p class="empty-state__text">No pages found matching "{{ $search }}"</p>
+                        <a href="{{ route('admin.pages.index') }}" class="btn btn-outline-primary btn-ripple">
                             <i class="fas fa-arrow-left"></i>
-                            View All Brands
+                            View All Pages
                         </a>
                     @else
-                        <p class="empty-state__text">Start by creating your first brand</p>
-                        <a href="{{ route('admin.brands.create') }}" class="btn btn-primary">
+                        <p class="empty-state__text">Start by creating your first page</p>
+                        <a href="{{ route('admin.pages.create') }}" class="btn btn-primary btn-ripple">
                             <i class="fas fa-plus"></i>
-                            Add Brand
+                            Add Page
                         </a>
                     @endif
                 </div>
@@ -156,3 +167,4 @@
     </div>
 </div>
 @endsection
+

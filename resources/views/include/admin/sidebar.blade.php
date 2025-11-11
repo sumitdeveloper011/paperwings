@@ -53,6 +53,12 @@
                     <span>Sliders</span>
                 </a>
             </li>
+            <li class="sidebar-item">
+                <a href="{{ route('admin.pages.index') }}" class="sidebar-link {{ request()->routeIs('admin.pages.*') ? 'active' : '' }}" data-tooltip="Pages">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Pages</span>
+                </a>
+            </li>
         </ul>
     </nav>
 </aside> 

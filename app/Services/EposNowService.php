@@ -61,8 +61,6 @@ class EposNowService
     public function getProducts($page)
     {
         $url = "{$this->baseUrl}/Product?page={$page}";
-        dump($url);
-
         return $this->makeRequest($url);
     }
 

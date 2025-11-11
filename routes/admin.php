@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\SubCategory\SubCategoryController;
 use App\Http\Controllers\Admin\Brand\BrandController;
 use App\Http\Controllers\Admin\Product\ProductController;
 use App\Http\Controllers\Admin\Slider\SliderController;
+use App\Http\Controllers\Admin\Page\PageController;
+use App\Http\Controllers\Admin\Settings\SettingsController;
 
 // Guest routes (login)
 Route::middleware('guest')->group(function () {
@@ -21,6 +23,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Category routes
+    Route::get('categories/get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('categories.getCategoriesForEposNow');
     Route::resource('categories', CategoryController::class);
     Route::patch('categories/{category}/status', [CategoryController::class, 'updateStatus'])->name('categories.updateStatus');
     
@@ -32,6 +35,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('brands', BrandController::class);
     
     // Product routes
+    Route::get('products/get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('products.getProductsForEposNow');
     Route::resource('products', ProductController::class);
     Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
     Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
@@ -43,5 +47,13 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::patch('sliders/{slider}/move-down', [SliderController::class, 'moveDown'])->name('sliders.moveDown');
     Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
     Route::post('sliders/{slider}/duplicate', [SliderController::class, 'duplicate'])->name('sliders.duplicate');
+    
+    // Page routes
+    Route::resource('pages', PageController::class);
+    Route::post('pages/upload-image', [PageController::class, 'uploadImage'])->name('pages.uploadImage');
+    
+    // Settings routes
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
 });
 

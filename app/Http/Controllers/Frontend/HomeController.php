@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Slider;
+use App\Models\Category;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -11,6 +13,8 @@ class HomeController extends Controller
     
     public function index(){
         $title = 'Home';
-        return view($this->viewPath . 'index', compact('title'));
+        $sliders = Slider::active()->ordered()->get();
+        $categories = Category::active()->ordered()->take(6)->get();
+        return view($this->viewPath . 'index', compact('title', 'sliders', 'categories'));
     }
 }
