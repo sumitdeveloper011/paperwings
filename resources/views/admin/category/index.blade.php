@@ -39,7 +39,7 @@
                 <form method="GET" class="search-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input" 
+                        <input type="text" name="search" class="search-form__input"
                                placeholder="Search categories..." value="{{ $search }}">
                         @if($search)
                             <a href="{{ route('admin.categories.index') }}" class="search-form__clear">
@@ -82,10 +82,10 @@
                                 <tr class="modern-table__row">
                                     <td class="modern-table__td">
                                         <div class="category-image">
-                                            <img src="{{ $category->image_url }}" 
-                                                 alt="{{ $category->name }}" 
+                                            <img src="{{ $category->image_url }}"
+                                                 alt="{{ $category->name }}"
                                                  class="category-image__img"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                         </div>
                                     </td>
                                     <td class="modern-table__td">
@@ -101,8 +101,11 @@
                                             @csrf
                                             @method('PATCH')
                                             <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="1" {{ $category->status === '1' ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ $category->status === '0' ? 'selected' : '' }}>Inactive</option>
+                                                @php
+                                                    $status = (int) $category->status;
+                                                @endphp
+                                                <option value="1" {{ $status == 1 ? 'selected' : '' }}>Active</option>
+                                                <option value="0" {{ $status == 0 ? 'selected' : '' }}>Inactive</option>
                                             </select>
                                         </form>
                                     </td>
@@ -114,18 +117,18 @@
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
-                                            <a href="{{ route('admin.categories.show', $category) }}" 
-                                               class="action-btn action-btn--view" 
+                                            <a href="{{ route('admin.categories.show', $category) }}"
+                                               class="action-btn action-btn--view"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('admin.categories.edit', $category) }}" 
-                                               class="action-btn action-btn--edit" 
+                                            <a href="{{ route('admin.categories.edit', $category) }}"
+                                               class="action-btn action-btn--edit"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <form method="POST" 
-                                                  action="{{ route('admin.categories.destroy', $category) }}" 
+                                            <form method="POST"
+                                                  action="{{ route('admin.categories.destroy', $category) }}"
                                                   class="action-form"
                                                   onsubmit="return confirm('Are you sure you want to delete this category?')">
                                                 @csrf

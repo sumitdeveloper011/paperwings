@@ -132,4 +132,12 @@ class CategoryRepository implements CategoryRepositoryInterface
     {
         return $this->model->whereNull('image')->orderBy('name')->get();
     }
+
+    /**
+     * Get category by Eposnow category ID
+     */
+    public function getByEposnowCategoryId(int $eposnowCategoryId): ?Category
+    {
+        return $this->model->where('eposnow_category_id', $eposnowCategoryId)->first();
+    }
 }

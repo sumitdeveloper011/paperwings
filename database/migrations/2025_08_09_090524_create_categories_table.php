@@ -14,16 +14,15 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique()->index();
-            $table->unsignedBigInteger('category_id')->unique();
+            $table->unsignedBigInteger('eposnow_category_id')->unique()->nullable();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->tinyInteger('status')->default(1)->comment('0 means de-activate,1 means active');
+            $table->text('description')->nullable();
+            $table->tinyInteger('status')->default(1)->comment('1: Active, 0: Inactive');
             $table->string('image')->nullable();
             $table->timestamps();
-
-            // Indexes for better performance
-            $table->index(['status', 'created_at']);
-            $table->index('slug');
+            $table->index(['status']);
+            $table->index(['eposnow_category_id']);
         });
     }
 

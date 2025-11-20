@@ -29,7 +29,7 @@
                     <span>Categories</span>
                 </a>
             </li>
-            <li class="sidebar-item">
+            {{-- <li class="sidebar-item">
                 <a href="{{ route('admin.subcategories.index') }}" class="sidebar-link {{ request()->routeIs('admin.subcategories.*') ? 'active' : '' }}" data-tooltip="Sub Categories">
                     <i class="fas fa-layer-group"></i>
                     <span>Sub Categories</span>
@@ -40,7 +40,7 @@
                     <i class="fas fa-award"></i>
                     <span>Brands</span>
                 </a>
-            </li>
+            </li> --}}
             <li class="sidebar-item">
                 <a href="{{ route('admin.products.index') }}" class="sidebar-link {{ request()->routeIs('admin.products.*') ? 'active' : '' }}" data-tooltip="Products">
                     <i class="fas fa-box"></i>
@@ -59,6 +59,12 @@
                     <span>Pages</span>
                 </a>
             </li>
+            <li class="sidebar-item">
+                <a href="{{ route('admin.coupons.index') }}" class="sidebar-link {{ request()->routeIs('admin.coupons.*') ? 'active' : '' }}" data-tooltip="Coupons">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Coupons</span>
+                </a>
+            </li>
         </ul>
     </nav>
-</aside> 
+</aside>

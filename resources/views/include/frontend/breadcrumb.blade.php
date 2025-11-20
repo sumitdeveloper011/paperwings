@@ -4,11 +4,11 @@
                 <div class="col-12">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Category Products</li>
+                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ $title ?? 'Page Title' }}</li>
                         </ol>
                     </nav>
-                    <h1 class="page-title">Category Products</h1>
+                    <h1 class="page-title">{{ $title ?? 'Page Title' }}</h1>
                 </div>
             </div>
         </div>

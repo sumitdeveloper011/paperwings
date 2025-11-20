@@ -293,3 +293,36 @@ window.AdminScripts = {
     debounce,
     throttle
 };
+
+// ============================================
+// Product Show Page - Image Modal Functions
+// ============================================
+
+function openImageModal(imageUrl) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    if (modal && modalImage) {
+        modalImage.src = imageUrl;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImageModal();
+    }
+});
+
+// Export image modal functions for global use
+window.AdminScripts.openImageModal = openImageModal;
+window.AdminScripts.closeImageModal = closeImageModal;

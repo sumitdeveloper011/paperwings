@@ -21,11 +21,16 @@ use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function login()
+    public function login(Request $request)
     {
         // If already authenticated, redirect to home
         if (Auth::check()) {
             return redirect()->route('home');
+        }
+
+        // Store intended URL if provided
+        if ($request->has('intended')) {
+            session(['url.intended' => $request->intended]);
         }
 
         return view('include.frontend.login');
@@ -43,7 +48,7 @@ class AuthController extends Controller
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
-            
+
             CommonHelper::logSecurityEvent('Rate limit exceeded for login', null, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -62,7 +67,7 @@ class AuthController extends Controller
         // Security checks - SQL Injection and XSS detection
         if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
             RateLimiter::hit($key, $decayMinutes * 60);
-            
+
             CommonHelper::logSecurityEvent('Malicious input detected in login attempt', null, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -83,7 +88,7 @@ class AuthController extends Controller
             // Check if user is active
             if (!$user->isActive()) {
                 Auth::logout();
-                
+
                 CommonHelper::logSecurityEvent('Inactive user login attempt', $user, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent()
@@ -97,7 +102,7 @@ class AuthController extends Controller
             // Check if email is verified
             if (!$user->hasVerifiedEmail()) {
                 Auth::logout();
-                
+
                 CommonHelper::logSecurityEvent('Unverified email login attempt', $user, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent()
@@ -125,7 +130,7 @@ class AuthController extends Controller
 
         // Failed login attempt
         RateLimiter::hit($key, $decayMinutes * 60);
-        
+
         CommonHelper::logSecurityEvent('Failed login attempt', null, [
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -146,7 +151,7 @@ class AuthController extends Controller
     {
         try {
             $validated = $request->validated();
-            
+
             $user = User::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -155,7 +160,7 @@ class AuthController extends Controller
                 'agree_terms' => $validated['agreeTerms'] ? 1 : 0,
                 'status' => 0,
             ]);
-            
+
             try {
                 if (\Spatie\Permission\Models\Role::where('name', 'User')->exists()) {
                     $user->assignRole('User');
@@ -164,7 +169,7 @@ class AuthController extends Controller
                 // Role might not exist, continue without role assignment
                 \Log::warning('Could not assign User role: ' . $e->getMessage());
             }
-            
+
             $user->sendEmailVerificationNotification();
 
             return redirect()->route('login')->with('success', 'Registration successful! Please check your email to verify your account.');
@@ -172,7 +177,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             \Log::error('Registration error: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'An error occurred while creating your account. Please try again.');
@@ -191,7 +196,7 @@ class AuthController extends Controller
     {
         try {
             $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
-            
+
             // Security checks - SQL Injection and XSS detection
             if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
                 CommonHelper::logSecurityEvent('Malicious input detected in password reset request', null, [
@@ -214,7 +219,7 @@ class AuthController extends Controller
 
             // Generate password reset token
             $token = Str::random(64);
-            
+
             // Store token in password_reset_tokens table
             DB::table('password_reset_tokens')->updateOrInsert(
                 ['email' => $email],
@@ -396,14 +401,14 @@ class AuthController extends Controller
             // Update user status to active (1) after email verification
             $user->status = 1;
             $user->save();
-            
+
             return redirect()->route('home')->with('success', 'Your email has been verified successfully! You can now log in.');
         }
 
         return redirect()->route('home')->with('error', 'Email verification failed. Please try again.');
     }
 
-    
 
-    
+
+
 }

@@ -21,7 +21,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function all(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])->orderBy('name')->get();
+        return $this->model->with(['category', 'brand'])->orderBy('name')->get();
     }
 
     /**
@@ -29,7 +29,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function paginate(int $perPage = 10): LengthAwarePaginator
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->orderBy('created_at', 'desc')
                           ->paginate($perPage);
     }
@@ -39,7 +39,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function find(int $id): ?Product
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])->find($id);
+        return $this->model->with(['category', 'brand'])->find($id);
     }
 
     /**
@@ -47,7 +47,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function findByUuid(string $uuid): ?Product
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->where('uuid', $uuid)
                           ->first();
     }
@@ -57,7 +57,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function findBySlug(string $slug): ?Product
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->where('slug', $slug)
                           ->first();
     }
@@ -68,7 +68,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function create(array $data): Product
     {
         $product = $this->model->create($data);
-        return $product->load(['category', 'subCategory', 'brand']);
+        return $product->load(['category', 'brand']);
     }
 
     /**
@@ -77,7 +77,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function update(Product $product, array $data): Product
     {
         $product->update($data);
-        return $product->load(['category', 'subCategory', 'brand'])->fresh();
+        return $product->load(['category', 'brand'])->fresh();
     }
 
     /**
@@ -93,7 +93,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getActive(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->where('status', 1)
                           ->orderBy('name')
                           ->get();
@@ -104,7 +104,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getInactive(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->where('status', 0)
                           ->orderBy('name')
                           ->get();
@@ -115,7 +115,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getByCategory(int $categoryId): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->byCategory($categoryId)
                           ->orderBy('name')
                           ->get();
@@ -126,7 +126,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getBySubCategory(int $subCategoryId): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->bySubCategory($subCategoryId)
                           ->orderBy('name')
                           ->get();
@@ -137,7 +137,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getByBrand(int $brandId): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->byBrand($brandId)
                           ->orderBy('name')
                           ->get();
@@ -149,7 +149,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function updateStatus(Product $product, string $status): Product
     {
         $product->update(['status' => $status]);
-        return $product->load(['category', 'subCategory', 'brand'])->fresh();
+        return $product->load(['category', 'brand'])->fresh();
     }
 
     /**
@@ -157,15 +157,12 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function search(string $term): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->where('name', 'LIKE', "%{$term}%")
                           ->orWhere('slug', 'LIKE', "%{$term}%")
                           ->orWhere('description', 'LIKE', "%{$term}%")
                           ->orWhere('short_description', 'LIKE', "%{$term}%")
                           ->orWhereHas('category', function($query) use ($term) {
-                              $query->where('name', 'LIKE', "%{$term}%");
-                          })
-                          ->orWhereHas('subCategory', function($query) use ($term) {
                               $query->where('name', 'LIKE', "%{$term}%");
                           })
                           ->orWhereHas('brand', function($query) use ($term) {
@@ -180,7 +177,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function withImages(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->whereNotNull('images')
                           ->orderBy('name')
                           ->get();
@@ -191,7 +188,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function withoutImages(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->whereNull('images')
                           ->orderBy('name')
                           ->get();
@@ -202,7 +199,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function withRelationships(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->orderBy('name')
                           ->get();
     }
@@ -212,7 +209,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getByPriceRange(float $minPrice, float $maxPrice): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->whereBetween('total_price', [$minPrice, $maxPrice])
                           ->orderBy('total_price')
                           ->get();
@@ -223,7 +220,7 @@ class ProductRepository implements ProductRepositoryInterface
      */
     public function getFeatured(): Collection
     {
-        return $this->model->with(['category', 'subCategory', 'brand'])
+        return $this->model->with(['category', 'brand'])
                           ->active()
                           ->whereNotNull('images')
                           ->orderBy('created_at', 'desc')

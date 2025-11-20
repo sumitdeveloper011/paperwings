@@ -8,3 +8,4 @@
 <script src="{{ asset('assets/frontend/js/slick.min.js') }}"></script>
 <script src="{{ asset('assets/frontend/js/owl.carousel.min.js') }}"></script>
 <script src="{{ asset('assets/frontend/js/script.js') }}"></script>
+<script src="{{ asset('assets/frontend/js/functions.js') }}"></script>

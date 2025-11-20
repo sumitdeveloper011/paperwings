@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Str;
 
@@ -27,6 +29,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'agree_terms',
         'status',
+        'avatar',
+        'phone',
+        'bio',
+        'two_factor_enabled',
     ];
 
     /**
@@ -51,7 +57,28 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'status' => 'integer',
             'agree_terms' => 'integer',
+            'two_factor_enabled' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the user's full name.
+     */
+    public function getNameAttribute(): string
+    {
+        $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        return $name ?: 'User';
+    }
+
+    /**
+     * Get the avatar URL.
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        if ($this->avatar && Storage::disk('public')->exists($this->avatar)) {
+            return asset('storage/' . $this->avatar);
+        }
+        return asset('assets/images/placeholder.jpg');
     }
 
     /**
@@ -110,5 +137,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getEmailForPasswordReset()
     {
         return $this->email;
+    }
+
+    /**
+     * Get the wishlist items for the user.
+     */
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
     }
 }

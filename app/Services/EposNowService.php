@@ -32,32 +32,6 @@ class EposNowService
         ];
     }
 
-    // public function getProducts()
-    // {
-    //     $url = "{$this->baseUrl}/Product?page=1";
-    //     $response = Http::withHeaders($this->headers())->withoutVerifying()->get($url);
-
-    //     if ($response->failed()) {
-    //         Log::error('EposNow API failed', ['body' => $response->body()]);
-    //         throw new \Exception('EposNow API Error: '.$response->body());
-    //     }
-
-    //     return $response->json();
-    // }
-
-    // public function getCategories()
-    // {
-    //     $url = "{$this->baseUrl}/Category?page=1";
-    //     $response = Http::withHeaders($this->headers())->withoutVerifying()->get($url);
-
-    //     if ($response->failed()) {
-    //         Log::error('EposNow API failed', ['body' => $response->body()]);
-    //         throw new \Exception('EposNow API Error: '.$response->body());
-    //     }
-
-    //     return $response->json();
-    // }
-
     public function getProducts($page)
     {
         $url = "{$this->baseUrl}/Product?page={$page}";
@@ -72,33 +46,6 @@ class EposNowService
         $url = "{$this->baseUrl}/Category?page={$page}";
 
         return $this->makeRequest($url, ['page' => $page]);
-    }
-
-    public function uploadCategoryImage(int $categoryId, string $fileType, string $fileHash)
-    {
-        $url = "{$this->baseUrl}/CategoryImage";
-
-        $payload = [
-            [
-                'categoryId' => $categoryId,
-                'fileType' => $fileType,
-                'fileHash' => $fileHash,
-            ],
-        ];
-
-        $response = Http::withHeaders($this->headers())
-            ->withoutVerifying()
-            ->post($url, $payload);
-
-        if ($response->failed()) {
-            Log::error('EposNow CategoryImage upload failed', [
-                'payload' => $payload,
-                'body' => $response->body(),
-            ]);
-            throw new \Exception('EposNow API Error: '.$response->body());
-        }
-
-        return $response->json();
     }
 
     protected function makeRequest(string $url, array $params = [])

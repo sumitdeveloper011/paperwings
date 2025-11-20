@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Product extends Model
@@ -13,30 +14,35 @@ class Product extends Model
 
     protected $fillable = [
         'uuid',
-        'product_id',
         'category_id',
-        // 'subcategory_id',
         'brand_id',
+        'eposnow_product_id',
+        'eposnow_category_id',
+        'eposnow_brand_id',
+        'barcode',
+        'stock',
+        'product_type',
         'name',
         'slug',
         'total_price',
+        'discount_price',
         'description',
         'short_description',
-        'barcode',
-        'accordion_data',
-        'images',
         'status',
     ];
 
     protected $casts = [
         'total_price' => 'decimal:2',
-        'accordion_data' => 'array',
-        'images' => 'array',
         'status' => 'integer',
         'category_id' => 'integer',
-        'barcode' => 'integer',
-        'subcategory_id' => 'integer',
         'brand_id' => 'integer',
+        'eposnow_product_id' => 'integer',
+        'eposnow_category_id' => 'integer',
+        'eposnow_brand_id' => 'integer',
+        'barcode' => 'integer',
+        'stock' => 'integer',
+        'product_type' => 'integer',
+        'discount_price' => 'decimal:2',
     ];
 
     // Boot method to generate UUID and slug automatically
@@ -63,17 +69,27 @@ class Product extends Model
     // Relationships
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'category_id', 'category_id');
-    }
-
-    public function subCategory(): BelongsTo
-    {
-        return $this->belongsTo(SubCategory::class, 'subcategory_id');
+        return $this->belongsTo(Category::class, 'category_id', 'id');
     }
 
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class);
+    }
+
+    public function accordions(): HasMany
+    {
+        return $this->hasMany(ProductAccordion::class);
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
     }
 
     // Scopes
@@ -90,11 +106,6 @@ class Product extends Model
     public function scopeByCategory($query, $categoryId)
     {
         return $query->where('category_id', $categoryId);
-    }
-
-    public function scopeBySubCategory($query, $subCategoryId)
-    {
-        return $query->where('subcategory_id', $subCategoryId);
     }
 
     public function scopeByBrand($query, $brandId)
@@ -128,22 +139,19 @@ class Product extends Model
 
     public function getMainImageAttribute()
     {
-        if ($this->images && is_array($this->images) && count($this->images) > 0) {
-            return asset('storage/'.$this->images[0]);
+        $firstImage = $this->images()->first();
+        if ($firstImage) {
+            return $firstImage->image_url;
         }
 
-        return asset('assets/images/no-image.png');
+        return asset('assets/images/placeholder.jpg');
     }
 
     public function getImageUrlsAttribute()
     {
-        if ($this->images && is_array($this->images)) {
-            return collect($this->images)->map(function ($image) {
-                return asset('storage/'.$image);
-            })->toArray();
-        }
-
-        return [];
+        return $this->images()->get()->map(function ($image) {
+            return $image->image_url;
+        })->toArray();
     }
 
     public function getFullNameAttribute()
@@ -160,10 +168,6 @@ class Product extends Model
     public function getCategoryPathAttribute()
     {
         $path = $this->category->name;
-        if ($this->subCategory) {
-            $path .= ' > '.$this->subCategory->name;
-        }
-
         return $path;
     }
 

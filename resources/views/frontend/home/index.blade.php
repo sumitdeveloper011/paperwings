@@ -1,7 +1,7 @@
 @extends('layouts.frontend.main')
 @section('content')
 <!-- Slider Section -->
-<section class="slider-section">
+    <section class="slider-section">
         <div class="slider">
             @if($sliders && $sliders->count() > 0)
                 @foreach($sliders as $slider)
@@ -24,7 +24,7 @@
             @endif
         </div>
     </section>
-    
+
     <!-- Shop By Categories Section -->
     <section class="categories-section">
         <div class="container">
@@ -42,12 +42,12 @@
                     <div class="col-lg-2 col-md-4 col-sm-6">
                         <div class="category-item">
                             <div class="category__image">
-                                <a href="#">
+                                <a href="{{ route('product.by.category', $category->slug) }}">
                                     <img src="{{ asset('storage/' . $category->image) }}" alt="{{ $category->name }}" class="category__img">
                                 </a>
                             </div>
                             <h3 class="category__name">
-                                <a href="#">{{ $category->name }}</a>
+                                <a href="{{ route('product.by.category', $category->slug) }}">{{ $category->name }}</a>
                             </h3>
                         </div>
                     </div>
@@ -56,7 +56,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Promotional Banners Section -->
     <section class="promo-banners-section">
         <div class="container">
@@ -133,7 +133,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Products Section with Tabs -->
     <section class="products-section">
         <div class="container-fluid">
@@ -149,221 +149,130 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Featured Products Tab -->
             <div class="products__content products__content--active" id="featured">
+                @if($featuredProducts && $featuredProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
+                    @foreach($featuredProducts as $featuredProduct)
                     <div class="product-item">
                         <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Mediocre Iron Shoes" class="product__img">
+                            <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="product__image-link">
+                            <img src="{{ $featuredProduct->main_image }}" alt="{{ $featuredProduct->name }}" class="product__img">
+                            </a>
                             <div class="product__actions">
                                 <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
                                 <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
                         <div class="product__info">
-                            <h3 class="product__name">Mediocre Iron Shoes</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$56.22</span>
-                                <span class="product__price-old">$76.97</span>
-                            </div>
+                            <h3 class="product__name">
+                                <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="product__name-link">
+                                {{ $featuredProduct->name }}
+                                </a>
+                            </h3>
+                            @if($featuredProduct->discount_price)
+                                <div class="product__price">
+                                    <span class="product__price-current">${{ $featuredProduct->discount_price }}</span>
+                                    <span class="product__price-old">${{ $featuredProduct->total_price }}</span>
+                                </div>
+                            @else
+                                <div class="product__price">
+                                    <span class="product__price-current">${{ $featuredProduct->total_price }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Ergonomic Aluminum Gloves" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Ergonomic Aluminum Gloves</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$73.71</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Durable Paper Lamp" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Durable Paper Lamp</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$309.95</span>
-                                <span class="product__price-old">$438.75</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Ergonomic Cotton Bench" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Ergonomic Cotton Bench</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$749.62</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Mediocre Bronze Shoes" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Mediocre Bronze Shoes</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$663.74</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Practical Cotton Knife" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Practical Cotton Knife</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$95.00 - $98.87</span>
-                            </div>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
+                @else
+                    <p class="text-center">No Featured Products Found</p>
+                @endif
             </div>
-            
+
             <!-- On Sale Products Tab -->
             <div class="products__content" id="on-sale">
+                @if($onSaleProducts && $onSaleProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
+                    @foreach($onSaleProducts as $onSaleProduct)
                     <div class="product-item">
                         <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Premium Office Chair" class="product__img">
+                            <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="product__image-link">
+                            <img src="{{ $onSaleProduct->main_image }}" alt="{{ $onSaleProduct->name }}" class="product__img">
+                            </a>
                             <div class="product__actions">
                                 <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
                                 <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
                         <div class="product__info">
-                            <h3 class="product__name">Premium Office Chair</h3>
+                            <h3 class="product__name">
+                                <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="product__name-link">
+                                {{ $featuredProduct->name }}
+                                </a>
+                            </h3>
+                            @if($onSaleProduct->discount_price)
                             <div class="product__price">
-                                <span class="product__price-current">$299.99</span>
-                                <span class="product__price-old">$399.99</span>
-                            </div>
+                                    <span class="product__price-current">${{ $onSaleProduct->discount_price }}</span>
+                                    <span class="product__price-old">${{ $onSaleProduct->total_price }}</span>
+                                </div>
+                            @else
+                                <div class="product__price">
+                                    <span class="product__price-current">${{ $onSaleProduct->total_price }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Executive Desk Set" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Executive Desk Set</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$199.99</span>
-                                <span class="product__price-old">$249.99</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Modern Filing Cabinet" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Modern Filing Cabinet</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$149.99</span>
-                                <span class="product__price-old">$199.99</span>
-                            </div>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
+                @else
+                    <p class="text-center">No On Sale Products Found</p>
+                @endif
             </div>
-            
+
             <!-- Top Rated Products Tab -->
             <div class="products__content" id="top-rated">
+                @if($topRatedProducts && $topRatedProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
+                    @foreach($topRatedProducts as $topRatedProduct)
                     <div class="product-item">
                         <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Professional Monitor Stand" class="product__img">
+                            <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="product__image-link">
+                            <img src="{{ $topRatedProduct->main_image }}" alt="{{ $topRatedProduct->name }}" class="product__img">
+                            </a>
                             <div class="product__actions">
                                 <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
                                 <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
                         <div class="product__info">
-                            <h3 class="product__name">Professional Monitor Stand</h3>
+                            <h3 class="product__name">
+                                <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="product__name-link">
+                                {{ $topRatedProduct->name }}
+                                </a>
+                            </h3>
+                            @if($topRatedProduct->discount_price)
                             <div class="product__price">
-                                <span class="product__price-current">$89.99</span>
+                                <span class="product__price-current">${{ $topRatedProduct->discount_price }}</span>
+                                <span class="product__price-old">${{ $topRatedProduct->total_price }}</span>
+                            </div>
+                            @else
+                                <div class="product__price">
+                                    <span class="product__price-current">${{ $topRatedProduct->total_price }}</span>
+                                </div>
+                            @endif
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Wireless Keyboard" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Wireless Keyboard</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$129.99</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="product-item">
-                        <div class="product__image">
-                            <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Ergonomic Mouse" class="product__img">
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="product__info">
-                            <h3 class="product__name">Ergonomic Mouse</h3>
-                            <div class="product__price">
-                                <span class="product__price-current">$79.99</span>
-                            </div>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
+                @else
+                    <p class="text-center">No Top Rated Products Found</p>
+                 @endif
             </div>
         </div>
     </section>
-    
+
     <!-- Experience Banner Section -->
     <section class="experience-banner">
         <div class="container-fluid">
@@ -383,7 +292,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- About Section -->
     <section class="about-section">
         <div class="container">
@@ -411,480 +320,51 @@
             <div class="cute-stationery__header">
                 <h2 class="cute-stationery__title">Cute Stationery</h2>
                 <div class="cute-stationery__nav">
-                    <button class="cute-stationery__nav-item active" data-category="deals">DEALS</button>
-                    <button class="cute-stationery__nav-item" data-category="journals">JOURNALS</button>
-                    <button class="cute-stationery__nav-item" data-category="fancy-pen">FANCY PEN</button>
-                    <button class="cute-stationery__nav-item" data-category="backpacks">BACKPACKS</button>
-                    <button class="cute-stationery__nav-item" data-category="gift-bags">GIFT BAGS</button>
+                    @if($randomCategories && $randomCategories->count() > 0)
+                        @foreach($randomCategories as $category)
+                        <button class="cute-stationery__nav-item {{ $loop->first ? 'active' : '' }}" data-category="{{ $category->slug }}">{{ $category->name }}</button>
+                        @endforeach
+                    @endif
                 </div>
             </div>
-            
+
             <div class="cute-stationery__content">
-                <!-- DEALS Tab Content -->
-                <div class="cute-stationery__tab-content active" id="deals-content">
+                @if($randomCategories && $randomCategories->count() > 0)
+                @foreach($randomCategories as $category)
+                <div class="cute-stationery__tab-content {{ $loop->first ? 'active' : '' }}" id="{{ $category->slug }}-content">
                     <div class="owl-carousel cute-stationery-carousel">
-                                            <!-- Product 1 -->
-                    <div class="cute-stationery__item">
-                        <div class="cute-stationery__image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Practical Cotton Knife" class="cute-stationery__img">
-                            <div class="cute-stationery__actions">
-                                <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                            </div>
-                        </div>
-                        <div class="cute-stationery__info">
-                            <h3 class="cute-stationery__name">Practical Cotton Knife</h3>
-                            <div class="cute-stationery__price">
-                                <span class="cute-stationery__price-current">$95.00-$98.87</span>
-                            </div>
-                        </div>
-                    </div>
-                        
-                        <!-- Product 2 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Durable Concrete Pants" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                        @foreach($categoryProducts[$category->id] as $product)
+                            <div class="cute-stationery__item ">
+                                <div class="cute-stationery__image">
+                                    <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__image-link">
+                                    <img src="{{ $product->main_image }}" alt="{{ $product->name }}" class="cute-stationery__img">
+                                    </a>
+                                    <div class="cute-stationery__actions">
+                                        <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                        <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                                    </div>
+                                </div>
+                                <div class="cute-stationery__info">
+                                    <h3 class="cute-stationery__name">
+                                        <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__name-link">
+                                        {{ $product->name }}
+                                        </a>
+                                    </h3>
+                                    <div class="cute-stationery__price">
+                                        @if($product->discount_price)
+                                        <span class="cute-stationery__price-current">${{ $product->discount_price }}</span>
+                                        <span class="cute-stationery__price-old">${{ $product->total_price }}</span>
+                                        @else
+                                        <span class="cute-stationery__price-current">${{ $product->total_price }}</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Durable Concrete Pants</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$63.51</span>
-                                    <span class="cute-stationery__price-old">$380.00</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Product 3 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Mediocre Iron Shoes" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Mediocre Iron Shoes</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$56.22</span>
-                                    <span class="cute-stationery__price-old">$76.97</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Product 4 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Enormous Aluminum Gloves" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Enormous Aluminum Gloves</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$77.73</span>
-                                    <span class="cute-stationery__price-old">$866.89</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Product 5 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Durable Paper Lamp" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Durable Paper Lamp</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$309.95</span>
-                                    <span class="cute-stationery__price-old">$438.75</span>
-                                </div>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
-
-                <!-- JOURNALS Tab Content -->
-                <div class="cute-stationery__tab-content" id="journals-content">
-                    <div class="owl-carousel cute-stationery-carousel">
-                        <!-- Journal Product 1 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Premium Leather Journal" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Premium Leather Journal</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$45.99</span>
-                                    <span class="cute-stationery__price-old">$59.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Journal Product 2 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Spiral Notebook Set" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Spiral Notebook Set</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$24.50</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Journal Product 3 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Bullet Journal Planner" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Bullet Journal Planner</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$32.99</span>
-                                    <span class="cute-stationery__price-old">$39.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Journal Product 4 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Travel Diary" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Travel Diary</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$28.75</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Journal Product 5 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Sketchbook Artist" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Sketchbook Artist</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$18.99</span>
-                                    <span class="cute-stationery__price-old">$24.99</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FANCY PEN Tab Content -->
-                <div class="cute-stationery__tab-content" id="fancy-pen-content">
-                    <div class="owl-carousel cute-stationery-carousel">
-                        <!-- Pen Product 1 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Fountain Pen Premium" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Fountain Pen Premium</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$89.99</span>
-                                    <span class="cute-stationery__price-old">$129.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Pen Product 2 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Gel Pen Collection" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Gel Pen Collection</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$15.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Pen Product 3 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Calligraphy Set" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Calligraphy Set</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$67.50</span>
-                                    <span class="cute-stationery__price-old">$89.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Pen Product 4 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Ballpoint Luxury" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Ballpoint Luxury</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$42.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Pen Product 5 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Marker Set" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Marker Set</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$23.75</span>
-                                    <span class="cute-stationery__price-old">$29.99</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- BACKPACKS Tab Content -->
-                <div class="cute-stationery__tab-content" id="backpacks-content">
-                    <div class="owl-carousel cute-stationery-carousel">
-                        <!-- Backpack Product 1 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="School Backpack" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">School Backpack</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$79.99</span>
-                                    <span class="cute-stationery__price-old">$99.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Backpack Product 2 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Laptop Bag" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Laptop Bag</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$129.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Backpack Product 3 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Travel Rucksack" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Travel Rucksack</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$95.50</span>
-                                    <span class="cute-stationery__price-old">$119.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Backpack Product 4 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Mini Backpack" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Mini Backpack</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$45.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Backpack Product 5 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Hiking Pack" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Hiking Pack</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$149.99</span>
-                                    <span class="cute-stationery__price-old">$189.99</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- GIFT BAGS Tab Content -->
-                <div class="cute-stationery__tab-content" id="gift-bags-content">
-                    <div class="owl-carousel cute-stationery-carousel">
-                        <!-- Gift Bag Product 1 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Elegant Gift Bag" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Elegant Gift Bag</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$12.99</span>
-                                    <span class="cute-stationery__price-old">$16.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Gift Bag Product 2 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Party Favor Bags" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Party Favor Bags</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$8.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Gift Bag Product 3 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Luxury Paper Bag" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Luxury Paper Bag</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$19.99</span>
-                                    <span class="cute-stationery__price-old">$24.99</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Gift Bag Product 4 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Reusable Tote" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Reusable Tote</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$15.50</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Gift Bag Product 5 -->
-                        <div class="cute-stationery__item">
-                            <div class="cute-stationery__image">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Birthday Bag Set" class="cute-stationery__img">
-                                <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                    <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                </div>
-                            </div>
-                            <div class="cute-stationery__info">
-                                <h3 class="cute-stationery__name">Birthday Bag Set</h3>
-                                <div class="cute-stationery__price">
-                                    <span class="cute-stationery__price-current">$22.99</span>
-                                    <span class="cute-stationery__price-old">$28.99</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                @endforeach
+                @endif
             </div>
         </div>
     </section>

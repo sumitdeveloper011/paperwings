@@ -14,8 +14,10 @@ class Category extends Model
     protected $fillable = [
         'uuid',
         'category_id',
+        'eposnow_category_id',
         'name',
         'slug',
+        'description',
         'status',
         'image',
     ];
@@ -58,7 +60,7 @@ class Category extends Model
 
     public function products(): HasMany
     {
-        return $this->hasMany(Product::class, 'category_id', 'category_id');
+        return $this->hasMany(Product::class, 'category_id', 'id');
     }
 
     public function activeProducts(): HasMany

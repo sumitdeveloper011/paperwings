@@ -1,3 +1,10 @@
+@php
+    use Illuminate\Support\Facades\Storage;
+    $user = Auth::user();
+    $hasAvatar = $user && $user->avatar && Storage::disk('public')->exists($user->avatar);
+    $avatarUrl = $hasAvatar ? asset('storage/' . $user->avatar) : null;
+    $firstLetter = strtoupper(substr($user->first_name ?? 'A', 0, 1));
+@endphp
 <!-- New Admin Topbar -->
 <header class="topbar">
     <div class="topbar-container">
@@ -22,21 +29,31 @@
             <div class="topbar-user">
                 <div class="user-info" id="userDropdown">
                     <div class="user-avatar">
-                        <i class="fas fa-user"></i>
+                        @if($hasAvatar)
+                            <img src="{{ $avatarUrl }}" alt="{{ $user->name }}" class="user-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="user-avatar-initial" style="display: none;">{{ $firstLetter }}</span>
+                        @else
+                            <span class="user-avatar-initial">{{ $firstLetter }}</span>
+                        @endif
                     </div>
                     <div class="user-details">
-                        <span class="user-name">Admin</span>
+                        <span class="user-name">{{ $user->name ?? 'Admin' }}</span>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
                 <div class="user-dropdown" id="userDropdownMenu">
                     <div class="dropdown-header">
                         <div class="dropdown-avatar">
-                            <i class="fas fa-user"></i>
+                            @if($hasAvatar)
+                                <img src="{{ $avatarUrl }}" alt="{{ $user->name }}" class="dropdown-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <span class="dropdown-avatar-initial" style="display: none;">{{ $firstLetter }}</span>
+                            @else
+                                <span class="dropdown-avatar-initial">{{ $firstLetter }}</span>
+                            @endif
                         </div>
                         <div class="dropdown-info">
-                            <span class="dropdown-name">{{ Auth::user()->name ?? 'Admin User' }}</span>
-                            <span class="dropdown-email">{{ Auth::user()->email ?? 'admin@paperwings.com' }}</span>
+                            <span class="dropdown-name">{{ $user->name ?? 'Admin User' }}</span>
+                            <span class="dropdown-email">{{ $user->email ?? 'admin@paperwings.com' }}</span>
                         </div>
                     </div>
                     <div class="dropdown-divider"></div>
@@ -44,7 +61,7 @@
                         <i class="fas fa-tachometer-alt"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="#" class="dropdown-item">
+                    <a href="{{ route('admin.profile.index') }}" class="dropdown-item">
                         <i class="fas fa-user-cog"></i>
                         <span>Profile</span>
                     </a>
@@ -64,4 +81,4 @@
             </div>
         </div>
     </div>
-</header> 
+</header>

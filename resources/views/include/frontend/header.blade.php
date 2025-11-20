@@ -1,4 +1,4 @@
-<header class="header">
+    <header class="header">
         <!-- Utility Bar -->
         <div class="header__utility-bar">
             <div class="container">
@@ -28,17 +28,17 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Main Navigation Bar -->
         <div class="header__main">
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-md-3">
-                        <a href="#" class="header__logo">
+                        <a href="{{ route('home') }}" class="header__logo">
                             <div class="header__logo-icon">
                                 <i class="fas fa-shopping-bag" style="font-size: 2rem; color: var(--lavender);"></i>
                             </div>
-                            <h1 class="header__logo-text">stationero</h1>
+                            <h1 class="header__logo-text">Paper Wings</h1>
                         </a>
                     </div>
                     <div class="col-md-6">
@@ -103,10 +103,10 @@
                             <a href="{{ route('login') }}" class="header__login" id="loginLink">LOGIN</a>
                             <span class="header__divider" id="headerDivider">/</span>
                             <a href="{{ route('register') }}" class="header__login header__login--register" id="registerLink">REGISTER</a>
-                            @endif             
+                            @endif
                             <a href="#" class="header__icon wishlist-trigger">
                                 <i class="far fa-heart"></i>
-                                <span class="header__badge">2</span>
+                                <span class="header__badge" id="wishlist-header-badge">{{ auth()->check() ? auth()->user()->wishlists->count() : 0 }}</span>
                             </a>
                             <a href="#" class="header__icon cart-trigger">
                                 <i class="fas fa-shopping-cart"></i>
@@ -118,7 +118,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Navigation Section -->
         <nav class="nav-section">
             <div class="container">
@@ -178,17 +178,17 @@
                         <ul class="nav__menu">
                             <li class="nav__item">
                                 <a href="#" class="nav__link">
-                                    Home 
+                                    Home
                                 </a>
                             </li>
                             <li class="nav__item">
                                 <a href="#" class="nav__link">
-                                    Shop 
+                                    Shop
                                 </a>
                             </li>
                             <li class="nav__item">
                                 <a href="#" class="nav__link">
-                                    Pages 
+                                    Pages
                                 </a>
                             </li>
                             <li class="nav__item">

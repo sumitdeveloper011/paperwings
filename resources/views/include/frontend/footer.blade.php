@@ -18,7 +18,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Useful Links Column -->
                     <div class="col-lg-3 col-md-6">
                         <div class="footer__column">
@@ -33,7 +33,7 @@
                             </ul>
                         </div>
                     </div>
-                    
+
                     <!-- Shop Column -->
                     <div class="col-lg-3 col-md-6">
                         <div class="footer__column">
@@ -47,7 +47,7 @@
                             </ul>
                         </div>
                     </div>
-                    
+
                     <!-- Need Help Column -->
                     <div class="col-lg-3 col-md-6">
                         <div class="footer__column">
@@ -74,20 +74,20 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Footer Bottom -->
         <div class="footer__bottom">
             <div class="container">
                 <div class="row">
                     <div class="col-12 text-center">
                         <div class="footer__copyright">
-                            Copyright © 2022 Stationero. All rights reserved.
+                            Copyright © {{ date('Y') }} Paper Wings. All rights reserved.
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Scroll to Top Button -->
         <button class="scroll-to-top" id="scrollToTop">
             <i class="fas fa-arrow-up"></i>

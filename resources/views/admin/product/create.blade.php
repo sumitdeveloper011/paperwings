@@ -24,7 +24,7 @@
     <div class="content-body">
         <form action="{{ route('admin.products.store') }}" method="POST" enctype="multipart/form-data" id="productForm">
             @csrf
-            
+
             <div class="row">
                 <!-- Left Column - Main Product Information -->
                 <div class="col-lg-8">
@@ -41,7 +41,7 @@
                                 <div class="col-md-8">
                                     <div class="mb-3">
                                         <label for="name" class="form-label">Product Name <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control @error('name') is-invalid @enderror" 
+                                        <input type="text" class="form-control @error('name') is-invalid @enderror"
                                                id="name" name="name" value="{{ old('name') }}" required>
                                         @error('name')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -64,7 +64,7 @@
 
                             <div class="mb-3">
                                 <label for="slug" class="form-label">Slug <small class="text-muted">(Leave empty to auto-generate)</small></label>
-                                <input type="text" class="form-control @error('slug') is-invalid @enderror" 
+                                <input type="text" class="form-control @error('slug') is-invalid @enderror"
                                        id="slug" name="slug" value="{{ old('slug') }}">
                                 @error('slug')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -73,7 +73,7 @@
 
                             <div class="mb-3">
                                 <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
-                                <textarea class="form-control @error('short_description') is-invalid @enderror" 
+                                <textarea class="form-control @error('short_description') is-invalid @enderror"
                                           id="short_description" name="short_description" rows="3" maxlength="500" required>{{ old('short_description') }}</textarea>
                                 <small class="form-text text-muted">Maximum 500 characters</small>
                                 @error('short_description')
@@ -83,7 +83,7 @@
 
                             <div class="mb-3">
                                 <label for="description" class="form-label">Full Description <span class="text-danger">*</span></label>
-                                <textarea class="form-control @error('description') is-invalid @enderror" 
+                                <textarea class="form-control @error('description') is-invalid @enderror"
                                           id="description" name="description" rows="6" required>{{ old('description') }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -107,8 +107,8 @@
                                         <label for="total_price" class="form-label">Total Price (Including Tax) <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text">$</span>
-                                            <input type="number" class="form-control @error('total_price') is-invalid @enderror" 
-                                                   id="total_price" name="total_price" value="{{ old('total_price') }}" 
+                                            <input type="number" class="form-control @error('total_price') is-invalid @enderror"
+                                                   id="total_price" name="total_price" value="{{ old('total_price') }}"
                                                    step="0.01" min="0" required>
                                         </div>
                                         @error('total_price')
@@ -116,6 +116,39 @@
                                         @enderror
                                     </div>
                                 </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="discount_price" class="form-label">Discount Price</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control @error('discount_price') is-invalid @enderror"
+                                                   id="discount_price" name="discount_price" value="{{ old('discount_price') }}"
+                                                   step="0.01" min="0">
+                                        </div>
+                                        <small class="form-text text-muted">Optional: Set a discounted price</small>
+                                        @error('discount_price')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="product_type" class="form-label">Product Type</label>
+                                        <select class="form-select @error('product_type') is-invalid @enderror"
+                                                id="product_type" name="product_type">
+                                            <option value="">Select Product Type</option>
+                                            <option value="1" {{ old('product_type') == '1' ? 'selected' : '' }}>Featured</option>
+                                            <option value="2" {{ old('product_type') == '2' ? 'selected' : '' }}>On Sale</option>
+                                            <option value="3" {{ old('product_type') == '3' ? 'selected' : '' }}>Top Rated</option>
+                                        </select>
+                                        <small class="form-text text-muted">Optional: Categorize your product</small>
+                                        @error('product_type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <div class="col-md-4">
                                     <div class="mb-3">
                                         <label class="form-label">Price Without Tax</label>
@@ -167,11 +200,11 @@
                                                 </button>
                                             </div>
                                             <div class="mb-2">
-                                                <input type="text" class="form-control" name="accordion_data[{{ $index }}][heading]" 
+                                                <input type="text" class="form-control" name="accordion_data[{{ $index }}][heading]"
                                                        placeholder="Section heading..." value="{{ $item['heading'] ?? '' }}">
                                             </div>
                                             <div>
-                                                <textarea class="form-control" name="accordion_data[{{ $index }}][content]" 
+                                                <textarea class="form-control" name="accordion_data[{{ $index }}][content]"
                                                           rows="3" placeholder="Section content...">{{ $item['content'] ?? '' }}</textarea>
                                             </div>
                                         </div>
@@ -195,7 +228,7 @@
                         <div class="modern-card__body">
                             <div class="mb-3">
                                 <label for="images" class="form-label">Upload Images</label>
-                                <input type="file" class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror" 
+                                <input type="file" class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror"
                                        id="images" name="images[]" multiple accept="image/*">
                                 <small class="form-text text-muted">You can select multiple images (max 10). Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB per image.</small>
                                 @error('images')
@@ -205,7 +238,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
                             <div id="imagePreviewContainer" class="row g-3"></div>
                         </div>
                     </div>
@@ -224,7 +257,7 @@
                         <div class="modern-card__body">
                             <div class="mb-3">
                                 <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
-                                <select class="form-select @error('category_id') is-invalid @enderror" 
+                                <select class="form-select @error('category_id') is-invalid @enderror"
                                         id="category_id" name="category_id" required>
                                     <option value="">Select Category</option>
                                     @foreach($categories->where('status', 1) as $category)
@@ -239,26 +272,8 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="subcategory_id" class="form-label">Sub Category</label>
-                                <select class="form-select @error('subcategory_id') is-invalid @enderror" 
-                                        id="subcategory_id" name="subcategory_id">
-                                    <option value="">Select Sub Category</option>
-                                    @if(old('category_id'))
-                                        @foreach($subCategories->where('category_id', old('category_id'))->where('status', 1) as $subCategory)
-                                            <option value="{{ $subCategory->id }}" {{ old('subcategory_id') == $subCategory->id ? 'selected' : '' }}>
-                                                {{ $subCategory->name }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                                @error('subcategory_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
                                 <label for="brand_id" class="form-label">Brand</label>
-                                <select class="form-select @error('brand_id') is-invalid @enderror" 
+                                <select class="form-select @error('brand_id') is-invalid @enderror"
                                         id="brand_id" name="brand_id">
                                     <option value="">Select Brand</option>
                                     @foreach($brands->where('status', 1) as $brand)
@@ -306,11 +321,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let accordionCounter = {{ old('accordion_data') ? count(old('accordion_data')) : 0 }};
-    
+
     // Auto-generate slug from name
     const nameInput = document.getElementById('name');
     const slugInput = document.getElementById('slug');
-    
+
     nameInput.addEventListener('input', function() {
         if (!slugInput.value) {
             slugInput.value = this.value.toLowerCase()
@@ -336,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     totalPriceInput.addEventListener('input', calculatePrices);
-    
+
     // Initial calculation if there's an old value
     if (totalPriceInput.value) {
         calculatePrices();
@@ -348,10 +363,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     categorySelect.addEventListener('change', function() {
         const categoryId = this.value;
-        
+
         // Clear subcategory options
         subcategorySelect.innerHTML = '<option value="">Select Sub Category</option>';
-        
+
         if (categoryId) {
             fetch(`{{ route('admin.products.getSubCategories') }}?category_id=${categoryId}`)
                 .then(response => response.json())
@@ -390,11 +405,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
             <div class="mb-2">
-                <input type="text" class="form-control" name="accordion_data[${index}][heading]" 
+                <input type="text" class="form-control" name="accordion_data[${index}][heading]"
                        placeholder="Section heading...">
             </div>
             <div>
-                <textarea class="form-control" name="accordion_data[${index}][content]" 
+                <textarea class="form-control" name="accordion_data[${index}][content]"
                           rows="3" placeholder="Section content..."></textarea>
             </div>
         `;
@@ -443,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     imageInput.addEventListener('change', function() {
         imagePreviewContainer.innerHTML = '';
-        
+
         if (this.files.length > 0) {
             Array.from(this.files).forEach((file, index) => {
                 if (file.type.startsWith('image/')) {

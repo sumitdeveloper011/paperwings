@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin\Category;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Category\StoreCategoryRequest;
+use App\Http\Requests\Admin\Category\UpdateCategoryRequest;
+use App\Http\Requests\Admin\Category\UpdateCategoryStatusRequest;
 use App\Models\Category;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Services\EposNowService;
@@ -28,22 +31,24 @@ class CategoryController extends Controller
     {
         try {
             $categories = $this->eposNow->getCategories();
-            
             foreach ($categories as $cat) {
                 $arr = [
                     'uuid' => Str::uuid(),
-                    'category_id' => $cat['Id'],
+                    'eposnow_category_id' => $cat['Id'],
                     'name' => $cat['Name'],
                     'slug' => Str::slug($cat['Name']),
+                    'description' => $cat['Description'] ?? null,
                     'status' => 1,
-                    'image' => $cat['ImageUrl'] ? $cat['ImageUrl'] : null,
+                    'image' => null,
                 ];
-                $existing = Category::where('category_id', $cat['Id'])->first();
+                $existing = Category::where('eposnow_category_id', $cat['Id'])->first();
                 if (! $existing) {
                     $this->categoryRepository->create($arr);
+                } else {
+                    $this->categoryRepository->update($existing, $arr);
                 }
             }
-            
+
             return redirect()->route('admin.categories.index')
                 ->with('success', 'Categories imported successfully from EposNow!');
         } catch (\Exception $e) {
@@ -64,7 +69,6 @@ class CategoryController extends Controller
                 $categories,
                 $categories->count(),
                 10,
-                1,
                 ['path' => request()->url(), 'query' => request()->query()]
             );
         } else {
@@ -85,14 +89,9 @@ class CategoryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCategoryRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name',
-            'slug' => 'nullable|string|max:255|unique:categories,slug',
-            'status' => 'required|in:1,0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+        $validated = $request->validated();
 
         // Handle image upload
         if ($request->hasFile('image')) {
@@ -131,14 +130,9 @@ class CategoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Category $category): RedirectResponse
+    public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name,'.$category->id,
-            'slug' => 'nullable|string|max:255|unique:categories,slug,'.$category->id,
-            'status' => 'required|in:1,0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+        $validated = $request->validated();
 
         // Handle image upload
         if ($request->hasFile('image')) {
@@ -183,11 +177,9 @@ class CategoryController extends Controller
     /**
      * Update category status
      */
-    public function updateStatus(Request $request, Category $category): RedirectResponse
+    public function updateStatus(UpdateCategoryStatusRequest $request, Category $category): RedirectResponse
     {
-        $validated = $request->validate([
-            'status' => 'required|in:1,0',
-        ]);
+        $validated = $request->validated();
 
         $this->categoryRepository->updateStatus($category, $validated['status']);
 
