@@ -399,33 +399,8 @@ $(document).ready(function() {
     });
 });
 
-// Account Page Tab Navigation
+// Handle add address button
 $(document).ready(function() {
-    // Handle account navigation link clicks
-    $('.account-nav__link').on('click', function(e) {
-        e.preventDefault();
-
-        const targetId = $(this).attr('href').substring(1); // Remove # from href
-        console.log('Account tab clicked:', targetId);
-
-        // Remove active class from all nav links
-        $('.account-nav__link').removeClass('account-nav__link--active');
-
-        // Add active class to clicked link
-        $(this).addClass('account-nav__link--active');
-
-        // Hide all account content sections
-        $('.account-content').addClass('account-content--hidden');
-
-        // Show the target content section
-        $('#' + targetId).removeClass('account-content--hidden');
-
-        // Scroll to top of content
-        $('html, body').animate({
-            scrollTop: $('.account-section').offset().top - 100
-        }, 300);
-    });
-
     // Handle add address button
     $('#addAddressBtn').on('click', function(e) {
         e.preventDefault();
@@ -516,47 +491,116 @@ $(document).ready(function() {
 // Cart Sidebar Functionality
 $(document).ready(function() {
     // Open cart sidebar when cart icon is clicked
-    $('.cart-trigger').on('click', function(e) {
+    $(document).on('click', '.cart-trigger, #cart-trigger', function(e) {
         e.preventDefault();
-        $('.cart-sidebar-overlay').addClass('active');
-        $('.cart-sidebar').addClass('active');
-        $('body').css('overflow', 'hidden'); // Prevent body scroll
+        e.stopPropagation();
+
+        const sidebar = $('#cart-sidebar');
+        const overlay = $('#cart-sidebar-overlay');
+
+        if (sidebar.length && overlay.length) {
+            const isOpening = !sidebar.hasClass('active');
+
+            sidebar.addClass('active');
+            overlay.addClass('active');
+            $('body').css('overflow', 'hidden');
+
+            // Load cart content when opening (if function exists)
+            if (isOpening) {
+                // Try to load cart content via AJAX
+                $.ajax({
+                    url: '/cart/api/list',
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        'Accept': 'application/json'
+                    },
+                    success: function(data) {
+                        if (data.success && data.items) {
+                            const itemsContainer = $('#cart-sidebar-items');
+                            const emptyContainer = $('#cart-sidebar-empty');
+                            const summaryContainer = $('#cart-sidebar-summary');
+
+                            if (data.items.length === 0) {
+                                itemsContainer.hide();
+                                emptyContainer.show();
+                                summaryContainer.hide();
+                            } else {
+                                emptyContainer.hide();
+                                itemsContainer.show();
+                                summaryContainer.show();
+
+                                // Clear and populate items
+                                itemsContainer.empty();
+                                data.items.forEach(function(item) {
+                                    const itemHtml = `
+                                        <div class="cart-sidebar-item" data-cart-item-id="${item.id}">
+                                            <div class="cart-sidebar-item__image">
+                                                <a href="${item.product_url}">
+                                                    <img src="${item.product_image}" alt="${item.product_name}">
+                                                </a>
+                                            </div>
+                                            <div class="cart-sidebar-item__info">
+                                                <h4 class="cart-sidebar-item__name">
+                                                    <a href="${item.product_url}" class="cart-sidebar-item__name-link">${item.product_name}</a>
+                                                </h4>
+                                                <div class="cart-sidebar-item__price-row">
+                                                    <span class="cart-sidebar-item__price">$${item.price} x ${item.quantity}</span>
+                                                    <span class="cart-sidebar-item__total">= $${item.subtotal.toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                            <button class="cart-sidebar-item__remove" data-cart-item-id="${item.id}" title="Remove">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                    itemsContainer.append(itemHtml);
+                                });
+
+                                // Update total
+                                summaryContainer.find('.cart-sidebar__summary-value').text('$' + data.total.toFixed(2));
+
+                                // Update cart count in header
+                                if (data.count > 0) {
+                                    $('#cart-header-badge').text(data.count).css('display', 'absolute');
+                                } else {
+                                    $('#cart-header-badge').text('0').css('display', 'absolute');
+                                }
+                            }
+                        }
+                    },
+                    error: function() {
+                        console.error('Error loading cart');
+                    }
+                });
+            }
+        }
     });
 
     // Close cart sidebar when close button is clicked
-    $('.cart-sidebar__close').on('click', function() {
-        $('.cart-sidebar-overlay').removeClass('active');
-        $('.cart-sidebar').removeClass('active');
-        $('body').css('overflow', ''); // Restore body scroll
+    $(document).on('click', '.cart-sidebar__close, #cart-sidebar-close', function(e) {
+        e.preventDefault();
+        $('#cart-sidebar-overlay').removeClass('active');
+        $('#cart-sidebar').removeClass('active');
+        $('body').css('overflow', '');
     });
 
     // Close cart sidebar when overlay is clicked
-    $('.cart-sidebar-overlay').on('click', function() {
-        $('.cart-sidebar-overlay').removeClass('active');
-        $('.cart-sidebar').removeClass('active');
-        $('body').css('overflow', ''); // Restore body scroll
+    $(document).on('click', '.cart-sidebar-overlay, #cart-sidebar-overlay', function(e) {
+        if (e.target === this) {
+            $('#cart-sidebar-overlay').removeClass('active');
+            $('#cart-sidebar').removeClass('active');
+            $('body').css('overflow', '');
+        }
     });
 
     // Close cart sidebar on ESC key
     $(document).on('keydown', function(e) {
-        if (e.key === 'Escape' && $('.cart-sidebar').hasClass('active')) {
-            $('.cart-sidebar-overlay').removeClass('active');
-            $('.cart-sidebar').removeClass('active');
-            $('body').css('overflow', ''); // Restore body scroll
+        if (e.key === 'Escape' && $('#cart-sidebar').hasClass('active')) {
+            $('#cart-sidebar-overlay').removeClass('active');
+            $('#cart-sidebar').removeClass('active');
+            $('body').css('overflow', '');
         }
-    });
-
-    // Remove item from cart sidebar
-    $('.cart-sidebar-item__remove').on('click', function() {
-        $(this).closest('.cart-sidebar-item').fadeOut(300, function() {
-            $(this).remove();
-            // Check if cart is empty
-            if ($('.cart-sidebar-item').length === 0) {
-                $('.cart-sidebar__items').hide();
-                $('.cart-sidebar__empty').show();
-            }
-            // Update cart total (you would calculate this from remaining items)
-        });
     });
 });
 
@@ -567,13 +611,14 @@ $(document).ready(function() {
         e.preventDefault();
         e.stopPropagation();
 
-        // Open sidebar
+        // Open sidebar immediately
         $('#wishlist-sidebar-overlay, .wishlist-sidebar-overlay').addClass('active');
         $('#wishlist-sidebar, .wishlist-sidebar').addClass('active');
         $('body').css('overflow', 'hidden'); // Prevent body scroll
 
-        // Load wishlist content if function exists
+        // Load wishlist content asynchronously (sidebar already open)
         if (window.WishlistFunctions && typeof window.WishlistFunctions.loadWishlistSidebar === 'function') {
+            // Load immediately without waiting
             window.WishlistFunctions.loadWishlistSidebar();
         }
     });
@@ -941,3 +986,146 @@ $(document).ready(function() {
         $(this).val(value);
     });
 });
+
+// Initialize Select2 for dropdowns
+$(document).ready(function() {
+    $('#editCountry, #editRegion, #editDistrict, #editCity').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+});
+
+// Header Search Functionality
+(function() {
+    const searchInput = document.getElementById('header-search-input');
+    const searchBtn = document.getElementById('header-search-btn');
+    const searchDropdown = document.getElementById('search-results-dropdown');
+    const searchResultsList = document.getElementById('search-results-list');
+    const searchLoading = document.getElementById('search-loading');
+    const searchFooter = document.getElementById('search-results-footer');
+    const viewAllResults = document.getElementById('view-all-results');
+    
+    if (!searchInput || !searchDropdown) return;
+    
+    let searchTimeout;
+    let isSearching = false;
+    let currentQuery = '';
+
+    // Debounced search function
+    function performSearch(query) {
+        if (isSearching || query.length < 2) {
+            if (query.length < 2) {
+                searchDropdown.style.display = 'none';
+            }
+            return;
+        }
+
+        currentQuery = query;
+        searchLoading.style.display = 'block';
+        searchResultsList.innerHTML = '';
+        searchFooter.style.display = 'none';
+        searchDropdown.style.display = 'block';
+        isSearching = true;
+
+        const url = new URL('/search/autocomplete', window.location.origin);
+        url.searchParams.set('q', query);
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            searchLoading.style.display = 'none';
+            isSearching = false;
+
+            if (data.products && data.products.length > 0) {
+                let html = '';
+                data.products.forEach(product => {
+                    html += `
+                        <a href="${product.url}" class="search-result-item">
+                            <img src="${product.image}" alt="${product.name}" class="search-result-item__image" onerror="this.src='${window.location.origin}/assets/images/placeholder.jpg'">
+                            <div class="search-result-item__content">
+                                <div class="search-result-item__name">${escapeHtml(product.name)}</div>
+                                ${product.category ? `<div class="search-result-item__category">${escapeHtml(product.category)}</div>` : ''}
+                                <div class="search-result-item__price">
+                                    ${product.discount_price ? `<span class="search-result-item__price--old">$${parseFloat(product.price).toFixed(2)}</span><span>$${parseFloat(product.discount_price).toFixed(2)}</span>` : `<span>$${parseFloat(product.price).toFixed(2)}</span>`}
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                });
+                searchResultsList.innerHTML = html;
+                searchFooter.style.display = 'block';
+                if (viewAllResults) {
+                    viewAllResults.href = `/search?q=${encodeURIComponent(query)}`;
+                }
+            } else {
+                searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #6c757d;">No products found</div>';
+                searchFooter.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            searchLoading.style.display = 'none';
+            isSearching = false;
+            searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #dc3545;">Error loading results</div>';
+        });
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Handle search input
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimeout);
+        
+        if (query.length >= 2) {
+            searchTimeout = setTimeout(() => performSearch(query), 300); // 300ms debounce
+        } else {
+            searchDropdown.style.display = 'none';
+        }
+    });
+
+    // Handle search button click
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+            const query = searchInput.value.trim();
+            if (query) {
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        });
+    }
+
+    // Handle Enter key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = this.value.trim();
+            if (query) {
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const searchContainer = document.getElementById('header-search');
+        if (searchContainer && !searchContainer.contains(e.target)) {
+            searchDropdown.style.display = 'none';
+        }
+    });
+
+    // Keep dropdown open when clicking inside
+    searchDropdown.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+})();

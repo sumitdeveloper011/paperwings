@@ -81,11 +81,11 @@
                         </div>
 
                         <div class="product-actions">
-                            <button class="btn btn-primary add-to-cart">
+                            <button class="btn btn-primary add-to-cart" data-product-id="{{ $product->id }}" id="addToCartBtn">
                                 <i class="fas fa-shopping-cart"></i>
-                                Add to Cart
+                                <span class="btn-text">Add to Cart</span>
                             </button>
-                            <button class="btn btn-outline-primary add-to-wishlist">
+                            <button class="btn btn-outline-primary add-to-wishlist wishlist-btn" data-product-id="{{ $product->id }}">
                                 <i class="fas fa-heart"></i>
                                 Add to Wishlist
                             </button>
@@ -206,8 +206,8 @@
                                                     <img src="{{ $relatedProduct->main_image }}" alt="{{ $relatedProduct->name }}" class="product__img">
                                                 </a>
                                                 <div class="product__actions">
-                                                    <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                                    <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                                                    <button class="product__action wishlist-btn" data-product-id="{{ $relatedProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                                    <button class="product__action product__add-cart add-to-cart" data-product-id="{{ $relatedProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                                                 </div>
                                             </div>
                                             <div class="product__info">
@@ -235,4 +235,124 @@
             </div>
         </div>
     </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const addToCartBtn = document.getElementById('addToCartBtn');
+            const quantityInput = document.getElementById('quantity');
+            const decreaseQty = document.getElementById('decreaseQty');
+            const increaseQty = document.getElementById('increaseQty');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            // Quantity controls
+            if (decreaseQty) {
+                decreaseQty.addEventListener('click', function() {
+                    const currentValue = parseInt(quantityInput.value) || 1;
+                    if (currentValue > 1) {
+                        quantityInput.value = currentValue - 1;
+                    }
+                });
+            }
+
+            if (increaseQty) {
+                increaseQty.addEventListener('click', function() {
+                    const currentValue = parseInt(quantityInput.value) || 1;
+                    if (currentValue < 99) {
+                        quantityInput.value = currentValue + 1;
+                    }
+                });
+            }
+
+            // Add to cart functionality
+            if (addToCartBtn) {
+                addToCartBtn.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-product-id');
+                    const quantity = parseInt(quantityInput.value) || 1;
+                    const btnText = this.querySelector('.btn-text');
+                    const btnIcon = this.querySelector('i');
+
+                    // Disable button and show loading state
+                    this.disabled = true;
+                    if (btnText) btnText.textContent = 'Adding...';
+                    if (btnIcon) {
+                        btnIcon.classList.remove('fa-shopping-cart');
+                        btnIcon.classList.add('fa-spinner', 'fa-spin');
+                    }
+
+                    fetch('/cart/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            product_id: productId,
+                            quantity: quantity
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success message
+                            showNotification('Product added to cart successfully!', 'success');
+                            
+                            // Update cart count in header if function exists
+                            if (window.updateCartCount) {
+                                window.updateCartCount(data.cart_count);
+                            }
+                            
+                            // Reset button state
+                            this.disabled = false;
+                            if (btnText) btnText.textContent = 'Add to Cart';
+                            if (btnIcon) {
+                                btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                                btnIcon.classList.add('fa-shopping-cart');
+                            }
+                        } else {
+                            showNotification(data.message || 'Failed to add product to cart.', 'error');
+                            
+                            // Reset button state
+                            this.disabled = false;
+                            if (btnText) btnText.textContent = 'Add to Cart';
+                            if (btnIcon) {
+                                btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                                btnIcon.classList.add('fa-shopping-cart');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', 'error');
+                        
+                        // Reset button state
+                        this.disabled = false;
+                        if (btnText) btnText.textContent = 'Add to Cart';
+                        if (btnIcon) {
+                            btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                            btnIcon.classList.add('fa-shopping-cart');
+                        }
+                    });
+                });
+            }
+
+            // Show notification function
+            function showNotification(message, type = 'success') {
+                const notification = document.createElement('div');
+                notification.className = `cart-notification cart-notification--${type}`;
+                notification.textContent = message;
+                notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: ' + (type === 'success' ? '#10b981' : '#ef4444') + '; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+        });
+    </script>
 @endsection

@@ -62,7 +62,7 @@ class ProductController extends Controller
         }
     }
 
-    public function productByCategory($slug){
+    public function productByCategory($slug, Request $request){
         try {
             $title = 'Products by Category';
             if (!$slug) {
@@ -78,10 +78,72 @@ class ProductController extends Controller
                     'message' => 'Category not found. The category you are looking for does not exist.'
                 ]);
             }
-            $products = Product::where('eposnow_category_id', $category->eposnow_category_id)
+
+            // Get sort parameter from request
+            $sort = $request->get('sort', 'featured');
+
+            // Get price filter parameters
+            $minPrice = $request->get('min_price');
+            $maxPrice = $request->get('max_price');
+
+            // Calculate min and max prices from all products in category (for filter display)
+            $allProducts = Product::where('eposnow_category_id', $category->eposnow_category_id)
                 ->active()
-                ->orderBy('created_at', 'desc')
-                ->paginate(12); // 12 products per page
+                ->get();
+
+            $priceMin = 0;
+            $priceMax = 0;
+
+            if ($allProducts->count() > 0) {
+                $prices = $allProducts->map(function($product) {
+                    return $product->discount_price ?? $product->total_price;
+                })->filter()->values();
+
+                if ($prices->count() > 0) {
+                    $priceMin = floor($prices->min());
+                    $priceMax = ceil($prices->max());
+                    // Round up to nearest 10 for better display
+                    $priceMax = ceil($priceMax / 10) * 10;
+                }
+            }
+
+            // Build query
+            $query = Product::where('eposnow_category_id', $category->eposnow_category_id)
+                ->active();
+
+            // Apply price filter if provided
+            if ($minPrice !== null || $maxPrice !== null) {
+                if ($minPrice !== null && $maxPrice !== null) {
+                    // Filter by price range (using COALESCE to get effective price)
+                    $query->whereRaw('COALESCE(discount_price, total_price) >= ?', [$minPrice])
+                          ->whereRaw('COALESCE(discount_price, total_price) <= ?', [$maxPrice]);
+                } elseif ($minPrice !== null) {
+                    $query->whereRaw('COALESCE(discount_price, total_price) >= ?', [$minPrice]);
+                } elseif ($maxPrice !== null) {
+                    $query->whereRaw('COALESCE(discount_price, total_price) <= ?', [$maxPrice]);
+                }
+            }
+
+            // Apply sorting based on sort parameter
+            switch ($sort) {
+                case 'price_low_high':
+                    $query->orderByRaw('COALESCE(discount_price, total_price) ASC');
+                    break;
+                case 'price_high_low':
+                    $query->orderByRaw('COALESCE(discount_price, total_price) DESC');
+                    break;
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'featured':
+                default:
+                    // Featured: products with product_type = 1 (Featured)
+                    $query->orderByRaw('CASE WHEN product_type = 1 THEN 0 ELSE 1 END')
+                          ->orderBy('created_at', 'desc');
+                    break;
+            }
+
+            $products = $query->paginate(12)->appends($request->query()); // 12 products per page
 
             if ($products->isEmpty()) {
                 return view('frontend.errors.404', [
@@ -98,7 +160,7 @@ class ProductController extends Controller
                 ->ordered()
                 ->get();
 
-            return view('frontend.category.category', compact('title', 'category', 'products', 'categories'));
+            return view('frontend.category.category', compact('title', 'category', 'products', 'categories', 'sort', 'priceMin', 'priceMax', 'minPrice', 'maxPrice'));
 
         } catch (\Exception $e) {
             return view('frontend.errors.404', [

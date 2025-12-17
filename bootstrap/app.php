@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,
+            'prevent.admin' => \App\Http\Middleware\PreventAdminAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

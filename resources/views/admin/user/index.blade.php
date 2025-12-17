@@ -1,0 +1,236 @@
+@extends('layouts.admin.main')
+
+@section('content')
+<div class="admin-content">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header__content">
+            <div class="page-header__title-section">
+                <h1 class="page-header__title">
+                    <i class="fas fa-users"></i>
+                    Users
+                </h1>
+                <p class="page-header__subtitle">Manage e-commerce users and customers</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="modern-card">
+        <div class="modern-card__header">
+            <div class="modern-card__header-content">
+                <h3 class="modern-card__title">
+                    <i class="fas fa-list"></i>
+                    All Users
+                </h3>
+                <p class="modern-card__subtitle">{{ $users->total() }} total users</p>
+            </div>
+            <div class="modern-card__header-actions">
+                <form method="GET" class="search-form" id="search-form">
+                    <div class="search-form__wrapper">
+                        <i class="fas fa-search search-form__icon"></i>
+                        <input type="text" name="search" id="search-input" class="search-form__input"
+                               placeholder="Search users..." value="{{ $search }}" autocomplete="off">
+                        @if($search)
+                            <a href="{{ route('admin.users.index') }}" class="search-form__clear" id="clear-search">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        @endif
+                        <div id="search-loading" class="search-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                </form>
+                <div class="filter-dropdown">
+                    <select name="status" id="status-filter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="1" {{ $status === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ $status === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="modern-card__body">
+            @if(session('success'))
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <div id="users-table-container">
+                @include('admin.user.partials.table')
+            </div>
+
+            <div id="users-pagination-container">
+                @include('admin.user.partials.pagination')
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.status-form {
+    display: inline-block;
+}
+
+.status-select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.search-loading {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #667eea;
+}
+
+.search-form__wrapper {
+    position: relative;
+}
+</style>
+
+<script>
+(function() {
+    const searchInput = document.getElementById('search-input');
+    const searchForm = document.getElementById('search-form');
+    const statusSelect = document.getElementById('status-filter');
+    const tableContainer = document.getElementById('users-table-container');
+    const paginationContainer = document.getElementById('users-pagination-container');
+    const searchLoading = document.getElementById('search-loading');
+    const clearSearch = document.getElementById('clear-search');
+    
+    if (!searchInput || !tableContainer) return;
+    
+    let searchTimeout;
+    let isSearching = false;
+
+    // Debounced search function
+    function performSearch() {
+        if (isSearching) return;
+        
+        const searchTerm = searchInput.value.trim();
+        const status = statusSelect ? statusSelect.value : '';
+        
+        // Show loading indicator
+        if (searchLoading) searchLoading.style.display = 'block';
+        isSearching = true;
+
+        // Build URL with current parameters
+        const url = new URL('{{ route("admin.users.index") }}', window.location.origin);
+        if (searchTerm) url.searchParams.set('search', searchTerm);
+        if (status) url.searchParams.set('status', status);
+        url.searchParams.set('ajax', '1');
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            tableContainer.innerHTML = data.html;
+            paginationContainer.innerHTML = data.pagination;
+            if (searchLoading) searchLoading.style.display = 'none';
+            isSearching = false;
+            
+            // Update URL without page reload
+            const newUrl = url.toString().replace('&ajax=1', '').replace('?ajax=1', '');
+            window.history.pushState({}, '', newUrl);
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            if (searchLoading) searchLoading.style.display = 'none';
+            isSearching = false;
+        });
+    }
+
+    // Debounce search input
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300); // 300ms debounce
+    });
+
+    // Handle status filter change
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            clearTimeout(searchTimeout);
+            performSearch();
+        });
+    }
+
+    // Clear search
+    if (clearSearch) {
+        clearSearch.addEventListener('click', function(e) {
+            e.preventDefault();
+            searchInput.value = '';
+            if (statusSelect) statusSelect.value = '';
+            clearTimeout(searchTimeout);
+            performSearch();
+        });
+    }
+
+    // Prevent form submission on Enter (use AJAX instead)
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            clearTimeout(searchTimeout);
+            performSearch();
+        });
+    }
+})();
+</script>
+@endsection
+

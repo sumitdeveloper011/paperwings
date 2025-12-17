@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\Page\PageController;
 use App\Http\Controllers\Admin\Setting\SettingsController;
 use App\Http\Controllers\Admin\Profile\ProfileController;
 use App\Http\Controllers\Admin\Coupon\CouponController;
+use App\Http\Controllers\Admin\User\UserController;
+use App\Http\Controllers\Admin\Order\OrderController;
 
 // Guest routes (login)
 Route::middleware('guest')->group(function () {
@@ -38,6 +40,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
 
     // Product routes
     Route::get('products/get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('products.getProductsForEposNow');
+    Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
     Route::resource('products', ProductController::class);
     Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
     Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
@@ -61,6 +64,15 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     // Settings routes
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+
+    // User routes (e-commerce users)
+    Route::resource('users', UserController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.updateStatus');
+
+    // Order routes (e-commerce orders)
+    Route::resource('orders', OrderController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+    Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
 
     // Profile routes
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');

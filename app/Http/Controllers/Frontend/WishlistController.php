@@ -8,6 +8,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class WishlistController extends Controller
 {
@@ -119,20 +120,33 @@ class WishlistController extends Controller
 
         $userId = Auth::id();
 
-        $wishlistItems = Wishlist::where('user_id', $userId)
-            ->with(['product.images', 'product.category'])
+        $wishlistItems = Wishlist::where('wishlists.user_id', $userId)
+            ->join('products', 'wishlists.product_id', '=', 'products.id')
+            ->select(
+                'wishlists.id',
+                'wishlists.product_id',
+                'products.name as product_name',
+                'products.slug as product_slug',
+                'products.total_price as product_price',
+                'products.discount_price',
+                DB::raw('(SELECT image FROM products_images WHERE product_id = products.id ORDER BY id ASC LIMIT 1) as product_image_path')
+            )
             ->get()
             ->map(function ($item) {
-                $product = $item->product;
+                // Format image URL similar to ProductImage accessor
+                $productImage = $item->product_image_path
+                    ? asset('storage/' . $item->product_image_path)
+                    : asset('assets/images/placeholder.jpg');
+
                 return [
                     'id' => $item->id,
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_slug' => $product->slug,
-                    'product_price' => $product->total_price,
-                    'discount_price' => $product->discount_price,
-                    'product_image' => $product->main_image,
-                    'product_url' => route('product', $product->slug),
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name,
+                    'product_slug' => $item->product_slug,
+                    'product_price' => $item->product_price,
+                    'discount_price' => $item->discount_price,
+                    'product_image' => $productImage,
+                    'product_url' => route('product.detail', $item->product_slug),
                 ];
             });
 

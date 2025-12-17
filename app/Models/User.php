@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -78,7 +79,7 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($this->avatar && Storage::disk('public')->exists($this->avatar)) {
             return asset('storage/' . $this->avatar);
         }
-        return asset('assets/images/placeholder.jpg');
+        return asset('assets/images/profile.png');
     }
 
     /**
@@ -145,5 +146,30 @@ class User extends Authenticatable implements MustVerifyEmail
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
+    }
+
+    public function detail(): HasOne
+    {
+        return $this->hasOne(UserDetail::class);
+    }
+
+    public function userDetail(): HasOne
+    {
+        return $this->hasOne(UserDetail::class);
+    }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(UserAddress::class);
+    }
+
+    public function defaultBillingAddress(): HasOne
+    {
+        return $this->hasOne(UserAddress::class)->where('type', 'billing')->where('is_default', true);
+    }
+
+    public function defaultShippingAddress(): HasOne
+    {
+        return $this->hasOne(UserAddress::class)->where('type', 'shipping')->where('is_default', true);
     }
 }

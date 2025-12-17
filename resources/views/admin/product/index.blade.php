@@ -24,6 +24,13 @@
                     <i class="fas fa-download"></i>
                     <span>Get Products from EposNow</span>
                 </a>
+                <a href="{{ route('admin.products.importAllImages') }}"
+                   class="btn btn-success btn-icon"
+                   id="eposnowImageImportBtn"
+                   onclick="showEposNowLoader(event)">
+                    <i class="fas fa-images"></i>
+                    <span>Import Images for All Products</span>
+                </a>
             </div>
         </div>
     </div>

@@ -23,7 +23,13 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        // If already authenticated, redirect to home
+        // If already authenticated as admin, redirect to admin dashboard
+        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Please logout from admin account to access user login.');
+        }
+
+        // If already authenticated as user, redirect to home
         if (Auth::check()) {
             return redirect()->route('home');
         }
@@ -85,6 +91,20 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
 
+            // Check if user is admin - prevent admin from logging in through frontend
+            if (CommonHelper::hasAnyRole($user, ['Admin', 'SuperAdmin'])) {
+                Auth::logout();
+
+                CommonHelper::logSecurityEvent('Admin attempted frontend login', $user, [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent()
+                ]);
+
+                return back()->withErrors([
+                    'email' => 'Admin users must login through the admin panel. Please use /admin/login'
+                ])->onlyInput('email');
+            }
+
             // Check if user is active
             if (!$user->isActive()) {
                 Auth::logout();
@@ -142,8 +162,19 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    public function register()
+    public function register(Request $request)
     {
+        // If already authenticated as admin, redirect to admin dashboard
+        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Please logout from admin account to register a new user account.');
+        }
+
+        // If already authenticated as user, redirect to home
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
         return view('include.frontend.register');
     }
 

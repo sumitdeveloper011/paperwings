@@ -16,9 +16,15 @@ class AuthController extends Controller
      */
     public function login()
     {
-        // If already authenticated, redirect to dashboard
+        // If already authenticated as admin, redirect to dashboard
         if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
             return redirect()->route('admin.dashboard');
+        }
+
+        // If authenticated as regular user, redirect to home
+        if (Auth::check()) {
+            return redirect()->route('home')
+                ->with('error', 'Please logout from your user account to access admin panel.');
         }
 
         return view('admin.auth.login');

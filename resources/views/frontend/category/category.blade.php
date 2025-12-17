@@ -29,11 +29,21 @@
                             <h3 class="sidebar-widget__title">Price Range</h3>
                             <div class="price-filter">
                                 <div class="price-range-display">
-                                    <span class="price-min">$0</span>
-                                    <span class="price-max">$100</span>
+                                    <span class="price-min">$<span id="priceMinDisplay">{{ $priceMin ?? 0 }}</span></span>
+                                    <span class="price-max">$<span id="priceMaxDisplay">{{ $maxPrice ?? ($priceMax ?? 100) }}</span></span>
                                 </div>
                                 <div class="price-range-slider">
-                                    <input type="range" class="price-range" id="priceRange" min="0" max="100" value="100" step="5">
+                                    <input type="range" class="price-range" id="priceRange"
+                                           min="{{ $priceMin ?? 0 }}"
+                                           max="{{ $priceMax ?? 100 }}"
+                                           value="{{ $maxPrice ?? ($priceMax ?? 100) }}"
+                                           step="1">
+                                </div>
+                                <div class="price-filter-actions mt-2" style="display: flex; gap: 5px;">
+                                    <button type="button" class="btn btn-sm btn-primary" id="applyPriceFilter" style="flex: 1;">Apply</button>
+                                    @if($minPrice || $maxPrice)
+                                    <button type="button" class="btn btn-sm btn-secondary" id="clearPriceFilter" style="flex: 1;">Clear</button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -48,12 +58,11 @@
                         </div>
                         <div class="products-header__right">
                             <div class="sort-dropdown">
-                                <select class="sort-select">
-                                    <option>Sort by: Featured</option>
-                                    <option>Price: Low to High</option>
-                                    <option>Price: High to Low</option>
-                                    <option>Newest First</option>
-                                    <option>Best Selling</option>
+                                <select class="sort-select" id="sortSelect">
+                                    <option value="featured" {{ (isset($sort) && $sort == 'featured') ? 'selected' : '' }}>Sort by: Featured</option>
+                                    <option value="price_low_high" {{ (isset($sort) && $sort == 'price_low_high') ? 'selected' : '' }}>Price: Low to High</option>
+                                    <option value="price_high_low" {{ (isset($sort) && $sort == 'price_high_low') ? 'selected' : '' }}>Price: High to Low</option>
+                                    <option value="newest" {{ (isset($sort) && $sort == 'newest') ? 'selected' : '' }}>Newest First</option>
                                 </select>
                             </div>
                         </div>
@@ -63,26 +72,28 @@
 
                         @if($products && $products->count() > 0)
                         @foreach($products as $product)
-                        <div class="product-item">
-                            <div class="product__image">
-                                <img src="{{ $product->main_image }}" alt="{{ $product->name }}" class="product__img">
-                                <div class="product__actions">
-                                    <button class="product__action" title="Add to Wishlist">
-                                        <i class="far fa-heart"></i>
-                                    </button>
-                                    <button class="product__add-cart" title="Add to Cart">
-                                        <i class="fas fa-shopping-cart"></i>
-                                    </button>
+                        <div class="cute-stationery__item">
+                            <div class="cute-stationery__image">
+                                <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__image-link">
+                                    <img src="{{ $product->main_image }}" alt="{{ $product->name }}" class="cute-stationery__img">
+                                </a>
+                                <div class="cute-stationery__actions">
+                                    <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                    <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $product->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                                 </div>
                             </div>
-                            <div class="product__info">
-                                <h3 class="product__name">{{ $product->name }}</h3>
-                                <div class="product__price">
+                            <div class="cute-stationery__info">
+                                <h3 class="cute-stationery__name">
+                                    <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__name-link">
+                                    {{ $product->name }}
+                                    </a>
+                                </h3>
+                                <div class="cute-stationery__price">
                                     @if($product->discount_price)
-                                    <span class="product__price-current">${{ $product->discount_price }}</span>
-                                    <span class="product__price-old">${{ $product->total_price }}</span>
+                                    <span class="cute-stationery__price-current">${{ $product->discount_price }}</span>
+                                    <span class="cute-stationery__price-old">${{ $product->total_price }}</span>
                                     @else
-                                    <span class="product__price-current">${{ $product->total_price }}</span>
+                                    <span class="cute-stationery__price-current">${{ $product->total_price }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -101,4 +112,90 @@
             </div>
         </div>
     </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sortSelect = document.getElementById('sortSelect');
+            const priceRange = document.getElementById('priceRange');
+            const priceMinDisplay = document.getElementById('priceMinDisplay');
+            const priceMaxDisplay = document.getElementById('priceMaxDisplay');
+            const applyPriceFilter = document.getElementById('applyPriceFilter');
+
+            // Sort functionality
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    const selectedSort = this.value;
+                    const currentUrl = new URL(window.location.href);
+
+                    // Update or add sort parameter
+                    currentUrl.searchParams.set('sort', selectedSort);
+
+                    // Reset to page 1 when sorting changes
+                    currentUrl.searchParams.delete('page');
+
+                    // Redirect to new URL with sort parameter
+                    window.location.href = currentUrl.toString();
+                });
+            }
+
+            // Price filter functionality
+            if (priceRange && priceMaxDisplay) {
+                const priceMin = parseInt(priceRange.getAttribute('min')) || 0;
+                const priceMax = parseInt(priceRange.getAttribute('max')) || 100;
+
+                // Update max price display as slider moves
+                priceRange.addEventListener('input', function() {
+                    const maxValue = this.value;
+                    priceMaxDisplay.textContent = maxValue;
+                });
+
+                // Apply price filter
+                if (applyPriceFilter) {
+                    applyPriceFilter.addEventListener('click', function() {
+                        const currentUrl = new URL(window.location.href);
+                        const maxPrice = priceRange.value;
+
+                        // Only apply filter if max price is less than the maximum available price
+                        if (maxPrice < priceMax) {
+                            // Set price parameters
+                            currentUrl.searchParams.set('min_price', priceMin);
+                            currentUrl.searchParams.set('max_price', maxPrice);
+                        } else {
+                            // If max price equals the maximum, remove filter
+                            currentUrl.searchParams.delete('min_price');
+                            currentUrl.searchParams.delete('max_price');
+                        }
+
+                        // Reset to page 1 when filter changes
+                        currentUrl.searchParams.delete('page');
+
+                        // Redirect to new URL with price filter
+                        window.location.href = currentUrl.toString();
+                    });
+                }
+
+                // Clear price filter
+                const clearPriceFilter = document.getElementById('clearPriceFilter');
+                if (clearPriceFilter) {
+                    clearPriceFilter.addEventListener('click', function() {
+                        const currentUrl = new URL(window.location.href);
+
+                        // Remove price parameters
+                        currentUrl.searchParams.delete('min_price');
+                        currentUrl.searchParams.delete('max_price');
+
+                        // Reset to page 1 when filter changes
+                        currentUrl.searchParams.delete('page');
+
+                        // Reset slider to max value
+                        priceRange.value = priceMax;
+                        priceMaxDisplay.textContent = priceMax;
+
+                        // Redirect to new URL without price filter
+                        window.location.href = currentUrl.toString();
+                    });
+                }
+            }
+        });
+    </script>
 @endsection

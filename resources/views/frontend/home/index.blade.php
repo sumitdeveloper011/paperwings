@@ -21,6 +21,20 @@
                         </div>
                     </div>
                 @endforeach
+                @else
+                <div class="slider__slide" style="background-image: url('{{ asset('assets/frontend/images/banner-1.jpg') }}');">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="slider__content">
+                                    <div class="slider__tagline">Welcome to Paper Wings</div>
+                                    <h1 class="slider__heading">Welcome to Paper Wings</h1>
+                                    <a href="#" class="slider__btn">Shop Now →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
     </section>
@@ -43,7 +57,7 @@
                         <div class="category-item">
                             <div class="category__image">
                                 <a href="{{ route('product.by.category', $category->slug) }}">
-                                    <img src="{{ asset('storage/' . $category->image) }}" alt="{{ $category->name }}" class="category__img">
+                                    <img src="{{ asset('storage/' . $category->image) ?? asset('assets/frontend/images/office-supplies.jpg') }}" alt="{{ $category->name }}" class="category__img">
                                 </a>
                             </div>
                             <h3 class="category__name">
@@ -155,32 +169,30 @@
                 @if($featuredProducts && $featuredProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
                     @foreach($featuredProducts as $featuredProduct)
-                    <div class="product-item">
-                        <div class="product__image">
-                            <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="product__image-link">
-                            <img src="{{ $featuredProduct->main_image }}" alt="{{ $featuredProduct->name }}" class="product__img">
+                    <div class="cute-stationery__item">
+                        <div class="cute-stationery__image">
+                            <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="cute-stationery__image-link">
+                            <img src="{{ $featuredProduct->main_image }}" alt="{{ $featuredProduct->name }}" class="cute-stationery__img">
                             </a>
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                            <div class="cute-stationery__actions">
+                                <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $featuredProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $featuredProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
-                        <div class="product__info">
-                            <h3 class="product__name">
-                                <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="product__name-link">
+                        <div class="cute-stationery__info">
+                            <h3 class="cute-stationery__name">
+                                <a href="{{ route('product.detail', $featuredProduct->slug) }}" class="cute-stationery__name-link">
                                 {{ $featuredProduct->name }}
                                 </a>
                             </h3>
-                            @if($featuredProduct->discount_price)
-                                <div class="product__price">
-                                    <span class="product__price-current">${{ $featuredProduct->discount_price }}</span>
-                                    <span class="product__price-old">${{ $featuredProduct->total_price }}</span>
-                                </div>
-                            @else
-                                <div class="product__price">
-                                    <span class="product__price-current">${{ $featuredProduct->total_price }}</span>
-                                </div>
-                            @endif
+                            <div class="cute-stationery__price">
+                                @if($featuredProduct->discount_price)
+                                <span class="cute-stationery__price-current">${{ $featuredProduct->discount_price }}</span>
+                                <span class="cute-stationery__price-old">${{ $featuredProduct->total_price }}</span>
+                                @else
+                                <span class="cute-stationery__price-current">${{ $featuredProduct->total_price }}</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @endforeach
@@ -195,32 +207,30 @@
                 @if($onSaleProducts && $onSaleProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
                     @foreach($onSaleProducts as $onSaleProduct)
-                    <div class="product-item">
-                        <div class="product__image">
-                            <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="product__image-link">
-                            <img src="{{ $onSaleProduct->main_image }}" alt="{{ $onSaleProduct->name }}" class="product__img">
+                    <div class="cute-stationery__item">
+                        <div class="cute-stationery__image">
+                            <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="cute-stationery__image-link">
+                            <img src="{{ $onSaleProduct->main_image }}" alt="{{ $onSaleProduct->name }}" class="cute-stationery__img">
                             </a>
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                            <div class="cute-stationery__actions">
+                                <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $onSaleProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $onSaleProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
-                        <div class="product__info">
-                            <h3 class="product__name">
-                                <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="product__name-link">
-                                {{ $featuredProduct->name }}
+                        <div class="cute-stationery__info">
+                            <h3 class="cute-stationery__name">
+                                <a href="{{ route('product.detail', $onSaleProduct->slug) }}" class="cute-stationery__name-link">
+                                {{ $onSaleProduct->name }}
                                 </a>
                             </h3>
-                            @if($onSaleProduct->discount_price)
-                            <div class="product__price">
-                                    <span class="product__price-current">${{ $onSaleProduct->discount_price }}</span>
-                                    <span class="product__price-old">${{ $onSaleProduct->total_price }}</span>
-                                </div>
-                            @else
-                                <div class="product__price">
-                                    <span class="product__price-current">${{ $onSaleProduct->total_price }}</span>
-                                </div>
-                            @endif
+                            <div class="cute-stationery__price">
+                                @if($onSaleProduct->discount_price)
+                                <span class="cute-stationery__price-current">${{ $onSaleProduct->discount_price }}</span>
+                                <span class="cute-stationery__price-old">${{ $onSaleProduct->total_price }}</span>
+                                @else
+                                <span class="cute-stationery__price-current">${{ $onSaleProduct->total_price }}</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @endforeach
@@ -235,32 +245,29 @@
                 @if($topRatedProducts && $topRatedProducts->count() > 0)
                 <div class="owl-carousel products-carousel">
                     @foreach($topRatedProducts as $topRatedProduct)
-                    <div class="product-item">
-                        <div class="product__image">
-                            <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="product__image-link">
-                            <img src="{{ $topRatedProduct->main_image }}" alt="{{ $topRatedProduct->name }}" class="product__img">
+                    <div class="cute-stationery__item">
+                        <div class="cute-stationery__image">
+                            <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="cute-stationery__image-link">
+                            <img src="{{ $topRatedProduct->main_image }}" alt="{{ $topRatedProduct->name }}" class="cute-stationery__img">
                             </a>
-                            <div class="product__actions">
-                                <button class="product__action" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                <button class="product__action product__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                            <div class="cute-stationery__actions">
+                                <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $topRatedProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $topRatedProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                             </div>
                         </div>
-                        <div class="product__info">
-                            <h3 class="product__name">
-                                <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="product__name-link">
+                        <div class="cute-stationery__info">
+                            <h3 class="cute-stationery__name">
+                                <a href="{{ route('product.detail', $topRatedProduct->slug) }}" class="cute-stationery__name-link">
                                 {{ $topRatedProduct->name }}
                                 </a>
                             </h3>
-                            @if($topRatedProduct->discount_price)
-                            <div class="product__price">
-                                <span class="product__price-current">${{ $topRatedProduct->discount_price }}</span>
-                                <span class="product__price-old">${{ $topRatedProduct->total_price }}</span>
-                            </div>
-                            @else
-                                <div class="product__price">
-                                    <span class="product__price-current">${{ $topRatedProduct->total_price }}</span>
-                                </div>
-                            @endif
+                            <div class="cute-stationery__price">
+                                @if($topRatedProduct->discount_price)
+                                <span class="cute-stationery__price-current">${{ $topRatedProduct->discount_price }}</span>
+                                <span class="cute-stationery__price-old">${{ $topRatedProduct->total_price }}</span>
+                                @else
+                                <span class="cute-stationery__price-current">${{ $topRatedProduct->total_price }}</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -334,14 +341,14 @@
                 <div class="cute-stationery__tab-content {{ $loop->first ? 'active' : '' }}" id="{{ $category->slug }}-content">
                     <div class="owl-carousel cute-stationery-carousel">
                         @foreach($categoryProducts[$category->id] as $product)
-                            <div class="cute-stationery__item ">
+                            <div class="cute-stationery__item">
                                 <div class="cute-stationery__image">
                                     <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__image-link">
                                     <img src="{{ $product->main_image }}" alt="{{ $product->name }}" class="cute-stationery__img">
                                     </a>
                                     <div class="cute-stationery__actions">
                                         <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                        <button class="cute-stationery__action cute-stationery__add-cart" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                                        <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $product->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                                     </div>
                                 </div>
                                 <div class="cute-stationery__info">

@@ -92,6 +92,11 @@ class Product extends Model
         return $this->hasMany(Wishlist::class);
     }
 
+    public function cartItems(): HasMany
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

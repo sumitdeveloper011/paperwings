@@ -45,8 +45,8 @@ class AdminAuthMiddleware
             ]);
         }
 
-        // Check if user has admin role
-        if (!CommonHelper::hasAnyRole($user, ['SuperAdmin'])) {
+        // Check if user has admin role (SuperAdmin or Admin)
+        if (!CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
             Auth::logout();
             
             CommonHelper::logSecurityEvent('Unauthorized admin access attempt', $user, [
@@ -56,9 +56,9 @@ class AdminAuthMiddleware
                 'user_roles' => $user->roles->pluck('name')->toArray()
             ]);
 
-            return redirect()->route('admin.login')->withErrors([
-                'email' => 'You do not have permission to access the admin panel.'
-            ]);
+            // Redirect regular users to home page
+            return redirect()->route('home')
+                ->with('error', 'You do not have permission to access the admin panel.');
         }
 
         return $next($request);
