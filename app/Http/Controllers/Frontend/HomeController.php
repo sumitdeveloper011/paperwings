@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Slider;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\InstagramService;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -63,6 +64,17 @@ class HomeController extends Controller
                 ->get();
         }
 
+        // Get Instagram link and posts from settings
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $instagramLink = $settings['social_instagram'] ?? null;
+        
+        // Fetch Instagram posts if API is configured
+        $instagramPosts = [];
+        $instagramService = new InstagramService();
+        if ($instagramService->isConfigured()) {
+            $instagramPosts = $instagramService->getRecentMedia(6);
+        }
+        
         return view($this->viewPath . 'index', compact(
             'title',
             'sliders',
@@ -72,7 +84,9 @@ class HomeController extends Controller
             'products',
             'featuredProducts',
             'onSaleProducts',
-            'topRatedProducts'
+            'topRatedProducts',
+            'instagramLink',
+            'instagramPosts'
         ));
     }
 }

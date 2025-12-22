@@ -101,5 +101,94 @@ class AppServiceProvider extends ServiceProvider
                 'userData' => $userData
             ]);
         });
+
+        // Share settings with frontend footer
+        view()->composer('include.frontend.footer', function ($view) {
+            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+            
+            // Get logo
+            $logo = $settings['logo'] ?? null;
+            
+            // Get footer tagline/description (use meta_description as fallback)
+            $footerTagline = $settings['footer_tagline'] ?? $settings['meta_description'] ?? 'We Promise We\'ll Get Back To You Promptly- Your Gifting Needs Are Always On Our Minds!';
+            
+            // Get social links (only those with URLs)
+            $footerSocialLinks = [];
+            if (!empty($settings['social_facebook'])) {
+                $footerSocialLinks['facebook'] = $settings['social_facebook'];
+            }
+            if (!empty($settings['social_twitter'])) {
+                $footerSocialLinks['twitter'] = $settings['social_twitter'];
+            }
+            if (!empty($settings['social_instagram'])) {
+                $footerSocialLinks['instagram'] = $settings['social_instagram'];
+            }
+            if (!empty($settings['social_linkedin'])) {
+                $footerSocialLinks['linkedin'] = $settings['social_linkedin'];
+            }
+            if (!empty($settings['social_youtube'])) {
+                $footerSocialLinks['youtube'] = $settings['social_youtube'];
+            }
+            if (!empty($settings['social_pinterest'])) {
+                $footerSocialLinks['pinterest'] = $settings['social_pinterest'];
+            }
+            
+            // Get pages for useful links (limit to 6)
+            $footerPages = \App\Models\Page::orderBy('created_at', 'desc')->take(6)->get();
+            
+            // Get categories for shop links (limit to 5)
+            $footerCategories = \App\Models\Category::active()
+                ->ordered()
+                ->withCount(['products' => function($query) {
+                    $query->where('status', 1);
+                }])
+                ->having('products_count', '>', 0)
+                ->take(5)
+                ->get();
+            
+            // Get contact information
+            $phones = [];
+            if (isset($settings['phones']) && is_string($settings['phones'])) {
+                $phones = json_decode($settings['phones'], true) ?? [];
+            } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
+                $phones = $settings['phones'];
+            }
+            $primaryPhone = !empty($phones) ? $phones[0] : null;
+            
+            $emails = [];
+            if (isset($settings['emails']) && is_string($settings['emails'])) {
+                $emails = json_decode($settings['emails'], true) ?? [];
+            } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
+                $emails = $settings['emails'];
+            }
+            $primaryEmail = !empty($emails) ? $emails[0] : null;
+            
+            // Get working hours (from settings or default)
+            $workingHours = $settings['working_hours'] ?? 'Monday - Friday: 9:00-20:00' . "\n" . 'Saturday: 11:00 - 15:00';
+            // Convert line breaks to HTML
+            if ($workingHours) {
+                // Escape HTML first for security, then convert newlines to <br> tags
+                $workingHours = nl2br(htmlspecialchars(trim($workingHours), ENT_QUOTES, 'UTF-8'), false);
+            }
+            
+            // Get address
+            $address = $settings['address'] ?? null;
+            
+            // Get copyright text
+            $copyrightText = $settings['copyright_text'] ?? 'Copyright © ' . date('Y') . ' Paper Wings. All rights reserved.';
+            
+            $view->with([
+                'footerLogo' => $logo,
+                'footerTagline' => $footerTagline,
+                'footerSocialLinks' => $footerSocialLinks,
+                'footerPages' => $footerPages,
+                'footerCategories' => $footerCategories,
+                'footerPhone' => $primaryPhone,
+                'footerEmail' => $primaryEmail,
+                'footerWorkingHours' => $workingHours,
+                'footerAddress' => $address,
+                'footerCopyright' => $copyrightText,
+            ]);
+        });
     }
 }

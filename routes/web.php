@@ -7,6 +7,7 @@ use App\Http\Controllers\Frontend\WishlistController;
 use App\Http\Controllers\Frontend\CartController;
 use App\Http\Controllers\Frontend\CheckoutController;
 use App\Http\Controllers\Frontend\AccountController;
+use App\Http\Controllers\Frontend\SubscriptionController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -32,6 +33,10 @@ Route::middleware('prevent.admin')->group(function () {
 // Search routes
 Route::get('/search', [\App\Http\Controllers\Frontend\SearchController::class, 'index'])->name('search');
 Route::get('/search/autocomplete', [\App\Http\Controllers\Frontend\SearchController::class, 'autocomplete'])->name('search.autocomplete');
+
+// Subscription routes (public - anyone can subscribe)
+Route::post('/subscription', [SubscriptionController::class, 'store'])->name('subscription.store');
+Route::get('/unsubscribe/{uuid}', [SubscriptionController::class, 'unsubscribe'])->name('subscription.unsubscribe');
 
 // Product routes
 //Route::get('/product/{slug}', [ProductController::class, 'product'])->name('product');

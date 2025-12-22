@@ -22,20 +22,39 @@
                 <!-- Product Images -->
                 <div class="col-lg-6">
                     <div class="product-images">
-                        <div class="product-main-image">
-                            <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Premium Notebook" class="main-img" id="mainImage">
-                        </div>
-                        <div class="product-thumbnails">
-                            <div class="thumbnail-item active" data-image="assets/images/product-1.jpg">
-                                <img src="{{ asset('assets/frontend/images/product-1.jpg') }}" alt="Premium Notebook">
+                        @if($product->images && $product->images->count() > 0)
+                            <div class="product-main-image">
+                                <img src="{{ $product->images->first()->image_url }}"
+                                     alt="{{ $product->name }}"
+                                     class="main-img"
+                                     id="mainImage">
                             </div>
-                            <div class="thumbnail-item" data-image="assets/images/product-2.jpg">
-                                <img src="{{ asset('assets/frontend/images/product-2.jpg') }}" alt="Premium Notebook">
+                            <div class="product-thumbnails">
+                                @foreach($product->images as $index => $image)
+                                    <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
+                                         data-image="{{ $image->image_url }}">
+                                        <img src="{{ $image->image_url }}"
+                                             alt="{{ $product->name }} - Image {{ $index + 1 }}"
+                                             loading="lazy">
+                                    </div>
+                                @endforeach
                             </div>
-                            <div class="thumbnail-item" data-image="assets/images/product-3.jpg">
-                                <img src="{{ asset('assets/frontend/images/product-3.jpg') }}" alt="Premium Notebook">
+                        @else
+                            <!-- Fallback if no images -->
+                            <div class="product-main-image">
+                                <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
+                                     alt="{{ $product->name }}"
+                                     class="main-img"
+                                     id="mainImage">
                             </div>
-                        </div>
+                            <div class="product-thumbnails">
+                                <div class="thumbnail-item active" data-image="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}">
+                                    <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
+                                         alt="{{ $product->name }}"
+                                         loading="lazy">
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -195,33 +214,35 @@
             <div class="row mt-5">
                 <div class="col-12">
                     <div class="related-products">
-                        <h3 class="section-title">You May Also Like</h3>
+                        <div class="related-products__header text-center">
+                            <h2 class="related-products__title">You May Also Like</h2>
+                        </div>
                         <div class="row">
                             @if($relatedProducts->count() > 0)
                                 @foreach($relatedProducts as $relatedProduct)
                                     <div class="col-lg-3 col-md-4 col-sm-6">
-                                        <div class="product-item">
-                                            <div class="product__image">
-                                                <a href="{{ route('product.detail', $relatedProduct->slug) }}">
-                                                    <img src="{{ $relatedProduct->main_image }}" alt="{{ $relatedProduct->name }}" class="product__img">
+                                        <div class="cute-stationery__item">
+                                            <div class="cute-stationery__image">
+                                                <a href="{{ route('product.detail', $relatedProduct->slug) }}" class="cute-stationery__image-link">
+                                                    <img src="{{ $relatedProduct->main_image }}" alt="{{ $relatedProduct->name }}" class="cute-stationery__img">
                                                 </a>
-                                                <div class="product__actions">
-                                                    <button class="product__action wishlist-btn" data-product-id="{{ $relatedProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
-                                                    <button class="product__action product__add-cart add-to-cart" data-product-id="{{ $relatedProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+                                                <div class="cute-stationery__actions">
+                                                    <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $relatedProduct->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                                    <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $relatedProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                                                 </div>
                                             </div>
-                                            <div class="product__info">
-                                                <h3 class="product__name">
-                                                    <a href="{{ route('product.detail', $relatedProduct->slug) }}">
+                                            <div class="cute-stationery__info">
+                                                <h3 class="cute-stationery__name">
+                                                    <a href="{{ route('product.detail', $relatedProduct->slug) }}" class="cute-stationery__name-link">
                                                         {{ $relatedProduct->name }}
                                                     </a>
                                                 </h3>
-                                                <div class="product__price">
-                                                    <span class="product__price-current">${{ $relatedProduct->total_price }}</span>
+                                                <div class="cute-stationery__price">
                                                     @if($relatedProduct->discount_price)
-                                                        <span class="product__price-old">${{ $relatedProduct->total_price }}</span>
+                                                        <span class="cute-stationery__price-current">${{ $relatedProduct->discount_price }}</span>
+                                                        <span class="cute-stationery__price-old">${{ $relatedProduct->total_price }}</span>
                                                     @else
-                                                        <span class="product__price-current">${{ $relatedProduct->total_price }}</span>
+                                                        <span class="cute-stationery__price-current">${{ $relatedProduct->total_price }}</span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -238,6 +259,33 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Product Image Thumbnail Switching
+            const thumbnailItems = document.querySelectorAll('.thumbnail-item');
+            const mainImage = document.getElementById('mainImage');
+
+            thumbnailItems.forEach(function(thumbnail) {
+                thumbnail.addEventListener('click', function() {
+                    const imageUrl = this.getAttribute('data-image');
+
+                    if (imageUrl && mainImage) {
+                        // Update main image source with fade effect
+                        mainImage.style.opacity = '0';
+                        setTimeout(function() {
+                            mainImage.src = imageUrl;
+                            mainImage.style.opacity = '1';
+                        }, 150);
+
+                        // Remove active class from all thumbnails
+                        thumbnailItems.forEach(function(item) {
+                            item.classList.remove('active');
+                        });
+
+                        // Add active class to clicked thumbnail
+                        this.classList.add('active');
+                    }
+                });
+            });
+
             const addToCartBtn = document.getElementById('addToCartBtn');
             const quantityInput = document.getElementById('quantity');
             const decreaseQty = document.getElementById('decreaseQty');
@@ -296,12 +344,12 @@
                         if (data.success) {
                             // Show success message
                             showNotification('Product added to cart successfully!', 'success');
-                            
+
                             // Update cart count in header if function exists
                             if (window.updateCartCount) {
                                 window.updateCartCount(data.cart_count);
                             }
-                            
+
                             // Reset button state
                             this.disabled = false;
                             if (btnText) btnText.textContent = 'Add to Cart';
@@ -311,7 +359,7 @@
                             }
                         } else {
                             showNotification(data.message || 'Failed to add product to cart.', 'error');
-                            
+
                             // Reset button state
                             this.disabled = false;
                             if (btnText) btnText.textContent = 'Add to Cart';
@@ -324,7 +372,7 @@
                     .catch(error => {
                         console.error('Error:', error);
                         showNotification('An error occurred. Please try again.', 'error');
-                        
+
                         // Reset button state
                         this.disabled = false;
                         if (btnText) btnText.textContent = 'Add to Cart';
@@ -342,9 +390,9 @@
                 notification.className = `cart-notification cart-notification--${type}`;
                 notification.textContent = message;
                 notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: ' + (type === 'success' ? '#10b981' : '#ef4444') + '; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-                
+
                 document.body.appendChild(notification);
-                
+
                 setTimeout(() => {
                     notification.style.opacity = '0';
                     notification.style.transition = 'opacity 0.3s';

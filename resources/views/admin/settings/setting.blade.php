@@ -555,6 +555,241 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Instagram API Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fab fa-instagram"></i>
+                            Instagram API Configuration
+                        </h3>
+                        <p class="modern-card__subtitle">Configure Instagram API to display your posts on the website</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+                            <strong><i class="fas fa-info-circle"></i> Setup Instructions:</strong>
+                            <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                                <li>Convert your Instagram account to a Business or Creator account</li>
+                                <li>Create a Facebook App at <a href="https://developers.facebook.com/" target="_blank">developers.facebook.com</a></li>
+                                <li>Add Instagram Basic Display product to your app</li>
+                                <li>Generate an Access Token from the Instagram Basic Display settings</li>
+                                <li>Enter your credentials below</li>
+                            </ol>
+                        </div>
+
+                        <!-- App ID -->
+                        <div class="form-group-modern">
+                            <label for="instagram_app_id" class="form-label-modern">
+                                <i class="fas fa-key"></i>
+                                Instagram App ID
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-key input-icon"></i>
+                                <input type="text"
+                                       class="form-input-modern @error('instagram_app_id') is-invalid @enderror"
+                                       id="instagram_app_id"
+                                       name="instagram_app_id"
+                                       value="{{ old('instagram_app_id', $settings['instagram_app_id'] ?? '') }}"
+                                       placeholder="Enter your Instagram App ID">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Found in your Facebook App Dashboard → Settings → Basic
+                            </div>
+                            @error('instagram_app_id')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- App Secret -->
+                        <div class="form-group-modern">
+                            <label for="instagram_app_secret" class="form-label-modern">
+                                <i class="fas fa-lock"></i>
+                                Instagram App Secret
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password"
+                                       class="form-input-modern @error('instagram_app_secret') is-invalid @enderror"
+                                       id="instagram_app_secret"
+                                       name="instagram_app_secret"
+                                       value="{{ old('instagram_app_secret', $settings['instagram_app_secret'] ?? '') }}"
+                                       placeholder="Enter your Instagram App Secret">
+                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_app_secret')" title="Show/Hide">
+                                    <i class="fas fa-eye" id="toggle_instagram_app_secret"></i>
+                                </button>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Found in your Facebook App Dashboard → Settings → Basic
+                            </div>
+                            @error('instagram_app_secret')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Access Token -->
+                        <div class="form-group-modern">
+                            <label for="instagram_access_token" class="form-label-modern">
+                                <i class="fas fa-token"></i>
+                                Instagram Access Token
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-token input-icon"></i>
+                                <input type="password"
+                                       class="form-input-modern @error('instagram_access_token') is-invalid @enderror"
+                                       id="instagram_access_token"
+                                       name="instagram_access_token"
+                                       value="{{ old('instagram_access_token', $settings['instagram_access_token'] ?? '') }}"
+                                       placeholder="Enter your Instagram Access Token">
+                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_access_token')" title="Show/Hide">
+                                    <i class="fas fa-eye" id="toggle_instagram_access_token"></i>
+                                </button>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Generated from Instagram Basic Display → User Token Generator (expires in 60 days)
+                            </div>
+                            @error('instagram_access_token')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- User ID -->
+                        <div class="form-group-modern">
+                            <label for="instagram_user_id" class="form-label-modern">
+                                <i class="fas fa-user"></i>
+                                Instagram User ID
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text"
+                                       class="form-input-modern @error('instagram_user_id') is-invalid @enderror"
+                                       id="instagram_user_id"
+                                       name="instagram_user_id"
+                                       value="{{ old('instagram_user_id', $settings['instagram_user_id'] ?? '') }}"
+                                       placeholder="Enter your Instagram User ID">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Your Instagram Business/Creator account ID (usually found in the API response)
+                            </div>
+                            @error('instagram_user_id')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Test Connection Button -->
+                        <div class="form-group-modern">
+                            <button type="button" class="btn btn-outline-primary" id="testInstagramConnection">
+                                <i class="fas fa-plug"></i>
+                                Test Connection
+                            </button>
+                            <div id="instagramTestResult" style="margin-top: 1rem; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Settings Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-window-restore"></i>
+                            Footer Settings
+                        </h3>
+                        <p class="modern-card__subtitle">Customize your website footer content</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <!-- Footer Tagline -->
+                        <div class="form-group-modern">
+                            <label for="footer_tagline" class="form-label-modern">
+                                <i class="fas fa-quote-left"></i>
+                                Footer Tagline/Description
+                            </label>
+                            <div class="input-wrapper">
+                                <textarea class="form-input-modern @error('footer_tagline') is-invalid @enderror"
+                                          id="footer_tagline"
+                                          name="footer_tagline"
+                                          rows="3"
+                                          placeholder="Enter footer tagline or description">{{ old('footer_tagline', $settings['footer_tagline'] ?? '') }}</textarea>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                This text appears below the logo in the footer. If empty, meta description will be used.
+                            </div>
+                            @error('footer_tagline')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Working Hours -->
+                        <div class="form-group-modern">
+                            <label for="working_hours" class="form-label-modern">
+                                <i class="fas fa-clock"></i>
+                                Working Hours
+                            </label>
+                            <div class="input-wrapper">
+                                <textarea class="form-input-modern @error('working_hours') is-invalid @enderror"
+                                          id="working_hours"
+                                          name="working_hours"
+                                          rows="3"
+                                          placeholder="Monday - Friday: 9:00-20:00&#10;Saturday: 11:00 - 15:00">{{ old('working_hours', $settings['working_hours'] ?? 'Monday - Friday: 9:00-20:00' . "\n" . 'Saturday: 11:00 - 15:00') }}</textarea>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Enter your business working hours. You can use line breaks for multiple lines.
+                            </div>
+                            @error('working_hours')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Copyright Text -->
+                        <div class="form-group-modern">
+                            <label for="copyright_text" class="form-label-modern">
+                                <i class="fas fa-copyright"></i>
+                                Copyright Text
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-copyright input-icon"></i>
+                                <input type="text"
+                                       class="form-input-modern @error('copyright_text') is-invalid @enderror"
+                                       id="copyright_text"
+                                       name="copyright_text"
+                                       value="{{ old('copyright_text', $settings['copyright_text'] ?? 'Copyright © ' . date('Y') . ' Paper Wings. All rights reserved.') }}"
+                                       placeholder="Copyright © {{ date('Y') }} Paper Wings. All rights reserved.">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Copyright text displayed at the bottom of the footer. Use {YEAR} to auto-insert current year.
+                            </div>
+                            @error('copyright_text')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right Column - Actions -->
@@ -777,6 +1012,76 @@ document.addEventListener('DOMContentLoaded', function() {
                 const previewId = input.id === 'logoInput' ? 'logoPreview' : 'iconPreview';
                 previewImage(input, previewId);
             }
+        });
+    });
+
+    // Password toggle function
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const toggle = document.getElementById('toggle_' + inputId);
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            toggle.classList.remove('fa-eye');
+            toggle.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            toggle.classList.remove('fa-eye-slash');
+            toggle.classList.add('fa-eye');
+        }
+    }
+
+    // Test Instagram Connection
+    document.getElementById('testInstagramConnection')?.addEventListener('click', function() {
+        const button = this;
+        const resultDiv = document.getElementById('instagramTestResult');
+        const originalText = button.innerHTML;
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="form-hint"><i class="fas fa-spinner fa-spin"></i> Testing connection...</div>';
+
+        // Get form data
+        const formData = new FormData(document.getElementById('settingsForm'));
+        const data = {
+            instagram_app_id: formData.get('instagram_app_id'),
+            instagram_app_secret: formData.get('instagram_app_secret'),
+            instagram_access_token: formData.get('instagram_access_token'),
+            instagram_user_id: formData.get('instagram_user_id'),
+        };
+
+        fetch('{{ route("admin.settings.test-instagram") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultDiv.innerHTML = `<div class="form-hint" style="color: #28a745; background: #d4edda; padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                    <strong><i class="fas fa-check-circle"></i> Connection Successful!</strong><br>
+                    Username: ${data.data.username || 'N/A'}<br>
+                    Account Type: ${data.data.account_type || 'N/A'}<br>
+                    Media Count: ${data.data.media_count || 0}
+                </div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="form-error" style="padding: 1rem; border-radius: 8px;">
+                    <i class="fas fa-exclamation-circle"></i> ${data.message || 'Connection failed. Please check your credentials.'}
+                </div>`;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `<div class="form-error" style="padding: 1rem; border-radius: 8px;">
+                <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+            </div>`;
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
         });
     });
 });

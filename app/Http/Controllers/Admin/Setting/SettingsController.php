@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin\Setting;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\InstagramService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -62,6 +64,13 @@ class SettingsController extends Controller
             'social_linkedin' => 'nullable|url|max:255',
             'social_youtube' => 'nullable|url|max:255',
             'social_pinterest' => 'nullable|url|max:255',
+            'instagram_app_id' => 'nullable|string|max:255',
+            'instagram_app_secret' => 'nullable|string|max:255',
+            'instagram_access_token' => 'nullable|string|max:500',
+            'instagram_user_id' => 'nullable|string|max:255',
+            'footer_tagline' => 'nullable|string|max:500',
+            'working_hours' => 'nullable|string|max:500',
+            'copyright_text' => 'nullable|string|max:255',
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
@@ -152,8 +161,63 @@ class SettingsController extends Controller
         $this->updateSetting('social_youtube', $validated['social_youtube'] ?? '');
         $this->updateSetting('social_pinterest', $validated['social_pinterest'] ?? '');
 
+        // Update Instagram API credentials
+        $this->updateSetting('instagram_app_id', $validated['instagram_app_id'] ?? '');
+        $this->updateSetting('instagram_app_secret', $validated['instagram_app_secret'] ?? '');
+        $this->updateSetting('instagram_access_token', $validated['instagram_access_token'] ?? '');
+        $this->updateSetting('instagram_user_id', $validated['instagram_user_id'] ?? '');
+
+        // Clear Instagram cache if credentials were updated
+        if (isset($validated['instagram_access_token']) || isset($validated['instagram_user_id'])) {
+            $instagramService = new InstagramService();
+            $instagramService->clearCache();
+        }
+
+        // Update footer settings
+        $this->updateSetting('footer_tagline', $validated['footer_tagline'] ?? '');
+        $this->updateSetting('working_hours', $validated['working_hours'] ?? '');
+        
+        // Process copyright text - replace {YEAR} with current year
+        $copyrightText = $validated['copyright_text'] ?? '';
+        if (!empty($copyrightText)) {
+            $copyrightText = str_replace('{YEAR}', date('Y'), $copyrightText);
+        }
+        $this->updateSetting('copyright_text', $copyrightText);
+
         return redirect()->route('admin.settings.index')
             ->with('success', 'Settings updated successfully!');
+    }
+
+    /**
+     * Test Instagram API connection
+     */
+    public function testInstagram(Request $request): JsonResponse
+    {
+        $request->validate([
+            'instagram_app_id' => 'nullable|string',
+            'instagram_app_secret' => 'nullable|string',
+            'instagram_access_token' => 'nullable|string',
+            'instagram_user_id' => 'nullable|string',
+        ]);
+
+        // Temporarily update settings for testing
+        if ($request->has('instagram_app_id')) {
+            Setting::updateOrCreate(['key' => 'instagram_app_id'], ['value' => $request->instagram_app_id]);
+        }
+        if ($request->has('instagram_app_secret')) {
+            Setting::updateOrCreate(['key' => 'instagram_app_secret'], ['value' => $request->instagram_app_secret]);
+        }
+        if ($request->has('instagram_access_token')) {
+            Setting::updateOrCreate(['key' => 'instagram_access_token'], ['value' => $request->instagram_access_token]);
+        }
+        if ($request->has('instagram_user_id')) {
+            Setting::updateOrCreate(['key' => 'instagram_user_id'], ['value' => $request->instagram_user_id]);
+        }
+
+        $instagramService = new InstagramService();
+        $result = $instagramService->testConnection();
+
+        return response()->json($result);
     }
 
     /**

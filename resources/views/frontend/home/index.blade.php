@@ -71,82 +71,6 @@
         </div>
     </section>
 
-    <!-- Promotional Banners Section -->
-    <section class="promo-banners-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6 col-md-6">
-                    <div class="promo-banner promo-banner--home-office">
-                        <div class="promo-banner__content">
-                            <div class="promo-banner__badge">Sale Up To 15% Off</div>
-                            <h3 class="promo-banner__title">
-                                <span class="promo-banner__title-line">Home Office</span>
-                                <span class="promo-banner__title-line">Desks</span>
-                            </h3>
-                            <a href="#" class="promo-banner__btn">Shop Now →</a>
-                        </div>
-                        <div class="promo-banner__illustration">
-                            <!-- Home office illustration elements -->
-                            <div class="promo-banner__desk"></div>
-                            <div class="promo-banner__chair"></div>
-                            <div class="promo-banner__lamp"></div>
-                            <div class="promo-banner__shelf"></div>
-                            <div class="promo-banner__plant"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6 col-md-6">
-                    <div class="promo-banner promo-banner--tape">
-                        <div class="promo-banner__content">
-                            <div class="promo-banner__badge">Office Adhesive</div>
-                            <h3 class="promo-banner__title">Tape</h3>
-                            <div class="promo-banner__price">From $12.99</div>
-                            <a href="#" class="promo-banner__btn">Shop Now →</a>
-                        </div>
-                        <div class="promo-banner__illustration">
-                            <!-- Tape illustration elements -->
-                            <div class="promo-banner__tape-roll promo-banner__tape-roll--1"></div>
-                            <div class="promo-banner__tape-roll promo-banner__tape-roll--2"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6 col-md-6">
-                    <div class="promo-banner promo-banner--notebooks">
-                        <div class="promo-banner__content">
-                            <div class="promo-banner__badge">All Page Types</div>
-                            <h3 class="promo-banner__title">Notebooks</h3>
-                            <div class="promo-banner__price">25% Off</div>
-                            <a href="#" class="promo-banner__btn">Shop Now →</a>
-                        </div>
-                        <div class="promo-banner__illustration">
-                            <!-- Notebooks illustration elements -->
-                            <div class="promo-banner__notebook promo-banner__notebook--1"></div>
-                            <div class="promo-banner__notebook promo-banner__notebook--2"></div>
-                            <div class="promo-banner__pen"></div>
-                            <div class="promo-banner__sprig"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6 col-md-6">
-                    <div class="promo-banner promo-banner--metal-pens">
-                        <div class="promo-banner__content">
-                            <div class="promo-banner__badge">Office / Home</div>
-                            <h3 class="promo-banner__title">Metal Pens</h3>
-                            <div class="promo-banner__price">15% Off</div>
-                            <a href="#" class="promo-banner__btn">Shop Now →</a>
-                        </div>
-                        <div class="promo-banner__illustration">
-                            <!-- Metal pens illustration elements -->
-                            <div class="promo-banner__pen promo-banner__pen--1"></div>
-                            <div class="promo-banner__pen promo-banner__pen--2"></div>
-                            <div class="promo-banner__pen promo-banner__pen--3"></div>
-                            <div class="promo-banner__pen promo-banner__pen--4"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Products Section with Tabs -->
     <section class="products-section">
@@ -386,15 +310,111 @@
                             <span class="subscription-banner__title-line">Stay Updated with Special Offers</span>
                         </h2>
                         <div class="subscription-banner__form">
-                            <form class="subscription-form">
+                            <form class="subscription-form" id="subscriptionForm" method="POST" action="{{ route('subscription.store') }}">
+                                @csrf
                                 <div class="subscription-form__input-group">
-                                    <input type="email" class="subscription-form__input" placeholder="Enter Your Email Address" required>
-                                    <button type="submit" class="subscription-form__btn">Subscribe</button>
+                                    <input type="email"
+                                           name="email"
+                                           class="subscription-form__input"
+                                           id="subscriptionEmail"
+                                           placeholder="Enter Your Email Address"
+                                           required
+                                           autocomplete="email">
+                                    <button type="submit" class="subscription-form__btn" id="subscriptionBtn">
+                                        <span class="subscription-btn-text">Subscribe</span>
+                                        <span class="subscription-btn-loader" style="display: none;">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                    </button>
                                 </div>
+                                <div class="subscription-message" id="subscriptionMessage" style="display: none;"></div>
                             </form>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Instagram Section -->
+    <section class="instagram-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="instagram-section__header text-center">
+                        <div class="instagram-section__icon">
+                            <i class="fab fa-instagram"></i>
+                        </div>
+                        <h2 class="instagram-section__title">Follow Us on Instagram</h2>
+                        <p class="instagram-section__subtitle">@paperwings</p>
+                        @if(isset($instagramLink) && $instagramLink)
+                            <a href="{{ $instagramLink }}" target="_blank" rel="noopener noreferrer" class="instagram-section__follow-btn">
+                                Follow Us <i class="fas fa-arrow-right"></i>
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div class="row g-2">
+                @if(isset($instagramPosts) && count($instagramPosts) > 0)
+                    <!-- Display real Instagram posts -->
+                    @foreach($instagramPosts as $post)
+                    <div class="col-lg-2 col-md-4 col-sm-6">
+                        <div class="instagram-item">
+                            <a href="{{ $post['permalink'] ?? ($instagramLink ?? '#') }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
+                                <div class="instagram-item__image">
+                                    <img src="{{ $post['image_url'] }}"
+                                         alt="{{ $post['caption'] ?? 'Instagram Post' }}"
+                                         class="instagram-item__img"
+                                         loading="lazy"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
+                                    <div class="instagram-item__overlay">
+                                        <i class="fab fa-instagram"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    @endforeach
+
+                    <!-- Fill remaining slots with placeholders if less than 6 posts -->
+                    @if(count($instagramPosts) < 6)
+                        @for($i = count($instagramPosts) + 1; $i <= 6; $i++)
+                        <div class="col-lg-2 col-md-4 col-sm-6">
+                            <div class="instagram-item">
+                                <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
+                                    <div class="instagram-item__image">
+                                        <img src="{{ asset('assets/images/placeholder.jpg') }}"
+                                             alt="Instagram Post {{ $i }}"
+                                             class="instagram-item__img">
+                                        <div class="instagram-item__overlay">
+                                            <i class="fab fa-instagram"></i>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        @endfor
+                    @endif
+                @else
+                    <!-- Fallback: Display placeholder images if API is not configured or no posts -->
+                    @for($i = 1; $i <= 6; $i++)
+                    <div class="col-lg-2 col-md-4 col-sm-6">
+                        <div class="instagram-item">
+                            <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
+                                <div class="instagram-item__image">
+                                    <img src="{{ asset('assets/images/placeholder.jpg') }}"
+                                         alt="Instagram Post {{ $i }}"
+                                         class="instagram-item__img">
+                                    <div class="instagram-item__overlay">
+                                        <i class="fab fa-instagram"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    @endfor
+                @endif
             </div>
         </div>
     </section>

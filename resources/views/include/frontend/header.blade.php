@@ -3,19 +3,23 @@
         <div class="header__utility-bar">
             <div class="container">
                 <div class="row align-items-center">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="header__utility-contact">
-                            @if(isset($headerPhone) && $headerPhone)
-                                Call: {{ $headerPhone }}
-                            @else
-                                Call: (+880) 123 4567
-                            @endif
+                            @php
+                                $phone = isset($headerPhone) && $headerPhone ? $headerPhone : '(+880) 123 4567';
+                                $email = isset($headerEmail) && $headerEmail ? $headerEmail : 'info@paperwings.com';
+                            @endphp
+                            <a href="tel:{{ preg_replace('/[^0-9+]/', '', $phone) }}" class="header__utility-item">
+                                <i class="fas fa-phone"></i>
+                                <span>{{ $phone }}</span>
+                            </a>
+                            <a href="mailto:{{ $email }}" class="header__utility-item">
+                                <i class="fas fa-envelope"></i>
+                                <span>{{ $email }}</span>
+                            </a>
                         </div>
                     </div>
-                    <div class="col-md-4 text-center">
-                        <!-- Empty center column -->
-                    </div>
-                    <div class="col-md-4 text-end">
+                    <div class="col-md-6 text-end">
                         @if(isset($socialLinks['facebook']))
                             <a href="{{ $socialLinks['facebook'] }}" target="_blank" rel="noopener noreferrer" class="header__utility-link">
                                 <i class="fab fa-facebook-f"></i>
@@ -57,18 +61,15 @@
                 <div class="row align-items-center">
                     <div class="col-md-3">
                         <a href="{{ route('home') }}" class="header__logo">
-                            <div class="header__logo-icon">
-                                <i class="fas fa-shopping-bag" style="font-size: 2rem; color: var(--lavender);"></i>
-                            </div>
-                            <h1 class="header__logo-text">Paper Wings</h1>
+                            <img src="{{ asset('assets/frontend/images/logo.png') }}" alt="Paper Wings Logo" class="header__logo-image">
                         </a>
                     </div>
                     <div class="col-md-6">
                         <div class="header__search position-relative" id="header-search">
-                            <input type="text" 
-                                   class="header__search-input" 
+                            <input type="text"
+                                   class="header__search-input"
                                    id="header-search-input"
-                                   placeholder="Search products..." 
+                                   placeholder="Search products..."
                                    autocomplete="off"
                                    aria-label="Search products">
                             <button type="button" class="header__search-btn" id="header-search-btn">
@@ -225,3 +226,4 @@
             </div>
         </nav>
     </header>
+

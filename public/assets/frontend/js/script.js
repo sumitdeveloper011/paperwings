@@ -168,25 +168,68 @@ function loadProductsByCategory(category) {
 
 // Subscription Form Functionality
 $(document).ready(function() {
-    $('.subscription-form').on('submit', function(e) {
+    $('#subscriptionForm').on('submit', function(e) {
         e.preventDefault();
 
-        const email = $(this).find('.subscription-form__input').val();
+        const form = $(this);
+        const emailInput = form.find('#subscriptionEmail');
+        const submitBtn = form.find('#subscriptionBtn');
+        const btnText = submitBtn.find('.subscription-btn-text');
+        const btnLoader = submitBtn.find('.subscription-btn-loader');
+        const email = emailInput.val().trim();
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
-        if (email && isValidEmail(email)) {
-            // Show success message
-            showSubscriptionMessage('Thank you for subscribing! Check your email for the 20% off code.', 'success');
+        // Hide previous messages
+        $('#subscriptionMessage').hide().removeClass('subscription-message--success subscription-message--error');
 
-            // Clear the form
-            $(this).find('.subscription-form__input').val('');
-
-            // Here you would typically send the data to your server
-            console.log('Subscription submitted:', email);
-
-        } else {
-            // Show error message
+        // Basic email validation
+        if (!email || !isValidEmail(email)) {
             showSubscriptionMessage('Please enter a valid email address.', 'error');
+            return;
         }
+
+        // Show loading state
+        submitBtn.prop('disabled', true);
+        btnText.hide();
+        btnLoader.show();
+
+        // Submit to backend
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: {
+                email: email,
+                _token: csrfToken
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    showSubscriptionMessage(response.message || 'Thank you for subscribing! You will receive our latest offers and updates.', 'success');
+                    emailInput.val('');
+                } else {
+                    showSubscriptionMessage(response.message || 'An error occurred. Please try again.', 'error');
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'An error occurred. Please try again.';
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorMessage = Object.values(xhr.responseJSON.errors)[0][0];
+                } else if (xhr.status === 409) {
+                    errorMessage = 'This email is already subscribed to our newsletter.';
+                }
+                
+                showSubscriptionMessage(errorMessage, 'error');
+            },
+            complete: function() {
+                // Reset button state
+                submitBtn.prop('disabled', false);
+                btnText.show();
+                btnLoader.hide();
+            }
+        });
     });
 
     // Email validation function
@@ -197,32 +240,18 @@ $(document).ready(function() {
 
     // Function to show subscription messages
     function showSubscriptionMessage(message, type) {
-        // Remove any existing messages
-        $('.subscription-message').remove();
-
-        // Create message element
-        const messageClass = type === 'success' ? 'subscription-message--success' : 'subscription-message--error';
-        const messageHtml = `
-            <div class="subscription-message ${messageClass}">
-                <span>${message}</span>
-                <button class="subscription-message__close">&times;</button>
-            </div>
-        `;
-
-        // Insert message after the form
-        $('.subscription-form').after(messageHtml);
+        const messageDiv = $('#subscriptionMessage');
+        messageDiv.removeClass('subscription-message--success subscription-message--error')
+                  .addClass('subscription-message--' + type)
+                  .html('<span>' + message + '</span>')
+                  .fadeIn();
 
         // Auto-hide success messages after 5 seconds
         if (type === 'success') {
             setTimeout(function() {
-                $('.subscription-message').fadeOut();
+                messageDiv.fadeOut();
             }, 5000);
         }
-
-        // Close button functionality
-        $('.subscription-message__close').on('click', function() {
-            $(this).parent().fadeOut();
-        });
     }
 });
 

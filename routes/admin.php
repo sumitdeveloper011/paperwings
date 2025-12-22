@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\Profile\ProfileController;
 use App\Http\Controllers\Admin\Coupon\CouponController;
 use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Order\OrderController;
+use App\Http\Controllers\Admin\Subscription\SubscriptionController;
 
 // Guest routes (login)
 Route::middleware('guest')->group(function () {
@@ -25,6 +26,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chartData');
 
     // Category routes
     Route::get('categories/get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('categories.getCategoriesForEposNow');
@@ -64,6 +66,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     // Settings routes
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
 
     // User routes (e-commerce users)
     Route::resource('users', UserController::class)->except(['create', 'store', 'edit', 'update']);
@@ -73,6 +76,11 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('orders', OrderController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
     Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
+
+    // Subscription routes
+    Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');
+    Route::get('subscriptions/export', [SubscriptionController::class, 'export'])->name('subscriptions.export');
 
     // Profile routes
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');

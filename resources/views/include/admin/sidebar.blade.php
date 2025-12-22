@@ -77,6 +77,12 @@
                     <span>Users</span>
                 </a>
             </li>
+            <li class="sidebar-item">
+                <a href="{{ route('admin.subscriptions.index') }}" class="sidebar-link {{ request()->routeIs('admin.subscriptions.*') ? 'active' : '' }}" data-tooltip="Subscriptions">
+                    <i class="fas fa-envelope"></i>
+                    <span>Subscriptions</span>
+                </a>
+            </li>
         </ul>
     </nav>
 </aside>

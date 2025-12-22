@@ -8,42 +8,78 @@
                 <div class="col-lg-3 col-md-4">
                     <div class="category-sidebar">
                         <div class="sidebar-widget">
-                            <h3 class="sidebar-widget__title">Categories</h3>
-                            <ul class="sidebar-categories">
-                                @if($categories && $categories->count() > 0)
-                                @foreach($categories as $category)
-                                <li class="sidebar-category">
-                                    <a href="{{ route('product.by.category', $category->slug) }}" class="sidebar-category__link">
-                                        <i class="fas fa-folder"></i>
-                                        {{ $category->name }}
-                                        <span class="category-count">({{ $category->products_count ?? 0 }})</span>
-                                        <i class="fas fa-chevron-down category-toggle"></i>
-                                    </a>
-                                </li>
-                                @endforeach
-                                @endif
-                            </ul>
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-th-large sidebar-widget__icon"></i>
+                                    Categories
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <ul class="sidebar-categories">
+                                    @if($categories && $categories->count() > 0)
+                                    @foreach($categories as $category)
+                                    <li class="sidebar-category">
+                                        <a href="{{ route('product.by.category', $category->slug) }}"
+                                           class="sidebar-category__link {{ request()->route('product.by.category') && request()->route('slug') == $category->slug ? 'active' : '' }}">
+                                            <span class="sidebar-category__icon-wrapper">
+                                                <i class="fas fa-folder sidebar-category__icon"></i>
+                                            </span>
+                                            <span class="sidebar-category__content">
+                                                <span class="sidebar-category__name">{{ $category->name }}</span>
+                                                <span class="category-count">{{ $category->products_count ?? 0 }} items</span>
+                                            </span>
+                                            <i class="fas fa-chevron-right sidebar-category__arrow"></i>
+                                        </a>
+                                    </li>
+                                    @endforeach
+                                    @else
+                                    <li class="sidebar-category--empty">
+                                        <span class="sidebar-category__empty-text">No categories available</span>
+                                    </li>
+                                    @endif
+                                </ul>
+                            </div>
                         </div>
 
                         <div class="sidebar-widget">
-                            <h3 class="sidebar-widget__title">Price Range</h3>
-                            <div class="price-filter">
-                                <div class="price-range-display">
-                                    <span class="price-min">$<span id="priceMinDisplay">{{ $priceMin ?? 0 }}</span></span>
-                                    <span class="price-max">$<span id="priceMaxDisplay">{{ $maxPrice ?? ($priceMax ?? 100) }}</span></span>
-                                </div>
-                                <div class="price-range-slider">
-                                    <input type="range" class="price-range" id="priceRange"
-                                           min="{{ $priceMin ?? 0 }}"
-                                           max="{{ $priceMax ?? 100 }}"
-                                           value="{{ $maxPrice ?? ($priceMax ?? 100) }}"
-                                           step="1">
-                                </div>
-                                <div class="price-filter-actions mt-2" style="display: flex; gap: 5px;">
-                                    <button type="button" class="btn btn-sm btn-primary" id="applyPriceFilter" style="flex: 1;">Apply</button>
-                                    @if($minPrice || $maxPrice)
-                                    <button type="button" class="btn btn-sm btn-secondary" id="clearPriceFilter" style="flex: 1;">Clear</button>
-                                    @endif
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-dollar-sign sidebar-widget__icon"></i>
+                                    Price Range
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <div class="price-filter">
+                                    <div class="price-range-display">
+                                        <div class="price-range-display__item">
+                                            <span class="price-range-display__label">Min</span>
+                                            <span class="price-range-display__value">$<span id="priceMinDisplay">{{ $priceMin ?? 0 }}</span></span>
+                                        </div>
+                                        <div class="price-range-display__divider">-</div>
+                                        <div class="price-range-display__item">
+                                            <span class="price-range-display__label">Max</span>
+                                            <span class="price-range-display__value">$<span id="priceMaxDisplay">{{ $maxPrice ?? ($priceMax ?? 100) }}</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="price-range-slider">
+                                        <input type="range" class="price-range" id="priceRange"
+                                               min="{{ $priceMin ?? 0 }}"
+                                               max="{{ $priceMax ?? 100 }}"
+                                               value="{{ $maxPrice ?? ($priceMax ?? 100) }}"
+                                               step="1">
+                                    </div>
+                                    <div class="price-filter-actions">
+                                        <button type="button" class="price-filter-btn price-filter-btn--primary" id="applyPriceFilter">
+                                            <i class="fas fa-check"></i>
+                                            Apply Filter
+                                        </button>
+                                        @if($minPrice || $maxPrice)
+                                        <button type="button" class="price-filter-btn price-filter-btn--secondary" id="clearPriceFilter">
+                                            <i class="fas fa-times"></i>
+                                            Clear
+                                        </button>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
