@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\Wishlist;
 use App\Models\Product;
+use App\Services\WishlistService;
+use App\Http\Requests\AddToWishlistRequest;
+use App\Http\Resources\WishlistItemResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -12,54 +15,29 @@ use Illuminate\Support\Facades\DB;
 
 class WishlistController extends Controller
 {
+    public function __construct(
+        private WishlistService $wishlistService
+    ) {}
+
     /**
      * Add product to wishlist
      */
-    public function add(Request $request): JsonResponse
+    public function add(AddToWishlistRequest $request): JsonResponse
     {
-        // Check if user is authenticated
-        if (!Auth::check()) {
+        try {
+            $this->wishlistService->addToWishlist(Auth::id(), $request->product_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product added to wishlist successfully.',
+                'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id())
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please login to add items to wishlist.',
-                'requires_login' => true,
-                'redirect_url' => route('login')
-            ], 401);
-        }
-
-        $request->validate([
-            'product_id' => 'required|exists:products,id'
-        ]);
-
-        $userId = Auth::id();
-        $productId = $request->product_id;
-
-        // Check if product already exists in wishlist
-        $existingWishlist = Wishlist::where('user_id', $userId)
-            ->where('product_id', $productId)
-            ->first();
-
-        if ($existingWishlist) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Product is already in your wishlist.'
+                'message' => $e->getMessage()
             ], 400);
         }
-
-        // Add to wishlist
-        Wishlist::create([
-            'user_id' => $userId,
-            'product_id' => $productId
-        ]);
-
-        // Get updated wishlist count
-        $wishlistCount = Wishlist::where('user_id', $userId)->count();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Product added to wishlist successfully.',
-            'wishlist_count' => $wishlistCount
-        ]);
     }
 
     /**
@@ -79,30 +57,20 @@ class WishlistController extends Controller
             'product_id' => 'required|exists:products,id'
         ]);
 
-        $userId = Auth::id();
-        $productId = $request->product_id;
-
-        $wishlist = Wishlist::where('user_id', $userId)
-            ->where('product_id', $productId)
-            ->first();
-
-        if ($wishlist) {
-            $wishlist->delete();
-
-            // Get updated wishlist count
-            $wishlistCount = Wishlist::where('user_id', $userId)->count();
+        try {
+            $this->wishlistService->removeFromWishlist(Auth::id(), $request->product_id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product removed from wishlist successfully.',
-                'wishlist_count' => $wishlistCount
+                'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id())
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 404);
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Product not found in wishlist.'
-        ], 404);
     }
 
     /**
@@ -118,42 +86,18 @@ class WishlistController extends Controller
             ], 401);
         }
 
-        $userId = Auth::id();
-
-        $wishlistItems = Wishlist::where('wishlists.user_id', $userId)
-            ->join('products', 'wishlists.product_id', '=', 'products.id')
-            ->select(
-                'wishlists.id',
-                'wishlists.product_id',
-                'products.name as product_name',
-                'products.slug as product_slug',
-                'products.total_price as product_price',
-                'products.discount_price',
-                DB::raw('(SELECT image FROM products_images WHERE product_id = products.id ORDER BY id ASC LIMIT 1) as product_image_path')
-            )
-            ->get()
-            ->map(function ($item) {
-                // Format image URL similar to ProductImage accessor
-                $productImage = $item->product_image_path
-                    ? asset('storage/' . $item->product_image_path)
-                    : asset('assets/images/placeholder.jpg');
-
-                return [
-                    'id' => $item->id,
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product_name,
-                    'product_slug' => $item->product_slug,
-                    'product_price' => $item->product_price,
-                    'discount_price' => $item->discount_price,
-                    'product_image' => $productImage,
-                    'product_url' => route('product.detail', $item->product_slug),
-                ];
-            });
+        // Use API Resource for consistent response format
+        $wishlistItems = $this->wishlistService->getWishlistItems(Auth::id());
+        $itemsArray = WishlistItemResource::collection($wishlistItems)
+            ->collection
+            ->filter(fn($item) => !isset($item['error']))
+            ->values()
+            ->toArray();
 
         return response()->json([
             'success' => true,
-            'items' => $wishlistItems,
-            'count' => $wishlistItems->count()
+            'items' => $itemsArray,
+            'count' => count($itemsArray)
         ]);
     }
 
@@ -174,18 +118,10 @@ class WishlistController extends Controller
             'product_ids.*' => 'exists:products,id'
         ]);
 
-        $userId = Auth::id();
-        $productIds = $request->product_ids;
-
-        $wishlistItems = Wishlist::where('user_id', $userId)
-            ->whereIn('product_id', $productIds)
-            ->pluck('product_id')
-            ->toArray();
-
-        $status = [];
-        foreach ($productIds as $productId) {
-            $status[$productId] = in_array($productId, $wishlistItems);
-        }
+        $status = $this->wishlistService->checkProductsInWishlist(
+            Auth::id(),
+            $request->product_ids
+        );
 
         return response()->json([
             'success' => true,
@@ -205,8 +141,7 @@ class WishlistController extends Controller
             ]);
         }
 
-        $userId = Auth::id();
-        $count = Wishlist::where('user_id', $userId)->count();
+        $count = $this->wishlistService->getWishlistCount(Auth::id());
 
         return response()->json([
             'success' => true,

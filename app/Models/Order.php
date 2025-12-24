@@ -47,6 +47,7 @@ class Order extends Model
         'stripe_charge_id',
         'status',
         'notes',
+        'admin_viewed_at',
     ];
 
     protected $casts = [
@@ -55,6 +56,7 @@ class Order extends Model
         'tax' => 'decimal:2',
         'shipping' => 'decimal:2',
         'total' => 'decimal:2',
+        'admin_viewed_at' => 'datetime',
     ];
 
     /**

@@ -15,6 +15,14 @@
         </div>
     </div>
 
+    @php
+        $gaSettings = \App\Models\Setting::whereIn('key', ['google_analytics_id', 'google_analytics_enabled', 'google_analytics_ecommerce'])
+            ->pluck('value', 'key')
+            ->toArray();
+        $gaId = $gaSettings['google_analytics_id'] ?? '';
+        $gaEnabled = isset($gaSettings['google_analytics_enabled']) && $gaSettings['google_analytics_enabled'] == '1';
+    @endphp
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-lg-3 col-md-6 mb-3">
@@ -67,6 +75,70 @@
         </div>
     </div>
 
+    @php
+        $gaSettings = \App\Models\Setting::whereIn('key', ['google_analytics_id', 'google_analytics_enabled', 'google_analytics_ecommerce'])
+            ->pluck('value', 'key')
+            ->toArray();
+        $gaId = $gaSettings['google_analytics_id'] ?? '';
+        $gaEnabled = isset($gaSettings['google_analytics_enabled']) && $gaSettings['google_analytics_enabled'] == '1';
+    @endphp
+
+    @if($gaEnabled && !empty($gaId))
+    <!-- Google Analytics Quick Access -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <div class="modern-card__header-content">
+                        <h3 class="modern-card__title">
+                            <i class="fab fa-google"></i>
+                            Google Analytics
+                        </h3>
+                        <p class="modern-card__subtitle">Quick access to your analytics dashboard</p>
+                    </div>
+                    <div class="modern-card__header-actions">
+                        <a href="https://analytics.google.com" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt"></i>
+                            Open Analytics Dashboard
+                        </a>
+                        <a href="{{ route('admin.settings.index') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog"></i>
+                            Settings
+                        </a>
+                    </div>
+                </div>
+                <div class="modern-card__body">
+                    <div class="ga-quick-info">
+                        <div class="ga-quick-info__item">
+                            <i class="fas fa-fingerprint"></i>
+                            <div>
+                                <strong>Measurement ID:</strong>
+                                <code>{{ $gaId }}</code>
+                            </div>
+                        </div>
+                        <div class="ga-quick-info__item">
+                            <i class="fas fa-chart-line"></i>
+                            <div>
+                                <strong>Status:</strong>
+                                <span class="status-badge status-badge--success">Active</span>
+                            </div>
+                        </div>
+                        @if(isset($gaSettings['google_analytics_ecommerce']) && $gaSettings['google_analytics_ecommerce'] == '1')
+                        <div class="ga-quick-info__item">
+                            <i class="fas fa-shopping-cart"></i>
+                            <div>
+                                <strong>E-commerce:</strong>
+                                <span class="status-badge status-badge--success">Enabled</span>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Growth Chart Section -->
     <div class="modern-card mb-4">
         <div class="modern-card__header">
@@ -81,12 +153,12 @@
                 <form method="GET" class="dashboard-filter-form" id="date-filter-form">
                     <div class="date-filter-group">
                         <label for="start_date" class="date-filter-label">From:</label>
-                        <input type="date" name="start_date" id="start_date" class="date-filter-input" 
+                        <input type="date" name="start_date" id="start_date" class="date-filter-input"
                                value="{{ $startDate }}" required>
                     </div>
                     <div class="date-filter-group">
                         <label for="end_date" class="date-filter-label">To:</label>
-                        <input type="date" name="end_date" id="end_date" class="date-filter-input" 
+                        <input type="date" name="end_date" id="end_date" class="date-filter-input"
                                value="{{ $endDate }}" required>
                     </div>
                     <button type="submit" class="btn btn-primary">
@@ -382,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const today = new Date();
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(today.getMonth() - 6);
-        
+
         document.getElementById('start_date').value = sixMonthsAgo.toISOString().split('T')[0];
         document.getElementById('end_date').value = today.toISOString().split('T')[0];
         document.getElementById('date-filter-form').submit();

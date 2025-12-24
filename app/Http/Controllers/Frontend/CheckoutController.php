@@ -23,16 +23,12 @@ use Stripe\Exception\ApiErrorException;
 class CheckoutController extends Controller
 {
     /**
-     * Get the identifier for the current cart (user_id or session_id)
+     * Get the identifier for the current cart (user_id only - authentication required)
      */
     private function getCartIdentifier(): array
     {
-        if (Auth::check()) {
-            return ['user_id' => Auth::id(), 'session_id' => null];
-        }
-
-        $sessionId = Session::getId();
-        return ['user_id' => null, 'session_id' => $sessionId];
+        // Since checkout requires authentication, we only use user_id
+        return ['user_id' => Auth::id(), 'session_id' => null];
     }
 
     /**
@@ -43,16 +39,11 @@ class CheckoutController extends Controller
         $title = 'Checkout';
         $cartIdentifier = $this->getCartIdentifier();
 
-        // Get cart items
+        // Get cart items (authentication required)
         $cartItems = CartItem::with(['product' => function($query) {
                 $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'barcode');
             }])
-            ->when($cartIdentifier['user_id'], function($query) use ($cartIdentifier) {
-                return $query->where('user_id', $cartIdentifier['user_id']);
-            })
-            ->when($cartIdentifier['session_id'], function($query) use ($cartIdentifier) {
-                return $query->where('session_id', $cartIdentifier['session_id']);
-            })
+            ->where('user_id', Auth::id())
             ->get();
 
         // Check if cart is empty
@@ -61,28 +52,17 @@ class CheckoutController extends Controller
                 ->with('error', 'Your cart is empty. Please add items to your cart before checkout.');
         }
 
-        // Eager load first image for each product
+        // Use ProductImageService for efficient image loading
         $productIds = $cartItems->pluck('product_id')->unique();
         if ($productIds->isNotEmpty()) {
-            $productImages = DB::table('products_images')
-                ->select('product_id', DB::raw('MIN(id) as min_id'))
-                ->whereIn('product_id', $productIds)
-                ->groupBy('product_id')
-                ->pluck('min_id', 'product_id');
-
-            $images = DB::table('products_images')
-                ->whereIn('id', $productImages->values())
-                ->select('id', 'product_id', 'image')
-                ->get()
-                ->keyBy('product_id');
-
+            $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
+            
             $cartItems->each(function($item) use ($images) {
                 if ($item->product) {
-                    if ($images->has($item->product_id)) {
-                        $item->product->setAttribute('main_image', asset('storage/' . $images[$item->product_id]->image));
-                    } else {
-                        $item->product->setAttribute('main_image', asset('assets/images/placeholder.jpg'));
-                    }
+                    $image = $images->get($item->product_id);
+                    $item->product->setAttribute('main_image', 
+                        $image ? $image->image_url : asset('assets/images/placeholder.jpg')
+                    );
                 }
             });
         }
@@ -142,15 +122,9 @@ class CheckoutController extends Controller
 
         $code = strtoupper(trim($request->code));
 
-        // Get cart items to calculate subtotal
-        $cartIdentifier = $this->getCartIdentifier();
+        // Get cart items to calculate subtotal (authentication required)
         $cartItems = CartItem::with(['product'])
-            ->when($cartIdentifier['user_id'], function($query) use ($cartIdentifier) {
-                return $query->where('user_id', $cartIdentifier['user_id']);
-            })
-            ->when($cartIdentifier['session_id'], function($query) use ($cartIdentifier) {
-                return $query->where('session_id', $cartIdentifier['session_id']);
-            })
+            ->where('user_id', Auth::id())
             ->get();
 
         $subtotal = $cartItems->sum(function($item) {
@@ -378,16 +352,9 @@ class CheckoutController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $cartIdentifier = $this->getCartIdentifier();
-
-        // Get cart items
+        // Get cart items (authentication required)
         $cartItems = CartItem::with(['product'])
-            ->when($cartIdentifier['user_id'], function($query) use ($cartIdentifier) {
-                return $query->where('user_id', $cartIdentifier['user_id']);
-            })
-            ->when($cartIdentifier['session_id'], function($query) use ($cartIdentifier) {
-                return $query->where('session_id', $cartIdentifier['session_id']);
-            })
+            ->where('user_id', Auth::id())
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -452,8 +419,8 @@ class CheckoutController extends Controller
             try {
                 $order = Order::create([
                     'order_number' => Order::generateOrderNumber(),
-                    'user_id' => $cartIdentifier['user_id'],
-                    'session_id' => $cartIdentifier['session_id'],
+                    'user_id' => Auth::id(),
+                    'session_id' => null, // No guest orders - authentication required
                     'billing_first_name' => $request->billing_first_name,
                     'billing_last_name' => $request->billing_last_name,
                     'billing_email' => $request->billing_email,
@@ -488,9 +455,12 @@ class CheckoutController extends Controller
                     'notes' => $request->notes ?? null,
                 ]);
 
-                // Create order items
+                // Bulk insert order items for better performance
+                $orderItems = [];
+                $now = now();
+                
                 foreach ($cartItems as $cartItem) {
-                    OrderItem::create([
+                    $orderItems[] = [
                         'order_id' => $order->id,
                         'product_id' => $cartItem->product_id,
                         'product_name' => $cartItem->product->name,
@@ -498,7 +468,14 @@ class CheckoutController extends Controller
                         'quantity' => $cartItem->quantity,
                         'price' => $cartItem->price,
                         'subtotal' => $cartItem->subtotal,
-                    ]);
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+                
+                // Single bulk insert instead of multiple individual inserts
+                if (!empty($orderItems)) {
+                    \App\Models\OrderItem::insert($orderItems);
                 }
 
                 // Update coupon usage if applied
@@ -509,14 +486,8 @@ class CheckoutController extends Controller
                     }
                 }
 
-                // Clear cart
-                CartItem::when($cartIdentifier['user_id'], function($query) use ($cartIdentifier) {
-                        return $query->where('user_id', $cartIdentifier['user_id']);
-                    })
-                    ->when($cartIdentifier['session_id'], function($query) use ($cartIdentifier) {
-                        return $query->where('session_id', $cartIdentifier['session_id']);
-                    })
-                    ->delete();
+                // Clear cart (authentication required)
+                CartItem::where('user_id', Auth::id())->delete();
 
                 // Clear coupon from session
                 Session::forget('applied_coupon');
@@ -528,7 +499,8 @@ class CheckoutController extends Controller
 
                 // Send order confirmation email
                 try {
-                    Mail::to($order->billing_email)->send(new OrderConfirmationMail($order));
+                    // Queue email for faster response (OrderConfirmationMail already implements ShouldQueue)
+                    Mail::to($order->billing_email)->queue(new OrderConfirmationMail($order));
                 } catch (\Exception $e) {
                     // Log email error but don't fail the order
                     Log::error('Failed to send order confirmation email: ' . $e->getMessage());
@@ -605,6 +577,9 @@ class CheckoutController extends Controller
                 ]);
             }
         }
+
+        // Load order relationships for e-commerce tracking
+        $order->load(['items.product.category']);
 
         return view('frontend.checkout.success', [
             'title' => 'Order Confirmation',

@@ -23,26 +23,26 @@ class HomeController extends Controller
             ->take(6)
             ->get();
 
-        // Get products by product type (random order for variety on each page load)
-        $featuredProducts = Product::active()
-            ->where('product_type', '1') // Featured
-            ->inRandomOrder()
-            ->take(18)
-            ->get();
-        $onSaleProducts = Product::active()
-            ->where('product_type', '2') // On Sale
-            ->inRandomOrder()
-            ->take(18)
-            ->get();
+        // Optimized: Single query with eager loading for all product types (using scopes)
+        $allProducts = Product::active()
+            ->whereIn('product_type', [1, 2, 3])
+            ->withFirstImage()
+            ->selectMinimal()
+            ->get()
+            ->shuffle() // Shuffle in memory instead of expensive DB inRandomOrder()
+            ->groupBy('product_type');
 
-        $topRatedProducts = Product::active()
-            ->where('product_type', '3') // Top Rated
+        $featuredProducts = $allProducts->get(1, collect())->take(18);
+        $onSaleProducts = $allProducts->get(2, collect())->take(18);
+        $topRatedProducts = $allProducts->get(3, collect())->take(18);
+        
+        // Fallback: If no products by type, get general products (using scopes)
+        $products = Product::active()
+            ->withFirstImage()
+            ->selectMinimal()
             ->inRandomOrder()
             ->take(18)
             ->get();
-
-        // Fallback: If no products by type, get general products
-        $products = Product::active()->inRandomOrder()->take(18)->get();
 
         // Get random categories that have at least 6 active products
         $randomCategories = Category::active()
@@ -54,18 +54,28 @@ class HomeController extends Controller
             ->take(4)
             ->get();
 
-        // Get products for each category
+        // Optimized: Load all category products in single query with eager loading (using scopes)
         $categoryProducts = [];
-        foreach ($randomCategories as $category) {
-            $categoryProducts[$category->id] = Product::active()
-                ->where('category_id', $category->id)
-                ->inRandomOrder()
-                ->take(12) // Show 12 products per category
-                ->get();
+        if ($randomCategories->isNotEmpty()) {
+            $allCategoryProducts = Product::active()
+                ->whereIn('category_id', $randomCategories->pluck('id'))
+                ->withFirstImage()
+                ->selectMinimal()
+                ->get()
+                ->shuffle()
+                ->groupBy('category_id');
+
+            foreach ($randomCategories as $category) {
+                $categoryProducts[$category->id] = $allCategoryProducts
+                    ->get($category->id, collect())
+                    ->take(12);
+            }
         }
 
-        // Get Instagram link and posts from settings
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        // Cache settings query
+        $settings = \Illuminate\Support\Facades\Cache::remember('homepage_settings', 3600, function() {
+            return \App\Models\Setting::pluck('value', 'key')->toArray();
+        });
         $instagramLink = $settings['social_instagram'] ?? null;
         
         // Fetch Instagram posts if API is configured

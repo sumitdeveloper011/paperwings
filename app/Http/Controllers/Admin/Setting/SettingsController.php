@@ -71,6 +71,9 @@ class SettingsController extends Controller
             'footer_tagline' => 'nullable|string|max:500',
             'working_hours' => 'nullable|string|max:500',
             'copyright_text' => 'nullable|string|max:255',
+            'google_analytics_id' => 'nullable|string|max:50',
+            'google_analytics_enabled' => 'nullable|in:0,1',
+            'google_analytics_ecommerce' => 'nullable|in:0,1',
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
@@ -183,6 +186,11 @@ class SettingsController extends Controller
             $copyrightText = str_replace('{YEAR}', date('Y'), $copyrightText);
         }
         $this->updateSetting('copyright_text', $copyrightText);
+
+        // Update Google Analytics settings
+        $this->updateSetting('google_analytics_id', $validated['google_analytics_id'] ?? '');
+        $this->updateSetting('google_analytics_enabled', $validated['google_analytics_enabled'] ?? '0');
+        $this->updateSetting('google_analytics_ecommerce', $validated['google_analytics_ecommerce'] ?? '0');
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'Settings updated successfully!');

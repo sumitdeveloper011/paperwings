@@ -21,10 +21,31 @@
         <!-- Right Section -->
         <div class="topbar-right">
             <div class="topbar-notifications">
-                <button class="notification-btn">
+                <button class="notification-btn" id="notificationBtn"
+                        data-url="{{ route('admin.notifications.index') }}"
+                        data-mark-read-url="{{ route('admin.notifications.read', ['order' => ':id']) }}"
+                        data-mark-all-read-url="{{ route('admin.notifications.readAll') }}">
                     <i class="fas fa-bell"></i>
-                    <span class="notification-badge">3</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                 </button>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-dropdown__header">
+                        <h3>Notifications</h3>
+                        <button class="notification-mark-all" id="markAllReadBtn" style="display: none;">
+                            <i class="fas fa-check-double"></i> Mark all as read
+                        </button>
+                    </div>
+                    <div class="notification-dropdown__body" id="notificationList">
+                        <div class="notification-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                    <div class="notification-dropdown__footer">
+                        <a href="{{ route('admin.orders.index') }}" class="notification-view-all">
+                            View All Orders <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
             </div>
             <div class="topbar-user">
                 <div class="user-info" id="userDropdown">

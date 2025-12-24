@@ -45,8 +45,30 @@ class ProductController extends Controller
                     'message' => 'Product not found. The product you are looking for does not exist.'
                 ]);
             }
-            $product = Product::with('images')->with('accordions')->active()->where('slug', $slug)->first();
-            $relatedProducts = Product::with('images')->active()->where('eposnow_category_id', $product->eposnow_category_id)->where('id', '!=', $product->id)->take(4)->get();
+            $product = Product::with([
+                'images' => function($query) {
+                    $query->select('id', 'product_id', 'image')->orderBy('id');
+                },
+                'accordions',
+                'category:id,name,slug'
+            ])
+            ->active()
+            ->where('slug', $slug)
+            ->firstOrFail();
+            
+            $relatedProducts = Product::with([
+                'images' => function($query) {
+                    $query->select('id', 'product_id', 'image')
+                          ->orderBy('id')
+                          ->limit(1);
+                }
+            ])
+            ->active()
+            ->where('eposnow_category_id', $product->eposnow_category_id)
+            ->where('id', '!=', $product->id)
+            ->select('id', 'name', 'slug', 'total_price', 'discount_price', 'eposnow_category_id', 'status')
+            ->take(4)
+            ->get();
             if (!$product) {
                 return view('frontend.errors.404', [
                     'title' => 'Product Not Found',
@@ -86,26 +108,17 @@ class ProductController extends Controller
             $minPrice = $request->get('min_price');
             $maxPrice = $request->get('max_price');
 
-            // Calculate min and max prices from all products in category (for filter display)
-            $allProducts = Product::where('eposnow_category_id', $category->eposnow_category_id)
+            // Optimized: Use database aggregation instead of loading all products
+            $priceRange = Product::where('eposnow_category_id', $category->eposnow_category_id)
                 ->active()
-                ->get();
+                ->selectRaw('
+                    MIN(COALESCE(discount_price, total_price)) as min_price,
+                    MAX(COALESCE(discount_price, total_price)) as max_price
+                ')
+                ->first();
 
-            $priceMin = 0;
-            $priceMax = 0;
-
-            if ($allProducts->count() > 0) {
-                $prices = $allProducts->map(function($product) {
-                    return $product->discount_price ?? $product->total_price;
-                })->filter()->values();
-
-                if ($prices->count() > 0) {
-                    $priceMin = floor($prices->min());
-                    $priceMax = ceil($prices->max());
-                    // Round up to nearest 10 for better display
-                    $priceMax = ceil($priceMax / 10) * 10;
-                }
-            }
+            $priceMin = floor($priceRange->min_price ?? 0);
+            $priceMax = ceil(($priceRange->max_price ?? 0) / 10) * 10;
 
             // Build query
             $query = Product::where('eposnow_category_id', $category->eposnow_category_id)

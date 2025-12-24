@@ -103,4 +103,39 @@
             padding: 0.75rem 2rem;
         }
     </style>
+
+    @php
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $gaId = $settings['google_analytics_id'] ?? '';
+        $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
+        $gaEcommerce = isset($settings['google_analytics_ecommerce']) && $settings['google_analytics_ecommerce'] == '1';
+    @endphp
+
+    @if($gaEnabled && $gaEcommerce && !empty($gaId) && $order->payment_status === 'paid')
+    <!-- Google Analytics E-commerce Tracking -->
+    <script>
+        @if($order->items->count() > 0)
+        // Track purchase event
+        gtag('event', 'purchase', {
+            'transaction_id': '{{ $order->order_number }}',
+            'value': {{ number_format($order->total, 2, '.', '') }},
+            'currency': 'NZD',
+            'tax': {{ number_format($order->tax ?? 0, 2, '.', '') }},
+            'shipping': {{ number_format($order->shipping ?? 0, 2, '.', '') }},
+            'coupon': '{{ $order->coupon_code ?? '' }}',
+            'items': [
+                @foreach($order->items as $item)
+                {
+                    'item_id': '{{ $item->product_id }}',
+                    'item_name': '{{ addslashes($item->product_name) }}',
+                    'item_category': '{{ $item->product->category->name ?? "Uncategorized" }}',
+                    'price': {{ number_format($item->price, 2, '.', '') }},
+                    'quantity': {{ $item->quantity }}
+                }@if(!$loop->last),@endif
+                @endforeach
+            ]
+        });
+        @endif
+    </script>
+    @endif
 @endsection

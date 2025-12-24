@@ -36,11 +36,40 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
-        
-        // Share settings with frontend header
+
+        // Query logging for development environment
+        if (app()->environment('local')) {
+            \DB::listen(function ($query) {
+                // Log slow queries (>100ms)
+                if ($query->time > 100) {
+                    \Log::warning('Slow Query Detected', [
+                        'sql' => $query->sql,
+                        'bindings' => $query->bindings,
+                        'time' => $query->time . 'ms',
+                    ]);
+                }
+
+                // Log queries with N+1 potential (multiple similar queries)
+                static $queryCounts = [];
+                $queryKey = md5($query->sql);
+                $queryCounts[$queryKey] = ($queryCounts[$queryKey] ?? 0) + 1;
+
+                if ($queryCounts[$queryKey] > 5) {
+                    \Log::info('Potential N+1 Query Pattern', [
+                        'sql' => $query->sql,
+                        'count' => $queryCounts[$queryKey],
+                        'time' => $query->time . 'ms',
+                    ]);
+                }
+            });
+        }
+
+        // Share settings with frontend header (cached)
         view()->composer('include.frontend.header', function ($view) {
-            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-            
+            $settings = \Illuminate\Support\Facades\Cache::remember('header_settings', 3600, function() {
+                return \App\Models\Setting::pluck('value', 'key')->toArray();
+            });
+
             // Get first phone number
             $phone = null;
             if (isset($settings['phones']) && is_string($settings['phones'])) {
@@ -49,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
             } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
                 $phone = !empty($settings['phones']) ? $settings['phones'][0] : null;
             }
-            
+
             // Get social links (only those with URLs)
             $socialLinks = [];
             if (!empty($settings['social_facebook'])) {
@@ -70,17 +99,20 @@ class AppServiceProvider extends ServiceProvider
             if (!empty($settings['social_pinterest'])) {
                 $socialLinks['pinterest'] = $settings['social_pinterest'];
             }
-            
-            // Get active categories for menu
-            $categories = \App\Models\Category::active()
-                ->ordered()
-                ->withCount(['products' => function($query) {
-                    $query->where('status', 1);
-                }])
-                ->having('products_count', '>', 0) // Only categories with products
-                ->take(10) // Limit to 10 categories
-                ->get();
-            
+
+            // Get active categories for menu (cached)
+            $categories = \Illuminate\Support\Facades\Cache::remember('header_categories', 1800, function() {
+                return \App\Models\Category::active()
+                    ->ordered()
+                    ->withCount(['products' => function($query) {
+                        $query->where('status', 1);
+                    }])
+                    ->having('products_count', '>', 0)
+                    ->addSelect('id', 'name', 'slug')
+                    ->take(10)
+                    ->get();
+            });
+
             // Get user data if authenticated
             $userData = null;
             if (auth()->check()) {
@@ -93,7 +125,7 @@ class AppServiceProvider extends ServiceProvider
                     'initial' => strtoupper(substr($user->first_name ?? ($user->name ?? 'U'), 0, 1))
                 ];
             }
-            
+
             $view->with([
                 'headerPhone' => $phone,
                 'socialLinks' => $socialLinks,
@@ -102,16 +134,18 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        // Share settings with frontend footer
+        // Share settings with frontend footer (cached)
         view()->composer('include.frontend.footer', function ($view) {
-            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-            
+            $settings = \Illuminate\Support\Facades\Cache::remember('footer_settings', 3600, function() {
+                return \App\Models\Setting::pluck('value', 'key')->toArray();
+            });
+
             // Get logo
             $logo = $settings['logo'] ?? null;
-            
+
             // Get footer tagline/description (use meta_description as fallback)
             $footerTagline = $settings['footer_tagline'] ?? $settings['meta_description'] ?? 'We Promise We\'ll Get Back To You Promptly- Your Gifting Needs Are Always On Our Minds!';
-            
+
             // Get social links (only those with URLs)
             $footerSocialLinks = [];
             if (!empty($settings['social_facebook'])) {
@@ -132,20 +166,28 @@ class AppServiceProvider extends ServiceProvider
             if (!empty($settings['social_pinterest'])) {
                 $footerSocialLinks['pinterest'] = $settings['social_pinterest'];
             }
-            
-            // Get pages for useful links (limit to 6)
-            $footerPages = \App\Models\Page::orderBy('created_at', 'desc')->take(6)->get();
-            
-            // Get categories for shop links (limit to 5)
-            $footerCategories = \App\Models\Category::active()
-                ->ordered()
-                ->withCount(['products' => function($query) {
-                    $query->where('status', 1);
-                }])
-                ->having('products_count', '>', 0)
-                ->take(5)
-                ->get();
-            
+
+            // Get pages for useful links (cached)
+            $footerPages = \Illuminate\Support\Facades\Cache::remember('footer_pages', 1800, function() {
+                return \App\Models\Page::select('id', 'title', 'slug')
+                    ->orderBy('created_at', 'desc')
+                    ->take(6)
+                    ->get();
+            });
+
+            // Get categories for shop links (cached)
+            $footerCategories = \Illuminate\Support\Facades\Cache::remember('footer_categories', 1800, function() {
+                return \App\Models\Category::active()
+                    ->ordered()
+                    ->withCount(['products' => function($query) {
+                        $query->where('status', 1);
+                    }])
+                    ->having('products_count', '>', 0)
+                    ->addSelect('id', 'name', 'slug')
+                    ->take(5)
+                    ->get();
+            });
+
             // Get contact information
             $phones = [];
             if (isset($settings['phones']) && is_string($settings['phones'])) {
@@ -154,7 +196,7 @@ class AppServiceProvider extends ServiceProvider
                 $phones = $settings['phones'];
             }
             $primaryPhone = !empty($phones) ? $phones[0] : null;
-            
+
             $emails = [];
             if (isset($settings['emails']) && is_string($settings['emails'])) {
                 $emails = json_decode($settings['emails'], true) ?? [];
@@ -162,7 +204,7 @@ class AppServiceProvider extends ServiceProvider
                 $emails = $settings['emails'];
             }
             $primaryEmail = !empty($emails) ? $emails[0] : null;
-            
+
             // Get working hours (from settings or default)
             $workingHours = $settings['working_hours'] ?? 'Monday - Friday: 9:00-20:00' . "\n" . 'Saturday: 11:00 - 15:00';
             // Convert line breaks to HTML
@@ -170,13 +212,13 @@ class AppServiceProvider extends ServiceProvider
                 // Escape HTML first for security, then convert newlines to <br> tags
                 $workingHours = nl2br(htmlspecialchars(trim($workingHours), ENT_QUOTES, 'UTF-8'), false);
             }
-            
+
             // Get address
             $address = $settings['address'] ?? null;
-            
+
             // Get copyright text
             $copyrightText = $settings['copyright_text'] ?? 'Copyright © ' . date('Y') . ' Paper Wings. All rights reserved.';
-            
+
             $view->with([
                 'footerLogo' => $logo,
                 'footerTagline' => $footerTagline,

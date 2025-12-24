@@ -7,6 +7,25 @@
     <title>{{ $title ?? 'Paper Wings' }}</title>
     @include('common.css-frontend.styles')
     @stack('head')
+    
+    @php
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $gaId = $settings['google_analytics_id'] ?? '';
+        $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
+    @endphp
+    
+    @if($gaEnabled && !empty($gaId))
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ $gaId }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ $gaId }}', {
+            'send_page_view': true
+        });
+    </script>
+    @endif
 </head>
 <body>
     @include('include.frontend.header')

@@ -427,29 +427,19 @@ class AccountController extends Controller
             ->paginate(10);
         
         // Load product images efficiently
+        // Use ProductImageService for efficient image loading
         $productIds = $orders->pluck('items')->flatten()->pluck('product_id')->unique()->filter();
         if ($productIds->isNotEmpty()) {
-            $productImages = DB::table('products_images')
-                ->select('product_id', DB::raw('MIN(id) as min_id'))
-                ->whereIn('product_id', $productIds)
-                ->groupBy('product_id')
-                ->pluck('min_id', 'product_id');
-            
-            $images = DB::table('products_images')
-                ->whereIn('id', $productImages->values())
-                ->select('id', 'product_id', 'image')
-                ->get()
-                ->keyBy('product_id');
+            $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
             
             // Attach first image to each product
             $orders->each(function($order) use ($images) {
                 $order->items->each(function($item) use ($images) {
                     if ($item->product) {
-                        if ($images->has($item->product_id)) {
-                            $item->product->setAttribute('main_image', asset('storage/' . $images[$item->product_id]->image));
-                        } else {
-                            $item->product->setAttribute('main_image', asset('assets/images/placeholder.jpg'));
-                        }
+                        $image = $images->get($item->product_id);
+                        $item->product->setAttribute('main_image', 
+                            $image ? $image->image_url : asset('assets/images/placeholder.jpg')
+                        );
                     }
                 });
             });
@@ -475,29 +465,18 @@ class AccountController extends Controller
             ->with(['items.product', 'billingRegion', 'shippingRegion'])
             ->firstOrFail();
         
-        // Load product images efficiently
+        // Use ProductImageService for efficient image loading
         $productIds = $order->items->pluck('product_id')->unique()->filter();
         if ($productIds->isNotEmpty()) {
-            $productImages = DB::table('products_images')
-                ->select('product_id', DB::raw('MIN(id) as min_id'))
-                ->whereIn('product_id', $productIds)
-                ->groupBy('product_id')
-                ->pluck('min_id', 'product_id');
-            
-            $images = DB::table('products_images')
-                ->whereIn('id', $productImages->values())
-                ->select('id', 'product_id', 'image')
-                ->get()
-                ->keyBy('product_id');
+            $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
             
             // Attach first image to each product
             $order->items->each(function($item) use ($images) {
                 if ($item->product) {
-                    if ($images->has($item->product_id)) {
-                        $item->product->setAttribute('main_image', asset('storage/' . $images[$item->product_id]->image));
-                    } else {
-                        $item->product->setAttribute('main_image', asset('assets/images/placeholder.jpg'));
-                    }
+                    $image = $images->get($item->product_id);
+                    $item->product->setAttribute('main_image', 
+                        $image ? $image->image_url : asset('assets/images/placeholder.jpg')
+                    );
                 }
             });
         }

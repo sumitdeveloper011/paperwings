@@ -21,15 +21,26 @@ class SearchController extends Controller
             return response()->json(['products' => []]);
         }
 
-        // Fast search with indexes - prefix matching for better performance
-        $products = Product::with(['category', 'images'])
-            ->active()
+        // Optimized search with indexes - prefix matching for better performance
+        // Use selectMinimal scope and withFirstImage for consistency
+        $products = Product::active()
+            ->withFirstImage()
+            ->with(['category:id,name,slug'])
+            ->selectMinimal()
             ->where(function($q) use ($query) {
+                // Prioritize prefix matches (uses index better)
                 $q->where('name', 'like', "{$query}%")
                   ->orWhere('name', 'like', "% {$query}%")
                   ->orWhere('slug', 'like', "{$query}%");
             })
-            ->select('id', 'name', 'slug', 'total_price', 'discount_price', 'category_id')
+            ->orderByRaw("
+                CASE 
+                    WHEN name LIKE ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN slug LIKE ? THEN 3
+                    ELSE 4
+                END
+            ", ["{$query}%", "% {$query}%", "{$query}%"])
             ->limit(8)
             ->get()
             ->map(function($product) {
@@ -37,9 +48,9 @@ class SearchController extends Controller
                     'id' => $product->id,
                     'name' => $product->name,
                     'slug' => $product->slug,
-                    'price' => $product->total_price,
-                    'discount_price' => $product->discount_price,
-                    'image' => $product->main_image,
+                    'price' => (float) $product->total_price,
+                    'discount_price' => $product->discount_price ? (float) $product->discount_price : null,
+                    'image' => $product->images->first()?->image_url ?? asset('assets/images/placeholder.jpg'),
                     'category' => $product->category->name ?? '',
                     'url' => route('product.detail', $product->slug)
                 ];
@@ -59,17 +70,26 @@ class SearchController extends Controller
         $minPrice = $request->get('min_price');
         $maxPrice = $request->get('max_price');
 
-        $productsQuery = Product::with(['category', 'images'])
-            ->active();
+        // Use scopes for consistency and performance
+        $productsQuery = Product::active()
+            ->withFirstImage()
+            ->with(['category:id,name,slug'])
+            ->selectMinimal();
 
-        // Search query
+        // Optimized search query - prioritize prefix matches for index usage
         if ($query) {
             $productsQuery->where(function($q) use ($query) {
+                // Prefix matches first (uses index)
                 $q->where('name', 'like', "{$query}%")
                   ->orWhere('name', 'like', "% {$query}%")
-                  ->orWhere('slug', 'like', "{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%")
-                  ->orWhere('short_description', 'like', "%{$query}%");
+                  ->orWhere('slug', 'like', "{$query}%");
+                
+                // Full-text search only if prefix matches don't yield enough results
+                // This is more efficient than always searching description
+                if (strlen($query) > 3) {
+                    $q->orWhere('description', 'like', "%{$query}%")
+                      ->orWhere('short_description', 'like', "%{$query}%");
+                }
             });
         }
 

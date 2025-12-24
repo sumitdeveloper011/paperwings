@@ -83,6 +83,22 @@
                     <span>Subscriptions</span>
                 </a>
             </li>
+            @php
+                $gaSettings = \App\Models\Setting::whereIn('key', ['google_analytics_id', 'google_analytics_enabled'])
+                    ->pluck('value', 'key')
+                    ->toArray();
+                $gaId = $gaSettings['google_analytics_id'] ?? '';
+                $gaEnabled = isset($gaSettings['google_analytics_enabled']) && $gaSettings['google_analytics_enabled'] == '1';
+            @endphp
+            @if($gaEnabled && !empty($gaId))
+            <li class="sidebar-item">
+                <a href="https://analytics.google.com" target="_blank" class="sidebar-link" data-tooltip="Google Analytics">
+                    <i class="fab fa-google"></i>
+                    <span>Analytics</span>
+                    <i class="fas fa-external-link-alt sidebar-link__external"></i>
+                </a>
+            </li>
+            @endif
         </ul>
     </nav>
 </aside>

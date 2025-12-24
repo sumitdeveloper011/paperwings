@@ -118,6 +118,35 @@ class Product extends Model
         return $query->where('brand_id', $brandId);
     }
 
+    public function scopeFeatured($query)
+    {
+        return $query->where('status', 1)->where('product_type', 1);
+    }
+
+    public function scopeOnSale($query)
+    {
+        return $query->where('status', 1)->where('product_type', 2);
+    }
+
+    public function scopeTopRated($query)
+    {
+        return $query->where('status', 1)->where('product_type', 3);
+    }
+
+    public function scopeWithFirstImage($query)
+    {
+        return $query->with(['images' => function($q) {
+            $q->select('id', 'product_id', 'image')
+              ->orderBy('id')
+              ->limit(1);
+        }]);
+    }
+
+    public function scopeSelectMinimal($query)
+    {
+        return $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'product_type', 'status', 'category_id', 'eposnow_category_id');
+    }
+
     // Price calculation accessors (15% tax)
     public function getPriceWithoutTaxAttribute()
     {
@@ -142,13 +171,37 @@ class Product extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
+    /**
+     * Get main image URL - optimized to prevent N+1 queries
+     * Always eager load images relationship when using this
+     */
     public function getMainImageAttribute()
     {
+        // Check if images are already loaded (eager loaded)
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->image_url;
+        }
+        
+        // Fallback: query only if not loaded (should be avoided)
+        // This will trigger N+1 if images aren't eager loaded
         $firstImage = $this->images()->first();
         if ($firstImage) {
             return $firstImage->image_url;
         }
 
+        return asset('assets/images/placeholder.jpg');
+    }
+    
+    /**
+     * Get main image URL safely (always checks loaded relationship first)
+     * Use this method when you're not sure if images are eager loaded
+     */
+    public function getMainImageUrlAttribute(): string
+    {
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->image_url;
+        }
+        
         return asset('assets/images/placeholder.jpg');
     }
 

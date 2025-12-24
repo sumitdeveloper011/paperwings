@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\Coupon\CouponController;
 use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Order\OrderController;
 use App\Http\Controllers\Admin\Subscription\SubscriptionController;
+use App\Http\Controllers\Admin\Notification\NotificationController;
 
 // Guest routes (login)
 Route::middleware('guest')->group(function () {
@@ -81,6 +82,11 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');
     Route::get('subscriptions/export', [SubscriptionController::class, 'export'])->name('subscriptions.export');
+
+    // Notification routes
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{order}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 
     // Profile routes
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');

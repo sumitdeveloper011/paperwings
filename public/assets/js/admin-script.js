@@ -143,14 +143,177 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Notification Functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const notificationBtn = document.querySelector('.notification-btn');
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationBadge = document.getElementById('notificationBadge');
+    const notificationList = document.getElementById('notificationList');
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
     
-    if (notificationBtn) {
-        notificationBtn.addEventListener('click', function() {
-            // Add notification functionality here
-            console.log('Notifications clicked');
+    let notificationPollInterval;
+    let isDropdownOpen = false;
+
+    // Fetch notifications
+    function fetchNotifications() {
+        const notificationsUrl = document.getElementById('notificationBtn')?.dataset.url || '/admin/notifications';
+        fetch(notificationsUrl, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationBadge(data.unread_count);
+                if (isDropdownOpen) {
+                    renderNotifications(data.notifications);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching notifications:', error);
         });
     }
+
+    // Update notification badge
+    function updateNotificationBadge(count) {
+        if (count > 0) {
+            notificationBadge.textContent = count > 99 ? '99+' : count;
+            notificationBadge.style.display = 'block';
+            markAllReadBtn.style.display = count > 0 ? 'block' : 'none';
+        } else {
+            notificationBadge.style.display = 'none';
+            markAllReadBtn.style.display = 'none';
+        }
+    }
+
+    // Render notifications list
+    function renderNotifications(notifications) {
+        if (notifications.length === 0) {
+            notificationList.innerHTML = `
+                <div class="notification-empty">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No new notifications</p>
+                </div>
+            `;
+            return;
+        }
+
+        const notificationsHtml = notifications.map(notif => {
+            const statusClass = notif.status === 'pending' ? 'warning' : 
+                               notif.status === 'delivered' ? 'success' : 'info';
+            return `
+                <div class="notification-item" data-order-id="${notif.id}">
+                    <div class="notification-item__icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="notification-item__content">
+                        <div class="notification-item__header">
+                            <strong>New Order: ${notif.order_number}</strong>
+                            <span class="notification-time">${notif.time_ago}</span>
+                        </div>
+                        <div class="notification-item__body">
+                            <p>Customer: ${notif.customer_name}</p>
+                            <p>Total: $${notif.total}</p>
+                            <span class="status-badge status-badge--${statusClass}">${notif.status}</span>
+                        </div>
+                    </div>
+                    <div class="notification-item__action">
+                        <a href="${notif.url}" class="notification-view-btn" onclick="markNotificationAsRead(${notif.id})">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        notificationList.innerHTML = notificationsHtml;
+    }
+
+    // Mark notification as read
+    window.markNotificationAsRead = function(orderId) {
+        const markReadUrl = document.getElementById('notificationBtn')?.dataset.markReadUrl || '/admin/notifications';
+        const url = markReadUrl.replace(':id', orderId);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fetchNotifications();
+            }
+        })
+        .catch(error => {
+            console.error('Error marking notification as read:', error);
+        });
+    };
+
+    // Mark all as read
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const markAllReadUrl = document.getElementById('notificationBtn')?.dataset.markAllReadUrl || '/admin/notifications/read-all';
+            fetch(markAllReadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    fetchNotifications();
+                }
+            })
+            .catch(error => {
+                console.error('Error marking all as read:', error);
+            });
+        });
+    }
+
+    // Toggle notification dropdown
+    if (notificationBtn && notificationDropdown) {
+        notificationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            isDropdownOpen = !isDropdownOpen;
+            
+            if (isDropdownOpen) {
+                notificationDropdown.classList.add('show');
+                fetchNotifications();
+            } else {
+                notificationDropdown.classList.remove('show');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                notificationDropdown.classList.remove('show');
+                isDropdownOpen = false;
+            }
+        });
+    }
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Poll for new notifications every 30 seconds
+    notificationPollInterval = setInterval(fetchNotifications, 30000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (notificationPollInterval) {
+            clearInterval(notificationPollInterval);
+        }
+    });
 });
 
 // Active Navigation Highlighting

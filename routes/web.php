@@ -19,11 +19,11 @@ Route::middleware('prevent.admin')->group(function () {
     Route::post('/register', [AuthController::class, 'store'])->name('register.store');
     Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
     Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
-    
+
     // Password reset routes
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
-    
+
     // Email verification routes
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
         ->name('verification.verify');
@@ -63,8 +63,8 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
 });
 
-// Checkout routes (prevent admin access)
-Route::middleware('prevent.admin')->group(function () {
+// Checkout routes (require authentication, prevent admin access)
+Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('checkout.apply-coupon');
     Route::post('/checkout/remove-coupon', [CheckoutController::class, 'removeCoupon'])->name('checkout.remove-coupon');

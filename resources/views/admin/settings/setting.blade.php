@@ -702,6 +702,169 @@
                     </div>
                 </div>
 
+                <!-- Google Analytics Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fab fa-google"></i>
+                            Google Analytics
+                        </h3>
+                        <p class="modern-card__subtitle">Track your website visitors and e-commerce performance</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <!-- Google Analytics ID (GA4) -->
+                        <div class="form-group-modern">
+                            <label for="google_analytics_id" class="form-label-modern">
+                                <i class="fas fa-chart-line"></i>
+                                Google Analytics Measurement ID (GA4)
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-chart-line input-icon"></i>
+                                <input type="text"
+                                       class="form-input-modern @error('google_analytics_id') is-invalid @enderror"
+                                       id="google_analytics_id"
+                                       name="google_analytics_id"
+                                       value="{{ old('google_analytics_id', $settings['google_analytics_id'] ?? '') }}"
+                                       placeholder="G-XXXXXXXXXX">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Your Google Analytics 4 Measurement ID (starts with "G-"). Find it in Admin → Data Streams → Your Stream → Measurement ID
+                            </div>
+                            @error('google_analytics_id')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Google Analytics Status -->
+                        <div class="form-group-modern">
+                            <div class="form-check-modern">
+                                <input type="checkbox"
+                                       class="form-check-input-modern"
+                                       id="google_analytics_enabled"
+                                       name="google_analytics_enabled"
+                                       value="1"
+                                       {{ old('google_analytics_enabled', $settings['google_analytics_enabled'] ?? '0') == '1' ? 'checked' : '' }}>
+                                <label class="form-check-label-modern" for="google_analytics_enabled">
+                                    <i class="fas fa-toggle-on"></i>
+                                    Enable Google Analytics Tracking
+                                </label>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                When enabled, Google Analytics will track page views, events, and e-commerce transactions on your website.
+                            </div>
+                        </div>
+
+                        <!-- E-commerce Tracking -->
+                        <div class="form-group-modern">
+                            <div class="form-check-modern">
+                                <input type="checkbox"
+                                       class="form-check-input-modern"
+                                       id="google_analytics_ecommerce"
+                                       name="google_analytics_ecommerce"
+                                       value="1"
+                                       {{ old('google_analytics_ecommerce', $settings['google_analytics_ecommerce'] ?? '1') == '1' ? 'checked' : '' }}>
+                                <label class="form-check-label-modern" for="google_analytics_ecommerce">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Enable E-commerce Tracking
+                                </label>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Track purchase events, revenue, and product performance. Requires Enhanced E-commerce to be enabled in your GA4 property.
+                            </div>
+                        </div>
+
+                        <!-- Current Status Display -->
+                        <div class="form-group-modern">
+                            <div class="ga-status-box">
+                                <h4 class="ga-status-box__title">
+                                    <i class="fas fa-info-circle"></i>
+                                    Current Configuration Status
+                                </h4>
+                                <div class="ga-status-box__content">
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fas fa-fingerprint"></i>
+                                            Measurement ID:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            @if(!empty($settings['google_analytics_id']))
+                                                <code>{{ $settings['google_analytics_id'] }}</code>
+                                                <span class="status-badge status-badge--success">Configured</span>
+                                            @else
+                                                <span class="text-muted">Not Set</span>
+                                                <span class="status-badge status-badge--danger">Not Configured</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fas fa-toggle-on"></i>
+                                            Tracking Status:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            @if(isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1')
+                                                <span class="status-badge status-badge--success">Active</span>
+                                            @else
+                                                <span class="status-badge status-badge--warning">Inactive</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fas fa-shopping-cart"></i>
+                                            E-commerce Tracking:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            @if(isset($settings['google_analytics_ecommerce']) && $settings['google_analytics_ecommerce'] == '1')
+                                                <span class="status-badge status-badge--success">Enabled</span>
+                                            @else
+                                                <span class="status-badge status-badge--secondary">Disabled</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    @if(!empty($settings['google_analytics_id']) && isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1')
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fas fa-external-link-alt"></i>
+                                            View Analytics:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            <a href="https://analytics.google.com" target="_blank" class="ga-link">
+                                                Open Google Analytics Dashboard
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        </span>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Setup Instructions -->
+                        <div class="form-group-modern">
+                            <div class="info-box">
+                                <h4 class="info-box__title">
+                                    <i class="fas fa-book"></i>
+                                    Setup Instructions
+                                </h4>
+                                <ol class="info-box__list">
+                                    <li>Go to <a href="https://analytics.google.com" target="_blank">Google Analytics</a> and create a GA4 property (if you don't have one)</li>
+                                    <li>Navigate to Admin → Data Streams → Web → Your Stream</li>
+                                    <li>Copy your Measurement ID (format: G-XXXXXXXXXX)</li>
+                                    <li>Paste it in the field above and enable tracking</li>
+                                    <li>Enable Enhanced E-commerce in your GA4 property settings for purchase tracking</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Footer Settings Section -->
                 <div class="modern-card">
                     <div class="modern-card__header">
@@ -1019,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function togglePassword(inputId) {
         const input = document.getElementById(inputId);
         const toggle = document.getElementById('toggle_' + inputId);
-        
+
         if (input.type === 'password') {
             input.type = 'text';
             toggle.classList.remove('fa-eye');
@@ -1036,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const button = this;
         const resultDiv = document.getElementById('instagramTestResult');
         const originalText = button.innerHTML;
-        
+
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
         resultDiv.style.display = 'block';
