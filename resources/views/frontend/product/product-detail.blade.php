@@ -1,4 +1,74 @@
 @extends('layouts.frontend.main')
+
+@push('head')
+<!-- Meta Tags -->
+<meta name="description" content="{{ $product->meta_description ?? $product->short_description ?? strip_tags($product->description) }}">
+<meta name="keywords" content="{{ $product->meta_keywords ?? $product->tags->pluck('name')->implode(', ') }}">
+
+<!-- Open Graph -->
+<meta property="og:title" content="{{ $product->meta_title ?? $product->name }}">
+<meta property="og:description" content="{{ $product->meta_description ?? $product->short_description ?? strip_tags($product->description) }}">
+<meta property="og:image" content="{{ $product->main_image }}">
+<meta property="og:url" content="{{ route('product.detail', $product->slug) }}">
+<meta property="og:type" content="product">
+<meta property="og:site_name" content="{{ config('app.name') }}">
+
+<!-- Product Specific -->
+<meta property="product:price:amount" content="{{ $product->discount_price ?? $product->total_price }}">
+<meta property="product:price:currency" content="NZD">
+<meta property="product:availability" content="in stock">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $product->meta_title ?? $product->name }}">
+<meta name="twitter:description" content="{{ $product->meta_description ?? $product->short_description ?? strip_tags($product->description) }}">
+<meta name="twitter:image" content="{{ $product->main_image }}">
+
+<!-- Schema.org Structured Data (JSON-LD) -->
+<script type="application/ld+json">
+{
+  "@@context": "https://schema.org/",
+  "@@type": "Product",
+  "name": "{{ $product->name }}",
+  "image": "{{ $product->main_image }}",
+  "description": "{{ strip_tags($product->description ?? $product->short_description) }}",
+  "sku": "{{ $product->barcode ?? $product->id }}",
+  "brand": {
+    "@@type": "Brand",
+    "name": "{{ $product->brand->name ?? 'Paper Wings' }}"
+  },
+  "offers": {
+    "@@type": "Offer",
+    "url": "{{ route('product.detail', $product->slug) }}",
+    "priceCurrency": "NZD",
+    "price": "{{ $product->discount_price ?? $product->total_price }}",
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@@type": "Organization",
+      "name": "{{ config('app.name') }}"
+    }
+  }@if($product->reviews_count > 0),
+  "aggregateRating": {
+    "@@type": "AggregateRating",
+    "ratingValue": "{{ $product->average_rating }}",
+    "reviewCount": "{{ $product->reviews_count }}"
+  }@endif
+}
+</script>
+
+<!-- Product Zoom CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css">
+<style>
+    .product-main-image img {
+        cursor: zoom-in;
+        transition: transform 0.3s;
+    }
+    .product-main-image img:hover {
+        transform: scale(1.05);
+    }
+</style>
+@endpush
+
 @section('content')
     <section class="page-header">
         <div class="container">
@@ -24,34 +94,42 @@
                     <div class="product-images">
                         @if($product->images && $product->images->count() > 0)
                             <div class="product-main-image">
-                                <img src="{{ $product->images->first()->image_url }}"
-                                     alt="{{ $product->name }}"
-                                     class="main-img"
-                                     id="mainImage">
+                                <a href="{{ $product->images->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                    <img src="{{ $product->images->first()->image_url }}"
+                                         alt="{{ $product->name }}"
+                                         class="main-img"
+                                         id="mainImage">
+                                </a>
                             </div>
                             <div class="product-thumbnails">
                                 @foreach($product->images as $index => $image)
                                     <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
                                          data-image="{{ $image->image_url }}">
-                                        <img src="{{ $image->image_url }}"
-                                             alt="{{ $product->name }} - Image {{ $index + 1 }}"
-                                             loading="lazy">
+                                        <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $index + 1 }}">
+                                            <img src="{{ $image->image_url }}"
+                                                 alt="{{ $product->name }} - Image {{ $index + 1 }}"
+                                                 loading="lazy">
+                                        </a>
                                     </div>
                                 @endforeach
                             </div>
                         @else
                             <!-- Fallback if no images -->
                             <div class="product-main-image">
-                                <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
-                                     alt="{{ $product->name }}"
-                                     class="main-img"
-                                     id="mainImage">
+                                <a href="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                    <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
+                                         alt="{{ $product->name }}"
+                                         class="main-img"
+                                         id="mainImage">
+                                </a>
                             </div>
                             <div class="product-thumbnails">
                                 <div class="thumbnail-item active" data-image="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}">
-                                    <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
-                                         alt="{{ $product->name }}"
-                                         loading="lazy">
+                                    <a href="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                        <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
+                                             alt="{{ $product->name }}"
+                                             loading="lazy">
+                                    </a>
                                 </div>
                             </div>
                         @endif
@@ -63,15 +141,23 @@
                     <div class="product-info">
                         <h1 class="product-title">{{ $product->name }}</h1>
                         <div class="product-rating">
+                            @php
+                                $avgRating = $product->average_rating ?? 0;
+                                $reviewsCount = $product->reviews_count ?? 0;
+                            @endphp
                             <div class="stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star-half-alt"></i>
+                                @for($i = 1; $i <= 5; $i++)
+                                    @if($i <= floor($avgRating))
+                                        <i class="fas fa-star active"></i>
+                                    @elseif($i - 0.5 <= $avgRating)
+                                        <i class="fas fa-star-half-alt active"></i>
+                                    @else
+                                        <i class="far fa-star"></i>
+                                    @endif
+                                @endfor
                             </div>
-                            <span class="rating-text">4.5 out of 5</span>
-                            <span class="reviews-count">(24 reviews)</span>
+                            <span class="rating-text">{{ number_format($avgRating, 1) }} out of 5</span>
+                            <span class="reviews-count">({{ $reviewsCount }} {{ Str::plural('review', $reviewsCount) }})</span>
                         </div>
 
                         <div class="product-price">
@@ -113,13 +199,29 @@
                         <div class="product-meta">
                             <div class="meta-item">
                                 <span class="meta-label">SKU:</span>
-                                <span class="meta-value">{{ $product->barcode }}</span>
+                                <span class="meta-value">{{ $product->barcode ?? 'N/A' }}</span>
                             </div>
                             <div class="meta-item">
                                 <span class="meta-label">Category:</span>
                                 <span class="meta-value">{{ $product->category->name }}</span>
                             </div>
+                            @if($product->brand)
+                            <div class="meta-item">
+                                <span class="meta-label">Brand:</span>
+                                <span class="meta-value">{{ $product->brand->name }}</span>
+                            </div>
+                            @endif
                         </div>
+
+                        <!-- Product Tags -->
+                        @if($product->tags && $product->tags->count() > 0)
+                        <div class="product-tags mt-3">
+                            <span class="meta-label">Tags:</span>
+                            @foreach($product->tags as $tag)
+                                <a href="{{ route('shop') }}?tags[]={{ $tag->id }}" class="tag-link">{{ $tag->name }}</a>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -135,8 +237,18 @@
                                         <button class="nav-link {{ $loop->first ? 'active' : '' }}" id="accordion-{{ $accordion->id }}-tab" data-bs-toggle="tab" data-bs-target="#accordion-{{ $accordion->id }}" type="button" role="tab">{{ $accordion->heading }}</button>
                                     </li>
                                 @endforeach
+                            @endif
+                            @if($product->activeFaqs->count() > 0)
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews</button>
+                                    <button class="nav-link {{ $product->accordions->count() == 0 ? 'active' : '' }}" id="faqs-tab" data-bs-toggle="tab" data-bs-target="#faqs" type="button" role="tab">FAQs</button>
+                                </li>
+                            @endif
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {{ $product->accordions->count() == 0 && $product->activeFaqs->count() == 0 ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
+                            </li>
+                            @if($product->approvedQuestions->count() > 0)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="questions-tab" data-bs-toggle="tab" data-bs-target="#questions" type="button" role="tab">Q&A</button>
                                 </li>
                             @endif
                         </ul>
@@ -153,58 +265,200 @@
                                 @endforeach
                             @endif
 
-                            <div class="tab-pane fade" id="reviews" role="tabpanel">
-                                <div class="tab-content-body">
-                                    <h3>Customer Reviews</h3>
-                                    <div class="reviews-summary">
-                                        <div class="overall-rating">
-                                            <div class="rating-number">4.5</div>
-                                            <div class="rating-stars">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star-half-alt"></i>
-                                            </div>
-                                            <div class="total-reviews">Based on 24 reviews</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <div class="reviewer-name">Sarah M.</div>
-                                            <div class="review-rating">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                            </div>
-                                            <div class="review-date">March 15, 2024</div>
-                                        </div>
-                                        <div class="review-content">
-                                            <p>Excellent quality notebook! The paper is smooth and the cover is very durable. Perfect for my daily journaling needs.</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <div class="reviewer-name">John D.</div>
-                                            <div class="review-rating">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="far fa-star"></i>
-                                            </div>
-                                            <div class="review-date">March 10, 2024</div>
-                                        </div>
-                                        <div class="review-content">
-                                            <p>Great notebook for taking notes in meetings. The lay-flat binding makes it easy to write on every page.</p>
+                            @if($product->activeFaqs->count() > 0)
+                                <div class="tab-pane fade {{ $product->accordions->count() == 0 ? 'show active' : '' }}" id="faqs" role="tabpanel">
+                                    <div class="tab-content-body">
+                                        <h3>Frequently Asked Questions</h3>
+                                        <div class="accordion" id="productFaqAccordion">
+                                            @foreach($product->activeFaqs as $faq)
+                                                <div class="accordion-item">
+                                                    <h2 class="accordion-header" id="faqHeading{{ $faq->id }}">
+                                                        <button class="accordion-button {{ !$loop->first ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse{{ $faq->id }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                                                            {{ $faq->question }}
+                                                        </button>
+                                                    </h2>
+                                                    <div id="faqCollapse{{ $faq->id }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="faqHeading{{ $faq->id }}">
+                                                        <div class="accordion-body">
+                                                            {!! $faq->answer !!}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </div>
+                            @endif
+
+                            <div class="tab-pane fade {{ $product->accordions->count() == 0 && $product->activeFaqs->count() == 0 ? 'show active' : '' }}" id="reviews" role="tabpanel">
+                                <div class="tab-content-body">
+                                    <h3>Customer Reviews</h3>
+                                    
+                                    @php
+                                        $avgRating = $product->average_rating ?? 0;
+                                        $reviewsCount = $product->reviews_count ?? 0;
+                                        $approvedReviews = $product->approvedReviews;
+                                    @endphp
+
+                                    @if($reviewsCount > 0)
+                                        <div class="reviews-summary mb-4">
+                                            <div class="overall-rating">
+                                                <div class="rating-number">{{ number_format($avgRating, 1) }}</div>
+                                                <div class="rating-stars">
+                                                    @for($i = 1; $i <= 5; $i++)
+                                                        @if($i <= floor($avgRating))
+                                                            <i class="fas fa-star active"></i>
+                                                        @elseif($i - 0.5 <= $avgRating)
+                                                            <i class="fas fa-star-half-alt active"></i>
+                                                        @else
+                                                            <i class="far fa-star"></i>
+                                                        @endif
+                                                    @endfor
+                                                </div>
+                                                <div class="total-reviews">Based on {{ $reviewsCount }} {{ Str::plural('review', $reviewsCount) }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="reviews-list">
+                                            @foreach($approvedReviews as $review)
+                                                <div class="review-item mb-4">
+                                                    <div class="review-header d-flex justify-content-between align-items-center mb-2">
+                                                        <div>
+                                                            <div class="reviewer-name">{{ $review->reviewer_name }}</div>
+                                                            @if($review->verified_purchase)
+                                                                <span class="badge bg-success">Verified Purchase</span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="review-rating">
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <i class="fas fa-star {{ $i <= $review->rating ? 'active' : '' }}"></i>
+                                                            @endfor
+                                                        </div>
+                                                        <div class="review-date">{{ $review->created_at->format('M d, Y') }}</div>
+                                                    </div>
+                                                    <div class="review-content">
+                                                        <p>{{ $review->review }}</p>
+                                                    </div>
+                                                    @if($review->helpful_count > 0)
+                                                        <div class="review-helpful">
+                                                            <small>{{ $review->helpful_count }} people found this helpful</small>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-muted">No reviews yet. Be the first to review this product!</p>
+                                    @endif
+
+                                    <!-- Review Form -->
+                                    <div class="review-form mt-5">
+                                        <h4>Write a Review</h4>
+                                        <form id="reviewForm">
+                                            @csrf
+                                            <div class="mb-3">
+                                                <label class="form-label">Rating *</label>
+                                                <div class="star-rating">
+                                                    @for($i = 5; $i >= 1; $i--)
+                                                        <input type="radio" name="rating" value="{{ $i }}" id="rating{{ $i }}" required>
+                                                        <label for="rating{{ $i }}" class="star-label"><i class="fas fa-star"></i></label>
+                                                    @endfor
+                                                </div>
+                                            </div>
+                                            @guest
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Name *</label>
+                                                    <input type="text" name="name" class="form-control" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Email *</label>
+                                                    <input type="email" name="email" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            @endguest
+                                            <div class="mb-3">
+                                                <label class="form-label">Review *</label>
+                                                <textarea name="review" class="form-control" rows="5" minlength="10" maxlength="1000" required></textarea>
+                                                <small class="text-muted">Minimum 10 characters, maximum 1000 characters</small>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
+
+                            @if($product->approvedQuestions->count() > 0)
+                                <div class="tab-pane fade" id="questions" role="tabpanel">
+                                    <div class="tab-content-body">
+                                        <h3>Questions & Answers</h3>
+                                        <div class="questions-list">
+                                            @foreach($product->approvedQuestions as $question)
+                                                <div class="question-item mb-4">
+                                                    <div class="question-header mb-2">
+                                                        <strong>Q: {{ $question->question }}</strong>
+                                                        <small class="text-muted d-block">Asked by {{ $question->reviewer_name }} on {{ $question->created_at->format('M d, Y') }}</small>
+                                                    </div>
+                                                    @if($question->approvedAnswers->count() > 0)
+                                                        <div class="answers-list ms-4">
+                                                            @foreach($question->approvedAnswers->sortByDesc('helpful_count') as $answer)
+                                                                <div class="answer-item mb-3">
+                                                                    <div class="answer-header d-flex justify-content-between align-items-start mb-2">
+                                                                        <div>
+                                                                            <strong>A: </strong>{{ $answer->answer }}
+                                                                            <small class="text-muted d-block">Answered by {{ $answer->reviewer_name ?? $answer->name }} on {{ $answer->created_at->format('M d, Y') }}</small>
+                                                                        </div>
+                                                                        <button class="btn btn-sm btn-outline-primary helpful-btn" data-answer-id="{{ $answer->id }}">
+                                                                            <i class="fas fa-thumbs-up"></i> Helpful ({{ $answer->helpful_count }})
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                    <div class="answer-form ms-4 mt-2">
+                                                        <form class="answer-form-inline" data-question-id="{{ $question->id }}">
+                                                            @csrf
+                                                            <div class="input-group">
+                                                                <input type="text" name="answer" class="form-control" placeholder="Your answer..." required>
+                                                                @guest
+                                                                <input type="text" name="name" class="form-control" placeholder="Your name" required>
+                                                                @endguest
+                                                                <button type="submit" class="btn btn-primary">Submit</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        <!-- Ask Question Form -->
+                                        <div class="question-form mt-5">
+                                            <h4>Ask a Question</h4>
+                                            <form id="questionForm">
+                                                @csrf
+                                                @guest
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Name *</label>
+                                                        <input type="text" name="name" class="form-control" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Email *</label>
+                                                        <input type="email" name="email" class="form-control" required>
+                                                    </div>
+                                                </div>
+                                                @endguest
+                                                <div class="mb-3">
+                                                    <label class="form-label">Your Question *</label>
+                                                    <textarea name="question" class="form-control" rows="3" minlength="10" maxlength="500" required></textarea>
+                                                    <small class="text-muted">Minimum 10 characters, maximum 500 characters</small>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">Ask Question</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -257,7 +511,10 @@
         </div>
     </section>
 
-    <script>
+@push('scripts')
+<!-- Lightbox2 for Product Zoom -->
+<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+<script>
         document.addEventListener('DOMContentLoaded', function() {
             // Product Image Thumbnail Switching
             const thumbnailItems = document.querySelectorAll('.thumbnail-item');
@@ -401,6 +658,132 @@
                     }, 300);
                 }, 3000);
             }
+
+            // Review Form Submission
+            const reviewForm = document.getElementById('reviewForm');
+            if (reviewForm) {
+                reviewForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData);
+
+                    fetch('{{ route("review.store", $product->slug) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(data.message, 'success');
+                            reviewForm.reset();
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showNotification(data.message || 'Failed to submit review.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', 'error');
+                    });
+                });
+            }
+
+            // Question Form Submission
+            const questionForm = document.getElementById('questionForm');
+            if (questionForm) {
+                questionForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData);
+
+                    fetch('{{ route("question.store", $product->slug) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(data.message, 'success');
+                            questionForm.reset();
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showNotification(data.message || 'Failed to submit question.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', 'error');
+                    });
+                });
+            }
+
+            // Answer Form Submissions
+            document.querySelectorAll('.answer-form-inline').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const questionId = this.getAttribute('data-question-id');
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData);
+
+                    fetch(`/question/${questionId}/answer`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(data.message, 'success');
+                            this.reset();
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            showNotification(data.message || 'Failed to submit answer.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', 'error');
+                    });
+                });
+            });
+
+            // Helpful Button
+            document.querySelectorAll('.helpful-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const answerId = this.getAttribute('data-answer-id');
+                    fetch(`/answer/${answerId}/helpful`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.innerHTML = `<i class="fas fa-thumbs-up"></i> Helpful (${data.helpful_count})`;
+                            this.disabled = true;
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
         });
     </script>
+@endpush
 @endsection

@@ -12,19 +12,13 @@ class VerifyEmailNotification extends Notification
 {
     use Queueable;
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
+    // Get the notification's delivery channels
     public function via(object $notifiable): array
     {
         return ['mail'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
+    // Get the mail representation of the notification
     public function toMail(object $notifiable): MailMessage
     {
         $verificationUrl = URL::temporarySignedRoute(
@@ -33,14 +27,11 @@ class VerifyEmailNotification extends Notification
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())]
         );
 
-        // Get logo URL - using absolute URL for email
         $logoUrl = url('assets/images/logo.svg');
-        // Ensure it's an absolute URL
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/images/logo.svg';
         }
 
-        // Social media links (you can customize these in config or env)
         $socialLinks = [
             'facebook' => config('app.social_facebook', '#'),
             'instagram' => config('app.social_instagram', '#'),

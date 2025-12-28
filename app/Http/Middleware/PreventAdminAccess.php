@@ -10,27 +10,33 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PreventAdminAccess
 {
-    /**
-     * Handle an incoming request.
-     * Prevents admin users from accessing user/frontend routes
-     */
+    // Handle an incoming request - prevents users with any role from accessing user/frontend routes
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check()) {
             $user = Auth::user();
 
-            // Check if user has admin role
-            if (CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
-                CommonHelper::logSecurityEvent('Admin attempted to access user route', $user, [
+            // Block any user who has ANY role (SuperAdmin, Admin, Manager, Editor, etc.)
+            if ($user->roles && $user->roles->count() > 0) {
+                $userRoles = $user->roles->pluck('name')->toArray();
+
+                CommonHelper::logSecurityEvent('User with role attempted to access frontend route', $user, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
                     'url' => $request->fullUrl(),
-                    'user_roles' => $user->roles->pluck('name')->toArray()
+                    'user_roles' => $userRoles
                 ]);
 
-                // Redirect admin to admin dashboard
-                return redirect()->route('admin.dashboard')
-                    ->with('error', 'Admin users cannot access user routes. Please use the admin panel.');
+                try {
+                    if (\Illuminate\Support\Facades\Route::has('admin.dashboard')) {
+                        return redirect()->route('admin.dashboard')
+                            ->with('error', 'Users with roles cannot access frontend. Please use the admin panel.');
+                    }
+                } catch (\Exception $e) {
+                }
+
+                return redirect()->route('admin.login')
+                    ->with('error', 'Users with roles cannot access frontend. Please use the admin panel.');
             }
         }
 

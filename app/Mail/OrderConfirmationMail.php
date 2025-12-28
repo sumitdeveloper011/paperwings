@@ -18,19 +18,14 @@ class OrderConfirmationMail extends Mailable
 
     public $order;
 
-    /**
-     * Create a new message instance.
-     */
+    // Create a new message instance
     public function __construct(Order $order)
     {
-        // Load relationships for email
         $order->load(['items.product', 'billingRegion', 'shippingRegion']);
         $this->order = $order;
     }
 
-    /**
-     * Get the message envelope.
-     */
+    // Get the message envelope
     public function envelope(): Envelope
     {
         return new Envelope(
@@ -38,9 +33,7 @@ class OrderConfirmationMail extends Mailable
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
+    // Get the message content definition
     public function content(): Content
     {
         return new Content(
@@ -51,25 +44,18 @@ class OrderConfirmationMail extends Mailable
         );
     }
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
+    // Get the attachments for the message
     public function attachments(): array
     {
-        // Generate PDF invoice
         $pdf = Pdf::loadView('emails.order-invoice-pdf', ['order' => $this->order]);
         $pdfPath = storage_path('app/temp/invoice_' . $this->order->order_number . '_' . time() . '.pdf');
 
-        // Ensure directory exists
         if (!file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
 
         $pdf->save($pdfPath);
 
-        // Clean up PDF after email is sent (using __destruct or after sending)
         register_shutdown_function(function() use ($pdfPath) {
             if (file_exists($pdfPath)) {
                 @unlink($pdfPath);

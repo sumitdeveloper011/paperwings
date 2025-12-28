@@ -17,12 +17,9 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
+    // Register any application services
     public function register(): void
     {
-        // Repository bindings
         $this->app->bind(CategoryRepositoryInterface::class, CategoryRepository::class);
         $this->app->bind(SubCategoryRepositoryInterface::class, SubCategoryRepository::class);
         $this->app->bind(BrandRepositoryInterface::class, BrandRepository::class);
@@ -30,17 +27,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SliderRepositoryInterface::class, SliderRepository::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
+    // Bootstrap any application services
     public function boot(): void
     {
         Schema::defaultStringLength(191);
 
-        // Query logging for development environment
         if (app()->environment('local')) {
             \DB::listen(function ($query) {
-                // Log slow queries (>100ms)
                 if ($query->time > 100) {
                     \Log::warning('Slow Query Detected', [
                         'sql' => $query->sql,
@@ -49,7 +42,6 @@ class AppServiceProvider extends ServiceProvider
                     ]);
                 }
 
-                // Log queries with N+1 potential (multiple similar queries)
                 static $queryCounts = [];
                 $queryKey = md5($query->sql);
                 $queryCounts[$queryKey] = ($queryCounts[$queryKey] ?? 0) + 1;
@@ -64,13 +56,11 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // Share settings with frontend header (cached)
         view()->composer('include.frontend.header', function ($view) {
             $settings = \Illuminate\Support\Facades\Cache::remember('header_settings', 3600, function() {
                 return \App\Models\Setting::pluck('value', 'key')->toArray();
             });
 
-            // Get first phone number
             $phone = null;
             if (isset($settings['phones']) && is_string($settings['phones'])) {
                 $phones = json_decode($settings['phones'], true) ?? [];
@@ -79,7 +69,6 @@ class AppServiceProvider extends ServiceProvider
                 $phone = !empty($settings['phones']) ? $settings['phones'][0] : null;
             }
 
-            // Get social links (only those with URLs)
             $socialLinks = [];
             if (!empty($settings['social_facebook'])) {
                 $socialLinks['facebook'] = $settings['social_facebook'];
@@ -100,20 +89,20 @@ class AppServiceProvider extends ServiceProvider
                 $socialLinks['pinterest'] = $settings['social_pinterest'];
             }
 
-            // Get active categories for menu (cached)
             $categories = \Illuminate\Support\Facades\Cache::remember('header_categories', 1800, function() {
                 return \App\Models\Category::active()
                     ->ordered()
+                    ->whereHas('products', function($query) {
+                        $query->where('status', 1);
+                    })
                     ->withCount(['products' => function($query) {
                         $query->where('status', 1);
                     }])
-                    ->having('products_count', '>', 0)
                     ->addSelect('id', 'name', 'slug')
                     ->take(10)
                     ->get();
             });
 
-            // Get user data if authenticated
             $userData = null;
             if (auth()->check()) {
                 $user = auth()->user();
@@ -126,27 +115,34 @@ class AppServiceProvider extends ServiceProvider
                 ];
             }
 
+            $logo = $settings['logo'] ?? null;
+            $headerEmail = null;
+            if (isset($settings['emails']) && is_string($settings['emails'])) {
+                $emails = json_decode($settings['emails'], true) ?? [];
+                $headerEmail = !empty($emails) ? $emails[0] : null;
+            } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
+                $headerEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
+            }
+
             $view->with([
                 'headerPhone' => $phone,
+                'headerEmail' => $headerEmail,
+                'headerLogo' => $logo,
                 'socialLinks' => $socialLinks,
                 'headerCategories' => $categories,
                 'userData' => $userData
             ]);
         });
 
-        // Share settings with frontend footer (cached)
         view()->composer('include.frontend.footer', function ($view) {
             $settings = \Illuminate\Support\Facades\Cache::remember('footer_settings', 3600, function() {
                 return \App\Models\Setting::pluck('value', 'key')->toArray();
             });
 
-            // Get logo
             $logo = $settings['logo'] ?? null;
 
-            // Get footer tagline/description (use meta_description as fallback)
             $footerTagline = $settings['footer_tagline'] ?? $settings['meta_description'] ?? 'We Promise We\'ll Get Back To You Promptly- Your Gifting Needs Are Always On Our Minds!';
 
-            // Get social links (only those with URLs)
             $footerSocialLinks = [];
             if (!empty($settings['social_facebook'])) {
                 $footerSocialLinks['facebook'] = $settings['social_facebook'];
@@ -167,28 +163,47 @@ class AppServiceProvider extends ServiceProvider
                 $footerSocialLinks['pinterest'] = $settings['social_pinterest'];
             }
 
-            // Get pages for useful links (cached)
             $footerPages = \Illuminate\Support\Facades\Cache::remember('footer_pages', 1800, function() {
-                return \App\Models\Page::select('id', 'title', 'slug')
-                    ->orderBy('created_at', 'desc')
-                    ->take(6)
+                $pageSlugs = ['about-us', 'return-policy', 'privacy-policy', 'delivery-policy', 'terms-and-conditions', 'cookie-policy'];
+                $pages = \App\Models\Page::select('id', 'title', 'slug')
+                    ->whereIn('slug', $pageSlugs)
                     ->get();
+                
+                // Sort by custom order (SQLite doesn't support FIELD function)
+                $driverName = \Illuminate\Support\Facades\DB::getDriverName();
+                if ($driverName === 'sqlite') {
+                    // Sort in PHP for SQLite
+                    return $pages->sortBy(function($page) use ($pageSlugs) {
+                        return array_search($page->slug, $pageSlugs);
+                    })->values();
+                } else {
+                    // Use FIELD for MySQL
+                    return $pages->sortBy(function($page) use ($pageSlugs) {
+                        return array_search($page->slug, $pageSlugs);
+                    })->values();
+                }
             });
 
-            // Get categories for shop links (cached)
+            $aboutSection = \Illuminate\Support\Facades\Cache::remember('footer_about_section', 1800, function() {
+                return \App\Models\AboutSection::active()
+                    ->ordered()
+                    ->first();
+            });
+
             $footerCategories = \Illuminate\Support\Facades\Cache::remember('footer_categories', 1800, function() {
                 return \App\Models\Category::active()
                     ->ordered()
+                    ->whereHas('products', function($query) {
+                        $query->where('status', 1);
+                    })
                     ->withCount(['products' => function($query) {
                         $query->where('status', 1);
                     }])
-                    ->having('products_count', '>', 0)
                     ->addSelect('id', 'name', 'slug')
                     ->take(5)
                     ->get();
             });
 
-            // Get contact information
             $phones = [];
             if (isset($settings['phones']) && is_string($settings['phones'])) {
                 $phones = json_decode($settings['phones'], true) ?? [];
@@ -205,18 +220,13 @@ class AppServiceProvider extends ServiceProvider
             }
             $primaryEmail = !empty($emails) ? $emails[0] : null;
 
-            // Get working hours (from settings or default)
             $workingHours = $settings['working_hours'] ?? 'Monday - Friday: 9:00-20:00' . "\n" . 'Saturday: 11:00 - 15:00';
-            // Convert line breaks to HTML
             if ($workingHours) {
-                // Escape HTML first for security, then convert newlines to <br> tags
                 $workingHours = nl2br(htmlspecialchars(trim($workingHours), ENT_QUOTES, 'UTF-8'), false);
             }
 
-            // Get address
             $address = $settings['address'] ?? null;
 
-            // Get copyright text
             $copyrightText = $settings['copyright_text'] ?? 'Copyright © ' . date('Y') . ' Paper Wings. All rights reserved.';
 
             $view->with([
@@ -230,6 +240,33 @@ class AppServiceProvider extends ServiceProvider
                 'footerWorkingHours' => $workingHours,
                 'footerAddress' => $address,
                 'footerCopyright' => $copyrightText,
+                'footerAboutSection' => $aboutSection,
+            ]);
+        });
+
+        view()->composer('layouts.admin.*', function ($view) {
+            $settings = \Illuminate\Support\Facades\Cache::remember('admin_settings', 3600, function() {
+                return \App\Models\Setting::pluck('value', 'key')->toArray();
+            });
+
+            $view->with([
+                'settings' => $settings,
+                'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/images/logo.svg'),
+                'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/images/favicon.ico'),
+                'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
+            ]);
+        });
+
+        view()->composer('include.admin.*', function ($view) {
+            $settings = \Illuminate\Support\Facades\Cache::remember('admin_settings', 3600, function() {
+                return \App\Models\Setting::pluck('value', 'key')->toArray();
+            });
+
+            $view->with([
+                'settings' => $settings,
+                'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/images/logo.svg'),
+                'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/images/favicon.ico'),
+                'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
             ]);
         });
     }

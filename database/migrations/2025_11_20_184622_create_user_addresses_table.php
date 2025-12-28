@@ -21,18 +21,21 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('street_address');
             $table->string('street_address_2')->nullable();
+            $table->string('suburb')->nullable();
             $table->string('city');
-            $table->string('state');
+            $table->unsignedBigInteger('region_id')->nullable();
             $table->string('zip_code');
             $table->string('country');
             $table->boolean('is_default')->default(false)->comment('Default address for this type');
             $table->timestamps();
 
-            // Foreign key
+            // Foreign keys
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('region_id')->references('id')->on('regions')->onDelete('set null');
 
             // Indexes
             $table->index('user_id');
+            $table->index('region_id');
             $table->index(['user_id', 'type']);
             $table->index('is_default');
         });

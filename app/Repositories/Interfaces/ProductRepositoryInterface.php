@@ -8,103 +8,63 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 interface ProductRepositoryInterface
 {
-    /**
-     * Get all products
-     */
+    // Get all products
     public function all(): Collection;
 
-    /**
-     * Get paginated products
-     */
+    // Get paginated products
     public function paginate(int $perPage = 10): LengthAwarePaginator;
 
-    /**
-     * Find product by ID
-     */
+    // Find product by ID
     public function find(int $id): ?Product;
 
-    /**
-     * Find product by UUID
-     */
+    // Find product by UUID
     public function findByUuid(string $uuid): ?Product;
 
-    /**
-     * Find product by slug
-     */
+    // Find product by slug
     public function findBySlug(string $slug): ?Product;
 
-    /**
-     * Create new product
-     */
+    // Create new product
     public function create(array $data): Product;
 
-    /**
-     * Update product
-     */
+    // Update product
     public function update(Product $product, array $data): Product;
 
-    /**
-     * Delete product
-     */
+    // Delete product
     public function delete(Product $product): bool;
 
-    /**
-     * Get active products
-     */
+    // Get active products
     public function getActive(): Collection;
 
-    /**
-     * Get inactive products
-     */
+    // Get inactive products
     public function getInactive(): Collection;
 
-    /**
-     * Get products by category
-     */
+    // Get products by category
     public function getByCategory(int $categoryId): Collection;
 
-    /**
-     * Get products by subcategory
-     */
+    // Get products by subcategory
     public function getBySubCategory(int $subCategoryId): Collection;
 
-    /**
-     * Get products by brand
-     */
+    // Get products by brand
     public function getByBrand(int $brandId): Collection;
 
-    /**
-     * Update product status
-     */
+    // Update product status
     public function updateStatus(Product $product, string $status): Product;
 
-    /**
-     * Search products by name
-     */
+    // Search products by name
     public function search(string $term): Collection;
 
-    /**
-     * Get products with images
-     */
+    // Get products with images
     public function withImages(): Collection;
 
-    /**
-     * Get products without images
-     */
+    // Get products without images
     public function withoutImages(): Collection;
 
-    /**
-     * Get products with their relationships
-     */
+    // Get products with their relationships
     public function withRelationships(): Collection;
 
-    /**
-     * Get products by price range
-     */
+    // Get products by price range
     public function getByPriceRange(float $minPrice, float $maxPrice): Collection;
 
-    /**
-     * Get featured products (you can define your own logic)
-     */
+    // Get featured products
     public function getFeatured(): Collection;
 }

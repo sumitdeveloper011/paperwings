@@ -14,27 +14,13 @@ class CartService
         private Product $product
     ) {}
 
-    /**
-     * Get cart identifier (user_id or session_id)
-     */
+    // Get cart identifier (user_id only - authentication required)
     public function getCartIdentifier(): array
     {
-        if (auth()->check()) {
-            return ['user_id' => auth()->id(), 'session_id' => null];
-        }
-
-        return ['user_id' => null, 'session_id' => session()->getId()];
+        return ['user_id' => auth()->id()];
     }
 
-    /**
-     * Add product to cart
-     *
-     * @param int $productId
-     * @param int $quantity
-     * @param array $cartIdentifier
-     * @return CartItem
-     * @throws \Exception
-     */
+    // Add product to cart
     public function addToCart(int $productId, int $quantity, array $cartIdentifier): CartItem
     {
         $product = $this->product->findOrFail($productId);
@@ -45,29 +31,33 @@ class CartService
 
         $price = $product->discount_price ?? $product->total_price;
         
-        // Use updateOrCreate with increment for better performance
-        return $this->cartItem->updateOrCreate(
-            [
-                'product_id' => $productId,
-                'user_id' => $cartIdentifier['user_id'],
-                'session_id' => $cartIdentifier['session_id'],
-            ],
-            [
-                'quantity' => DB::raw("COALESCE(quantity, 0) + {$quantity}"),
-                'price' => $price,
-            ]
-        );
+        if (!$price) {
+            throw new \Exception('Product price is not set.');
+        }
+        
+        // Use updateOrCreate for atomic operation (works on both MySQL and SQLite)
+        $existingItem = $this->cartItem->where('product_id', $productId)
+            ->where('user_id', $cartIdentifier['user_id'])
+            ->first();
+        
+        if ($existingItem) {
+            // Update quantity atomically
+            $existingItem->increment('quantity', $quantity);
+            $existingItem->price = $price; // Update price in case it changed
+            $existingItem->save();
+            return $existingItem;
+        }
+        
+        // Create new cart item
+        return $this->cartItem->create([
+            'product_id' => $productId,
+            'user_id' => $cartIdentifier['user_id'],
+            'quantity' => $quantity,
+            'price' => $price,
+        ]);
     }
 
-    /**
-     * Update cart item quantity
-     *
-     * @param int $cartItemId
-     * @param int $quantity
-     * @param array $cartIdentifier
-     * @return CartItem
-     * @throws \Exception
-     */
+    // Update cart item quantity
     public function updateCartItem(int $cartItemId, int $quantity, array $cartIdentifier): CartItem
     {
         $cartItem = $this->getCartItem($cartItemId, $cartIdentifier);
@@ -82,14 +72,7 @@ class CartService
         return $cartItem;
     }
 
-    /**
-     * Remove item from cart
-     *
-     * @param int $cartItemId
-     * @param array $cartIdentifier
-     * @return bool
-     * @throws \Exception
-     */
+    // Remove item from cart
     public function removeFromCart(int $cartItemId, array $cartIdentifier): bool
     {
         $cartItem = $this->getCartItem($cartItemId, $cartIdentifier);
@@ -101,12 +84,7 @@ class CartService
         return $cartItem->delete();
     }
 
-    /**
-     * Get cart items with products
-     *
-     * @param array $cartIdentifier
-     * @return Collection
-     */
+    // Get cart items with products
     public function getCartItems(array $cartIdentifier): Collection
     {
         return $this->cartItem
@@ -118,99 +96,42 @@ class CartService
                             ->limit(1);
                       }]);
             }])
-            ->when($cartIdentifier['user_id'], fn($q) => $q->where('user_id', $cartIdentifier['user_id']))
-            ->when($cartIdentifier['session_id'], fn($q) => $q->where('session_id', $cartIdentifier['session_id']))
+            ->where('user_id', $cartIdentifier['user_id'])
             ->get();
     }
 
-    /**
-     * Get cart count (total quantity)
-     *
-     * @param array $cartIdentifier
-     * @return int
-     */
+    // Get cart count (total quantity)
     public function getCartCount(array $cartIdentifier): int
     {
         return $this->cartItem
-            ->when($cartIdentifier['user_id'], fn($q) => $q->where('user_id', $cartIdentifier['user_id']))
-            ->when($cartIdentifier['session_id'], fn($q) => $q->where('session_id', $cartIdentifier['session_id']))
+            ->where('user_id', $cartIdentifier['user_id'])
             ->sum('quantity');
     }
 
-    /**
-     * Get cart subtotal
-     *
-     * @param array $cartIdentifier
-     * @return float
-     */
+    // Get cart subtotal
     public function getCartSubtotal(array $cartIdentifier): float
     {
         return $this->cartItem
-            ->when($cartIdentifier['user_id'], fn($q) => $q->where('user_id', $cartIdentifier['user_id']))
-            ->when($cartIdentifier['session_id'], fn($q) => $q->where('session_id', $cartIdentifier['session_id']))
+            ->where('user_id', $cartIdentifier['user_id'])
             ->get()
             ->sum(fn($item) => $item->subtotal);
     }
 
-    /**
-     * Get a specific cart item
-     *
-     * @param int $cartItemId
-     * @param array $cartIdentifier
-     * @return CartItem|null
-     */
+    // Get a specific cart item
     private function getCartItem(int $cartItemId, array $cartIdentifier): ?CartItem
     {
         return $this->cartItem
             ->where('id', $cartItemId)
-            ->when($cartIdentifier['user_id'], fn($q) => $q->where('user_id', $cartIdentifier['user_id']))
-            ->when($cartIdentifier['session_id'], fn($q) => $q->where('session_id', $cartIdentifier['session_id']))
+            ->where('user_id', $cartIdentifier['user_id'])
             ->first();
     }
 
-    /**
-     * Clear cart
-     *
-     * @param array $cartIdentifier
-     * @return int Number of items deleted
-     */
+    // Clear cart
     public function clearCart(array $cartIdentifier): int
     {
         return $this->cartItem
-            ->when($cartIdentifier['user_id'], fn($q) => $q->where('user_id', $cartIdentifier['user_id']))
-            ->when($cartIdentifier['session_id'], fn($q) => $q->where('session_id', $cartIdentifier['session_id']))
+            ->where('user_id', $cartIdentifier['user_id'])
             ->delete();
-    }
-
-    /**
-     * Merge session cart with user cart (when user logs in)
-     *
-     * @param string $sessionId
-     * @param int $userId
-     * @return void
-     */
-    public function mergeCarts(string $sessionId, int $userId): void
-    {
-        $sessionCartItems = $this->cartItem->where('session_id', $sessionId)->get();
-        
-        foreach ($sessionCartItems as $sessionItem) {
-            $existingItem = $this->cartItem
-                ->where('user_id', $userId)
-                ->where('product_id', $sessionItem->product_id)
-                ->first();
-
-            if ($existingItem) {
-                // Merge quantities
-                $existingItem->quantity += $sessionItem->quantity;
-                $existingItem->save();
-                $sessionItem->delete();
-            } else {
-                // Transfer to user cart
-                $sessionItem->user_id = $userId;
-                $sessionItem->session_id = null;
-                $sessionItem->save();
-            }
-        }
     }
 }
 

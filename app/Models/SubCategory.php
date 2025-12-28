@@ -49,39 +49,43 @@ class SubCategory extends Model
         });
     }
 
-    // Relationships
+    // Get the category relationship
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    // Scopes
+    // Scope to filter active subcategories
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
+    // Scope to filter inactive subcategories
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
     }
 
+    // Scope to filter subcategories by category
     public function scopeByCategory($query, $categoryId)
     {
         return $query->where('category_id', $categoryId);
     }
 
+    // Get the products relationship
     public function products(): HasMany
     {
         return $this->hasMany(Product::class, 'subcategory_id');
     }
 
+    // Get the active products relationship
     public function activeProducts(): HasMany
     {
         return $this->hasMany(Product::class, 'subcategory_id')->where('status', 'active');
     }
 
-    // Accessors
+    // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
         return $this->status === 1 
@@ -89,17 +93,19 @@ class SubCategory extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
+    // Get image URL attribute
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
     }
 
+    // Get full name attribute
     public function getFullNameAttribute()
     {
         return $this->category->name . ' > ' . $this->name;
     }
 
-    // Route key binding
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

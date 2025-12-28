@@ -33,7 +33,7 @@ class ProductAccordion extends Model
         });
     }
 
-    // Relationships
+    // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

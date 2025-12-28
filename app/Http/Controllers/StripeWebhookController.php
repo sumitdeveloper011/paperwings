@@ -11,24 +11,31 @@ use Stripe\Exception\SignatureVerificationException;
 
 class StripeWebhookController extends Controller
 {
-    /**
-     * Handle Stripe webhook events
-     */
+    // Handle Stripe webhook events
     public function handleWebhook(Request $request)
     {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $endpointSecret = config('services.stripe.webhook_secret');
+        
+        // Read Stripe keys from database settings
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $endpointSecret = $settings['stripe_webhook_secret'] ?? config('services.stripe.webhook_secret');
+        $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 
         if (!$endpointSecret) {
             Log::error('Stripe webhook secret not configured');
             return response()->json(['error' => 'Webhook secret not configured'], 500);
         }
 
+        if (!$stripeSecret) {
+            Log::error('Stripe secret key not configured');
+            return response()->json(['error' => 'Stripe secret not configured'], 500);
+        }
+
         $event = null;
 
         try {
-            Stripe::setApiKey(config('services.stripe.secret'));
+            Stripe::setApiKey($stripeSecret);
             $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
         } catch (\UnexpectedValueException $e) {
             Log::error('Stripe webhook: Invalid payload', ['error' => $e->getMessage()]);
@@ -38,7 +45,6 @@ class StripeWebhookController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        // Handle the event
         Log::info('Stripe webhook received', [
             'type' => $event->type,
             'id' => $event->id
@@ -68,9 +74,7 @@ class StripeWebhookController extends Controller
         return response()->json(['received' => true]);
     }
 
-    /**
-     * Handle successful payment intent
-     */
+    // Handle successful payment intent
     protected function handlePaymentIntentSucceeded($paymentIntent)
     {
         Log::info('Payment intent succeeded', [
@@ -84,7 +88,7 @@ class StripeWebhookController extends Controller
             $order->update([
                 'payment_status' => 'paid',
                 'stripe_charge_id' => $paymentIntent->latest_charge ?? $order->stripe_charge_id,
-                'status' => 'processing', // Move to processing when payment confirmed
+                'status' => 'processing',
             ]);
 
             Log::info('Order updated after payment success', [
@@ -98,9 +102,7 @@ class StripeWebhookController extends Controller
         }
     }
 
-    /**
-     * Handle failed payment intent
-     */
+    // Handle failed payment intent
     protected function handlePaymentIntentFailed($paymentIntent)
     {
         Log::warning('Payment intent failed', [
@@ -123,9 +125,7 @@ class StripeWebhookController extends Controller
         }
     }
 
-    /**
-     * Handle canceled payment intent
-     */
+    // Handle canceled payment intent
     protected function handlePaymentIntentCanceled($paymentIntent)
     {
         Log::info('Payment intent canceled', [
@@ -142,9 +142,7 @@ class StripeWebhookController extends Controller
         }
     }
 
-    /**
-     * Handle charge refunded
-     */
+    // Handle charge refunded
     protected function handleChargeRefunded($charge)
     {
         Log::info('Charge refunded', [

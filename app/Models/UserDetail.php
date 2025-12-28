@@ -31,17 +31,13 @@ class UserDetail extends Model
         'date_of_birth' => 'date',
     ];
 
-    /**
-     * Get the user that owns the detail.
-     */
+    // Get the user relationship
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the image URL.
-     */
+    // Get the image URL attribute
     public function getImageUrlAttribute(): string
     {
         if ($this->image && Storage::disk('public')->exists($this->image)) {

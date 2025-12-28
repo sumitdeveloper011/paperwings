@@ -15,17 +15,13 @@ class Wishlist extends Model
         'product_id',
     ];
 
-    /**
-     * Get the user that owns the wishlist item.
-     */
+    // Get the user relationship
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the product that is in the wishlist.
-     */
+    // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

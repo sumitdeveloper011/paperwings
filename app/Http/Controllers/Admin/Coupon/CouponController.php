@@ -13,9 +13,7 @@ use Illuminate\View\View;
 
 class CouponController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // Display a listing of the resource
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -39,17 +37,13 @@ class CouponController extends Controller
         return view('admin.coupon.index', compact('coupons', 'search', 'status'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         return view('admin.coupon.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(StoreCouponRequest $request): RedirectResponse
     {
         $validated = $request->validated();
@@ -64,25 +58,19 @@ class CouponController extends Controller
             ->with('success', 'Coupon created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(Coupon $coupon): View
     {
         return view('admin.coupon.show', compact('coupon'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(Coupon $coupon): View
     {
         return view('admin.coupon.edit', compact('coupon'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(UpdateCouponRequest $request, Coupon $coupon): RedirectResponse
     {
         $validated = $request->validated();
@@ -96,9 +84,7 @@ class CouponController extends Controller
             ->with('success', 'Coupon updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(Coupon $coupon): RedirectResponse
     {
         $coupon->delete();
@@ -107,9 +93,7 @@ class CouponController extends Controller
             ->with('success', 'Coupon deleted successfully!');
     }
 
-    /**
-     * Update coupon status
-     */
+    // Update coupon status
     public function updateStatus(Request $request, Coupon $coupon): RedirectResponse
     {
         $request->validate([

@@ -14,9 +14,7 @@ use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    /**
-     * Display the settings page.
-     */
+    // Display the settings page
     public function index(): View
     {
         $settings = Setting::pluck('value', 'key')->toArray();
@@ -37,9 +35,7 @@ class SettingsController extends Controller
         return view('admin.settings.setting', compact('settings'));
     }
 
-    /**
-     * Update settings.
-     */
+    // Update settings
     public function update(Request $request): RedirectResponse
     {
         // Check if logo already exists
@@ -74,6 +70,15 @@ class SettingsController extends Controller
             'google_analytics_id' => 'nullable|string|max:50',
             'google_analytics_enabled' => 'nullable|in:0,1',
             'google_analytics_ecommerce' => 'nullable|in:0,1',
+            'private_key_1' => 'nullable|string|max:500',
+            'private_key_2' => 'nullable|string|max:500',
+            'private_key_3' => 'nullable|string|max:500',
+            'google_client_id' => 'nullable|string|max:255',
+            'google_client_secret' => 'nullable|string|max:255',
+            'google_login_enabled' => 'nullable|in:0,1',
+            'facebook_client_id' => 'nullable|string|max:255',
+            'facebook_client_secret' => 'nullable|string|max:255',
+            'facebook_login_enabled' => 'nullable|in:0,1',
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
@@ -149,6 +154,7 @@ class SettingsController extends Controller
         // Update contact info (required fields)
         $this->updateSetting('address', $validated['address']);
         $this->updateSetting('google_map', $validated['google_map']);
+        $this->updateSetting('google_map_api_key', $request->input('google_map_api_key', ''));
 
         // Update emails (store as JSON array) - use the already filtered arrays
         $this->updateSetting('emails', !empty($emails) ? json_encode($emails) : null);
@@ -192,13 +198,33 @@ class SettingsController extends Controller
         $this->updateSetting('google_analytics_enabled', $validated['google_analytics_enabled'] ?? '0');
         $this->updateSetting('google_analytics_ecommerce', $validated['google_analytics_ecommerce'] ?? '0');
 
+        // Update Private Keys
+        $this->updateSetting('private_key_1', $validated['private_key_1'] ?? '');
+        $this->updateSetting('private_key_2', $validated['private_key_2'] ?? '');
+        $this->updateSetting('private_key_3', $validated['private_key_3'] ?? '');
+
+        // Update Social Login Settings
+        $this->updateSetting('google_client_id', $validated['google_client_id'] ?? '');
+        $this->updateSetting('google_client_secret', $validated['google_client_secret'] ?? '');
+        $this->updateSetting('google_login_enabled', $validated['google_login_enabled'] ?? '0');
+        $this->updateSetting('facebook_client_id', $validated['facebook_client_id'] ?? '');
+        $this->updateSetting('facebook_client_secret', $validated['facebook_client_secret'] ?? '');
+        $this->updateSetting('facebook_login_enabled', $validated['facebook_login_enabled'] ?? '0');
+
+        // Update config/services.php if credentials are provided (optional - can be done via .env)
+        // For now, we'll just store in settings and read from there in SocialAuthController
+
+        // Clear settings cache after update
+        \Illuminate\Support\Facades\Cache::forget('admin_settings');
+        \Illuminate\Support\Facades\Cache::forget('app_settings');
+        \Illuminate\Support\Facades\Cache::forget('header_settings');
+        \Illuminate\Support\Facades\Cache::forget('footer_settings');
+
         return redirect()->route('admin.settings.index')
             ->with('success', 'Settings updated successfully!');
     }
 
-    /**
-     * Test Instagram API connection
-     */
+    // Test Instagram API connection
     public function testInstagram(Request $request): JsonResponse
     {
         $request->validate([
@@ -228,9 +254,7 @@ class SettingsController extends Controller
         return response()->json($result);
     }
 
-    /**
-     * Update or create a setting.
-     */
+    // Update or create a setting
     private function updateSetting(string $key, ?string $value): void
     {
         Setting::updateOrCreate(

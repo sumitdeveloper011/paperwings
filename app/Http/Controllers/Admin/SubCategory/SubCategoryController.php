@@ -25,9 +25,7 @@ class SubCategoryController extends Controller
         $this->categoryRepository = $categoryRepository;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
+    // Display a listing of the resource
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -60,18 +58,14 @@ class SubCategoryController extends Controller
         return view('admin.subcategory.index', compact('subCategories', 'search', 'categories', 'categoryId'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         $categories = $this->categoryRepository->getActive();
         return view('admin.subcategory.create', compact('categories'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -82,7 +76,6 @@ class SubCategoryController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
@@ -101,18 +94,14 @@ class SubCategoryController extends Controller
                         ->with('success', 'SubCategory created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(SubCategory $subcategory): View
     {
         $subcategory->load('category');
         return view('admin.subcategory.show', compact('subcategory'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(SubCategory $subcategory): View
     {
         $subcategory->load('category');
@@ -120,9 +109,7 @@ class SubCategoryController extends Controller
         return view('admin.subcategory.edit', compact('subcategory', 'categories'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(Request $request, SubCategory $subcategory): RedirectResponse
     {
         $validated = $request->validate([
@@ -133,9 +120,7 @@ class SubCategoryController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
-            // Delete old image if exists
             if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
                 Storage::disk('public')->delete($subcategory->image);
             }
@@ -157,12 +142,9 @@ class SubCategoryController extends Controller
                         ->with('success', 'SubCategory updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(SubCategory $subcategory): RedirectResponse
     {
-        // Delete image if exists
         if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
             Storage::disk('public')->delete($subcategory->image);
         }
@@ -173,9 +155,7 @@ class SubCategoryController extends Controller
                         ->with('success', 'SubCategory deleted successfully!');
     }
 
-    /**
-     * Update subcategory status
-     */
+    // Update subcategory status
     public function updateStatus(Request $request, SubCategory $subcategory): RedirectResponse
     {
         $validated = $request->validate([

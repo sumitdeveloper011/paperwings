@@ -54,21 +54,23 @@
                         <div class="footer__column">
                             <h3 class="footer__column-title">USEFUL LINKS</h3>
                             <ul class="footer__links">
+                                @if(isset($footerAboutSection) && $footerAboutSection && $footerAboutSection->button_link)
+                                    <li>
+                                        <a href="{{ $footerAboutSection->button_link }}" class="footer__link">
+                                            {{ $footerAboutSection->title ?? 'About Us' }}
+                                        </a>
+                                    </li>
+                                @endif
+                                <li><a href="{{ route('contact') }}" class="footer__link">Contact Us</a></li>
+                                <li><a href="{{ route('faq.index') }}" class="footer__link">FAQs</a></li>
                                 @if(isset($footerPages) && $footerPages->count() > 0)
                                     @foreach($footerPages as $page)
                                         <li>
-                                            <a href="{{ url('/page/' . $page->slug) }}" class="footer__link">
+                                            <a href="{{ route('page.show', $page->slug) }}" class="footer__link">
                                                 {{ $page->title }}
                                             </a>
                                         </li>
                                     @endforeach
-                                @else
-                                    <li><a href="#" class="footer__link">About Us</a></li>
-                                    <li><a href="#" class="footer__link">Contact Us</a></li>
-                                    <li><a href="#" class="footer__link">Delivery Policy</a></li>
-                                    <li><a href="#" class="footer__link">FAQs</a></li>
-                                    <li><a href="#" class="footer__link">Privacy Policy</a></li>
-                                    <li><a href="#" class="footer__link">Return Policy</a></li>
                                 @endif
                             </ul>
                         </div>
@@ -79,7 +81,7 @@
                         <div class="footer__column">
                             <h3 class="footer__column-title">SHOP</h3>
                             <ul class="footer__links">
-                                <li><a href="{{ route('home') }}" class="footer__link">Shop</a></li>
+                                <li><a href="{{ route('shop') }}" class="footer__link">Shop</a></li>
                                 @if(isset($footerCategories) && $footerCategories->count() > 0)
                                     @foreach($footerCategories as $category)
                                         <li>

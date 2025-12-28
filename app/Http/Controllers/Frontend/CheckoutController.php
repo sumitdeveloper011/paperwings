@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Region;
 use App\Mail\OrderConfirmationMail;
+use App\Services\ShippingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -22,37 +23,36 @@ use Stripe\Exception\ApiErrorException;
 
 class CheckoutController extends Controller
 {
-    /**
-     * Get the identifier for the current cart (user_id only - authentication required)
-     */
+    protected $shippingService;
+
+    public function __construct(ShippingService $shippingService)
+    {
+        $this->shippingService = $shippingService;
+    }
+
+    // Get the identifier for the current cart (user_id only - authentication required)
     private function getCartIdentifier(): array
     {
-        // Since checkout requires authentication, we only use user_id
         return ['user_id' => Auth::id(), 'session_id' => null];
     }
 
-    /**
-     * Display checkout page
-     */
+    // Display checkout page
     public function index()
     {
         $title = 'Checkout';
         $cartIdentifier = $this->getCartIdentifier();
 
-        // Get cart items (authentication required)
         $cartItems = CartItem::with(['product' => function($query) {
                 $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'barcode');
             }])
             ->where('user_id', Auth::id())
             ->get();
 
-        // Check if cart is empty
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')
                 ->with('error', 'Your cart is empty. Please add items to your cart before checkout.');
         }
 
-        // Use ProductImageService for efficient image loading
         $productIds = $cartItems->pluck('product_id')->unique();
         if ($productIds->isNotEmpty()) {
             $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
@@ -71,18 +71,13 @@ class CheckoutController extends Controller
             return $item->subtotal;
         });
 
-        // Tax removed
         $tax = 0.00;
-        $shipping = 0.00; // Shipping commented out
-
-        // Check for applied coupon
+        
         $appliedCoupon = Session::get('applied_coupon');
         $discount = 0;
         if ($appliedCoupon) {
             $discount = $appliedCoupon['discount'] ?? 0;
         }
-
-        $total = $subtotal - $discount + $tax + $shipping;
 
         // Get user data if logged in
         $user = Auth::user();
@@ -94,6 +89,18 @@ class CheckoutController extends Controller
             $billingAddress = $user->defaultBillingAddress;
             $shippingAddress = $user->defaultShippingAddress;
         }
+
+        $shippingRegionId = $shippingAddress ? $shippingAddress->region_id : ($billingAddress ? $billingAddress->region_id : null);
+        $orderAmount = $subtotal - $discount;
+        $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
+        $shipping = $shippingInfo['shipping_price'];
+        $shippingPrice = $shippingInfo['shipping_price'];
+
+        $total = $subtotal - $discount + $tax + $shipping;
+
+        // Read Stripe publishable key from database settings
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $stripePublishableKey = $settings['stripe_key'] ?? config('services.stripe.key');
 
         return view('frontend.checkout.checkout', compact(
             'title',
@@ -107,13 +114,12 @@ class CheckoutController extends Controller
             'user',
             'billingAddress',
             'shippingAddress',
-            'regions'
+            'regions',
+            'stripePublishableKey'
         ));
     }
 
-    /**
-     * Apply coupon code
-     */
+    // Apply coupon code
     public function applyCoupon(Request $request)
     {
         $request->validate([
@@ -157,6 +163,18 @@ class CheckoutController extends Controller
                 ->with('error', 'This coupon is not active.');
         }
 
+        // Check if coupon is not yet active (start date)
+        if (now()->lessThan($coupon->start_date)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.'
+                ], 400);
+            }
+            return redirect()->route('checkout.index')
+                ->with('error', 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.');
+        }
+
         if ($coupon->isExpired()) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -177,6 +195,25 @@ class CheckoutController extends Controller
             }
             return redirect()->route('checkout.index')
                 ->with('error', 'This coupon has reached its usage limit.');
+        }
+
+        // Check per user usage limit
+        if ($coupon->usage_limit_per_user) {
+            $userCouponUsage = Order::where('user_id', Auth::id())
+                ->where('coupon_code', $coupon->code)
+                ->where('payment_status', 'paid')
+                ->count();
+            
+            if ($userCouponUsage >= $coupon->usage_limit_per_user) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.'
+                    ], 400);
+                }
+                return redirect()->route('checkout.index')
+                    ->with('error', 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.');
+            }
         }
 
         // Check minimum amount
@@ -241,9 +278,7 @@ class CheckoutController extends Controller
             ->with('success', 'Coupon applied successfully!');
     }
 
-    /**
-     * Remove coupon
-     */
+    // Remove coupon
     public function removeCoupon(Request $request)
     {
         Session::forget('applied_coupon');
@@ -261,16 +296,40 @@ class CheckoutController extends Controller
             ->with('success', 'Coupon removed successfully.');
     }
 
-    /**
-     * Create Stripe Payment Intent
-     */
+    // Calculate shipping price
+    public function calculateShipping(Request $request): JsonResponse
+    {
+        $request->validate([
+            'region_id' => 'required|exists:regions,id',
+            'subtotal' => 'required|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+        ]);
+
+        $orderAmount = $request->subtotal - ($request->discount ?? 0);
+        $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->region_id, $orderAmount);
+
+        return response()->json([
+            'success' => true,
+            'shipping' => $shippingInfo['shipping_price'],
+            'shipping_price' => $shippingInfo['shipping_price'],
+            'free_shipping_minimum' => $shippingInfo['free_shipping_minimum'],
+            'is_free_shipping' => $shippingInfo['is_free_shipping'],
+            'message' => $shippingInfo['is_free_shipping'] 
+                ? 'Free shipping applied!' 
+                : 'Shipping calculated successfully.'
+        ]);
+    }
+
+    // Create Stripe Payment Intent
     public function createPaymentIntent(Request $request): JsonResponse
     {
         $request->validate([
             'amount' => 'required|numeric|min:0.50'
         ]);
 
-        $stripeSecret = config('services.stripe.secret');
+        // Read Stripe secret from database settings
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 
         if (!$stripeSecret) {
             return response()->json([
@@ -326,9 +385,7 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Process order and payment
-     */
+    // Process order and payment
     public function processOrder(Request $request)
     {
         $request->validate([
@@ -364,8 +421,9 @@ class CheckoutController extends Controller
             ], 400);
         }
 
-        // Verify payment with Stripe
-        $stripeSecret = config('services.stripe.secret');
+        // Verify payment with Stripe - Read from database settings
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 
         if (!$stripeSecret) {
             Log::error('Stripe secret key not configured');
@@ -401,7 +459,13 @@ class CheckoutController extends Controller
             $discount = $appliedCoupon['discount'] ?? 0;
             $couponCode = $appliedCoupon['code'] ?? null;
             $tax = 0.00;
-            $shipping = 0.00;
+            
+            // Calculate shipping based on shipping region
+            $orderAmount = $subtotal - $discount;
+            $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->shipping_region_id, $orderAmount);
+            $shipping = $shippingInfo['shipping_price'];
+            $shippingPrice = $shippingInfo['shipping_price'];
+            
             $total = $subtotal - $discount + $tax + $shipping;
 
             // Verify total matches payment amount
@@ -446,6 +510,7 @@ class CheckoutController extends Controller
                     'coupon_code' => $couponCode,
                     'tax' => $tax,
                     'shipping' => $shipping,
+                    'shipping_price' => $shippingPrice,
                     'total' => $total,
                     'payment_method' => 'stripe',
                     'payment_status' => 'paid', // Will be confirmed by webhook
@@ -546,10 +611,7 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Show order success page
-     * Only show success if payment is actually confirmed
-     */
+    // Show order success page (only show success if payment is actually confirmed)
     public function success(Request $request, $orderNumber)
     {
         $order = Order::where('order_number', $orderNumber)->firstOrFail();
@@ -563,7 +625,10 @@ class CheckoutController extends Controller
         // Double-check with Stripe if payment intent exists
         if ($order->stripe_payment_intent_id) {
             try {
-                Stripe::setApiKey(config('services.stripe.secret'));
+                // Read Stripe secret from database settings
+                $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+                $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
+                Stripe::setApiKey($stripeSecret);
                 $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
 
                 if ($paymentIntent->status !== 'succeeded') {

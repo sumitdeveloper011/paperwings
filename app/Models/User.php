@@ -14,14 +14,8 @@ use Illuminate\Support\Str;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'uuid',
         'first_name',
@@ -34,23 +28,16 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'bio',
         'two_factor_enabled',
+        'provider',
+        'provider_id',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    // Get the attributes that should be cast
     protected function casts(): array
     {
         return [
@@ -62,18 +49,14 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
-    /**
-     * Get the user's full name.
-     */
+    // Get the user's full name attribute
     public function getNameAttribute(): string
     {
         $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
         return $name ?: 'User';
     }
 
-    /**
-     * Get the avatar URL.
-     */
+    // Get the avatar URL attribute
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar && Storage::disk('public')->exists($this->avatar)) {
@@ -82,9 +65,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return asset('assets/images/profile.png');
     }
 
-    /**
-     * Boot function to generate UUID before creating user
-     */
+    // Boot function to generate UUID before creating user
     protected static function boot()
     {
         parent::boot();
@@ -96,78 +77,73 @@ class User extends Authenticatable implements MustVerifyEmail
         });
     }
 
-    /**
-     * Get the route key for the model.
-     */
+    // Get the route key name
     public function getRouteKeyName()
     {
         return 'uuid';
     }
 
-    /**
-     * Check if user is active
-     */
+    // Check if user is active
     public function isActive()
     {
         return $this->status === 1;
     }
 
-    /**
-     * Check if user is inactive
-     */
+    // Check if user is inactive
     public function isInactive()
     {
         return $this->status === 0;
     }
 
-    /**
-     * Send the email verification notification.
-     *
-     * @return void
-     */
+    // Send the email verification notification
     public function sendEmailVerificationNotification()
     {
         $this->notify(new \App\Notifications\VerifyEmailNotification);
     }
 
-    /**
-     * Get the email address that should be used for password reset.
-     *
-     * @return string
-     */
+    // Get the email address that should be used for password reset
     public function getEmailForPasswordReset()
     {
         return $this->email;
     }
 
-    /**
-     * Get the wishlist items for the user.
-     */
+    // Get the wishlist items relationship
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
     }
 
+    // Get detail relationship
     public function detail(): HasOne
     {
         return $this->hasOne(UserDetail::class);
     }
 
+    // Get user detail relationship
     public function userDetail(): HasOne
     {
         return $this->hasOne(UserDetail::class);
     }
 
+    // Get addresses relationship
     public function addresses(): HasMany
     {
         return $this->hasMany(UserAddress::class);
     }
 
+    // Get orders relationship
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // Get default billing address relationship
     public function defaultBillingAddress(): HasOne
     {
         return $this->hasOne(UserAddress::class)->where('type', 'billing')->where('is_default', true);
     }
 
+    // Get default shipping address relationship
     public function defaultShippingAddress(): HasOne
     {
         return $this->hasOne(UserAddress::class)->where('type', 'shipping')->where('is_default', true);

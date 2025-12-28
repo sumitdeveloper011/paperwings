@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Paper Wings' }}</title>
+    {{-- Favicon is automatically shared via View Composer in AppServiceProvider --}}
+    <link rel="icon" type="image/x-icon" href="{{ $siteFavicon }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ $siteFavicon }}">
     @include('common.common-styles')
+    @stack('styles')
 </head>
 <body>
     <x-loader />
@@ -17,5 +21,6 @@
     </div>
     @include('include.admin.footer')
     @include('common.common-scripts')
+    @stack('scripts')
 </body>
 </html>

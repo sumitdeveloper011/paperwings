@@ -15,8 +15,19 @@ class EposNowService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'), '/');
-        $this->apiKey = config('eposnow.api_key');
+        // Read from database settings, fallback to config/env
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        
+        $this->baseUrl = rtrim(
+            $settings['eposnow_api_base'] ?? config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'),
+            '/'
+        );
+        $this->apiKey = $settings['eposnow_api_key'] ?? config('eposnow.api_key');
+        
+        // If base URL doesn't end with /api/v4/, add it
+        if (!str_ends_with($this->baseUrl, '/api/v4')) {
+            $this->baseUrl = rtrim($this->baseUrl, '/') . '/api/v4';
+        }
     }
 
     protected function headers(): array
@@ -28,43 +39,99 @@ class EposNowService
         ];
     }
 
+    // Get all products from EposNow API
     public function getAllProducts(): array
     {
         $page = 1;
         $allProducts = [];
 
         while (true) {
-            $products = $this->makeRequest(
-                "{$this->baseUrl}/Product",
-                ['page' => $page]
-            );
+            try {
+                $products = $this->makeRequest(
+                    "{$this->baseUrl}/Product",
+                    ['page' => $page]
+                );
 
-            if (empty($products)) {
+                if (empty($products)) {
+                    break;
+                }
+
+                $allProducts = array_merge($allProducts, $products);
+                $page++;
+
+                usleep(500000);
+
+            } catch (\Exception $e) {
+                // If rate limit error, throw it up so job can handle it
+                if (stripos($e->getMessage(), 'rate limit') !== false ||
+                    stripos($e->getMessage(), 'maximum API limit') !== false) {
+                    throw $e;
+                }
+
+                Log::error('Error fetching products page', [
+                    'page' => $page,
+                    'error' => $e->getMessage()
+                ]);
                 break;
             }
-
-            $allProducts = array_merge($allProducts, $products);
-            $page++;
-            usleep(200000);
         }
 
         return $allProducts;
     }
 
-
-    /**
-     * ✅ Fetch all categories from EposNow API.
-     */
-    public function getCategories(int $page = 1)
+    // Fetch all categories from EposNow API
+    public function getCategories(int $page = 1): array
     {
         $url = "{$this->baseUrl}/Category?page={$page}";
 
         return $this->makeRequest($url);
     }
 
-    /**
-     * Get product images from EposNow API
-     */
+    // Fetch all categories from EposNow API (all pages with pagination)
+    public function getAllCategories(): array
+    {
+        $page = 1;
+        $allCategories = [];
+
+        while (true) {
+            try {
+                $categories = $this->getCategories($page);
+
+                if (empty($categories) || !is_array($categories)) {
+                    break;
+                }
+
+                $allCategories = array_merge($allCategories, $categories);
+                $page++;
+
+                // Log progress for debugging
+                if ($page % 5 == 0) {
+                    Log::info('EPOSNOW Categories Import Progress', [
+                        'pages_fetched' => $page - 1,
+                        'total_categories' => count($allCategories)
+                    ]);
+                }
+
+                usleep(500000);
+            } catch (\Exception $e) {
+                // If rate limit error, throw it up so job can handle it
+                if (stripos($e->getMessage(), 'rate limit') !== false ||
+                    stripos($e->getMessage(), 'maximum API limit') !== false) {
+                    throw $e;
+                }
+
+                Log::error('EposNow Categories API Error', [
+                    'page' => $page,
+                    'error' => $e->getMessage()
+                ]);
+                break;
+            }
+        }
+
+        return $allCategories;
+    }
+
+    // Get product images from EposNow API
     public function getProductImages(string $productId): array
     {
         try {
@@ -75,9 +142,7 @@ class EposNowService
                 return [];
             }
 
-            // Handle array response (bulk format)
             if (is_array($response) && isset($response[0])) {
-                // Find the product matching the requested productId
                 foreach ($response as $productData) {
                     if (isset($productData['ProductId']) && (string)$productData['ProductId'] === (string)$productId) {
                         if (!empty($productData['ImageUrls']) && is_array($productData['ImageUrls'])) {
@@ -88,12 +153,10 @@ class EposNowService
                 return [];
             }
 
-            // Handle single product response format
             if (isset($response['ImageUrls']) && is_array($response['ImageUrls'])) {
                 return $response['ImageUrls'];
             }
 
-            // Handle direct ImageUrls array
             if (is_array($response) && isset($response[0]['ImageUrl'])) {
                 return $response;
             }
@@ -104,9 +167,7 @@ class EposNowService
         }
     }
 
-    /**
-     * Download image from URL and save to storage
-     */
+    // Download image from URL and save to storage
     public function downloadAndSaveImage(string $imageUrl, string $productId, bool $isMainImage = false): ?string
     {
         try {
@@ -122,11 +183,9 @@ class EposNowService
                 mkdir($directory, 0775, true);
             }
 
-            // Try downloading with different methods
             $success = false;
             $errorMessage = '';
 
-            // Method 1: Standard HTTP request with headers
             try {
                 $response = Http::timeout(60)
                     ->withHeaders([
@@ -254,22 +313,81 @@ class EposNowService
         }
     }
 
-    protected function makeRequest(string $url, array $params = [])
+    // Make HTTP request to EposNow API with retry logic
+    protected function makeRequest(string $url, array $params = [], int $retries = 3, int $delay = 2): array
     {
-        $response = Http::withHeaders($this->headers())
-            ->withoutVerifying()
-            ->get($url, $params);
+        $attempt = 0;
 
-        if ($response->failed()) {
-            Log::error('EposNow API Request Failed', [
-                'url' => $url,
-                'params' => $params,
-                'body' => $response->body(),
-            ]);
+        while ($attempt < $retries) {
+            try {
+                $response = Http::withHeaders($this->headers())
+                    ->withoutVerifying()
+                    ->timeout(60)
+                    ->get($url, $params);
 
-            throw new \Exception('EposNow API Error: '.$response->body());
+                if ($response->status() === 429) {
+                    $attempt++;
+                    $waitTime = $delay * pow(2, $attempt - 1);
+
+                    Log::warning('EposNow API Rate Limit Hit', [
+                        'url' => $url,
+                        'attempt' => $attempt,
+                        'wait_time' => $waitTime,
+                        'retry_after' => $response->header('Retry-After', $waitTime)
+                    ]);
+
+                    if ($attempt < $retries) {
+                        $retryAfter = (int) $response->header('Retry-After', $waitTime);
+                        sleep(min($retryAfter, 60));
+                        continue;
+                    } else {
+                        throw new \Exception('EposNow API Rate Limit: Maximum retries reached. Please try again later.');
+                    }
+                }
+
+                if ($response->failed()) {
+                    $errorBody = $response->body();
+                    $errorMessage = 'EposNow API Error';
+
+                    if (stripos($errorBody, 'maximum API limit') !== false ||
+                        stripos($errorBody, 'rate limit') !== false ||
+                        stripos($errorBody, 'too many requests') !== false) {
+                        $errorMessage = 'EposNow API Rate Limit: You have reached your maximum API limit. Please wait and try again later.';
+                    } else {
+                        $errorMessage .= ': ' . $errorBody;
+                    }
+
+                    Log::error('EposNow API Request Failed', [
+                        'url' => $url,
+                        'params' => $params,
+                        'status' => $response->status(),
+                        'body' => $errorBody,
+                    ]);
+
+                    throw new \Exception($errorMessage);
+                }
+
+                return $response->json();
+
+            } catch (\Exception $e) {
+                if (stripos($e->getMessage(), 'rate limit') !== false ||
+                    stripos($e->getMessage(), 'maximum API limit') !== false) {
+                    $attempt++;
+                    if ($attempt < $retries) {
+                        $waitTime = $delay * pow(2, $attempt - 1);
+                        Log::info('Retrying after rate limit error', [
+                            'attempt' => $attempt,
+                            'wait_time' => $waitTime
+                        ]);
+                        sleep(min($waitTime, 60));
+                        continue;
+                    }
+                }
+
+                throw $e;
+            }
         }
 
-        return $response->json();
+        throw new \Exception('EposNow API Error: Maximum retries reached');
     }
 }

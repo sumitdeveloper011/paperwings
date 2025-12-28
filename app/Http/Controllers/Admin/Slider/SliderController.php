@@ -20,9 +20,7 @@ class SliderController extends Controller
         $this->sliderRepository = $sliderRepository;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
+    // Display a listing of the resource
     public function index(): View
     {
         $sliders = $this->sliderRepository->getOrdered();
@@ -30,17 +28,13 @@ class SliderController extends Controller
         return view('admin.slider.index', compact('sliders'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         return view('admin.slider.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -55,7 +49,6 @@ class SliderController extends Controller
             'status' => 'required|in:1,0'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
@@ -79,7 +72,6 @@ class SliderController extends Controller
         }
         $validated['buttons'] = !empty($buttons) ? $buttons : null;
 
-        // Remove button fields from validated data as they're now in buttons array
         unset($validated['button_1_name'], $validated['button_1_url'], $validated['button_2_name'], $validated['button_2_url']);
 
         $this->sliderRepository->create($validated);
@@ -88,25 +80,19 @@ class SliderController extends Controller
                         ->with('success', 'Slider created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(Slider $slider): View
     {
         return view('admin.slider.show', compact('slider'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(Slider $slider): View
     {
         return view('admin.slider.edit', compact('slider'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(Request $request, Slider $slider): RedirectResponse
     {
         $validated = $request->validate([
@@ -121,9 +107,7 @@ class SliderController extends Controller
             'status' => 'required|in:1,0'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
-            // Delete old image
             if ($slider->image && Storage::disk('public')->exists($slider->image)) {
                 Storage::disk('public')->delete($slider->image);
             }
@@ -150,7 +134,6 @@ class SliderController extends Controller
         }
         $validated['buttons'] = !empty($buttons) ? $buttons : null;
 
-        // Remove button fields from validated data
         unset($validated['button_1_name'], $validated['button_1_url'], $validated['button_2_name'], $validated['button_2_url']);
 
         $this->sliderRepository->update($slider, $validated);
@@ -159,12 +142,9 @@ class SliderController extends Controller
                         ->with('success', 'Slider updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(Slider $slider): RedirectResponse
     {
-        // Delete image if it exists
         if ($slider->image && Storage::disk('public')->exists($slider->image)) {
             Storage::disk('public')->delete($slider->image);
         }
@@ -175,9 +155,7 @@ class SliderController extends Controller
                         ->with('success', 'Slider deleted successfully!');
     }
 
-    /**
-     * Update slider status
-     */
+    // Update slider status
     public function updateStatus(Request $request, Slider $slider): RedirectResponse
     {
         $validated = $request->validate([
@@ -190,9 +168,7 @@ class SliderController extends Controller
                         ->with('success', 'Slider status updated successfully!');
     }
 
-    /**
-     * Move slider up in order
-     */
+    // Move slider up in order
     public function moveUp(Slider $slider): RedirectResponse
     {
         $this->sliderRepository->moveUp($slider);
@@ -201,9 +177,7 @@ class SliderController extends Controller
                         ->with('success', 'Slider moved up successfully!');
     }
 
-    /**
-     * Move slider down in order
-     */
+    // Move slider down in order
     public function moveDown(Slider $slider): RedirectResponse
     {
         $this->sliderRepository->moveDown($slider);
@@ -212,9 +186,7 @@ class SliderController extends Controller
                         ->with('success', 'Slider moved down successfully!');
     }
 
-    /**
-     * Update slider sort order via AJAX
-     */
+    // Update slider sort order via AJAX
     public function updateOrder(Request $request)
     {
         $validated = $request->validate([
@@ -231,23 +203,17 @@ class SliderController extends Controller
         return response()->json(['success' => false, 'message' => 'Failed to update slider order.'], 500);
     }
 
-    /**
-     * Duplicate slider
-     */
+    // Duplicate slider
     public function duplicate(Slider $slider): RedirectResponse
     {
         $sliderData = $slider->toArray();
         
-        // Remove unique fields
         unset($sliderData['id'], $sliderData['uuid'], $sliderData['created_at'], $sliderData['updated_at']);
         
-        // Update heading to indicate it's a copy
         $sliderData['heading'] = $sliderData['heading'] . ' (Copy)';
         
-        // Set new sort order
         $sliderData['sort_order'] = $this->sliderRepository->getNextSortOrder();
         
-        // Copy image if it exists
         if ($slider->image && Storage::disk('public')->exists($slider->image)) {
             $originalPath = $slider->image;
             $extension = pathinfo($originalPath, PATHINFO_EXTENSION);

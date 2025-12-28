@@ -12,9 +12,7 @@ use Illuminate\View\View;
 
 class PageController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // Display a listing of the resource
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -32,17 +30,13 @@ class PageController extends Controller
         return view('admin.page.index', compact('pages', 'search'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         return view('admin.page.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -72,25 +66,19 @@ class PageController extends Controller
             ->with('success', 'Page created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(Page $page): View
     {
         return view('admin.page.show', compact('page'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(Page $page): View
     {
         return view('admin.page.edit', compact('page'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(Request $request, Page $page): RedirectResponse
     {
         $validated = $request->validate([
@@ -125,9 +113,7 @@ class PageController extends Controller
             ->with('success', 'Page updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(Page $page): RedirectResponse
     {
         // Delete image if exists
@@ -141,9 +127,7 @@ class PageController extends Controller
             ->with('success', 'Page deleted successfully!');
     }
 
-    /**
-     * Upload image from CKEditor
-     */
+    // Upload image from CKEditor
     public function uploadImage(Request $request)
     {
         $request->validate([

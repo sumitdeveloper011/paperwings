@@ -32,13 +32,13 @@ class ProductImage extends Model
         });
     }
 
-    // Relationships
+    // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    // Accessor for image URL
+    // Get the image URL attribute
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/'.$this->image) : asset('assets/images/no-image.png');

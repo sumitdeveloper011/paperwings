@@ -7,6 +7,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\ResetPasswordRequest;
+use App\Models\Setting;
 use App\Models\User;
 use App\Helpers\CommonHelper;
 use App\Notifications\ResetPasswordNotification;
@@ -21,33 +22,31 @@ use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
+    // Display login page
     public function login(Request $request)
     {
-        // If already authenticated as admin, redirect to admin dashboard
         if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
             return redirect()->route('admin.dashboard')
                 ->with('error', 'Please logout from admin account to access user login.');
         }
 
-        // If already authenticated as user, redirect to home
         if (Auth::check()) {
             return redirect()->route('home');
         }
 
-        // Store intended URL if provided
         if ($request->has('intended')) {
             session(['url.intended' => $request->intended]);
         }
 
-        return view('include.frontend.login');
+        $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
+        $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
+
+        return view('include.frontend.login', compact('googleLoginEnabled', 'facebookLoginEnabled'));
     }
 
-    /**
-     * Handle user login with full security
-     */
+    // Handle user login with full security
     public function authenticate(LoginRequest $request)
     {
-        // Rate limiting check
         $key = 'login-attempts:' . $request->ip();
         $maxAttempts = 5;
         $decayMinutes = 15;
@@ -66,11 +65,9 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Sanitize input
         $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
         $password = $request->password;
 
-        // Security checks - SQL Injection and XSS detection
         if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
             RateLimiter::hit($key, $decayMinutes * 60);
 
@@ -85,13 +82,11 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Attempt authentication
         $credentials = ['email' => $email, 'password' => $password];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
 
-            // Check if user is admin - prevent admin from logging in through frontend
             if (CommonHelper::hasAnyRole($user, ['Admin', 'SuperAdmin'])) {
                 Auth::logout();
 
@@ -175,7 +170,11 @@ class AuthController extends Controller
             return redirect()->route('home');
         }
 
-        return view('include.frontend.register');
+        // Get social login settings
+        $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
+        $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
+
+        return view('include.frontend.register', compact('googleLoginEnabled', 'facebookLoginEnabled'));
     }
 
     public function store(RegisterRequest $request)
@@ -220,9 +219,7 @@ class AuthController extends Controller
         return view('include.frontend.forgot-password');
     }
 
-    /**
-     * Send password reset link
-     */
+    // Send password reset link
     public function sendResetLink(ForgotPasswordRequest $request)
     {
         try {
@@ -279,9 +276,7 @@ class AuthController extends Controller
         }
     }
 
-    /**
-     * Show password reset form
-     */
+    // Show password reset form
     public function showResetForm(Request $request, $token = null)
     {
         $email = $request->query('email');
@@ -316,9 +311,7 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Handle password reset
-     */
+    // Handle password reset
     public function resetPassword(ResetPasswordRequest $request)
     {
         try {
@@ -405,9 +398,7 @@ class AuthController extends Controller
         return redirect()->route('home');
     }
 
-    /**
-     * Handle email verification
-     */
+    // Handle email verification
     public function verify(Request $request, $id, $hash)
     {
         // Verify the signed URL

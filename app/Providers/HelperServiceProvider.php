@@ -7,9 +7,7 @@ use Illuminate\Support\ServiceProvider;
 
 class HelperServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
+    // Register services
     public function register(): void
     {
         $this->app->singleton('common-helper', function ($app) {
@@ -17,9 +15,7 @@ class HelperServiceProvider extends ServiceProvider
         });
     }
 
-    /**
-     * Bootstrap services.
-     */
+    // Bootstrap services
     public function boot(): void
     {
         //

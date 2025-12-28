@@ -10,7 +10,13 @@
                     <i class="fas fa-users"></i>
                     Users
                 </h1>
-                <p class="page-header__subtitle">Manage e-commerce users and customers</p>
+                <p class="page-header__subtitle">Manage users and assign roles</p>
+            </div>
+            <div class="page-header__actions">
+                <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-icon">
+                    <i class="fas fa-plus"></i>
+                    <span>Add User</span>
+                </a>
             </div>
         </div>
     </div>
@@ -41,6 +47,14 @@
                         </div>
                     </div>
                 </form>
+                <div class="filter-dropdown">
+                    <select name="role" id="role-filter" class="filter-select">
+                        <option value="">All Roles</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role->name }}" {{ $roleFilter === $role->name ? 'selected' : '' }}>{{ $role->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="filter-dropdown">
                     <select name="status" id="status-filter" class="filter-select">
                         <option value="">All Status</option>
@@ -149,19 +163,20 @@
     const paginationContainer = document.getElementById('users-pagination-container');
     const searchLoading = document.getElementById('search-loading');
     const clearSearch = document.getElementById('clear-search');
-    
+
     if (!searchInput || !tableContainer) return;
-    
+
     let searchTimeout;
     let isSearching = false;
 
     // Debounced search function
     function performSearch() {
         if (isSearching) return;
-        
+
         const searchTerm = searchInput.value.trim();
         const status = statusSelect ? statusSelect.value : '';
-        
+        const role = roleSelect ? roleSelect.value : '';
+
         // Show loading indicator
         if (searchLoading) searchLoading.style.display = 'block';
         isSearching = true;
@@ -170,6 +185,7 @@
         const url = new URL('{{ route("admin.users.index") }}', window.location.origin);
         if (searchTerm) url.searchParams.set('search', searchTerm);
         if (status) url.searchParams.set('status', status);
+        if (role) url.searchParams.set('role', role);
         url.searchParams.set('ajax', '1');
 
         fetch(url, {
@@ -185,7 +201,7 @@
             paginationContainer.innerHTML = data.pagination;
             if (searchLoading) searchLoading.style.display = 'none';
             isSearching = false;
-            
+
             // Update URL without page reload
             const newUrl = url.toString().replace('&ajax=1', '').replace('?ajax=1', '');
             window.history.pushState({}, '', newUrl);
@@ -211,15 +227,25 @@
         });
     }
 
-    // Clear search
-    if (clearSearch) {
-        clearSearch.addEventListener('click', function(e) {
-            e.preventDefault();
-            searchInput.value = '';
-            if (statusSelect) statusSelect.value = '';
+    // Handle role filter change
+    const roleSelect = document.getElementById('role-filter');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
             clearTimeout(searchTimeout);
             performSearch();
         });
+    }
+
+    // Clear search
+    if (clearSearch) {
+        clearSearch.addEventListener('click', function(e) {
+        e.preventDefault();
+        searchInput.value = '';
+        if (statusSelect) statusSelect.value = '';
+        if (roleSelect) roleSelect.value = '';
+        clearTimeout(searchTimeout);
+        performSearch();
+    });
     }
 
     // Prevent form submission on Enter (use AJAX instead)

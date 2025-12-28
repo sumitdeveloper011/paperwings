@@ -11,17 +11,13 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
-    /**
-     * Show the login form
-     */
+    // Show the login form
     public function login()
     {
-        // If already authenticated as admin, redirect to dashboard
         if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
             return redirect()->route('admin.dashboard');
         }
 
-        // If authenticated as regular user, redirect to home
         if (Auth::check()) {
             return redirect()->route('home')
                 ->with('error', 'Please logout from your user account to access admin panel.');
@@ -30,12 +26,9 @@ class AuthController extends Controller
         return view('admin.auth.login');
     }
 
-    /**
-     * Handle authentication
-     */
+    // Handle authentication
     public function authenticate(Request $request)
     {
-        // Validate input
         $request->validate([
             'email' => 'required|email|max:255',
             'password' => 'required|string|min:8|max:255',
@@ -46,7 +39,6 @@ class AuthController extends Controller
             'password.min' => 'Password must be at least 8 characters.',
         ]);
 
-        // Rate limiting check
         $key = 'login-attempts:' . $request->ip();
         $maxAttempts = 5;
         $decayMinutes = 15;
@@ -65,11 +57,9 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Sanitize input
         $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
         $password = $request->password;
 
-        // Security checks
         if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
             RateLimiter::hit($key, $decayMinutes * 60);
             
@@ -84,13 +74,11 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        // Attempt authentication
         $credentials = ['email' => $email, 'password' => $password];
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            // Check if user is active
             if (!$user->isActive()) {
                 Auth::logout();
                 
@@ -104,7 +92,6 @@ class AuthController extends Controller
                 ])->onlyInput('email');
             }
 
-            // Check if user has admin role
             if (!CommonHelper::hasAnyRole($user, ['Admin', 'SuperAdmin'])) {
                 Auth::logout();
                 
@@ -119,13 +106,10 @@ class AuthController extends Controller
                 ])->onlyInput('email');
             }
 
-            // Clear rate limiter on successful login
             RateLimiter::clear($key);
 
-            // Regenerate session for security
             $request->session()->regenerate();
 
-            // Log successful login
             CommonHelper::logSecurityEvent('Successful admin login', $user, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -135,7 +119,6 @@ class AuthController extends Controller
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        // Failed login attempt
         RateLimiter::hit($key, $decayMinutes * 60);
         
         CommonHelper::logSecurityEvent('Failed login attempt', null, [
@@ -149,9 +132,7 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    /**
-     * Logout user
-     */
+    // Logout user
     public function logout(Request $request)
     {
         $user = Auth::user();

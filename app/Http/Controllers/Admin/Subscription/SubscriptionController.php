@@ -13,9 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class SubscriptionController extends Controller
 {
-    /**
-     * Display a listing of subscriptions
-     */
+    // Display a listing of subscriptions
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -40,17 +38,13 @@ class SubscriptionController extends Controller
         return view('admin.subscription.index', compact('subscriptions', 'search'));
     }
 
-    /**
-     * Display the specified subscription
-     */
+    // Display the specified subscription
     public function show(Subscription $subscription): View
     {
         return view('admin.subscription.show', compact('subscription'));
     }
 
-    /**
-     * Update subscription status
-     */
+    // Update subscription status
     public function updateStatus(Request $request, Subscription $subscription): RedirectResponse
     {
         $request->validate([
@@ -75,9 +69,7 @@ class SubscriptionController extends Controller
             ->with('success', 'Subscription status updated successfully.');
     }
 
-    /**
-     * Delete subscription
-     */
+    // Delete subscription
     public function destroy(Subscription $subscription): RedirectResponse
     {
         $email = $subscription->email;
@@ -92,9 +84,7 @@ class SubscriptionController extends Controller
             ->with('success', 'Subscription deleted successfully.');
     }
 
-    /**
-     * Export subscriptions to CSV
-     */
+    // Export subscriptions to CSV
     public function export(Request $request): Response
     {
         try {

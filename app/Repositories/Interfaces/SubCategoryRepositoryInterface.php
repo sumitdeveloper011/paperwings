@@ -8,88 +8,54 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 interface SubCategoryRepositoryInterface
 {
-    /**
-     * Get all subcategories
-     */
+    // Get all subcategories
     public function all(): Collection;
 
-    /**
-     * Get paginated subcategories
-     */
+    // Get paginated subcategories
     public function paginate(int $perPage = 10): LengthAwarePaginator;
 
-    /**
-     * Find subcategory by ID
-     */
+    // Find subcategory by ID
     public function find(int $id): ?SubCategory;
 
-    /**
-     * Find subcategory by UUID
-     */
+    // Find subcategory by UUID
     public function findByUuid(string $uuid): ?SubCategory;
 
-    /**
-     * Find subcategory by slug
-     */
+    // Find subcategory by slug
     public function findBySlug(string $slug): ?SubCategory;
 
-    /**
-     * Create new subcategory
-     */
+    // Create new subcategory
     public function create(array $data): SubCategory;
 
-    /**
-     * Update subcategory
-     */
+    // Update subcategory
     public function update(SubCategory $subCategory, array $data): SubCategory;
 
-    /**
-     * Delete subcategory
-     */
+    // Delete subcategory
     public function delete(SubCategory $subCategory): bool;
 
-    /**
-     * Get active subcategories
-     */
+    // Get active subcategories
     public function getActive(): Collection;
 
-    /**
-     * Get inactive subcategories
-     */
+    // Get inactive subcategories
     public function getInactive(): Collection;
 
-    /**
-     * Get subcategories by category
-     */
+    // Get subcategories by category
     public function getByCategory(int $categoryId): Collection;
 
-    /**
-     * Get active subcategories by category
-     */
+    // Get active subcategories by category
     public function getActiveByCategory(int $categoryId): Collection;
 
-    /**
-     * Update subcategory status
-     */
+    // Update subcategory status
     public function updateStatus(SubCategory $subCategory, string $status): SubCategory;
 
-    /**
-     * Search subcategories by name
-     */
+    // Search subcategories by name
     public function search(string $term): Collection;
 
-    /**
-     * Get subcategories with image
-     */
+    // Get subcategories with image
     public function withImage(): Collection;
 
-    /**
-     * Get subcategories without image
-     */
+    // Get subcategories without image
     public function withoutImage(): Collection;
 
-    /**
-     * Get subcategories with their categories
-     */
+    // Get subcategories with their categories
     public function withCategory(): Collection;
 }

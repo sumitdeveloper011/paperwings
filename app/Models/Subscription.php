@@ -41,18 +41,19 @@ class Subscription extends Model
         });
     }
 
-    // Scopes
+    // Scope to filter active subscriptions
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
+    // Scope to filter inactive subscriptions
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
     }
 
-    // Accessors
+    // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
         return $this->status === 1
@@ -60,7 +61,7 @@ class Subscription extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
-    // Route key binding
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

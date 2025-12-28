@@ -21,9 +21,7 @@ class CartController extends Controller
         private CartService $cartService
     ) {}
 
-    /**
-     * Add product to cart
-     */
+    // Add product to cart
     public function add(AddToCartRequest $request): JsonResponse
     {
         try {
@@ -47,9 +45,7 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * Update cart item quantity
-     */
+    // Update cart item quantity
     public function update(UpdateCartRequest $request): JsonResponse
     {
         try {
@@ -74,9 +70,7 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * Remove product from cart
-     */
+    // Remove product from cart
     public function remove(Request $request): JsonResponse
     {
         $request->validate([
@@ -100,9 +94,7 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * Display cart page
-     */
+    // Display cart page
     public function index()
     {
         $title = 'Shopping Cart';
@@ -113,12 +105,12 @@ class CartController extends Controller
         $productIds = $cartItems->pluck('product_id')->unique();
         if ($productIds->isNotEmpty()) {
             $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
-            
+
             // Attach first image URL to each product
             $cartItems->each(function($item) use ($images) {
                 if ($item->product) {
                     $image = $images->get($item->product_id);
-                    $item->product->setAttribute('main_image', 
+                    $item->product->setAttribute('main_image',
                         $image ? $image->image_url : asset('assets/images/placeholder.jpg')
                     );
                 }
@@ -132,9 +124,7 @@ class CartController extends Controller
         return view('frontend.cart.cart', compact('title', 'cartItems', 'subtotal', 'shipping', 'total'));
     }
 
-    /**
-     * Get cart items (AJAX)
-     */
+    // Get cart items (AJAX)
     public function list(): JsonResponse
     {
         $cartIdentifier = $this->cartService->getCartIdentifier();
@@ -152,9 +142,7 @@ class CartController extends Controller
         ]);
     }
 
-    /**
-     * Get cart count
-     */
+    // Get cart count
     public function count(): JsonResponse
     {
         $cartIdentifier = $this->cartService->getCartIdentifier();
@@ -163,6 +151,30 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'count' => $count
+        ]);
+    }
+
+    // Render cart items as HTML (for AJAX)
+    public function render(): JsonResponse
+    {
+        $cartIdentifier = $this->cartService->getCartIdentifier();
+        $cartItems = $this->cartService->getCartItems($cartIdentifier)
+            ->filter(function($item) {
+                return $item->product !== null;
+            });
+
+        // Render HTML using Blade partial
+        $html = view('frontend.cart.partials.items', [
+            'items' => $cartItems
+        ])->render();
+
+        $total = $cartItems->sum(fn($item) => $item->subtotal);
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $this->cartService->getCartCount($cartIdentifier),
+            'total' => $total
         ]);
     }
 }

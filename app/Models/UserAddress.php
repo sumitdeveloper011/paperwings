@@ -31,33 +31,25 @@ class UserAddress extends Model
         'is_default' => 'boolean',
     ];
 
-    /**
-     * Get the user that owns the address.
-     */
+    // Get the user relationship
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the region for this address.
-     */
+    // Get the region relationship
     public function region(): BelongsTo
     {
         return $this->belongsTo(Region::class);
     }
 
-    /**
-     * Get the full name.
-     */
+    // Get the full name attribute
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name . ' ' . $this->last_name);
     }
 
-    /**
-     * Get the full address as a formatted string.
-     */
+    // Get the full address attribute
     public function getFullAddressAttribute(): string
     {
         $address = $this->street_address;
@@ -76,17 +68,13 @@ class UserAddress extends Model
         return $address;
     }
 
-    /**
-     * Scope to get default addresses.
-     */
+    // Scope to get default addresses
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
     }
 
-    /**
-     * Scope to get addresses by type.
-     */
+    // Scope to get addresses by type
     public function scopeByType($query, string $type)
     {
         return $query->where('type', $type);

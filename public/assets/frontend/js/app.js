@@ -55,6 +55,8 @@
             }
 
             // Slick Slider
+            // Note: This file is currently not loaded. Main slider initialization is in script.js
+            // Updated to match current configuration (dots only, no arrows)
             $('.slider').slick({
                 dots: true,
                 infinite: true,
@@ -63,19 +65,14 @@
                 cssEase: 'linear',
                 autoplay: true,
                 autoplaySpeed: 5000,
-                arrows: true,
+                arrows: false, // Removed next/previous buttons - using dot navigation only
                 responsive: [{
                     breakpoint: 768,
                     settings: {
-                        arrows: false
+                        arrows: false,
+                        dots: true // Keep dots on mobile too
                     }
                 }]
-            });
-
-            // Custom arrow styling
-            $('.slider').on('init', function() {
-                $('.slick-prev').html('<i class="fas fa-chevron-left"></i>');
-                $('.slick-next').html('<i class="fas fa-chevron-right"></i>');
             });
 
             // Owl Carousel for products
@@ -125,8 +122,8 @@
                     return;
                 }
 
-                // Perform autocomplete search
-                fetch(`/search/autocomplete?q=${encodeURIComponent(value)}`, {
+                // Fetch rendered HTML from Laravel
+                fetch(`/search/autocomplete/render?q=${encodeURIComponent(value)}`, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
@@ -134,8 +131,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Update autocomplete dropdown
-                    this.updateAutocomplete(data.products || []);
+                    if (data.success) {
+                        // Use Laravel rendered HTML (already escaped and safe)
+                        this.updateAutocompleteFromHtml(data.html);
+                    }
                 })
                 .catch(error => {
                     console.error('Search error:', error);
@@ -147,26 +146,18 @@
             });
         },
 
-        // Update autocomplete dropdown
-        updateAutocomplete(products) {
+        // Update autocomplete dropdown from Laravel rendered HTML (secure and safe)
+        updateAutocompleteFromHtml(html) {
             const dropdown = document.querySelector('.search-autocomplete');
             if (!dropdown) return;
 
-            if (products.length === 0) {
+            if (!html || html.trim() === '') {
                 dropdown.style.display = 'none';
                 return;
             }
 
-            dropdown.innerHTML = products.map(product => `
-                <a href="${product.url}" class="search-autocomplete-item">
-                    <img src="${product.image}" alt="${product.name}">
-                    <div>
-                        <div class="search-autocomplete-name">${product.name}</div>
-                        <div class="search-autocomplete-price">$${product.price.toFixed(2)}</div>
-                    </div>
-                </a>
-            `).join('');
-
+            // Insert Laravel rendered HTML (already escaped and safe)
+            dropdown.innerHTML = html;
             dropdown.style.display = 'block';
         },
 

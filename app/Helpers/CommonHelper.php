@@ -10,21 +10,17 @@ use Illuminate\Support\Str;
 
 class CommonHelper
 {
-    /**
-     * Handle exception with environment check
-     */
+    // Handle exception with environment check
     public static function handleException(\Exception $e, $message = null, $context = []): array
     {
         $errorMessage = $message ?? $e->getMessage();
         
-        // Log the error with context
         Log::error('Exception occurred: ' . $errorMessage, array_merge([
             'file' => $e->getFile(),
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString()
         ], $context));
 
-        // Return different responses based on environment
         if (app()->environment('production')) {
             return [
                 'success' => false,
@@ -43,9 +39,7 @@ class CommonHelper
         }
     }
 
-    /**
-     * Try-catch wrapper for functions
-     */
+    // Try-catch wrapper for functions
     public static function tryCatch(callable $callback, $errorMessage = null, $context = []): array
     {
         try {
@@ -59,9 +53,7 @@ class CommonHelper
         }
     }
 
-    /**
-     * Safe database operation with transaction
-     */
+    // Safe database operation with transaction
     public static function safeDatabaseOperation(callable $callback, $errorMessage = null): array
     {
         return self::tryCatch(function () use ($callback) {
@@ -69,25 +61,19 @@ class CommonHelper
         }, $errorMessage, ['operation' => 'database']);
     }
 
-    /**
-     * Check if application is in production
-     */
+    // Check if application is in production
     public static function isProduction(): bool
     {
         return app()->environment('production');
     }
 
-    /**
-     * Check if application is in development
-     */
+    // Check if application is in development
     public static function isDevelopment(): bool
     {
         return app()->environment('local', 'development');
     }
 
-    /**
-     * Get environment-specific error message
-     */
+    // Get environment-specific error message
     public static function getErrorMessage(\Exception $e, $customMessage = null): string
     {
         if (self::isProduction()) {
@@ -97,9 +83,7 @@ class CommonHelper
         }
     }
 
-    /**
-     * Log error with environment context
-     */
+    // Log error with environment context
     public static function logError($message, $context = [], $level = 'error'): void
     {
         $context['environment'] = app()->environment();
@@ -108,9 +92,7 @@ class CommonHelper
         Log::{$level}($message, $context);
     }
 
-    /**
-     * Upload file with validation and error handling
-     */
+    // Upload file with validation and error handling
     public static function uploadFile($file, $path = 'uploads', $disk = 'public'): array
     {
         return self::tryCatch(function () use ($file, $path, $disk) {
@@ -131,9 +113,7 @@ class CommonHelper
         }, 'File upload failed', ['file' => $file->getClientOriginalName()]);
     }
 
-    /**
-     * Delete file with error handling
-     */
+    // Delete file with error handling
     public static function deleteFile($filePath, $disk = 'public'): array
     {
         return self::tryCatch(function () use ($filePath, $disk) {
@@ -149,65 +129,49 @@ class CommonHelper
         }, 'File deletion failed', ['file_path' => $filePath]);
     }
 
-    /**
-     * Format currency
-     */
+    // Format currency
     public static function formatCurrency($amount, $currency = 'USD'): string
     {
         return number_format($amount, 2) . ' ' . $currency;
     }
 
-    /**
-     * Sanitize input - Basic sanitization
-     */
+    // Sanitize input - Basic sanitization
     public static function sanitizeInput($input): string
     {
         return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
     }
 
-    /**
-     * Sanitize email
-     */
+    // Sanitize email
     public static function sanitizeEmail($email): string
     {
         return filter_var(trim($email), FILTER_SANITIZE_EMAIL);
     }
 
-    /**
-     * Sanitize URL
-     */
+    // Sanitize URL
     public static function sanitizeUrl($url): string
     {
         return filter_var(trim($url), FILTER_SANITIZE_URL);
     }
 
-    /**
-     * Sanitize phone number
-     */
+    // Sanitize phone number
     public static function sanitizePhone($phone): string
     {
         return preg_replace('/[^0-9+\-\(\)\s]/', '', trim($phone));
     }
 
-    /**
-     * Sanitize name (letters, spaces, hyphens, apostrophes only)
-     */
+    // Sanitize name (letters, spaces, hyphens, apostrophes only)
     public static function sanitizeName($name): string
     {
         return preg_replace('/[^a-zA-Z\s\-\']/', '', trim($name));
     }
 
-    /**
-     * Sanitize username (alphanumeric, underscores, hyphens only)
-     */
+    // Sanitize username (alphanumeric, underscores, hyphens only)
     public static function sanitizeUsername($username): string
     {
         return preg_replace('/[^a-zA-Z0-9_-]/', '', trim($username));
     }
 
-    /**
-     * Sanitize array of inputs
-     */
+    // Sanitize array of inputs
     public static function sanitizeArray($array): array
     {
         $sanitized = [];
@@ -221,9 +185,7 @@ class CommonHelper
         return $sanitized;
     }
 
-    /**
-     * Validate and sanitize request data
-     */
+    // Validate and sanitize request data
     public static function validateAndSanitize(Request $request, array $rules, array $customMessages = []): array
     {
         $validator = Validator::make($request->all(), $rules, $customMessages);
@@ -244,9 +206,7 @@ class CommonHelper
         ];
     }
 
-    /**
-     * Check for SQL injection attempts
-     */
+    // Check for SQL injection attempts
     public static function detectSqlInjection($input): bool
     {
         $sqlPatterns = [
@@ -267,9 +227,7 @@ class CommonHelper
         return false;
     }
 
-    /**
-     * Check for XSS attempts
-     */
+    // Check for XSS attempts
     public static function detectXss($input): bool
     {
         $xssPatterns = [
@@ -294,9 +252,7 @@ class CommonHelper
         return false;
     }
 
-    /**
-     * Secure password validation
-     */
+    // Secure password validation
     public static function validatePassword($password): array
     {
         $errors = [];
@@ -327,41 +283,31 @@ class CommonHelper
         ];
     }
 
-    /**
-     * Generate secure random token
-     */
+    // Generate secure random token
     public static function generateSecureToken($length = 32): string
     {
         return bin2hex(random_bytes($length));
     }
 
-    /**
-     * Check if user has specific role
-     */
+    // Check if user has specific role
     public static function hasRole($user, $role): bool
     {
         return $user && $user->hasRole($role);
     }
 
-    /**
-     * Check if user has any of the specified roles
-     */
+    // Check if user has any of the specified roles
     public static function hasAnyRole($user, array $roles): bool
     {
         return $user && $user->hasAnyRole($roles);
     }
 
-    /**
-     * Check if user has all specified roles
-     */
+    // Check if user has all specified roles
     public static function hasAllRoles($user, array $roles): bool
     {
         return $user && $user->hasAllRoles($roles);
     }
 
-    /**
-     * Log security event
-     */
+    // Log security event
     public static function logSecurityEvent($event, $user = null, $context = []): void
     {
         $logData = array_merge([
@@ -376,9 +322,7 @@ class CommonHelper
         Log::channel('security')->info('Security Event: ' . $event, $logData);
     }
 
-    /**
-     * Send email with error handling
-     */
+    // Send email with error handling
     public static function sendEmail($to, $subject, $view, $data = []): array
     {
         return self::tryCatch(function () use ($to, $subject, $view, $data) {
@@ -389,17 +333,13 @@ class CommonHelper
         }, 'Email sending failed', ['to' => $to, 'subject' => $subject]);
     }
 
-    /**
-     * Validate phone number
-     */
+    // Validate phone number
     public static function isValidPhone($phone): bool
     {
         return preg_match('/^[\+]?[1-9][\d]{0,15}$/', $phone);
     }
 
-    /**
-     * Mask sensitive data
-     */
+    // Mask sensitive data
     public static function maskData($data, $type = 'email'): string
     {
         switch ($type) {

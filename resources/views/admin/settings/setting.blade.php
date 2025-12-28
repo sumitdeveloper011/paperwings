@@ -308,6 +308,33 @@
                             @endif
                         </div>
 
+                        <!-- Google Map API Key -->
+                        <div class="form-group-modern">
+                            <label for="google_map_api_key" class="form-label-modern">
+                                <i class="fas fa-key"></i>
+                                Google Map API Key
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-key input-icon"></i>
+                                <input type="text"
+                                       class="form-input-modern @error('google_map_api_key') is-invalid @enderror"
+                                       id="google_map_api_key"
+                                       name="google_map_api_key"
+                                       value="{{ old('google_map_api_key', $settings['google_map_api_key'] ?? '') }}"
+                                       placeholder="Enter Google Maps API Key">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Optional: Enter your Google Maps API Key if you want to use dynamic map instead of embed code. Get your API key from <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>
+                            </div>
+                            @error('google_map_api_key')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
                         <!-- Email Repeater -->
                         <div class="form-group-modern">
                             <label class="form-label-modern">
@@ -698,6 +725,351 @@
                                 Test Connection
                             </button>
                             <div id="instagramTestResult" style="margin-top: 1rem; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Keys & Private Keys Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-key"></i>
+                            API Keys & Private Keys <span class="badge badge-warning">Sensitive</span>
+                        </h3>
+                        <p class="modern-card__subtitle">Manage your API keys and private credentials securely</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Security Notice:</strong>
+                            <p style="margin: 0.5rem 0 0 0;">These keys are sensitive information. Store them securely and never share them publicly.</p>
+                        </div>
+
+                        <!-- Private Key 1 -->
+                        <div class="form-group-modern">
+                            <label for="private_key_1" class="form-label-modern">
+                                <i class="fas fa-lock"></i>
+                                Private Key 1
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password"
+                                       class="form-input-modern @error('private_key_1') is-invalid @enderror"
+                                       id="private_key_1"
+                                       name="private_key_1"
+                                       value="{{ old('private_key_1', $settings['private_key_1'] ?? '') }}"
+                                       placeholder="Enter private key 1">
+                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_1')" title="Show/Hide">
+                                    <i class="fas fa-eye" id="toggle_private_key_1"></i>
+                                </button>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Enter your first private key or API secret
+                            </div>
+                            @error('private_key_1')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Private Key 2 -->
+                        <div class="form-group-modern">
+                            <label for="private_key_2" class="form-label-modern">
+                                <i class="fas fa-lock"></i>
+                                Private Key 2
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password"
+                                       class="form-input-modern @error('private_key_2') is-invalid @enderror"
+                                       id="private_key_2"
+                                       name="private_key_2"
+                                       value="{{ old('private_key_2', $settings['private_key_2'] ?? '') }}"
+                                       placeholder="Enter private key 2">
+                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_2')" title="Show/Hide">
+                                    <i class="fas fa-eye" id="toggle_private_key_2"></i>
+                                </button>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Enter your second private key or API secret
+                            </div>
+                            @error('private_key_2')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Private Key 3 -->
+                        <div class="form-group-modern">
+                            <label for="private_key_3" class="form-label-modern">
+                                <i class="fas fa-lock"></i>
+                                Private Key 3
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password"
+                                       class="form-input-modern @error('private_key_3') is-invalid @enderror"
+                                       id="private_key_3"
+                                       name="private_key_3"
+                                       value="{{ old('private_key_3', $settings['private_key_3'] ?? '') }}"
+                                       placeholder="Enter private key 3">
+                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_3')" title="Show/Hide">
+                                    <i class="fas fa-eye" id="toggle_private_key_3"></i>
+                                </button>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Enter your third private key or API secret
+                            </div>
+                            @error('private_key_3')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Login Configuration Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Social Login Configuration
+                        </h3>
+                        <p class="modern-card__subtitle">Configure Google and Facebook OAuth for social login</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+                            <strong><i class="fas fa-info-circle"></i> Setup Instructions:</strong>
+                            <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                                <li>Create OAuth applications in Google Cloud Console and Facebook Developers</li>
+                                <li>Get your Client ID and Client Secret from each platform</li>
+                                <li>Enter the credentials below and enable the providers you want to use</li>
+                                <li>Make sure to set the correct redirect URIs in your OAuth apps</li>
+                            </ol>
+                        </div>
+
+                        <!-- Google OAuth Configuration -->
+                        <div class="social-provider-section" style="margin-bottom: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="mb-0">
+                                    <i class="fab fa-google" style="color: #4285F4;"></i>
+                                    Google OAuth
+                                </h4>
+                                <div class="form-check-modern">
+                                    <input type="checkbox"
+                                           class="form-check-input-modern"
+                                           id="google_login_enabled"
+                                           name="google_login_enabled"
+                                           value="1"
+                                           {{ old('google_login_enabled', $settings['google_login_enabled'] ?? '0') == '1' ? 'checked' : '' }}
+                                           onchange="toggleProviderFields('google')">
+                                    <label class="form-check-label-modern" for="google_login_enabled">
+                                        <i class="fas fa-toggle-on"></i>
+                                        Enable Google Login
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="googleFields">
+                                <!-- Google Client ID -->
+                                <div class="form-group-modern">
+                                    <label for="google_client_id" class="form-label-modern">
+                                        <i class="fas fa-id-card"></i>
+                                        Google Client ID
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-id-card input-icon"></i>
+                                        <input type="text"
+                                               class="form-input-modern @error('google_client_id') is-invalid @enderror"
+                                               id="google_client_id"
+                                               name="google_client_id"
+                                               value="{{ old('google_client_id', $settings['google_client_id'] ?? env('GOOGLE_CLIENT_ID', '')) }}"
+                                               placeholder="Enter Google Client ID">
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Found in Google Cloud Console → APIs & Services → Credentials
+                                    </div>
+                                    @error('google_client_id')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <!-- Google Client Secret -->
+                                <div class="form-group-modern">
+                                    <label for="google_client_secret" class="form-label-modern">
+                                        <i class="fas fa-lock"></i>
+                                        Google Client Secret
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-lock input-icon"></i>
+                                        <input type="password"
+                                               class="form-input-modern @error('google_client_secret') is-invalid @enderror"
+                                               id="google_client_secret"
+                                               name="google_client_secret"
+                                               value="{{ old('google_client_secret', $settings['google_client_secret'] ?? env('GOOGLE_CLIENT_SECRET', '')) }}"
+                                               placeholder="Enter Google Client Secret">
+                                        <button type="button" class="password-toggle" onclick="togglePassword('google_client_secret')" title="Show/Hide">
+                                            <i class="fas fa-eye" id="toggle_google_client_secret"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Found in Google Cloud Console → APIs & Services → Credentials
+                                    </div>
+                                    @error('google_client_secret')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <!-- Google Redirect URI Info -->
+                                <div class="form-hint" style="background: #e7f3ff; padding: 0.75rem; border-radius: 4px;">
+                                    <strong>Redirect URI:</strong> <code>{{ env('APP_URL') }}/auth/google/callback</code>
+                                    <br>
+                                    <small>Make sure this URI is added to your Google OAuth app's authorized redirect URIs.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Facebook OAuth Configuration -->
+                        <div class="social-provider-section" style="padding: 1.5rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="mb-0">
+                                    <i class="fab fa-facebook-f" style="color: #1877F2;"></i>
+                                    Facebook OAuth
+                                </h4>
+                                <div class="form-check-modern">
+                                    <input type="checkbox"
+                                           class="form-check-input-modern"
+                                           id="facebook_login_enabled"
+                                           name="facebook_login_enabled"
+                                           value="1"
+                                           {{ old('facebook_login_enabled', $settings['facebook_login_enabled'] ?? '0') == '1' ? 'checked' : '' }}
+                                           onchange="toggleProviderFields('facebook')">
+                                    <label class="form-check-label-modern" for="facebook_login_enabled">
+                                        <i class="fas fa-toggle-on"></i>
+                                        Enable Facebook Login
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="facebookFields">
+                                <!-- Facebook App ID -->
+                                <div class="form-group-modern">
+                                    <label for="facebook_client_id" class="form-label-modern">
+                                        <i class="fas fa-id-card"></i>
+                                        Facebook App ID
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-id-card input-icon"></i>
+                                        <input type="text"
+                                               class="form-input-modern @error('facebook_client_id') is-invalid @enderror"
+                                               id="facebook_client_id"
+                                               name="facebook_client_id"
+                                               value="{{ old('facebook_client_id', $settings['facebook_client_id'] ?? env('FACEBOOK_CLIENT_ID', '')) }}"
+                                               placeholder="Enter Facebook App ID">
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Found in Facebook Developers → Your App → Settings → Basic
+                                    </div>
+                                    @error('facebook_client_id')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <!-- Facebook App Secret -->
+                                <div class="form-group-modern">
+                                    <label for="facebook_client_secret" class="form-label-modern">
+                                        <i class="fas fa-lock"></i>
+                                        Facebook App Secret
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-lock input-icon"></i>
+                                        <input type="password"
+                                               class="form-input-modern @error('facebook_client_secret') is-invalid @enderror"
+                                               id="facebook_client_secret"
+                                               name="facebook_client_secret"
+                                               value="{{ old('facebook_client_secret', $settings['facebook_client_secret'] ?? env('FACEBOOK_CLIENT_SECRET', '')) }}"
+                                               placeholder="Enter Facebook App Secret">
+                                        <button type="button" class="password-toggle" onclick="togglePassword('facebook_client_secret')" title="Show/Hide">
+                                            <i class="fas fa-eye" id="toggle_facebook_client_secret"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Found in Facebook Developers → Your App → Settings → Basic
+                                    </div>
+                                    @error('facebook_client_secret')
+                                        <div class="form-error">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <!-- Facebook Redirect URI Info -->
+                                <div class="form-hint" style="background: #e7f3ff; padding: 0.75rem; border-radius: 4px;">
+                                    <strong>Redirect URI:</strong> <code>{{ env('APP_URL') }}/auth/facebook/callback</code>
+                                    <br>
+                                    <small>Make sure this URI is added to your Facebook App's Valid OAuth Redirect URIs.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current Status Display -->
+                        <div class="form-group-modern" style="margin-top: 2rem;">
+                            <div class="ga-status-box">
+                                <h4 class="ga-status-box__title">
+                                    <i class="fas fa-info-circle"></i>
+                                    Current Social Login Status
+                                </h4>
+                                <div class="ga-status-box__content">
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fab fa-google"></i>
+                                            Google Login:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            @if(isset($settings['google_login_enabled']) && $settings['google_login_enabled'] == '1')
+                                                <span class="status-badge status-badge--success">Enabled</span>
+                                            @else
+                                                <span class="status-badge status-badge--warning">Disabled</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="ga-status-item">
+                                        <span class="ga-status-label">
+                                            <i class="fab fa-facebook-f"></i>
+                                            Facebook Login:
+                                        </span>
+                                        <span class="ga-status-value">
+                                            @if(isset($settings['facebook_login_enabled']) && $settings['facebook_login_enabled'] == '1')
+                                                <span class="status-badge status-badge--success">Enabled</span>
+                                            @else
+                                                <span class="status-badge status-badge--warning">Disabled</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1193,6 +1565,34 @@ document.addEventListener('DOMContentLoaded', function() {
             toggle.classList.add('fa-eye');
         }
     }
+
+    // Toggle provider fields based on enable/disable checkbox
+    function toggleProviderFields(provider) {
+        const checkbox = document.getElementById(provider + '_login_enabled');
+        const fieldsDiv = document.getElementById(provider + 'Fields');
+        const inputs = fieldsDiv.querySelectorAll('input[type="text"], input[type="password"]');
+        
+        if (checkbox && fieldsDiv) {
+            if (checkbox.checked) {
+                fieldsDiv.style.opacity = '1';
+                inputs.forEach(input => {
+                    input.disabled = false;
+                    input.required = false; // Make optional
+                });
+            } else {
+                fieldsDiv.style.opacity = '0.6';
+                inputs.forEach(input => {
+                    input.disabled = true;
+                });
+            }
+        }
+    }
+
+    // Initialize provider fields on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleProviderFields('google');
+        toggleProviderFields('facebook');
+    });
 
     // Test Instagram Connection
     document.getElementById('testInstagramConnection')?.addEventListener('click', function() {

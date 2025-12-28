@@ -9,33 +9,23 @@ use Illuminate\Support\Facades\Cache;
 
 class ProductImageService
 {
-    /**
-     * Get first image for multiple products efficiently
-     * Uses caching and eager loading to prevent N+1 queries
-     *
-     * @param Collection|SupportCollection|array $productIds
-     * @param bool $useCache
-     * @return Collection Keyed by product_id
-     */
+    // Get first image for multiple products efficiently
     public static function getFirstImagesForProducts($productIds, bool $useCache = true): Collection
     {
         if (empty($productIds)) {
             return collect();
         }
 
-        // Ensure we have a collection
         if (is_array($productIds)) {
             $productIds = collect($productIds);
         }
 
-        // Remove duplicates and filter nulls
         $productIds = $productIds->filter()->unique()->values();
 
         if ($productIds->isEmpty()) {
             return collect();
         }
 
-        // Create cache key
         $cacheKey = 'product_images_first_' . md5($productIds->sort()->implode('_'));
 
         if ($useCache) {
@@ -47,26 +37,25 @@ class ProductImageService
         return self::fetchFirstImages($productIds);
     }
 
-    /**
-     * Fetch first images from database
-     *
-     * @param Collection $productIds
-     * @return Collection
-     */
-    private static function fetchFirstImages(Collection $productIds): Collection
+    // Fetch first images from database
+    private static function fetchFirstImages($productIds): Collection
     {
-        // Get first image ID for each product
+        if ($productIds instanceof Collection || $productIds instanceof SupportCollection) {
+            $productIdsArray = $productIds->toArray();
+        } else {
+            $productIdsArray = $productIds;
+        }
+        
         $firstImageIds = \DB::table('products_images')
             ->select('product_id', \DB::raw('MIN(id) as min_id'))
-            ->whereIn('product_id', $productIds)
+            ->whereIn('product_id', $productIdsArray)
             ->groupBy('product_id')
             ->pluck('min_id', 'product_id');
 
         if ($firstImageIds->isEmpty()) {
-            return collect();
+            return ProductImage::whereRaw('1 = 0')->get();
         }
 
-        // Fetch the actual images
         $images = ProductImage::whereIn('id', $firstImageIds->values())
             ->select('id', 'product_id', 'image')
             ->get()
@@ -75,24 +64,15 @@ class ProductImageService
         return $images;
     }
 
-    /**
-     * Get first image URL for a single product
-     * Checks if images are already loaded to prevent N+1
-     *
-     * @param mixed $product Product model or product ID
-     * @param Collection|null $preloadedImages Pre-loaded images collection
-     * @return string
-     */
+    // Get first image URL for a single product
     public static function getFirstImageUrl($product, ?Collection $preloadedImages = null): string
     {
-        // If product is a model and images are already loaded
         if (is_object($product) && method_exists($product, 'relationLoaded')) {
             if ($product->relationLoaded('images') && $product->images->isNotEmpty()) {
                 return $product->images->first()->image_url;
             }
         }
 
-        // Use preloaded images if provided
         if ($preloadedImages) {
             $productId = is_object($product) ? $product->id : $product;
             $image = $preloadedImages->get($productId);
@@ -101,7 +81,6 @@ class ProductImageService
             }
         }
 
-        // Fallback: query database (should be avoided)
         $productId = is_object($product) ? $product->id : $product;
         $image = self::getFirstImagesForProducts(collect([$productId]), false)->first();
         
@@ -112,12 +91,7 @@ class ProductImageService
         return asset('assets/images/placeholder.jpg');
     }
 
-    /**
-     * Clear cache for product images
-     *
-     * @param array|Collection|null $productIds
-     * @return void
-     */
+    // Clear cache for product images
     public static function clearCache($productIds = null): void
     {
         if ($productIds) {
@@ -125,17 +99,11 @@ class ProductImageService
             $cacheKey = 'product_images_first_' . md5($productIds->sort()->implode('_'));
             Cache::forget($cacheKey);
         } else {
-            // Clear all product image caches (use tags if available)
-            Cache::flush(); // Or use Cache::tags(['product_images'])->flush() if tags are configured
+            Cache::flush();
         }
     }
 
-    /**
-     * Attach first images to products collection
-     *
-     * @param Collection $products
-     * @return Collection
-     */
+    // Attach first images to products collection
     public static function attachFirstImagesToProducts(Collection $products): Collection
     {
         if ($products->isEmpty()) {

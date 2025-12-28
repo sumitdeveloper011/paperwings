@@ -30,11 +30,28 @@ return new class extends Migration
             $table->text('short_description')->nullable();
             $table->tinyInteger('status')->default(1)->comment('1: Active, 0: Inactive');
             $table->timestamps();
+            
+            // Basic indexes
             $table->index('category_id');
             $table->index('brand_id');
             $table->index('eposnow_category_id');
             $table->index('eposnow_brand_id');
-            $table->index(['status']);
+            $table->index('status');
+            
+            // Search indexes
+            $table->index('name');
+            $table->index('slug');
+            $table->index('total_price');
+            $table->index('created_at');
+            $table->index('product_type');
+            
+            // Composite indexes for common query patterns
+            $table->index(['status', 'name']);
+            $table->index(['status', 'total_price']);
+            $table->index(['category_id', 'status']);
+            $table->index(['status', 'product_type']);
+            $table->index(['status', 'eposnow_category_id']);
+            $table->index(['status', 'product_type', 'eposnow_category_id']);
         });
     }
 

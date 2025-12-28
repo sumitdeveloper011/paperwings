@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
             $table->string('order_number')->unique();
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('session_id')->nullable();
@@ -59,15 +60,27 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled'])->default('pending');
 
             $table->text('notes')->nullable();
+            $table->timestamp('admin_viewed_at')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
             $table->foreign('billing_region_id')->references('id')->on('regions')->onDelete('set null');
             $table->foreign('shipping_region_id')->references('id')->on('regions')->onDelete('set null');
+
+            // Indexes
+            $table->index('uuid');
             $table->index('order_number');
             $table->index('user_id');
             $table->index('payment_status');
             $table->index('status');
+            $table->index('admin_viewed_at');
+            $table->index('billing_email');
+            $table->index('billing_first_name');
+            $table->index('billing_last_name');
+            $table->index('created_at');
+            $table->index(['status', 'created_at']);
+            $table->index(['payment_status', 'created_at']);
+            $table->index(['status', 'payment_status']);
         });
     }
 

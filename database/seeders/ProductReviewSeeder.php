@@ -1,0 +1,83 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Product;
+use App\Models\ProductReview;
+use App\Models\User;
+
+class ProductReviewSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $products = Product::active()->take(15)->get();
+        $users = User::take(10)->get();
+
+        if ($products->isEmpty()) {
+            $this->command->warn('No active products found. Please create products first.');
+            return;
+        }
+
+        if ($users->isEmpty()) {
+            $this->command->warn('No users found. Creating reviews without user association.');
+        }
+
+        $reviewTemplates = [
+            [
+                'rating' => 5,
+                'review' => 'Excellent quality! This product exceeded my expectations. Highly recommended!',
+                'reviewer_name' => 'Sarah Johnson',
+            ],
+            [
+                'rating' => 4,
+                'review' => 'Very good product. Good value for money. Would buy again.',
+                'reviewer_name' => 'Michael Chen',
+            ],
+            [
+                'rating' => 5,
+                'review' => 'Amazing quality and fast shipping. Perfect for my needs!',
+                'reviewer_name' => 'Emma Williams',
+            ],
+            [
+                'rating' => 3,
+                'review' => 'Decent product but could be better. Does the job though.',
+                'reviewer_name' => 'David Brown',
+            ],
+            [
+                'rating' => 5,
+                'review' => 'Love it! Great quality and exactly as described. Fast delivery too!',
+                'reviewer_name' => 'Lisa Anderson',
+            ],
+            [
+                'rating' => 4,
+                'review' => 'Good product overall. Minor issues but nothing major.',
+                'reviewer_name' => 'James Taylor',
+            ],
+        ];
+
+        foreach ($products as $product) {
+            // Add 2-5 reviews per product
+            $numReviews = rand(2, 5);
+            
+            for ($i = 0; $i < $numReviews; $i++) {
+                $template = $reviewTemplates[array_rand($reviewTemplates)];
+                $user = $users->isNotEmpty() ? $users->random() : null;
+
+                ProductReview::create([
+                    'product_id' => $product->id,
+                    'user_id' => $user?->id,
+                    'name' => $user ? null : $template['reviewer_name'],
+                    'email' => $user ? null : strtolower(str_replace(' ', '.', $template['reviewer_name'])) . '@example.com',
+                    'rating' => $template['rating'],
+                    'review' => $template['review'],
+                    'status' => rand(0, 10) > 1 ? 1 : 0, // 90% approved
+                    'verified_purchase' => rand(0, 10) > 3, // 70% verified
+                    'helpful_count' => rand(0, 15),
+                ]);
+            }
+        }
+
+        $this->command->info('Product Reviews seeded successfully!');
+    }
+}

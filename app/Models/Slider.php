@@ -44,23 +44,25 @@ class Slider extends Model
         });
     }
 
-    // Scopes
+    // Scope to filter active sliders
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
+    // Scope to filter inactive sliders
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
     }
 
+    // Scope to order sliders
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order');
     }
 
-    // Accessors
+    // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
         return $this->status == 1 
@@ -68,32 +70,37 @@ class Slider extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
+    // Get image URL attribute
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
     }
 
+    // Get button count attribute
     public function getButtonCountAttribute()
     {
         return $this->buttons ? count($this->buttons) : 0;
     }
 
+    // Get first button attribute
     public function getFirstButtonAttribute()
     {
         return $this->buttons && count($this->buttons) > 0 ? $this->buttons[0] : null;
     }
 
+    // Get second button attribute
     public function getSecondButtonAttribute()
     {
         return $this->buttons && count($this->buttons) > 1 ? $this->buttons[1] : null;
     }
 
+    // Get has buttons attribute
     public function getHasButtonsAttribute()
     {
         return $this->buttons && count($this->buttons) > 0;
     }
 
-    // Methods
+    // Move slider up in order
     public function moveUp()
     {
         $previousSlider = static::where('sort_order', '<', $this->sort_order)
@@ -110,6 +117,7 @@ class Slider extends Model
         }
     }
 
+    // Move slider down in order
     public function moveDown()
     {
         $nextSlider = static::where('sort_order', '>', $this->sort_order)
@@ -126,6 +134,7 @@ class Slider extends Model
         }
     }
 
+    // Move slider to specific position
     public function moveToPosition($newPosition)
     {
         $maxPosition = static::max('sort_order');
@@ -147,7 +156,7 @@ class Slider extends Model
         }
     }
 
-    // Route key binding
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

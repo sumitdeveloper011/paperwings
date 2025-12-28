@@ -16,13 +16,12 @@ class DashboardController extends Controller
 {
     protected $path = 'admin.dashboard.';
 
+    // Display dashboard with statistics and charts
     public function index(Request $request)
     {
-        // Get date range from request or default to last 6 months
-        $startDate = $request->get('start_date', Carbon::now()->subMonths(6)->startOfMonth()->format('Y-m-d'));
+        $startDate = $request->get('start_date', Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         
-        // Basic statistics
         $stats = Cache::remember('dashboard_stats', 300, function () {
             return [
                 'total_products' => Product::count(),
@@ -41,16 +40,13 @@ class DashboardController extends Controller
             ];
         });
 
-        // Monthly growth data
         $growthData = $this->getGrowthData($startDate, $endDate);
 
-        // Recent orders
         $recentOrders = Order::with(['user'])
             ->orderBy('created_at', 'desc')
-            ->take(5)
+            ->take(3)
             ->get();
 
-        // Top selling products
         $topProducts = DB::table('order_items')
             ->select('products.id', 'products.name', DB::raw('SUM(order_items.quantity) as total_sold'), DB::raw('SUM(order_items.price * order_items.quantity) as total_revenue'))
             ->join('products', 'order_items.product_id', '=', 'products.id')
@@ -58,16 +54,14 @@ class DashboardController extends Controller
             ->where('orders.payment_status', 'paid')
             ->groupBy('products.id', 'products.name')
             ->orderBy('total_sold', 'desc')
-            ->take(5)
+            ->take(3)
             ->get();
 
-        // Order status breakdown
         $orderStatusBreakdown = Order::select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
 
-        // Revenue by month (for the selected period)
         $revenueByMonth = $this->getRevenueByMonth($startDate, $endDate);
 
         $data = [
@@ -85,9 +79,7 @@ class DashboardController extends Controller
         return view($this->path . 'index', $data);
     }
 
-    /**
-     * Get growth data for the specified date range
-     */
+    // Get growth data for the specified date range
     private function getGrowthData($startDate, $endDate)
     {
         $start = Carbon::parse($startDate);
@@ -100,18 +92,14 @@ class DashboardController extends Controller
             $monthStart = $current->copy()->startOfMonth();
             $monthEnd = $current->copy()->endOfMonth();
             
-            // Products created in this month
             $products = Product::whereBetween('created_at', [$monthStart, $monthEnd])->count();
             
-            // Orders created in this month
             $orders = Order::whereBetween('created_at', [$monthStart, $monthEnd])->count();
             
-            // Users created in this month
             $users = User::whereDoesntHave('roles', function($q) {
                 $q->whereIn('name', ['SuperAdmin', 'Admin']);
-            })->whereBetween('created_at', [$monthStart, $monthEnd])->count();
+                    })->whereBetween('created_at', [$monthStart, $monthEnd])->count();
             
-            // Revenue for this month
             $revenue = Order::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
                 ->sum('total');
@@ -131,9 +119,7 @@ class DashboardController extends Controller
         return $data;
     }
 
-    /**
-     * Get revenue by month
-     */
+    // Get revenue by month
     private function getRevenueByMonth($startDate, $endDate)
     {
         $start = Carbon::parse($startDate);
@@ -153,12 +139,10 @@ class DashboardController extends Controller
         return $revenue;
     }
 
-    /**
-     * Get chart data via AJAX
-     */
+    // Get chart data via AJAX
     public function getChartData(Request $request)
     {
-        $startDate = $request->get('start_date', Carbon::now()->subMonths(6)->startOfMonth()->format('Y-m-d'));
+        $startDate = $request->get('start_date', Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
         $growthData = $this->getGrowthData($startDate, $endDate);

@@ -16,99 +16,75 @@ class CategoryRepository implements CategoryRepositoryInterface
         $this->model = $model;
     }
 
-    /**
-     * Get all categories
-     */
+    // Get all categories
     public function all(): Collection
     {
         return $this->model->orderBy('name')->get();
     }
 
-    /**
-     * Get paginated categories
-     */
+    // Get paginated categories
     public function paginate(int $perPage = 10): LengthAwarePaginator
     {
         return $this->model->orderBy('created_at', 'desc')->paginate($perPage);
     }
 
-    /**
-     * Find category by ID
-     */
+    // Find category by ID
     public function find(int $id): ?Category
     {
         return $this->model->find($id);
     }
 
-    /**
-     * Find category by UUID
-     */
+    // Find category by UUID
     public function findByUuid(string $uuid): ?Category
     {
         return $this->model->where('uuid', $uuid)->first();
     }
 
-    /**
-     * Find category by slug
-     */
+    // Find category by slug
     public function findBySlug(string $slug): ?Category
     {
         return $this->model->where('slug', $slug)->first();
     }
 
-    /**
-     * Create new category
-     */
+    // Create new category
     public function create(array $data): Category
     {
         return $this->model->create($data);
     }
 
-    /**
-     * Update category
-     */
+    // Update category
     public function update(Category $category, array $data): Category
     {
         $category->update($data);
         return $category->fresh();
     }
 
-    /**
-     * Delete category
-     */
+    // Delete category
     public function delete(Category $category): bool
     {
         return $category->delete();
     }
 
-    /**
-     * Get active categories
-     */
+    // Get active categories
     public function getActive(): Collection
     {
         return $this->model->where('status', 1)->orderBy('name')->get();
     }
 
-    /**
-     * Get inactive categories
-     */
+    // Get inactive categories
     public function getInactive(): Collection
     {
         return $this->model->where('status', 0)->orderBy('name')->get();
     }
 
-    /**
-     * Update category status
-     */
+    // Update category status
     public function updateStatus(Category $category, string $status): Category
     {
         $category->update(['status' => $status]);
         return $category->fresh();
     }
 
-    /**
-     * Search categories by name
-     */
+    // Search categories by name
     public function search(string $term): Collection
     {
         return $this->model->where('name', 'LIKE', "%{$term}%")
@@ -117,25 +93,19 @@ class CategoryRepository implements CategoryRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get categories with image
-     */
+    // Get categories with image
     public function withImage(): Collection
     {
         return $this->model->whereNotNull('image')->orderBy('name')->get();
     }
 
-    /**
-     * Get categories without image
-     */
+    // Get categories without image
     public function withoutImage(): Collection
     {
         return $this->model->whereNull('image')->orderBy('name')->get();
     }
 
-    /**
-     * Get category by Eposnow category ID
-     */
+    // Get category by Eposnow category ID
     public function getByEposnowCategoryId(int $eposnowCategoryId): ?Category
     {
         return $this->model->where('eposnow_category_id', $eposnowCategoryId)->first();

@@ -46,24 +46,25 @@ class Brand extends Model
         });
     }
 
-    // Relationships
+    // Get the products relationship
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
     }
 
+    // Get the active products relationship
     public function activeProducts(): HasMany
     {
         return $this->hasMany(Product::class)->where('status', 1);
     }
 
-    // Accessors
+    // Get image URL attribute
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
     }
 
-    // Route key binding
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

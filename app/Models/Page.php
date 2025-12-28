@@ -40,13 +40,13 @@ class Page extends Model
         });
     }
 
-    // Accessors
+    // Get image URL attribute
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
     }
 
-    // Route key binding
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

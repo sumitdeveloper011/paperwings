@@ -16,39 +16,55 @@ use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Order\OrderController;
 use App\Http\Controllers\Admin\Subscription\SubscriptionController;
 use App\Http\Controllers\Admin\Notification\NotificationController;
+use App\Http\Controllers\Admin\Contact\ContactController;
+use App\Http\Controllers\Admin\ShippingPrice\ShippingPriceController;
+use App\Http\Controllers\Admin\Region\RegionController;
+use App\Http\Controllers\Admin\Testimonial\TestimonialController;
+use App\Http\Controllers\Admin\SpecialOffersBanner\SpecialOffersBannerController;
+use App\Http\Controllers\Admin\Faq\FaqController;
+use App\Http\Controllers\Admin\Review\ReviewController;
+use App\Http\Controllers\Admin\ProductFaq\ProductFaqController;
+use App\Http\Controllers\Admin\Tag\TagController;
+use App\Http\Controllers\Admin\Question\QuestionController;
+use App\Http\Controllers\Admin\Answer\AnswerController;
+use App\Http\Controllers\Admin\Bundle\BundleController;
+use App\Http\Controllers\Admin\Analytics\AnalyticsController;
+use App\Http\Controllers\Admin\AboutSection\AboutSectionController;
+use App\Http\Controllers\Admin\ApiSettings\ApiSettingsController;
+use App\Http\Controllers\Admin\Role\RoleController;
+use App\Http\Controllers\Admin\Permission\PermissionController;
 
-// Guest routes (login)
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'authenticate'])->name('authenticate');
 });
 
-// Protected admin routes
 Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chartData');
 
-    // Category routes
-    Route::get('categories/get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('categories.getCategoriesForEposNow');
-    Route::resource('categories', CategoryController::class);
+    Route::prefix('categories')->name('categories.')->group(function () {
+        Route::get('get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('getCategoriesForEposNow');
+        Route::get('import-status', [CategoryController::class, 'checkImportStatus'])->name('importStatus');
+    });
     Route::patch('categories/{category}/status', [CategoryController::class, 'updateStatus'])->name('categories.updateStatus');
+    Route::resource('categories', CategoryController::class);
 
-    // SubCategory routes
     Route::resource('subcategories', SubCategoryController::class);
     Route::patch('subcategories/{subcategory}/status', [SubCategoryController::class, 'updateStatus'])->name('subcategories.updateStatus');
 
-    // Brand routes
     Route::resource('brands', BrandController::class);
 
-    // Product routes
-    Route::get('products/get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('products.getProductsForEposNow');
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
+        Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
+    });
     Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
-    Route::resource('products', ProductController::class);
     Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
     Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
+    Route::resource('products', ProductController::class);
 
-    // Slider routes
     Route::resource('sliders', SliderController::class);
     Route::patch('sliders/{slider}/status', [SliderController::class, 'updateStatus'])->name('sliders.updateStatus');
     Route::patch('sliders/{slider}/move-up', [SliderController::class, 'moveUp'])->name('sliders.moveUp');
@@ -56,39 +72,83 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
     Route::post('sliders/{slider}/duplicate', [SliderController::class, 'duplicate'])->name('sliders.duplicate');
 
-    // Page routes
     Route::resource('pages', PageController::class);
     Route::post('pages/upload-image', [PageController::class, 'uploadImage'])->name('pages.uploadImage');
 
-    // Coupon routes
+    Route::resource('about-sections', AboutSectionController::class);
+    Route::patch('about-sections/{about_section}/status', [AboutSectionController::class, 'updateStatus'])->name('about-sections.updateStatus');
+
+    Route::resource('contacts', ContactController::class)->except(['create', 'store']);
+
     Route::resource('coupons', CouponController::class);
     Route::patch('coupons/{coupon}/status', [CouponController::class, 'updateStatus'])->name('coupons.updateStatus');
 
-    // Settings routes
+    Route::resource('regions', RegionController::class);
+    Route::patch('regions/{region}/status', [RegionController::class, 'updateStatus'])->name('regions.updateStatus');
+
+    Route::resource('shipping-prices', ShippingPriceController::class);
+    Route::patch('shipping-prices/{shipping_price}/status', [ShippingPriceController::class, 'updateStatus'])->name('shipping-prices.updateStatus');
+
+    Route::resource('testimonials', TestimonialController::class);
+    Route::patch('testimonials/{testimonial}/status', [TestimonialController::class, 'updateStatus'])->name('testimonials.updateStatus');
+
+    Route::resource('special-offers-banners', SpecialOffersBannerController::class);
+    Route::patch('special-offers-banners/{special_offers_banner}/status', [SpecialOffersBannerController::class, 'updateStatus'])->name('special-offers-banners.updateStatus');
+
+    Route::resource('faqs', FaqController::class);
+    Route::patch('faqs/{faq}/status', [FaqController::class, 'updateStatus'])->name('faqs.updateStatus');
+
+    Route::resource('reviews', ReviewController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('reviews/{review}/status', [ReviewController::class, 'updateStatus'])->name('reviews.updateStatus');
+
+    Route::resource('product-faqs', ProductFaqController::class);
+    Route::patch('product-faqs/{product_faq}/status', [ProductFaqController::class, 'updateStatus'])->name('product-faqs.updateStatus');
+
+    Route::resource('tags', TagController::class);
+
+    Route::resource('questions', QuestionController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('questions/{question}/status', [QuestionController::class, 'updateStatus'])->name('questions.updateStatus');
+    Route::resource('answers', AnswerController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::patch('answers/{answer}/status', [AnswerController::class, 'updateStatus'])->name('answers.updateStatus');
+
+    Route::prefix('bundles')->name('bundles.')->group(function () {
+        Route::get('search-products', [BundleController::class, 'searchProducts'])->name('searchProducts');
+    });
+    Route::resource('bundles', BundleController::class);
+    Route::patch('bundles/{bundle}/status', [BundleController::class, 'updateStatus'])->name('bundles.updateStatus');
+
+    Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('analytics/product-views', [AnalyticsController::class, 'productViews'])->name('analytics.productViews');
+    Route::get('analytics/conversion', [AnalyticsController::class, 'conversion'])->name('analytics.conversion');
+    Route::get('analytics/sales', [AnalyticsController::class, 'sales'])->name('analytics.sales');
+
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
 
-    // User routes (e-commerce users)
-    Route::resource('users', UserController::class)->except(['create', 'store', 'edit', 'update']);
+    Route::get('api-settings', [ApiSettingsController::class, 'index'])->name('api-settings.index');
+    Route::put('api-settings', [ApiSettingsController::class, 'update'])->name('api-settings.update');
+
+    // Roles and Permissions Management
+    Route::resource('roles', RoleController::class);
+    Route::resource('permissions', PermissionController::class);
+
+    Route::resource('users', UserController::class);
     Route::patch('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.updateStatus');
 
-    // Order routes (e-commerce orders)
     Route::resource('orders', OrderController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
     Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
 
-    // Subscription routes
     Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');
     Route::get('subscriptions/export', [SubscriptionController::class, 'export'])->name('subscriptions.export');
 
-    // Notification routes
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/render', [NotificationController::class, 'render'])->name('notifications.render');
     Route::post('notifications/{order}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 
-    // Profile routes
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');

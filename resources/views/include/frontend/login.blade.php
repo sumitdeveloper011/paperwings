@@ -56,6 +56,29 @@
                                 <button type="submit" class="login-submit-btn">
                                     <i class="fas fa-sign-in-alt"></i>Login
                                 </button>
+
+                                @if($googleLoginEnabled || $facebookLoginEnabled)
+                                <!-- Social Login Divider -->
+                                <div class="social-login-divider">
+                                    <span>Or continue with</span>
+                                </div>
+
+                                <!-- Social Login Buttons -->
+                                <div class="social-login-buttons">
+                                    @if($googleLoginEnabled)
+                                    <a href="{{ route('auth.google') }}" class="social-login-btn social-login-btn--google">
+                                        <i class="fab fa-google"></i>
+                                        <span>Google</span>
+                                    </a>
+                                    @endif
+                                    @if($facebookLoginEnabled)
+                                    <a href="{{ route('auth.facebook') }}" class="social-login-btn social-login-btn--facebook">
+                                        <i class="fab fa-facebook-f"></i>
+                                        <span>Facebook</span>
+                                    </a>
+                                    @endif
+                                </div>
+                                @endif
                                 
                                 <div class="login-footer">
                                     <p>

@@ -121,7 +121,7 @@
             'value': {{ number_format($order->total, 2, '.', '') }},
             'currency': 'NZD',
             'tax': {{ number_format($order->tax ?? 0, 2, '.', '') }},
-            'shipping': {{ number_format($order->shipping ?? 0, 2, '.', '') }},
+            'shipping': {{ number_format($order->shipping_price ?? $order->shipping ?? 0, 2, '.', '') }},
             'coupon': '{{ $order->coupon_code ?? '' }}',
             'items': [
                 @foreach($order->items as $item)

@@ -39,9 +39,7 @@ class Coupon extends Model
         'status' => 'integer',
     ];
 
-    /**
-     * Boot function to generate UUID before creating coupon
-     */
+    // Boot function to generate UUID before creating coupon
     protected static function boot()
     {
         parent::boot();
@@ -53,42 +51,32 @@ class Coupon extends Model
         });
     }
 
-    /**
-     * Get the route key for the model.
-     */
+    // Get the route key name
     public function getRouteKeyName()
     {
         return 'uuid';
     }
 
-    /**
-     * Check if coupon is active
-     */
+    // Check if coupon is active
     public function isActive()
     {
         return $this->status === 1;
     }
 
-    /**
-     * Check if coupon is expired
-     */
+    // Check if coupon is expired
     public function isExpired()
     {
         return now()->greaterThan($this->end_date);
     }
 
-    /**
-     * Check if coupon is valid (active and not expired)
-     */
+    // Check if coupon is valid (active and not expired)
     public function isValid()
     {
         return $this->isActive() && !$this->isExpired() && 
                ($this->usage_limit === null || $this->usage_count < $this->usage_limit);
     }
 
-    /**
-     * Get status badge
-     */
+    // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
         if (!$this->isActive()) {
@@ -102,17 +90,19 @@ class Coupon extends Model
         return '<span class="badge bg-success">Active</span>';
     }
 
-    // Scopes
+    // Scope to filter active coupons
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
+    // Scope to filter inactive coupons
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
     }
 
+    // Scope to filter valid coupons
     public function scopeValid($query)
     {
         return $query->where('status', 1)

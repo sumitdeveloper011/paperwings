@@ -13,24 +13,15 @@ class WishlistService
         private Product $product
     ) {}
 
-    /**
-     * Add product to wishlist
-     *
-     * @param int $userId
-     * @param int $productId
-     * @return Wishlist
-     * @throws \Exception
-     */
+    // Add product to wishlist
     public function addToWishlist(int $userId, int $productId): Wishlist
     {
-        // Check if product exists and is active
         $product = $this->product->findOrFail($productId);
         
         if (!$product->status) {
             throw new \Exception('This product is not available.');
         }
 
-        // Check if already in wishlist
         $existing = $this->wishlist
             ->where('user_id', $userId)
             ->where('product_id', $productId)
@@ -46,14 +37,7 @@ class WishlistService
         ]);
     }
 
-    /**
-     * Remove product from wishlist
-     *
-     * @param int $userId
-     * @param int $productId
-     * @return bool
-     * @throws \Exception
-     */
+    // Remove product from wishlist
     public function removeFromWishlist(int $userId, int $productId): bool
     {
         $wishlistItem = $this->wishlist
@@ -68,12 +52,7 @@ class WishlistService
         return $wishlistItem->delete();
     }
 
-    /**
-     * Get wishlist items with products
-     *
-     * @param int $userId
-     * @return Collection
-     */
+    // Get wishlist items with products
     public function getWishlistItems(int $userId): Collection
     {
         return $this->wishlist
@@ -91,24 +70,13 @@ class WishlistService
             ->get();
     }
 
-    /**
-     * Get wishlist count
-     *
-     * @param int $userId
-     * @return int
-     */
+    // Get wishlist count
     public function getWishlistCount(int $userId): int
     {
         return $this->wishlist->where('user_id', $userId)->count();
     }
 
-    /**
-     * Check if products are in wishlist
-     *
-     * @param int $userId
-     * @param array $productIds
-     * @return array [product_id => bool]
-     */
+    // Check if products are in wishlist
     public function checkProductsInWishlist(int $userId, array $productIds): array
     {
         $wishlistProductIds = $this->wishlist
@@ -125,13 +93,7 @@ class WishlistService
         return $status;
     }
 
-    /**
-     * Check if single product is in wishlist
-     *
-     * @param int $userId
-     * @param int $productId
-     * @return bool
-     */
+    // Check if single product is in wishlist
     public function isInWishlist(int $userId, int $productId): bool
     {
         return $this->wishlist

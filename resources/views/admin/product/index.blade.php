@@ -17,13 +17,10 @@
                     <i class="fas fa-plus"></i>
                     <span>Add Product</span>
                 </a>
-                <a href="{{ route('admin.products.getProductsForEposNow') }}"
-                   class="btn btn-primary btn-icon"
-                   id="eposnowImportBtn"
-                   onclick="showEposNowLoader(event)">
+                <button type="button" id="importProductsBtn" class="btn btn-primary btn-icon">
                     <i class="fas fa-download"></i>
-                    <span>Get Products from EposNow</span>
-                </a>
+                    <span>Import from EposNow</span>
+                </button>
                 <a href="{{ route('admin.products.importAllImages') }}"
                    class="btn btn-success btn-icon"
                    id="eposnowImageImportBtn"
@@ -403,27 +400,298 @@
 </style>
 
 <script>
-function showEposNowLoader(event) {
-    // Show the loader immediately
-    const loader = document.getElementById('eposnowLoader');
-    if (loader) {
-        loader.style.display = 'flex';
+// Product import functionality - see modal and script below
+</script>
+
+<!-- Import Progress Modal -->
+<div class="modal fade" id="importProgressModal" tabindex="-1" role="dialog" aria-labelledby="importProgressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importProgressModalLabel">
+                    <i class="fas fa-download"></i> Importing Products from EposNow
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModalBtn">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="import-progress-container">
+                    <div class="import-progress-message" id="importProgressMessage">
+                        Starting import...
+                    </div>
+                    <div class="progress" style="height: 25px; margin-top: 15px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             id="importProgressBar"
+                             style="width: 0%;"
+                             aria-valuenow="0" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            <span id="importProgressText">0%</span>
+                        </div>
+                    </div>
+                    <div class="import-stats" id="importStats" style="margin-top: 15px; display: none;">
+                        <div class="row">
+                            <div class="col-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statInserted">0</div>
+                                    <div class="stat-label">Inserted</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statUpdated">0</div>
+                                    <div class="stat-label">Updated</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statImages">0</div>
+                                    <div class="stat-label">Images</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statFailed">0</div>
+                                    <div class="stat-label">Failed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="importModalFooter" style="display: none;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.import-progress-container {
+    padding: 10px 0;
+}
+.import-progress-message {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+.import-stats {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+.stat-item {
+    padding: 10px;
+}
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+}
+.stat-label {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+.progress-bar {
+    font-size: 14px;
+    font-weight: 500;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const importBtn = document.getElementById('importProductsBtn');
+    if (!importBtn) return;
+    
+    const modal = document.getElementById('importProgressModal');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+    const progressMessage = document.getElementById('importProgressMessage');
+    const importStats = document.getElementById('importStats');
+    const modalFooter = document.getElementById('importModalFooter');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    
+    let jobId = null;
+    let statusCheckInterval = null;
+
+    // Initialize Bootstrap modal if using Bootstrap
+    let bootstrapModal = null;
+    if (typeof bootstrap !== 'undefined') {
+        bootstrapModal = new bootstrap.Modal(modal);
     }
 
-    // The loader will automatically disappear when the page redirects
-    // after the server request completes
-}
+    importBtn.addEventListener('click', function() {
+        // Disable button
+        importBtn.disabled = true;
+        importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Starting...</span>';
 
-// Optional: Hide loader if page loads without redirect (error case)
-document.addEventListener('DOMContentLoaded', function() {
-    const loader = document.getElementById('eposnowLoader');
-    if (loader) {
-        // Small delay to ensure smooth transition
-        setTimeout(function() {
-            if (loader.style.display !== 'none') {
-                loader.style.display = 'none';
+        // Reset progress
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', '0');
+        progressText.textContent = '0%';
+        progressMessage.textContent = 'Starting import...';
+            importStats.style.display = 'none';
+            modalFooter.style.display = 'none';
+
+        // Show modal
+        if (bootstrapModal) {
+            bootstrapModal.show();
+        } else {
+            $(modal).modal('show');
+        }
+
+        // Start import
+        fetch('{{ route("admin.products.getProductsForEposNow") }}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
             }
-        }, 100);
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                jobId = data.job_id;
+                progressMessage.textContent = 'Import job started! Checking status...';
+                
+                // Start polling for status
+                startStatusPolling();
+            } else {
+                throw new Error(data.message || 'Failed to start import');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            progressMessage.textContent = 'Error: ' + error.message;
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.style.width = '0%';
+            importBtn.disabled = false;
+            importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
+        });
+    });
+
+    function startStatusPolling() {
+        if (!jobId) return;
+
+        statusCheckInterval = setInterval(function() {
+            // Build URL with jobId as query parameter
+            const baseUrl = '{{ url("admin/products/import-status") }}';
+            const encodedJobId = encodeURIComponent(jobId);
+            const statusUrl = `${baseUrl}?jobId=${encodedJobId}`;
+            
+            fetch(statusUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(text => {
+                text = text.trim();
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        try {
+                            return JSON.parse(jsonMatch[0]);
+                        } catch (e2) {
+                            return null;
+                        }
+                    }
+                    return null;
+                }
+            })
+            .then(data => {
+                if (!data) return;
+                
+                if (data.success && data.data) {
+                    const progress = data.data;
+                    
+                    // Update progress bar
+                    const percentage = progress.percentage || 0;
+                    progressBar.style.width = percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                    progressText.textContent = percentage + '%';
+                    
+                    // Update message
+                    progressMessage.textContent = progress.message || 'Processing...';
+                    
+                    // Update stats if available
+                    if (progress.inserted !== undefined || progress.updated !== undefined) {
+                        importStats.style.display = 'block';
+                        if (progress.inserted !== undefined) {
+                            document.getElementById('statInserted').textContent = progress.inserted;
+                        }
+                        if (progress.updated !== undefined) {
+                            document.getElementById('statUpdated').textContent = progress.updated;
+                        }
+                        if (progress.images_imported !== undefined) {
+                            document.getElementById('statImages').textContent = progress.images_imported;
+                        }
+                        if (progress.failed !== undefined) {
+                            document.getElementById('statFailed').textContent = progress.failed;
+                        }
+                    }
+                    
+                    // Check if completed
+                    if (progress.status === 'completed' || percentage === 100) {
+                        clearInterval(statusCheckInterval);
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.add('bg-success');
+                        progressMessage.textContent = progress.message || 'Import completed successfully!';
+                        modalFooter.style.display = 'block';
+                        importBtn.disabled = false;
+                        importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
+                    } else if (progress.status === 'failed' || progress.status === 'rate_limited') {
+                        clearInterval(statusCheckInterval);
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.add('bg-danger');
+                        
+                        let errorMessage = progress.message || 'Import failed!';
+                        if (progress.status === 'rate_limited') {
+                            errorMessage = '⚠️ API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
+                        }
+                        
+                        progressMessage.textContent = errorMessage;
+                        modalFooter.style.display = 'block';
+                        importBtn.disabled = false;
+                        importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
+                    }
+                } else if (!data.success && data.status === 'not_found') {
+                    clearInterval(statusCheckInterval);
+                    progressMessage.textContent = 'Job not found or expired';
+                    modalFooter.style.display = 'block';
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
+                }
+            })
+            .catch(error => {
+                console.error('Status check error:', error);
+            });
+        }, 2000); // Check every 2 seconds
+    }
+
+    // Clean up interval when modal is closed
+    if (typeof $ !== 'undefined') {
+        $(modal).on('hidden.bs.modal', function() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+        });
     }
 });
 </script>

@@ -10,9 +10,7 @@ use Illuminate\View\View;
 
 class SearchController extends Controller
 {
-    /**
-     * Autocomplete search (AJAX)
-     */
+    // Autocomplete search (AJAX)
     public function autocomplete(Request $request): JsonResponse
     {
         $query = trim($request->get('q', ''));
@@ -21,14 +19,11 @@ class SearchController extends Controller
             return response()->json(['products' => []]);
         }
 
-        // Optimized search with indexes - prefix matching for better performance
-        // Use selectMinimal scope and withFirstImage for consistency
         $products = Product::active()
             ->withFirstImage()
             ->with(['category:id,name,slug'])
             ->selectMinimal()
             ->where(function($q) use ($query) {
-                // Prioritize prefix matches (uses index better)
                 $q->where('name', 'like', "{$query}%")
                   ->orWhere('name', 'like', "% {$query}%")
                   ->orWhere('slug', 'like', "{$query}%");
@@ -59,9 +54,95 @@ class SearchController extends Controller
         return response()->json(['products' => $products]);
     }
 
-    /**
-     * Full search results page
-     */
+    // Render autocomplete results as HTML (for AJAX)
+    public function renderAutocomplete(Request $request): JsonResponse
+    {
+        $query = trim($request->get('q', ''));
+        
+        if (strlen($query) < 2) {
+            return response()->json([
+                'success' => true,
+                'html' => ''
+            ]);
+        }
+
+        // Get products with images and category
+        $products = Product::active()
+            ->withFirstImage()
+            ->with(['category:id,name,slug'])
+            ->selectMinimal()
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "{$query}%")
+                  ->orWhere('name', 'like', "% {$query}%")
+                  ->orWhere('slug', 'like', "{$query}%");
+            })
+            ->orderByRaw("
+                CASE 
+                    WHEN name LIKE ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN slug LIKE ? THEN 3
+                    ELSE 4
+                END
+            ", ["{$query}%", "% {$query}%", "{$query}%"])
+            ->limit(8)
+            ->get();
+
+        $html = view('frontend.search.partials.autocomplete-items', [
+            'products' => $products
+        ])->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $products->count()
+        ]);
+    }
+
+    // Render search results as HTML (for header search dropdown)
+    public function renderResults(Request $request): JsonResponse
+    {
+        $query = trim($request->get('q', ''));
+        
+        if (strlen($query) < 2) {
+            return response()->json([
+                'success' => true,
+                'html' => ''
+            ]);
+        }
+
+        // Get products with images and category
+        $products = Product::active()
+            ->withFirstImage()
+            ->with(['category:id,name,slug'])
+            ->selectMinimal()
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "{$query}%")
+                  ->orWhere('name', 'like', "% {$query}%")
+                  ->orWhere('slug', 'like', "{$query}%");
+            })
+            ->orderByRaw("
+                CASE 
+                    WHEN name LIKE ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN slug LIKE ? THEN 3
+                    ELSE 4
+                END
+            ", ["{$query}%", "% {$query}%", "{$query}%"])
+            ->limit(5)
+            ->get();
+
+        $html = view('frontend.search.partials.result-items', [
+            'products' => $products
+        ])->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $products->count()
+        ]);
+    }
+
+    // Full search results page
     public function index(Request $request): View
     {
         $query = trim($request->get('q', ''));
@@ -70,22 +151,17 @@ class SearchController extends Controller
         $minPrice = $request->get('min_price');
         $maxPrice = $request->get('max_price');
 
-        // Use scopes for consistency and performance
         $productsQuery = Product::active()
             ->withFirstImage()
             ->with(['category:id,name,slug'])
             ->selectMinimal();
 
-        // Optimized search query - prioritize prefix matches for index usage
         if ($query) {
             $productsQuery->where(function($q) use ($query) {
-                // Prefix matches first (uses index)
                 $q->where('name', 'like', "{$query}%")
                   ->orWhere('name', 'like', "% {$query}%")
                   ->orWhere('slug', 'like', "{$query}%");
                 
-                // Full-text search only if prefix matches don't yield enough results
-                // This is more efficient than always searching description
                 if (strlen($query) > 3) {
                     $q->orWhere('description', 'like', "%{$query}%")
                       ->orWhere('short_description', 'like', "%{$query}%");
@@ -93,14 +169,12 @@ class SearchController extends Controller
             });
         }
 
-        // Category filter
         if ($category) {
             $productsQuery->whereHas('category', function($q) use ($category) {
                 $q->where('slug', $category);
             });
         }
 
-        // Price range filter
         if ($minPrice !== null) {
             $productsQuery->where('total_price', '>=', $minPrice);
         }
@@ -108,7 +182,6 @@ class SearchController extends Controller
             $productsQuery->where('total_price', '<=', $maxPrice);
         }
 
-        // Sorting
         switch ($sort) {
             case 'price_asc':
                 $productsQuery->orderBy('total_price', 'asc');
@@ -125,9 +198,8 @@ class SearchController extends Controller
             case 'newest':
                 $productsQuery->orderBy('created_at', 'desc');
                 break;
-            default: // relevance
+            default:
                 if ($query) {
-                    // Prioritize exact matches and prefix matches
                     $productsQuery->orderByRaw("
                         CASE 
                             WHEN name LIKE ? THEN 1
@@ -143,7 +215,6 @@ class SearchController extends Controller
 
         $products = $productsQuery->paginate(20)->withQueryString();
 
-        // Get categories for filter
         $categories = \App\Models\Category::active()
             ->orderBy('name')
             ->get();

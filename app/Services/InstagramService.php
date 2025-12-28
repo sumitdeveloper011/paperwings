@@ -23,9 +23,7 @@ class InstagramService
         $this->userId = Setting::get('instagram_user_id');
     }
 
-    /**
-     * Check if Instagram API is configured
-     */
+    // Check if Instagram API is configured
     public function isConfigured(): bool
     {
         return !empty($this->appId) && 
@@ -34,9 +32,7 @@ class InstagramService
                !empty($this->userId);
     }
 
-    /**
-     * Get user profile information
-     */
+    // Get user profile information
     public function getUserProfile(): ?array
     {
         if (!$this->isConfigured()) {
@@ -67,26 +63,20 @@ class InstagramService
         }
     }
 
-    /**
-     * Get recent media posts from Instagram
-     * 
-     * @param int $limit Number of posts to fetch (max 25)
-     * @return array
-     */
+    // Get recent media posts from Instagram
     public function getRecentMedia(int $limit = 6): array
     {
         if (!$this->isConfigured()) {
             return [];
         }
 
-        // Cache the results for 1 hour to reduce API calls
         $cacheKey = "instagram_media_{$this->userId}_{$limit}";
         
         return Cache::remember($cacheKey, 3600, function () use ($limit) {
             try {
                 $response = Http::timeout(10)->get("{$this->baseUrl}/{$this->userId}/media", [
                     'fields' => 'id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count',
-                    'limit' => min($limit, 25), // Instagram API max is 25
+                    'limit' => min($limit, 25),
                     'access_token' => $this->accessToken
                 ]);
 
@@ -113,25 +103,21 @@ class InstagramService
         });
     }
 
-    /**
-     * Format media data for frontend display
-     */
+    // Format media data for frontend display
     private function formatMediaData(array $media): array
     {
         $formatted = [];
 
         foreach ($media as $item) {
-            // Get the appropriate image URL
             $imageUrl = $item['media_url'] ?? $item['thumbnail_url'] ?? null;
             
-            // Skip if no image URL
             if (!$imageUrl) {
                 continue;
             }
 
             $formatted[] = [
                 'id' => $item['id'] ?? null,
-                'type' => $item['media_type'] ?? 'IMAGE', // IMAGE, VIDEO, CAROUSEL_ALBUM
+                'type' => $item['media_type'] ?? 'IMAGE',
                 'image_url' => $imageUrl,
                 'permalink' => $item['permalink'] ?? '#',
                 'caption' => $this->truncateCaption($item['caption'] ?? ''),
@@ -144,9 +130,7 @@ class InstagramService
         return $formatted;
     }
 
-    /**
-     * Truncate caption to a reasonable length
-     */
+    // Truncate caption to a reasonable length
     private function truncateCaption(?string $caption, int $maxLength = 100): string
     {
         if (empty($caption)) {
@@ -160,10 +144,7 @@ class InstagramService
         return substr($caption, 0, $maxLength) . '...';
     }
 
-    /**
-     * Refresh the access token
-     * Instagram access tokens expire after 60 days
-     */
+    // Refresh the access token
     public function refreshAccessToken(): bool
     {
         if (!$this->isConfigured()) {
@@ -184,7 +165,6 @@ class InstagramService
                     Setting::set('instagram_access_token', $data['access_token']);
                     $this->accessToken = $data['access_token'];
                     
-                    // Clear cache to fetch fresh data
                     Cache::forget("instagram_media_{$this->userId}_*");
                     
                     Log::info('Instagram API: Access token refreshed successfully');
@@ -206,9 +186,7 @@ class InstagramService
         }
     }
 
-    /**
-     * Test the API connection
-     */
+    // Test the API connection
     public function testConnection(): array
     {
         $result = [
@@ -243,13 +221,10 @@ class InstagramService
         return $result;
     }
 
-    /**
-     * Clear Instagram cache
-     */
+    // Clear Instagram cache
     public function clearCache(): void
     {
         if ($this->userId) {
-            // Clear cache for common limit values
             for ($i = 1; $i <= 25; $i++) {
                 Cache::forget("instagram_media_{$this->userId}_{$i}");
             }

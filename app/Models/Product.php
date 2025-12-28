@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,9 @@ class Product extends Model
         'discount_price',
         'description',
         'short_description',
+        'meta_title',
+        'meta_description',
+        'meta_keywords',
         'status',
     ];
 
@@ -66,73 +70,139 @@ class Product extends Model
         });
     }
 
-    // Relationships
+    // Get category relationship
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id', 'id');
     }
 
+    // Get brand relationship
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
     }
 
+    // Get images relationship
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class);
     }
 
+    // Get accordions relationship
     public function accordions(): HasMany
     {
         return $this->hasMany(ProductAccordion::class);
     }
 
+    // Get wishlists relationship
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
     }
 
+    // Get cart items relationship
     public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);
     }
 
-    // Scopes
+    // Get reviews relationship
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    // Get approved reviews relationship
+    public function approvedReviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class)->where('status', 1);
+    }
+
+    // Get FAQs relationship
+    public function faqs(): HasMany
+    {
+        return $this->hasMany(ProductFaq::class);
+    }
+
+    // Get active FAQs relationship
+    public function activeFaqs(): HasMany
+    {
+        return $this->hasMany(ProductFaq::class)->where('status', true);
+    }
+
+    // Get tags relationship
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'product_tags');
+    }
+
+    // Get questions relationship
+    public function questions(): HasMany
+    {
+        return $this->hasMany(ProductQuestion::class);
+    }
+
+    // Get approved questions relationship
+    public function approvedQuestions(): HasMany
+    {
+        return $this->hasMany(ProductQuestion::class)->where('status', 1);
+    }
+
+    // Get views relationship
+    public function views(): HasMany
+    {
+        return $this->hasMany(ProductView::class);
+    }
+
+    // Get bundle items relationship
+    public function bundleItems(): HasMany
+    {
+        return $this->hasMany(ProductBundleItem::class);
+    }
+
+    // Scope to filter active products
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
+    // Scope to filter inactive products
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
     }
 
+    // Scope to filter products by category
     public function scopeByCategory($query, $categoryId)
     {
         return $query->where('category_id', $categoryId);
     }
 
+    // Scope to filter products by brand
     public function scopeByBrand($query, $brandId)
     {
         return $query->where('brand_id', $brandId);
     }
 
+    // Scope to filter featured products
     public function scopeFeatured($query)
     {
         return $query->where('status', 1)->where('product_type', 1);
     }
 
+    // Scope to filter products on sale
     public function scopeOnSale($query)
     {
         return $query->where('status', 1)->where('product_type', 2);
     }
 
+    // Scope to filter top rated products
     public function scopeTopRated($query)
     {
         return $query->where('status', 1)->where('product_type', 3);
     }
 
+    // Scope to eager load first image
     public function scopeWithFirstImage($query)
     {
         return $query->with(['images' => function($q) {
@@ -142,28 +212,31 @@ class Product extends Model
         }]);
     }
 
+    // Scope to select minimal columns
     public function scopeSelectMinimal($query)
     {
         return $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'product_type', 'status', 'category_id', 'eposnow_category_id');
     }
 
-    // Price calculation accessors (15% tax)
+    // Get price without tax attribute
     public function getPriceWithoutTaxAttribute()
     {
         return round($this->total_price / 1.15, 2);
     }
 
+    // Get tax amount attribute
     public function getTaxAmountAttribute()
     {
         return round($this->total_price - $this->price_without_tax, 2);
     }
 
+    // Get tax percentage attribute
     public function getTaxPercentageAttribute()
     {
-        return 15; // 15% tax rate
+        return 15;
     }
 
-    // Other accessors
+    // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
         return $this->status === 1
@@ -171,10 +244,7 @@ class Product extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
-    /**
-     * Get main image URL - optimized to prevent N+1 queries
-     * Always eager load images relationship when using this
-     */
+    // Get main image URL attribute
     public function getMainImageAttribute()
     {
         // Check if images are already loaded (eager loaded)
@@ -182,8 +252,6 @@ class Product extends Model
             return $this->images->first()->image_url;
         }
         
-        // Fallback: query only if not loaded (should be avoided)
-        // This will trigger N+1 if images aren't eager loaded
         $firstImage = $this->images()->first();
         if ($firstImage) {
             return $firstImage->image_url;
@@ -192,10 +260,7 @@ class Product extends Model
         return asset('assets/images/placeholder.jpg');
     }
     
-    /**
-     * Get main image URL safely (always checks loaded relationship first)
-     * Use this method when you're not sure if images are eager loaded
-     */
+    // Get main image URL attribute safely
     public function getMainImageUrlAttribute(): string
     {
         if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
@@ -205,6 +270,7 @@ class Product extends Model
         return asset('assets/images/placeholder.jpg');
     }
 
+    // Get image URLs attribute
     public function getImageUrlsAttribute()
     {
         return $this->images()->get()->map(function ($image) {
@@ -212,6 +278,7 @@ class Product extends Model
         })->toArray();
     }
 
+    // Get full name attribute
     public function getFullNameAttribute()
     {
         $parts = [];
@@ -223,13 +290,36 @@ class Product extends Model
         return implode(' - ', $parts);
     }
 
+    // Get category path attribute
     public function getCategoryPathAttribute()
     {
         $path = $this->category->name;
         return $path;
     }
 
-    // Route key binding
+    // Get average rating attribute
+    public function getAverageRatingAttribute()
+    {
+        if (!$this->relationLoaded('approvedReviews')) {
+            $this->load('approvedReviews');
+        }
+        $reviews = $this->approvedReviews;
+        if ($reviews->isEmpty()) {
+            return 0;
+        }
+        return round($reviews->avg('rating'), 1);
+    }
+
+    // Get reviews count attribute
+    public function getReviewsCountAttribute()
+    {
+        if (!$this->relationLoaded('approvedReviews')) {
+            $this->load('approvedReviews');
+        }
+        return $this->approvedReviews->count();
+    }
+
+    // Get route key name
     public function getRouteKeyName()
     {
         return 'uuid';

@@ -8,88 +8,54 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 interface SliderRepositoryInterface
 {
-    /**
-     * Get all sliders
-     */
+    // Get all sliders
     public function all(): Collection;
 
-    /**
-     * Get paginated sliders
-     */
+    // Get paginated sliders
     public function paginate(int $perPage = 10): LengthAwarePaginator;
 
-    /**
-     * Find slider by ID
-     */
+    // Find slider by ID
     public function find(int $id): ?Slider;
 
-    /**
-     * Find slider by UUID
-     */
+    // Find slider by UUID
     public function findByUuid(string $uuid): ?Slider;
 
-    /**
-     * Create new slider
-     */
+    // Create new slider
     public function create(array $data): Slider;
 
-    /**
-     * Update slider
-     */
+    // Update slider
     public function update(Slider $slider, array $data): Slider;
 
-    /**
-     * Delete slider
-     */
+    // Delete slider
     public function delete(Slider $slider): bool;
 
-    /**
-     * Get active sliders ordered by sort_order
-     */
+    // Get active sliders ordered by sort_order
     public function getActive(): Collection;
 
-    /**
-     * Get inactive sliders
-     */
+    // Get inactive sliders
     public function getInactive(): Collection;
 
-    /**
-     * Get sliders ordered by sort_order
-     */
+    // Get sliders ordered by sort_order
     public function getOrdered(): Collection;
 
-    /**
-     * Update slider status
-     */
+    // Update slider status
     public function updateStatus(Slider $slider, string $status): Slider;
 
-    /**
-     * Update sort order
-     */
+    // Update sort order
     public function updateSortOrder(Slider $slider, int $sortOrder): Slider;
 
-    /**
-     * Move slider up in order
-     */
+    // Move slider up in order
     public function moveUp(Slider $slider): bool;
 
-    /**
-     * Move slider down in order
-     */
+    // Move slider down in order
     public function moveDown(Slider $slider): bool;
 
-    /**
-     * Move slider to specific position
-     */
+    // Move slider to specific position
     public function moveToPosition(Slider $slider, int $position): bool;
 
-    /**
-     * Get next sort order
-     */
+    // Get next sort order
     public function getNextSortOrder(): int;
 
-    /**
-     * Reorder all sliders
-     */
+    // Reorder all sliders
     public function reorderSliders(array $sliderIds): bool;
 }

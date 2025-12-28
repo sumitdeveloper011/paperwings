@@ -152,10 +152,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let notificationPollInterval;
     let isDropdownOpen = false;
 
-    // Fetch notifications
+    // Fetch notifications (using Laravel rendered HTML)
     function fetchNotifications() {
-        const notificationsUrl = document.getElementById('notificationBtn')?.dataset.url || '/admin/notifications';
-        fetch(notificationsUrl, {
+        const renderUrl = '/admin/notifications/render';
+        fetch(renderUrl, {
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -167,7 +167,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 updateNotificationBadge(data.unread_count);
                 if (isDropdownOpen) {
-                    renderNotifications(data.notifications);
+                    // Use Laravel rendered HTML (already escaped and safe)
+                    renderNotificationsFromHtml(data.html);
                 }
             }
         })
@@ -188,9 +189,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Render notifications list
-    function renderNotifications(notifications) {
-        if (notifications.length === 0) {
+    // Render notifications from Laravel rendered HTML (secure and safe)
+    function renderNotificationsFromHtml(html) {
+        if (!html || html.trim() === '') {
             notificationList.innerHTML = `
                 <div class="notification-empty">
                     <i class="fas fa-bell-slash"></i>
@@ -200,35 +201,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const notificationsHtml = notifications.map(notif => {
-            const statusClass = notif.status === 'pending' ? 'warning' : 
-                               notif.status === 'delivered' ? 'success' : 'info';
-            return `
-                <div class="notification-item" data-order-id="${notif.id}">
-                    <div class="notification-item__icon">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <div class="notification-item__content">
-                        <div class="notification-item__header">
-                            <strong>New Order: ${notif.order_number}</strong>
-                            <span class="notification-time">${notif.time_ago}</span>
-                        </div>
-                        <div class="notification-item__body">
-                            <p>Customer: ${notif.customer_name}</p>
-                            <p>Total: $${notif.total}</p>
-                            <span class="status-badge status-badge--${statusClass}">${notif.status}</span>
-                        </div>
-                    </div>
-                    <div class="notification-item__action">
-                        <a href="${notif.url}" class="notification-view-btn" onclick="markNotificationAsRead(${notif.id})">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        notificationList.innerHTML = notificationsHtml;
+        // Insert Laravel rendered HTML (already escaped and safe)
+        notificationList.innerHTML = html;
     }
 
     // Mark notification as read
@@ -313,6 +287,31 @@ document.addEventListener('DOMContentLoaded', function() {
         if (notificationPollInterval) {
             clearInterval(notificationPollInterval);
         }
+    });
+});
+
+// Submenu Toggle Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-open submenu if it has an active child
+    const sidebarItems = document.querySelectorAll('.sidebar-item--has-submenu');
+    sidebarItems.forEach(item => {
+        const hasActiveChild = item.querySelector('.sidebar-submenu-link.active');
+        if (hasActiveChild) {
+            item.classList.add('active', 'open');
+        }
+    });
+
+    // Toggle submenu on click
+    const submenuToggles = document.querySelectorAll('.sidebar-link--has-submenu');
+    submenuToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const parentItem = this.closest('.sidebar-item--has-submenu');
+            if (parentItem) {
+                parentItem.classList.toggle('open');
+                parentItem.classList.toggle('active');
+            }
+        });
     });
 });
 

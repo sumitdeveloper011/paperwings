@@ -172,6 +172,12 @@
             <span>-${{ number_format($order->discount, 2) }}</span>
         </div>
         @endif
+        @if($order->shipping > 0 || $order->shipping_price > 0)
+        <div class="total-row">
+            <span>Shipping:</span>
+            <span>${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
+        </div>
+        @endif
         <div class="total-row total-row--final">
             <span>Total:</span>
             <span>${{ number_format($order->total, 2) }}</span>

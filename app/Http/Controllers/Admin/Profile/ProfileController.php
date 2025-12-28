@@ -13,9 +13,7 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the profile page.
-     */
+    // Display the profile page
     public function index(): View
     {
         $user = Auth::user();
@@ -23,9 +21,7 @@ class ProfileController extends Controller
         return view('admin.profile.index', compact('user'));
     }
 
-    /**
-     * Update the user's profile.
-     */
+    // Update the user's profile
     public function update(Request $request): RedirectResponse
     {
         $user = Auth::user();
@@ -58,9 +54,7 @@ class ProfileController extends Controller
             ->with('success', 'Profile updated successfully!');
     }
 
-    /**
-     * Update the user's password.
-     */
+    // Update the user's password
     public function updatePassword(Request $request): RedirectResponse
     {
         $user = Auth::user();
@@ -91,9 +85,7 @@ class ProfileController extends Controller
             ->with('success', 'Password updated successfully!');
     }
 
-    /**
-     * Update the user's avatar.
-     */
+    // Update the user's avatar
     public function updateAvatar(Request $request): RedirectResponse
     {
         $user = Auth::user();
@@ -123,9 +115,7 @@ class ProfileController extends Controller
             ->with('success', 'Profile picture updated successfully!');
     }
 
-    /**
-     * Update two-factor authentication status.
-     */
+    // Update two-factor authentication status
     public function updateTwoFactor(Request $request): RedirectResponse
     {
         $user = Auth::user();

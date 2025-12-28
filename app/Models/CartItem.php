@@ -12,7 +12,6 @@ class CartItem extends Model
 
     protected $fillable = [
         'user_id',
-        'session_id',
         'product_id',
         'quantity',
         'price',
@@ -25,25 +24,19 @@ class CartItem extends Model
         'product_id' => 'integer',
     ];
 
-    /**
-     * Get the user that owns the cart item.
-     */
+    // Get the user relationship
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the product in the cart.
-     */
+    // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Calculate subtotal for this cart item.
-     */
+    // Calculate subtotal for this cart item attribute
     public function getSubtotalAttribute(): float
     {
         return $this->price * $this->quantity;

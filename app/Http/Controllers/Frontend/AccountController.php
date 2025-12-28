@@ -20,9 +20,7 @@ use Illuminate\Http\RedirectResponse;
 
 class AccountController extends Controller
 {
-    /**
-     * Display the account page (redirects to view profile)
-     */
+    // Display the account page (redirects to view profile)
     public function index(): RedirectResponse
     {
         if (!Auth::check()) {
@@ -32,9 +30,7 @@ class AccountController extends Controller
         return redirect()->route('account.view-profile');
     }
 
-    /**
-     * Display view profile page
-     */
+    // Display view profile page
     public function viewProfile(): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -47,9 +43,7 @@ class AccountController extends Controller
         return view('frontend.account.view-profile', compact('user'));
     }
 
-    /**
-     * Display edit profile page
-     */
+    // Display edit profile page
     public function editProfile(): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -62,9 +56,7 @@ class AccountController extends Controller
         return view('frontend.account.edit-profile', compact('user'));
     }
 
-    /**
-     * Update user profile
-     */
+    // Update user profile
     public function updateProfile(Request $request): RedirectResponse
     {
         if (!Auth::check()) {
@@ -89,13 +81,11 @@ class AccountController extends Controller
             'email' => $validated['email'],
         ];
 
-        // Handle avatar upload
         if ($request->hasFile('avatar')) {
             $image = $request->file('avatar');
             $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
             $imagePath = $image->storeAs('avatars', $imageName, 'public');
 
-            // Delete old avatar if exists
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
             }
@@ -105,7 +95,6 @@ class AccountController extends Controller
 
         $user->update($updateData);
 
-        // Prepare user detail data - ensure empty strings are converted to null
         $userDetailData = [
             'phone' => !empty($validated['phone']) ? trim($validated['phone']) : null,
             'date_of_birth' => !empty($validated['date_of_birth']) && $validated['date_of_birth'] !== '' ? $validated['date_of_birth'] : null,
@@ -121,9 +110,7 @@ class AccountController extends Controller
             ->with('success', 'Profile updated successfully!');
     }
 
-    /**
-     * Display change password page
-     */
+    // Display change password page
     public function changePassword(): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -135,9 +122,7 @@ class AccountController extends Controller
         return view('frontend.account.change-password', compact('user'));
     }
 
-    /**
-     * Update user password
-     */
+    // Update user password
     public function updatePassword(Request $request): RedirectResponse
     {
         if (!Auth::check()) {
@@ -182,9 +167,7 @@ class AccountController extends Controller
             ->with('success', 'Password updated successfully!');
     }
 
-    /**
-     * Display manage addresses page
-     */
+    // Display manage addresses page
     public function manageAddresses(): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -205,9 +188,7 @@ class AccountController extends Controller
         return view('frontend.account.manage-addresses', compact('user', 'regions', 'billingAddresses', 'shippingAddresses'));
     }
 
-    /**
-     * Store new address
-     */
+    // Store new address
     public function storeAddress(Request $request): RedirectResponse
     {
         if (!Auth::check()) {
@@ -230,7 +211,6 @@ class AccountController extends Controller
 
         $user = Auth::user();
 
-        // If this is set as default, unset other defaults of the same type
         if ($request->has('is_default') && $request->is_default) {
             UserAddress::where('user_id', $user->id)
                 ->where('type', $validated['type'])
@@ -257,9 +237,7 @@ class AccountController extends Controller
             ->with('success', 'Address added successfully!');
     }
 
-    /**
-     * Edit address - return JSON for AJAX
-     */
+    // Edit address - return JSON for AJAX
     public function editAddress(int $id)
     {
         if (!Auth::check()) {
@@ -308,9 +286,7 @@ class AccountController extends Controller
         return view('frontend.account.manage-addresses', compact('user', 'regions', 'billingAddresses', 'shippingAddresses', 'address'));
     }
 
-    /**
-     * Update address
-     */
+    // Update address
     public function updateAddress(Request $request, int $id): RedirectResponse
     {
         if (!Auth::check()) {
@@ -336,7 +312,6 @@ class AccountController extends Controller
             'is_default' => 'nullable|boolean',
         ]);
 
-        // If this is set as default, unset other defaults of the same type
         if ($request->has('is_default') && $request->is_default) {
             UserAddress::where('user_id', $user->id)
                 ->where('type', $validated['type'])
@@ -363,9 +338,7 @@ class AccountController extends Controller
             ->with('success', 'Address updated successfully!');
     }
 
-    /**
-     * Delete address
-     */
+    // Delete address
     public function destroyAddress(int $id): RedirectResponse
     {
         if (!Auth::check()) {
@@ -383,9 +356,7 @@ class AccountController extends Controller
             ->with('success', 'Address deleted successfully!');
     }
 
-    /**
-     * Set address as default
-     */
+    // Set address as default
     public function setDefaultAddress(int $id): RedirectResponse
     {
         if (!Auth::check()) {
@@ -397,21 +368,17 @@ class AccountController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        // Unset other defaults of the same type
         UserAddress::where('user_id', $user->id)
             ->where('type', $address->type)
             ->update(['is_default' => false]);
 
-        // Set this address as default
         $address->update(['is_default' => true]);
 
         return redirect()->route('account.manage-addresses')
             ->with('success', 'Default address updated successfully!');
     }
 
-    /**
-     * Display my orders page
-     */
+    // Display my orders page
     public function myOrders(): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -420,19 +387,15 @@ class AccountController extends Controller
 
         $user = Auth::user();
         
-        // Get orders for the logged-in user, ordered by most recent first
         $orders = Order::where('user_id', $user->id)
             ->with(['items.product'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         
-        // Load product images efficiently
-        // Use ProductImageService for efficient image loading
         $productIds = $orders->pluck('items')->flatten()->pluck('product_id')->unique()->filter();
         if ($productIds->isNotEmpty()) {
             $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
             
-            // Attach first image to each product
             $orders->each(function($order) use ($images) {
                 $order->items->each(function($item) use ($images) {
                     if ($item->product) {
@@ -448,9 +411,7 @@ class AccountController extends Controller
         return view('frontend.account.my-orders', compact('user', 'orders'));
     }
 
-    /**
-     * Display order details page
-     */
+    // Display order details page
     public function orderDetails(string $orderNumber): View|RedirectResponse
     {
         if (!Auth::check()) {
@@ -459,18 +420,15 @@ class AccountController extends Controller
 
         $user = Auth::user();
         
-        // Get order by order number and ensure it belongs to the user
         $order = Order::where('order_number', $orderNumber)
             ->where('user_id', $user->id)
             ->with(['items.product', 'billingRegion', 'shippingRegion'])
             ->firstOrFail();
         
-        // Use ProductImageService for efficient image loading
         $productIds = $order->items->pluck('product_id')->unique()->filter();
         if ($productIds->isNotEmpty()) {
             $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
             
-            // Attach first image to each product
             $order->items->each(function($item) use ($images) {
                 if ($item->product) {
                     $image = $images->get($item->product_id);

@@ -16,17 +16,13 @@ class ProductRepository implements ProductRepositoryInterface
         $this->model = $model;
     }
 
-    /**
-     * Get all products
-     */
+    // Get all products
     public function all(): Collection
     {
         return $this->model->with(['category', 'brand'])->orderBy('name')->get();
     }
 
-    /**
-     * Get paginated products
-     */
+    // Get paginated products
     public function paginate(int $perPage = 10): LengthAwarePaginator
     {
         return $this->model->with(['category', 'brand'])
@@ -34,17 +30,13 @@ class ProductRepository implements ProductRepositoryInterface
                           ->paginate($perPage);
     }
 
-    /**
-     * Find product by ID
-     */
+    // Find product by ID
     public function find(int $id): ?Product
     {
         return $this->model->with(['category', 'brand'])->find($id);
     }
 
-    /**
-     * Find product by UUID
-     */
+    // Find product by UUID
     public function findByUuid(string $uuid): ?Product
     {
         return $this->model->with(['category', 'brand'])
@@ -52,9 +44,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->first();
     }
 
-    /**
-     * Find product by slug
-     */
+    // Find product by slug
     public function findBySlug(string $slug): ?Product
     {
         return $this->model->with(['category', 'brand'])
@@ -62,35 +52,27 @@ class ProductRepository implements ProductRepositoryInterface
                           ->first();
     }
 
-    /**
-     * Create new product
-     */
+    // Create new product
     public function create(array $data): Product
     {
         $product = $this->model->create($data);
         return $product->load(['category', 'brand']);
     }
 
-    /**
-     * Update product
-     */
+    // Update product
     public function update(Product $product, array $data): Product
     {
         $product->update($data);
         return $product->load(['category', 'brand'])->fresh();
     }
 
-    /**
-     * Delete product
-     */
+    // Delete product
     public function delete(Product $product): bool
     {
         return $product->delete();
     }
 
-    /**
-     * Get active products
-     */
+    // Get active products
     public function getActive(): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -99,9 +81,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get inactive products
-     */
+    // Get inactive products
     public function getInactive(): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -110,9 +90,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products by category
-     */
+    // Get products by category
     public function getByCategory(int $categoryId): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -121,9 +99,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products by subcategory
-     */
+    // Get products by subcategory
     public function getBySubCategory(int $subCategoryId): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -132,9 +108,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products by brand
-     */
+    // Get products by brand
     public function getByBrand(int $brandId): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -143,18 +117,14 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Update product status
-     */
+    // Update product status
     public function updateStatus(Product $product, string $status): Product
     {
         $product->update(['status' => $status]);
         return $product->load(['category', 'brand'])->fresh();
     }
 
-    /**
-     * Search products by name
-     */
+    // Search products by name
     public function search(string $term): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -172,9 +142,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products with images
-     */
+    // Get products with images
     public function withImages(): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -183,9 +151,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products without images
-     */
+    // Get products without images
     public function withoutImages(): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -194,9 +160,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products with their relationships
-     */
+    // Get products with their relationships
     public function withRelationships(): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -204,9 +168,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get products by price range
-     */
+    // Get products by price range
     public function getByPriceRange(float $minPrice, float $maxPrice): Collection
     {
         return $this->model->with(['category', 'brand'])
@@ -215,9 +177,7 @@ class ProductRepository implements ProductRepositoryInterface
                           ->get();
     }
 
-    /**
-     * Get featured products (you can define your own logic)
-     */
+    // Get featured products
     public function getFeatured(): Collection
     {
         return $this->model->with(['category', 'brand'])

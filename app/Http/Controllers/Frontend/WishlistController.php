@@ -19,9 +19,7 @@ class WishlistController extends Controller
         private WishlistService $wishlistService
     ) {}
 
-    /**
-     * Add product to wishlist
-     */
+    // Add product to wishlist
     public function add(AddToWishlistRequest $request): JsonResponse
     {
         try {
@@ -40,9 +38,7 @@ class WishlistController extends Controller
         }
     }
 
-    /**
-     * Remove product from wishlist
-     */
+    // Remove product from wishlist
     public function remove(Request $request): JsonResponse
     {
         if (!Auth::check()) {
@@ -73,9 +69,7 @@ class WishlistController extends Controller
         }
     }
 
-    /**
-     * Get wishlist items
-     */
+    // Get wishlist items
     public function list(): JsonResponse
     {
         if (!Auth::check()) {
@@ -101,9 +95,7 @@ class WishlistController extends Controller
         ]);
     }
 
-    /**
-     * Check if product(s) is in wishlist
-     */
+    // Check if product(s) is in wishlist
     public function check(Request $request): JsonResponse
     {
         if (!Auth::check()) {
@@ -129,9 +121,7 @@ class WishlistController extends Controller
         ]);
     }
 
-    /**
-     * Get wishlist count
-     */
+    // Get wishlist count
     public function count(): JsonResponse
     {
         if (!Auth::check()) {
@@ -146,6 +136,35 @@ class WishlistController extends Controller
         return response()->json([
             'success' => true,
             'count' => $count
+        ]);
+    }
+
+    // Render wishlist items as HTML (for AJAX)
+    public function render(): JsonResponse
+    {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'html' => '',
+                'count' => 0,
+                'message' => 'Please login to view wishlist.',
+                'requires_login' => true
+            ], 401);
+        }
+
+        $wishlistItems = $this->wishlistService->getWishlistItems(Auth::id())
+            ->filter(function($item) {
+                return $item->product !== null;
+            });
+
+        $html = view('frontend.wishlist.partials.items', [
+            'items' => $wishlistItems
+        ])->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $wishlistItems->count()
         ]);
     }
 }

@@ -10,7 +10,6 @@
                     <i class="fas fa-chart-line"></i>
                     Dashboard
                 </h1>
-                <p class="page-header__subtitle">Overview of your e-commerce platform</p>
             </div>
         </div>
     </div>
@@ -24,9 +23,9 @@
     @endphp
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="stat-card">
+    <div class="row mb-3 g-2">
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card stat-card--compact">
                 <div class="stat-card__icon stat-card__icon--primary">
                     <i class="fas fa-box"></i>
                 </div>
@@ -37,8 +36,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="stat-card">
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card stat-card--compact">
                 <div class="stat-card__icon stat-card__icon--info">
                     <i class="fas fa-shopping-cart"></i>
                 </div>
@@ -49,8 +48,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="stat-card">
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card stat-card--compact">
                 <div class="stat-card__icon stat-card__icon--success">
                     <i class="fas fa-users"></i>
                 </div>
@@ -61,8 +60,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="stat-card">
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card stat-card--compact">
                 <div class="stat-card__icon stat-card__icon--warning">
                     <i class="fas fa-dollar-sign"></i>
                 </div>
@@ -75,17 +74,9 @@
         </div>
     </div>
 
-    @php
-        $gaSettings = \App\Models\Setting::whereIn('key', ['google_analytics_id', 'google_analytics_enabled', 'google_analytics_ecommerce'])
-            ->pluck('value', 'key')
-            ->toArray();
-        $gaId = $gaSettings['google_analytics_id'] ?? '';
-        $gaEnabled = isset($gaSettings['google_analytics_enabled']) && $gaSettings['google_analytics_enabled'] == '1';
-    @endphp
-
     @if($gaEnabled && !empty($gaId))
     <!-- Google Analytics Quick Access -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
             <div class="modern-card">
                 <div class="modern-card__header">
@@ -140,64 +131,56 @@
     @endif
 
     <!-- Growth Chart Section -->
-    <div class="modern-card mb-4">
+    <div class="modern-card modern-card--compact mb-3">
         <div class="modern-card__header">
             <div class="modern-card__header-content">
                 <h3 class="modern-card__title">
                     <i class="fas fa-chart-area"></i>
                     Monthly Growth Analysis
                 </h3>
-                <p class="modern-card__subtitle">Track your business growth over time</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="dashboard-filter-form" id="date-filter-form">
-                    <div class="date-filter-group">
-                        <label for="start_date" class="date-filter-label">From:</label>
-                        <input type="date" name="start_date" id="start_date" class="date-filter-input"
-                               value="{{ $startDate }}" required>
-                    </div>
-                    <div class="date-filter-group">
-                        <label for="end_date" class="date-filter-label">To:</label>
-                        <input type="date" name="end_date" id="end_date" class="date-filter-input"
-                               value="{{ $endDate }}" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-filter"></i> Apply Filter
+                <form method="GET" class="dashboard-filter-form d-inline-flex align-items-center gap-2" id="date-filter-form">
+                    <input type="date" name="start_date" id="start_date" class="form-control form-control-sm"
+                           value="{{ $startDate }}" required style="width: 140px;">
+                    <input type="date" name="end_date" id="end_date" class="form-control form-control-sm"
+                           value="{{ $endDate }}" required style="width: 140px;">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fas fa-filter"></i>
                     </button>
-                    <button type="button" class="btn btn-secondary" id="reset-date-filter">
-                        <i class="fas fa-redo"></i> Reset
+                    <button type="button" class="btn btn-sm btn-secondary" id="reset-date-filter">
+                        <i class="fas fa-redo"></i>
                     </button>
                 </form>
             </div>
         </div>
         <div class="modern-card__body">
-            <div class="chart-container">
+            <div class="chart-container" style="height: 250px;">
                 <canvas id="growthChart"></canvas>
             </div>
         </div>
     </div>
 
     <!-- Revenue Chart Section -->
-    <div class="row mb-4">
-        <div class="col-lg-8 mb-3">
-            <div class="modern-card">
+    <div class="row mb-3 g-2">
+        <div class="col-lg-8">
+            <div class="modern-card modern-card--compact">
                 <div class="modern-card__header">
                     <div class="modern-card__header-content">
                         <h3 class="modern-card__title">
                             <i class="fas fa-chart-bar"></i>
                             Revenue Overview
                         </h3>
-                        <p class="modern-card__subtitle">Monthly revenue breakdown</p>
                     </div>
                 </div>
                 <div class="modern-card__body">
-                    <div class="chart-container">
+                    <div class="chart-container" style="height: 250px;">
                         <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4 mb-3">
+        <div class="col-lg-4">
             <div class="modern-card">
                 <div class="modern-card__header">
                     <div class="modern-card__header-content">
@@ -205,7 +188,6 @@
                             <i class="fas fa-tasks"></i>
                             Order Status
                         </h3>
-                        <p class="modern-card__subtitle">Current order distribution</p>
                     </div>
                 </div>
                 <div class="modern-card__body">
@@ -245,8 +227,8 @@
     </div>
 
     <!-- Recent Orders & Top Products -->
-    <div class="row">
-        <div class="col-lg-7 mb-3">
+    <div class="row g-2">
+        <div class="col-lg-7">
             <div class="modern-card">
                 <div class="modern-card__header">
                     <div class="modern-card__header-content">
@@ -254,7 +236,7 @@
                             <i class="fas fa-clock"></i>
                             Recent Orders
                         </h3>
-                        <p class="modern-card__subtitle">Latest 5 orders</p>
+                        <p class="modern-card__subtitle">Latest orders</p>
                     </div>
                     <div class="modern-card__header-actions">
                         <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-primary">
@@ -298,7 +280,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-5 mb-3">
+        <div class="col-lg-5">
             <div class="modern-card">
                 <div class="modern-card__header">
                     <div class="modern-card__header-content">
@@ -452,10 +434,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset date filter
     document.getElementById('reset-date-filter')?.addEventListener('click', function() {
         const today = new Date();
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(today.getMonth() - 6);
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(today.getMonth() - 3);
 
-        document.getElementById('start_date').value = sixMonthsAgo.toISOString().split('T')[0];
+        document.getElementById('start_date').value = threeMonthsAgo.toISOString().split('T')[0];
         document.getElementById('end_date').value = today.toISOString().split('T')[0];
         document.getElementById('date-filter-form').submit();
     });

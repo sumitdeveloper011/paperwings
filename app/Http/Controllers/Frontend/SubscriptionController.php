@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class SubscriptionController extends Controller
 {
-    /**
-     * Store a new subscription
-     */
+    // Store a new subscription
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -34,7 +32,6 @@ class SubscriptionController extends Controller
         try {
             $email = strtolower(trim($request->email));
 
-            // Check if email already exists
             $existingSubscription = Subscription::where('email', $email)->first();
 
             if ($existingSubscription) {
@@ -44,7 +41,6 @@ class SubscriptionController extends Controller
                         'message' => 'This email is already subscribed to our newsletter.',
                     ], 409);
                 } else {
-                    // Reactivate the subscription
                     $existingSubscription->update([
                         'status' => 1,
                         'subscribed_at' => now(),
@@ -63,7 +59,6 @@ class SubscriptionController extends Controller
                 }
             }
 
-            // Create new subscription
             $subscription = Subscription::create([
                 'email' => $email,
                 'status' => 1,
@@ -95,9 +90,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    /**
-     * Unsubscribe an email
-     */
+    // Unsubscribe an email
     public function unsubscribe(Request $request, string $uuid): JsonResponse
     {
         try {

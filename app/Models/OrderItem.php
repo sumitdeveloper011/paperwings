@@ -26,17 +26,13 @@ class OrderItem extends Model
         'subtotal' => 'decimal:2',
     ];
 
-    /**
-     * Get the order that owns the order item.
-     */
+    // Get the order relationship
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    /**
-     * Get the product for this order item.
-     */
+    // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

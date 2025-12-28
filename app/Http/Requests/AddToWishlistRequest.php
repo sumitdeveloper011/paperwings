@@ -7,19 +7,13 @@ use Illuminate\Validation\Rule;
 
 class AddToWishlistRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
+    // Determine if the user is authorized to make this request
     public function authorize(): bool
     {
         return auth()->check();
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
+    // Get the validation rules that apply to the request
     public function rules(): array
     {
         return [
@@ -31,11 +25,7 @@ class AddToWishlistRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     *
-     * @return array<string, string>
-     */
+    // Get custom messages for validator errors
     public function messages(): array
     {
         return [
@@ -44,11 +34,7 @@ class AddToWishlistRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get the error messages for the defined validation rules.
-     *
-     * @return array<string, string>
-     */
+    // Get the error messages for the defined validation rules
     protected function failedAuthorization(): void
     {
         abort(401, 'Please login to add items to wishlist.');

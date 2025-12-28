@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->uuid()->unique()->index();
+            $table->uuid('uuid')->unique()->index();
             $table->unsignedBigInteger('eposnow_category_id')->unique()->nullable();
             $table->string('name');
             $table->string('slug')->unique();

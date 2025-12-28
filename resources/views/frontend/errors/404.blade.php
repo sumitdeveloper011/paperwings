@@ -15,12 +15,33 @@
                             {{ $message ?? 'Oops! The page you\'re looking for seems to have flown away. It might have been moved, deleted, or the URL might be incorrect.' }}
                         </p>
                         <div class="error-404__actions">
-                            <a href="{{ route('home') }}" class="btn btn-primary">
-                                <i class="fas fa-home"></i> Go to Homepage
-                            </a>
-                            <a href="{{ route('product.by.category', 'all') }}" class="btn btn-outline-primary">
-                                <i class="fas fa-shopping-bag"></i> Browse Products
-                            </a>
+                            @auth
+                                @if(\App\Helpers\CommonHelper::hasAnyRole(auth()->user(), ['SuperAdmin', 'Admin']))
+                                    @if(Route::has('admin.dashboard'))
+                                        <a href="{{ route('admin.dashboard') }}" class="btn btn-primary">
+                                            <i class="fas fa-tachometer-alt"></i> Go to Admin Dashboard
+                                        </a>
+                                    @else
+                                        <a href="{{ route('admin.login') }}" class="btn btn-primary">
+                                            <i class="fas fa-sign-in-alt"></i> Go to Admin Login
+                                        </a>
+                                    @endif
+                                @else
+                                    <a href="{{ route('home') }}" class="btn btn-primary">
+                                        <i class="fas fa-home"></i> Go to Homepage
+                                    </a>
+                                    <a href="{{ route('product.by.category', 'all') }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-shopping-bag"></i> Browse Products
+                                    </a>
+                                @endif
+                            @else
+                                <a href="{{ route('home') }}" class="btn btn-primary">
+                                    <i class="fas fa-home"></i> Go to Homepage
+                                </a>
+                                <a href="{{ route('product.by.category', 'all') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-shopping-bag"></i> Browse Products
+                                </a>
+                            @endauth
                         </div>
                     </div>
                 </div>

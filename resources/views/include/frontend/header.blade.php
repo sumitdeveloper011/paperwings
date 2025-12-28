@@ -61,7 +61,11 @@
                 <div class="row align-items-center">
                     <div class="col-md-3">
                         <a href="{{ route('home') }}" class="header__logo">
-                            <img src="{{ asset('assets/frontend/images/logo.png') }}" alt="Paper Wings Logo" class="header__logo-image">
+                            @if(isset($headerLogo) && $headerLogo)
+                                <img src="{{ asset('storage/' . $headerLogo) }}" alt="{{ config('app.name', 'Paper Wings') }} Logo" class="header__logo-image" onerror="this.src='{{ asset('assets/frontend/images/logo.png') }}'">
+                            @else
+                                <img src="{{ asset('assets/frontend/images/logo.png') }}" alt="{{ config('app.name', 'Paper Wings') }} Logo" class="header__logo-image">
+                            @endif
                         </a>
                     </div>
                     <div class="col-md-6">
@@ -200,25 +204,22 @@
                     <div class="col-md-9">
                         <ul class="nav__menu">
                             <li class="nav__item">
-                                <a href="#" class="nav__link">
+                                <a href="{{ route('home') }}" class="nav__link {{ request()->routeIs('home') ? 'active' : '' }}">
                                     Home
                                 </a>
                             </li>
                             <li class="nav__item">
-                                <a href="#" class="nav__link">
+                                <a href="{{ route('shop') }}" class="nav__link {{ request()->routeIs('shop') ? 'active' : '' }}">
                                     Shop
                                 </a>
                             </li>
                             <li class="nav__item">
-                                <a href="#" class="nav__link">
-                                    Pages
+                                <a href="{{ route('bundles.index') }}" class="nav__link {{ request()->routeIs('bundles*') || request()->routeIs('bundle*') ? 'active' : '' }}">
+                                    Bundles
                                 </a>
                             </li>
                             <li class="nav__item">
-                                <a href="#" class="nav__link">Blog</a>
-                            </li>
-                            <li class="nav__item">
-                                <a href="#" class="nav__link">Contact</a>
+                                <a href="{{ route('contact') }}" class="nav__link {{ request()->routeIs('contact*') ? 'active' : '' }}">Contact</a>
                             </li>
                         </ul>
                     </div>

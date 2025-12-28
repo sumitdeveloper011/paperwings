@@ -127,10 +127,10 @@
                     </div>
                     @endif
                     
-                    @if($order->shipping > 0)
+                    @if($order->shipping > 0 || $order->shipping_price > 0)
                     <div class="order-summary-row">
                         <span>Shipping:</span>
-                        <span>${{ number_format($order->shipping, 2) }}</span>
+                        <span>${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
                     </div>
                     @endif
                     

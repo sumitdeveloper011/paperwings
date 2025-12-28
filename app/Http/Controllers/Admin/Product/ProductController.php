@@ -12,10 +12,13 @@ use App\Models\ProductImage;
 use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
+use App\Jobs\ImportEposNowProductsJob;
 use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
 use App\Services\EposNowService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -47,76 +50,132 @@ class ProductController extends Controller
         $this->eposNow = $eposNow;
     }
 
-    public function getProductsForEposNow(): RedirectResponse
+    // Dispatch job to import products from EposNow
+    public function getProductsForEposNow(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $page = 1;
-            $totalImported = 0;
+            $jobId = time() . '_' . uniqid();
 
-            do {
-                $products = $this->eposNow->getAllProducts();
+            Cache::put("product_import_{$jobId}", [
+                'percentage' => 0,
+                'processed' => 0,
+                'total' => 0,
+                'message' => 'Job queued, waiting to start...',
+                'status' => 'queued',
+                'updated_at' => now()->toDateTimeString()
+            ], 3600);
 
-                foreach ($products as $product) {
+            if (config('queue.default') === 'sync') {
+                ImportEposNowProductsJob::dispatchSync($jobId);
+            } else {
+                ImportEposNowProductsJob::dispatch($jobId);
+            }
 
-                    if (!isset($product['Id'])) {
-                        continue;
-                    }
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Product import started successfully!',
+                    'job_id' => $jobId
+                ]);
+            }
 
-                    $slug = Str::slug($product['Name']) . '-' . $product['Id'];
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Product import started! Job ID: ' . $jobId)
+                ->with('job_id', $jobId);
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to start import: ' . $e->getMessage()
+                ], 500);
+            }
 
-                    $savedProduct = Product::updateOrCreate(
-                        ['eposnow_product_id' => $product['Id']],
-                        [
-                            'category_id' => $product['CategoryId']
-                                ? $this->categoryRepository
-                                    ->getByEposnowCategoryId($product['CategoryId'])?->id ?? 17
-                                : 17,
-                            'brand_id' => null,
-                            'eposnow_category_id' => $product['CategoryId'],
-                            'eposnow_brand_id' => $product['BrandId'],
-                            'barcode' => is_array($product['Barcode'] ?? null) ? (string) ($product['Barcode'][0] ?? null) : (string) ($product['Barcode'] ?? null) ?? null,
-                            'stock' => null,
-                            'product_type' => null,
-                            'name' => $product['Name'],
-                            'slug' => $slug,
-                            'total_price' => $product['SalePrice'] ?? 0.00,
-                            'discount_price' => null,
-                            'description' => $product['Description'] ?? null,
-                            'short_description' => null,
-                            'status' => 1,
-                        ]
-                    );
-
-                    $productId = (string) $product['Id'];
-
-                    if ($savedProduct && !$savedProduct->images()->exists()) {
-                        $this->importProductImages($productId, $savedProduct->id);
-                    }
-
-                    $totalImported++;
-                }
-
-                $page++;
-
-                usleep(200000);
-
-            } while (!empty($products));
-
-            return redirect()
-                ->route('admin.products.index')
-                ->with('success', "Products imported successfully from EposNow! Total: {$totalImported}");
-
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('admin.products.index')
-                ->with('error', 'Failed to import products from EposNow.');
+            return redirect()->route('admin.products.index')
+                ->with('error', 'Failed to start import: ' . $e->getMessage());
         }
     }
 
+    // Check import job status
+    public function checkImportStatus(Request $request): JsonResponse
+    {
+        \Log::info('checkImportStatus method called (products)', [
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'all_input' => $request->all()
+        ]);
+        
+        try {
+            if (ob_get_level()) {
+                ob_clean();
+            }
 
-    /**
-     * Display a listing of the resource.
-     */
+            $jobId = $request->input('jobId');
+            
+            if (!$jobId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job ID is required',
+                    'status' => 'missing_job_id'
+                ], 400, [
+                    'Content-Type' => 'application/json',
+                ]);
+            }
+            
+            $jobId = urldecode($jobId);
+            
+            $cacheKey = "product_import_{$jobId}";
+            \Log::info('Product import status check', [
+                'jobId' => $jobId,
+                'cache_key' => $cacheKey,
+                'request_url' => $request->fullUrl(),
+            ]);
+            
+            $progressData = Cache::get($cacheKey);
+            
+            \Log::info('Product cache check result', [
+                'cache_key' => $cacheKey,
+                'has_data' => !is_null($progressData),
+                'data' => $progressData
+            ]);
+
+            if (!$progressData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job not found or expired. The import may still be processing, please wait...',
+                    'status' => 'not_found',
+                    'jobId' => $jobId,
+                    'cache_key' => $cacheKey
+                ], 200, [
+                    'Content-Type' => 'application/json',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Pragma' => 'no-cache',
+                    'Expires' => '0'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $progressData
+            ], 200, [
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking status: ' . $e->getMessage()
+            ], 500, [
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+        }
+    }
+
+    // Display a listing of the resource
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -159,9 +218,7 @@ class ProductController extends Controller
         ));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         $categories = $this->categoryRepository->getActive();
@@ -170,9 +227,7 @@ class ProductController extends Controller
         return view('admin.product.create', compact('categories', 'brands'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(StoreProductRequest $request): RedirectResponse
     {
         $validated = $request->validated();
@@ -225,18 +280,14 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(Product $product): View
     {
         $product->load(['category', 'brand', 'images', 'accordions']);
         return view('admin.product.show', compact('product'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(Product $product): View
     {
         $product->load(['category', 'brand', 'images', 'accordions']);
@@ -246,9 +297,7 @@ class ProductController extends Controller
         return view('admin.product.edit', compact('product', 'categories', 'brands'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
         $validated = $request->validated();
@@ -313,9 +362,7 @@ class ProductController extends Controller
             ->with('success', 'Product updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(Product $product): RedirectResponse
     {
         $images = $product->images;
@@ -334,9 +381,7 @@ class ProductController extends Controller
             ->with('success', 'Product deleted successfully!');
     }
 
-    /**
-     * Update product status
-     */
+    // Update product status
     public function updateStatus(UpdateProductStatusRequest $request, Product $product): RedirectResponse
     {
         $validated = $request->validated();
@@ -347,9 +392,7 @@ class ProductController extends Controller
             ->with('success', 'Product status updated successfully!');
     }
 
-    /**
-     * Get subcategories by category (AJAX)
-     */
+    // Get subcategories by category (AJAX)
     public function getSubCategories(Request $request)
     {
         $categoryId = $request->get('category_id');
@@ -363,9 +406,7 @@ class ProductController extends Controller
         }));
     }
 
-    /**
-     * Import product images from EposNow
-     */
+    // Import product images from EposNow
     protected function importProductImages(string $eposnowProductId, int $productId): void
     {
         try {
@@ -382,7 +423,6 @@ class ProductController extends Controller
 
                 $imageUrl = $imageData['ImageUrl'];
 
-                // Skip placeholder URLs like "string"
                 if ($imageUrl === 'string' || !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
                     continue;
                 }
@@ -403,13 +443,10 @@ class ProductController extends Controller
                 usleep(100000);
             }
         } catch (\Throwable $e) {
-            // Continue with next product if image import fails
         }
     }
 
-    /**
-     * Import images for all products from EposNow
-     */
+    // Import images for all products from EposNow
     public function importAllProductImages(): RedirectResponse
     {
         try {

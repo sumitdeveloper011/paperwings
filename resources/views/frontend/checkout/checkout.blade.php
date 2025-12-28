@@ -220,10 +220,15 @@
                                     <span class="order-totals__value" style="color: var(--coral-red);" id="checkoutDiscount">-${{ number_format($discount, 2) }}</span>
                                 </div>
                                 @endif
-                                {{-- <div class="order-totals__item">
-                                    <span class="order-totals__label">Shipping</span>
-                                    <span class="order-totals__value">${{ number_format($shipping, 2) }}</span>
-                                </div> --}}
+                                <div class="order-totals__item" id="shippingRow" style="{{ $shipping == 0 ? 'display: none;' : '' }}">
+                                    <span class="order-totals__label">
+                                        Shipping
+                                        <span id="freeShippingMessage" style="display: none; color: #28a745; font-size: 0.85rem; margin-left: 0.5rem;">
+                                            <i class="fas fa-check-circle"></i> Free Shipping!
+                                        </span>
+                                    </span>
+                                    <span class="order-totals__value" id="checkoutShipping">${{ number_format($shipping, 2) }}</span>
+                                </div>
                                 {{-- <div class="order-totals__item">
                                     <span class="order-totals__label">Tax (15%)</span>
                                     <span class="order-totals__value">${{ number_format($tax, 2) }}</span>
@@ -291,8 +296,11 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-            const total = {{ $total }};
-            const stripeKey = @json(config('services.stripe.key'));
+            let total = {{ $total }};
+            const subtotal = {{ $subtotal }};
+            let discount = {{ $discount }};
+            let shipping = {{ $shipping }};
+            const stripeKey = @json($stripePublishableKey ?? config('services.stripe.key'));
             let stripe;
             let elements;
             let paymentElement;
@@ -302,6 +310,78 @@
             const sameAsBillingCheckbox = document.getElementById('sameAsBilling');
             const shippingDetails = document.getElementById('shippingDetails');
             const shippingInputs = shippingDetails ? shippingDetails.querySelectorAll('input, select') : [];
+
+            // Function to calculate shipping
+            function calculateShipping() {
+                const shippingRegion = document.getElementById('shippingRegion');
+                const billingRegion = document.getElementById('billingRegion');
+                const regionId = shippingRegion ? shippingRegion.value : (billingRegion ? billingRegion.value : null);
+                
+                if (!regionId) {
+                    shipping = 0;
+                    updateTotals();
+                    return;
+                }
+
+                const orderAmount = subtotal - discount;
+                
+                fetch('{{ route("checkout.calculate-shipping") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        region_id: regionId,
+                        subtotal: subtotal,
+                        discount: discount
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        shipping = parseFloat(data.shipping) || 0;
+                        updateTotals();
+                        
+                        // Update shipping display
+                        const shippingRow = document.getElementById('shippingRow');
+                        const shippingValue = document.getElementById('checkoutShipping');
+                        const freeShippingMessage = document.getElementById('freeShippingMessage');
+                        
+                        if (shippingValue) {
+                            if (data.is_free_shipping) {
+                                shippingValue.textContent = '$0.00';
+                                if (freeShippingMessage) freeShippingMessage.style.display = 'inline';
+                            } else {
+                                shippingValue.textContent = '$' + shipping.toFixed(2);
+                                if (freeShippingMessage) freeShippingMessage.style.display = 'none';
+                            }
+                        }
+                        
+                        if (shippingRow) {
+                            shippingRow.style.display = 'flex';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calculating shipping:', error);
+                });
+            }
+
+            // Function to update totals
+            function updateTotals() {
+                total = subtotal - discount + shipping;
+                const totalElement = document.getElementById('checkoutTotal');
+                if (totalElement) {
+                    totalElement.textContent = '$' + total.toFixed(2);
+                }
+                
+                // Recreate payment intent with new total
+                if (paymentIntentClientSecret) {
+                    createPaymentIntent();
+                }
+            }
 
             if (sameAsBillingCheckbox && shippingInputs.length > 0) {
                 sameAsBillingCheckbox.addEventListener('change', function() {
@@ -316,10 +396,35 @@
                         document.getElementById('shippingRegion').value = document.getElementById('billingRegion').value;
                         document.getElementById('shippingZip').value = document.getElementById('billingZip').value;
                         shippingInputs.forEach(input => input.disabled = true);
+                        calculateShipping();
                     } else {
                         shippingInputs.forEach(input => input.disabled = false);
                     }
                 });
+            }
+
+            // Calculate shipping when shipping region changes
+            const shippingRegionSelect = document.getElementById('shippingRegion');
+            if (shippingRegionSelect) {
+                shippingRegionSelect.addEventListener('change', function() {
+                    calculateShipping();
+                });
+            }
+
+            // Calculate shipping when billing region changes (if same as billing is checked)
+            const billingRegionSelect = document.getElementById('billingRegion');
+            if (billingRegionSelect && sameAsBillingCheckbox) {
+                billingRegionSelect.addEventListener('change', function() {
+                    if (sameAsBillingCheckbox.checked) {
+                        calculateShipping();
+                    }
+                });
+            }
+
+            // Calculate shipping on page load if region is selected
+            const initialShippingRegion = document.getElementById('shippingRegion');
+            if (initialShippingRegion && initialShippingRegion.value) {
+                calculateShipping();
             }
 
             // Initialize Stripe - only essential code
@@ -329,7 +434,10 @@
                 try {
                     stripe = Stripe(stripeKey);
                     console.log('Stripe initialized, creating payment intent...');
-                    createPaymentIntent();
+                    // Don't create payment intent immediately - wait for shipping calculation
+                    setTimeout(() => {
+                        createPaymentIntent();
+                    }, 500);
                 } catch (error) {
                     console.error('Failed to initialize Stripe:', error);
                     const errorElement = document.getElementById('payment-errors');

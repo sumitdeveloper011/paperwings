@@ -15,9 +15,7 @@ use App\Mail\OrderConfirmationMail;
 
 class OrderController extends Controller
 {
-    /**
-     * Display a listing of orders
-     */
+    // Display a listing of orders
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -73,9 +71,7 @@ class OrderController extends Controller
         return view('admin.order.index', compact('orders', 'search', 'status', 'paymentStatus', 'stats'));
     }
 
-    /**
-     * Display the specified order
-     */
+    // Display the specified order
     public function show(Order $order): View
     {
         $order->load([
@@ -103,9 +99,7 @@ class OrderController extends Controller
         return view('admin.order.show', compact('order'));
     }
 
-    /**
-     * Update order status
-     */
+    // Update order status
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
         $request->validate([
@@ -139,9 +133,7 @@ class OrderController extends Controller
             ->with('success', 'Order status updated successfully.');
     }
 
-    /**
-     * Update payment status
-     */
+    // Update payment status
     public function updatePaymentStatus(Request $request, Order $order): RedirectResponse
     {
         $request->validate([
@@ -163,9 +155,7 @@ class OrderController extends Controller
             ->with('success', 'Payment status updated successfully.');
     }
 
-    /**
-     * Delete order
-     */
+    // Delete order
     public function destroy(Order $order): RedirectResponse
     {
         $orderNumber = $order->order_number;

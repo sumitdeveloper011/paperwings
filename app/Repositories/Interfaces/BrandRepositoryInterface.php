@@ -8,58 +8,36 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 interface BrandRepositoryInterface
 {
-    /**
-     * Get all brands
-     */
+    // Get all brands
     public function all(): Collection;
 
-    /**
-     * Get paginated brands
-     */
+    // Get paginated brands
     public function paginate(int $perPage = 10): LengthAwarePaginator;
 
-    /**
-     * Find brand by ID
-     */
+    // Find brand by ID
     public function find(int $id): ?Brand;
 
-    /**
-     * Find brand by UUID
-     */
+    // Find brand by UUID
     public function findByUuid(string $uuid): ?Brand;
 
-    /**
-     * Find brand by slug
-     */
+    // Find brand by slug
     public function findBySlug(string $slug): ?Brand;
 
-    /**
-     * Create new brand
-     */
+    // Create new brand
     public function create(array $data): Brand;
 
-    /**
-     * Update brand
-     */
+    // Update brand
     public function update(Brand $brand, array $data): Brand;
 
-    /**
-     * Delete brand
-     */
+    // Delete brand
     public function delete(Brand $brand): bool;
 
-    /**
-     * Search brands by name
-     */
+    // Search brands by name
     public function search(string $term): Collection;
 
-    /**
-     * Get brands with image
-     */
+    // Get brands with image
     public function withImage(): Collection;
 
-    /**
-     * Get brands without image
-     */
+    // Get brands without image
     public function withoutImage(): Collection;
 }

@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Region extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -20,9 +22,7 @@ class Region extends Model
         'status' => 'integer',
     ];
 
-    /**
-     * Boot method to generate slug automatically
-     */
+    // Boot method to generate slug automatically
     protected static function boot()
     {
         parent::boot();
@@ -40,19 +40,21 @@ class Region extends Model
         });
     }
 
-    /**
-     * Scope to get active regions
-     */
+    // Scope to get active regions
     public function scopeActive($query)
     {
         return $query->where('status', 1);
     }
 
-    /**
-     * Scope to get inactive regions
-     */
+    // Scope to get inactive regions
     public function scopeInactive($query)
     {
         return $query->where('status', 0);
+    }
+
+    // Get the shipping price relationship
+    public function shippingPrice(): HasOne
+    {
+        return $this->hasOne(ShippingPrice::class);
     }
 }

@@ -20,9 +20,7 @@ class BrandController extends Controller
         $this->brandRepository = $brandRepository;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
+    // Display a listing of the resource
     public function index(Request $request): View
     {
         $search = $request->get('search');
@@ -43,17 +41,13 @@ class BrandController extends Controller
         return view('admin.brand.index', compact('brands', 'search'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Show the form for creating a new resource
     public function create(): View
     {
         return view('admin.brand.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Store a newly created resource in storage
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -62,7 +56,6 @@ class BrandController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
@@ -81,25 +74,19 @@ class BrandController extends Controller
                         ->with('success', 'Brand created successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Display the specified resource
     public function show(Brand $brand): View
     {
         return view('admin.brand.show', compact('brand'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Show the form for editing the specified resource
     public function edit(Brand $brand): View
     {
         return view('admin.brand.edit', compact('brand'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Update the specified resource in storage
     public function update(Request $request, Brand $brand): RedirectResponse
     {
         $validated = $request->validate([
@@ -108,9 +95,7 @@ class BrandController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Handle image upload
         if ($request->hasFile('image')) {
-            // Delete old image if exists
             if ($brand->image && Storage::disk('public')->exists($brand->image)) {
                 Storage::disk('public')->delete($brand->image);
             }
@@ -132,12 +117,9 @@ class BrandController extends Controller
                         ->with('success', 'Brand updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Remove the specified resource from storage
     public function destroy(Brand $brand): RedirectResponse
     {
-        // Delete image if exists
         if ($brand->image && Storage::disk('public')->exists($brand->image)) {
             Storage::disk('public')->delete($brand->image);
         }
