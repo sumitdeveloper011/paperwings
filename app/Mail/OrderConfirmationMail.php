@@ -36,10 +36,64 @@ class OrderConfirmationMail extends Mailable
     // Get the message content definition
     public function content(): Content
     {
+        // Fetch settings from database (same pattern as AppServiceProvider)
+        $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
+            return \App\Models\Setting::pluck('value', 'key')->toArray();
+        });
+
+        // Get logo URL
+        $logoUrl = url('assets/frontend/images/logo.png');
+        if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
+            $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
+        }
+
+        // Get social links from database
+        $socialLinks = [];
+        if (!empty($settings['social_facebook'])) {
+            $socialLinks['facebook'] = $settings['social_facebook'];
+        }
+        if (!empty($settings['social_instagram'])) {
+            $socialLinks['instagram'] = $settings['social_instagram'];
+        }
+        if (!empty($settings['social_twitter'])) {
+            $socialLinks['twitter'] = $settings['social_twitter'];
+        }
+        if (!empty($settings['social_linkedin'])) {
+            $socialLinks['linkedin'] = $settings['social_linkedin'];
+        }
+
+        // Get contact phone from database
+        $contactPhone = null;
+        if (isset($settings['phones']) && is_string($settings['phones'])) {
+            $phones = json_decode($settings['phones'], true) ?? [];
+            $contactPhone = !empty($phones) ? $phones[0] : null;
+        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
+            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
+        }
+        if (empty($contactPhone)) {
+            $contactPhone = '+880 123 4567';
+        }
+
+        // Get contact email from database
+        $contactEmail = null;
+        if (isset($settings['emails']) && is_string($settings['emails'])) {
+            $emails = json_decode($settings['emails'], true) ?? [];
+            $contactEmail = !empty($emails) ? $emails[0] : null;
+        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
+            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
+        }
+        if (empty($contactEmail)) {
+            $contactEmail = 'info@paperwings.com';
+        }
+
         return new Content(
             view: 'emails.order-confirmation',
             with: [
                 'order' => $this->order,
+                'logoUrl' => $logoUrl,
+                'contactPhone' => $contactPhone,
+                'contactEmail' => $contactEmail,
+                'socialLinks' => $socialLinks,
             ],
         );
     }

@@ -65,8 +65,7 @@
         ScrollToTop.init();
         CategoryPage.init();
         AddressForm.init();
-        CartSidebar.init();
-        WishlistSidebar.init();
+        // CartSidebar and WishlistSidebar removed - handled by functions.js (Cart and Wishlist modules)
         RegisterPage.init();
         ProductDetails.init();
         Select2Init.init();
@@ -459,103 +458,8 @@
         }
     };
 
-    // Cart Sidebar Module
-    const CartSidebar = {
-        init: function() {
-            this.initOpen();
-            this.initClose();
-        },
-
-        initOpen: function() {
-            $(document).on('click', '.cart-trigger, #cart-trigger', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const sidebar = $('#cart-sidebar');
-                const overlay = $('#cart-sidebar-overlay');
-
-                if (sidebar.length && overlay.length) {
-                    const isOpening = !sidebar.hasClass('active');
-                    sidebar.addClass('active');
-                    overlay.addClass('active');
-                    $('body').css('overflow', 'hidden');
-
-                    if (isOpening && window.CartFunctions && typeof window.CartFunctions.loadCartSidebar === 'function') {
-                        window.CartFunctions.loadCartSidebar();
-                    }
-                }
-            });
-        },
-
-        initClose: function() {
-            $(document).on('click', '.cart-sidebar__close, #cart-sidebar-close', function(e) {
-                e.preventDefault();
-                $('#cart-sidebar-overlay').removeClass('active');
-                $('#cart-sidebar').removeClass('active');
-                $('body').css('overflow', '');
-            });
-
-            $(document).on('click', '.cart-sidebar-overlay, #cart-sidebar-overlay', function(e) {
-                if (e.target === this) {
-                    $('#cart-sidebar-overlay').removeClass('active');
-                    $('#cart-sidebar').removeClass('active');
-                    $('body').css('overflow', '');
-                }
-            });
-
-            $(document).on('keydown', function(e) {
-                if (e.key === 'Escape' && $('#cart-sidebar').hasClass('active')) {
-                    $('#cart-sidebar-overlay').removeClass('active');
-                    $('#cart-sidebar').removeClass('active');
-                    $('body').css('overflow', '');
-                }
-            });
-        }
-    };
-
-    // Wishlist Sidebar Module
-    const WishlistSidebar = {
-        init: function() {
-            this.initOpen();
-            this.initClose();
-        },
-
-        initOpen: function() {
-            $(document).on('click', '.wishlist-trigger', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $('#wishlist-sidebar-overlay, .wishlist-sidebar-overlay').addClass('active');
-                $('#wishlist-sidebar, .wishlist-sidebar').addClass('active');
-                $('body').css('overflow', 'hidden');
-
-                if (window.WishlistFunctions && typeof window.WishlistFunctions.loadWishlistSidebar === 'function') {
-                    window.WishlistFunctions.loadWishlistSidebar();
-                }
-            });
-        },
-
-        initClose: function() {
-            $(document).on('click', '.wishlist-sidebar__close', function() {
-                $('.wishlist-sidebar-overlay').removeClass('active');
-                $('.wishlist-sidebar').removeClass('active');
-                $('body').css('overflow', '');
-            });
-
-            $(document).on('click', '.wishlist-sidebar-overlay', function() {
-                $('.wishlist-sidebar-overlay').removeClass('active');
-                $('.wishlist-sidebar').removeClass('active');
-                $('body').css('overflow', '');
-            });
-
-            $(document).on('keydown', function(e) {
-                if (e.key === 'Escape' && $('.wishlist-sidebar').hasClass('active')) {
-                    $('.wishlist-sidebar-overlay').removeClass('active');
-                    $('.wishlist-sidebar').removeClass('active');
-                    $('body').css('overflow', '');
-                }
-            });
-        }
-    };
+    // Cart Sidebar and Wishlist Sidebar modules removed
+    // These are now handled by functions.js (Cart and Wishlist modules) to avoid duplicate event handlers
 
     // Register Page Module
     const RegisterPage = {
@@ -566,6 +470,7 @@
         },
 
         initPasswordToggle: function() {
+            // Register page password toggle
             $(document).on('click', '#togglePassword', function() {
                 const passwordInput = $('#registerPassword');
                 const passwordIcon = $('#passwordIcon');
@@ -578,6 +483,7 @@
                 }
             });
 
+            // Register page confirm password toggle
             $(document).on('click', '#toggleConfirmPassword', function() {
                 const confirmPasswordInput = $('#registerConfirmPassword');
                 const confirmPasswordIcon = $('#confirmPasswordIcon');
@@ -587,6 +493,45 @@
                 } else {
                     confirmPasswordInput.attr('type', 'password');
                     confirmPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Login page password toggle
+            $(document).on('click', '#toggleLoginPassword', function() {
+                const loginPasswordInput = $('#loginPassword');
+                const loginPasswordIcon = $('#loginPasswordIcon');
+                if (loginPasswordInput.attr('type') === 'password') {
+                    loginPasswordInput.attr('type', 'text');
+                    loginPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    loginPasswordInput.attr('type', 'password');
+                    loginPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Reset password page password toggle
+            $(document).on('click', '#toggleResetPassword', function() {
+                const resetPasswordInput = $('#resetPassword');
+                const resetPasswordIcon = $('#resetPasswordIcon');
+                if (resetPasswordInput.attr('type') === 'password') {
+                    resetPasswordInput.attr('type', 'text');
+                    resetPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    resetPasswordInput.attr('type', 'password');
+                    resetPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Reset password page confirm password toggle
+            $(document).on('click', '#toggleResetConfirmPassword', function() {
+                const resetConfirmPasswordInput = $('#resetConfirmPassword');
+                const resetConfirmPasswordIcon = $('#resetConfirmPasswordIcon');
+                if (resetConfirmPasswordInput.attr('type') === 'password') {
+                    resetConfirmPasswordInput.attr('type', 'text');
+                    resetConfirmPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    resetConfirmPasswordInput.attr('type', 'password');
+                    resetConfirmPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
                 }
             });
         },
@@ -673,14 +618,9 @@
                 }
             });
 
-            // Forgot Password Form
-            $('#forgotPasswordForm').on('submit', function(e) {
-                e.preventDefault();
-                const email = $('#forgotEmail').val();
-                const successMessage = $('#forgotPasswordSuccess');
-                successMessage.css('display', 'block');
-                $(this).css('display', 'none');
-            });
+            // Forgot Password Form - Only hide form if there's a success message from server
+            // Don't prevent default submission, let server handle validation
+            // The form will be hidden by server-side success message display
 
             // User Dropdown
             $(document).on('click', '#userDropdownTrigger', function(e) {

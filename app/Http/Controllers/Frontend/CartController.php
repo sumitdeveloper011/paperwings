@@ -177,4 +177,31 @@ class CartController extends Controller
             'total' => $total
         ]);
     }
+
+    // Check if product(s) is in cart
+    public function check(Request $request): JsonResponse
+    {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => true,
+                'status' => []
+            ]);
+        }
+
+        $request->validate([
+            'product_ids' => 'required|array',
+            'product_ids.*' => 'exists:products,id'
+        ]);
+
+        $cartIdentifier = $this->cartService->getCartIdentifier();
+        $status = $this->cartService->checkProductsInCart(
+            $cartIdentifier,
+            $request->product_ids
+        );
+
+        return response()->json([
+            'success' => true,
+            'status' => $status
+        ]);
+    }
 }

@@ -133,5 +133,22 @@ class CartService
             ->where('user_id', $cartIdentifier['user_id'])
             ->delete();
     }
+
+    // Check if products are in cart
+    public function checkProductsInCart(array $cartIdentifier, array $productIds): array
+    {
+        $cartProductIds = $this->cartItem
+            ->where('user_id', $cartIdentifier['user_id'])
+            ->whereIn('product_id', $productIds)
+            ->pluck('product_id')
+            ->toArray();
+
+        $status = [];
+        foreach ($productIds as $productId) {
+            $status[$productId] = in_array($productId, $cartProductIds);
+        }
+
+        return $status;
+    }
 }
 

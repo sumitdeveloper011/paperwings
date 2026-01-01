@@ -130,8 +130,12 @@
 </head>
 <body>
     <div class="email-container">
-        <div class="header">
-            <h1>Order Confirmation</h1>
+        <!-- Common Header -->
+        <div class="header" style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e9ecef;">
+            @if(isset($logoUrl))
+            <img src="{{ $logoUrl }}" alt="Company Logo" class="logo" style="max-width: 150px; margin-bottom: 10px;" />
+            @endif
+            <h1 style="color: #2c3e50; margin: 10px 0;">Order Confirmation</h1>
             <p>Thank you for your order!</p>
         </div>
 
@@ -228,9 +232,52 @@
             <p style="color: #6c757d;">A detailed invoice has been attached to this email.</p>
         </div>
 
-        <div class="footer">
+        <div class="footer" style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef; color: #6c757d; font-size: 0.9em;">
             <p>If you have any questions about your order, please contact us.</p>
             <p>Thank you for shopping with us!</p>
+            
+            <!-- Contact Information -->
+            @if(isset($contactPhone) || isset($contactEmail))
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <p style="margin: 0 0 8px 0; color: #000000; font-size: 14px; font-weight: 400;">
+                    @if(isset($contactPhone)){{ $contactPhone }}@endif
+                </p>
+                <p style="margin: 0 0 15px 0; color: #000000; font-size: 14px; font-weight: 400;">
+                    @if(isset($contactEmail)){{ $contactEmail }}@endif
+                </p>
+                
+                <!-- Social Media Icons -->
+                @if(isset($socialLinks) && !empty($socialLinks))
+                <div style="margin-top: 15px;">
+                    @if(isset($socialLinks['facebook']) && !empty($socialLinks['facebook']))
+                    <a href="{{ $socialLinks['facebook'] }}" style="display: inline-block; width: 32px; height: 32px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 32px; text-decoration: none; margin: 0 4px;">
+                        <span style="color: #ffffff; font-size: 14px; font-weight: 700;">f</span>
+                    </a>
+                    @endif
+                    @if(isset($socialLinks['instagram']) && !empty($socialLinks['instagram']))
+                    <a href="{{ $socialLinks['instagram'] }}" style="display: inline-block; width: 32px; height: 32px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 32px; text-decoration: none; margin: 0 4px;">
+                        <span style="color: #ffffff; font-size: 14px; font-weight: 700;">i</span>
+                    </a>
+                    @endif
+                    @if(isset($socialLinks['twitter']) && !empty($socialLinks['twitter']))
+                    <a href="{{ $socialLinks['twitter'] }}" style="display: inline-block; width: 32px; height: 32px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 32px; text-decoration: none; margin: 0 4px;">
+                        <span style="color: #ffffff; font-size: 12px; font-weight: 700;">t</span>
+                    </a>
+                    @endif
+                    @if(isset($socialLinks['linkedin']) && !empty($socialLinks['linkedin']))
+                    <a href="{{ $socialLinks['linkedin'] }}" style="display: inline-block; width: 32px; height: 32px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 32px; text-decoration: none; margin: 0 4px;">
+                        <span style="color: #ffffff; font-size: 10px; font-weight: 700;">in</span>
+                    </a>
+                    @endif
+                </div>
+                @endif
+            </div>
+            @endif
+            
+            <!-- Copyright -->
+            <p style="margin-top: 20px; color: #6c757d; font-size: 12px;">
+                Copyrights © {{ date('Y') }} Paper Wings All Rights Reserved
+            </p>
         </div>
     </div>
 </body>

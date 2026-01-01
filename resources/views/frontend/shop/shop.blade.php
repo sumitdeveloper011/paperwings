@@ -121,7 +121,7 @@
                                     <img src="{{ $product->main_image }}" alt="{{ $product->name }}" class="cute-stationery__img">
                                 </a>
                                 <div class="cute-stationery__actions">
-                                    <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                    <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist"><i class="far fa-heart"></i></button>
                                     <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $product->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
                                 </div>
                             </div>

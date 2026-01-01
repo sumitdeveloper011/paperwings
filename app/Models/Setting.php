@@ -21,8 +21,13 @@ class Setting extends Model
     // Get a setting value by key
     public static function get(string $key, $default = null)
     {
-        $setting = self::where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        try {
+            $setting = self::where('key', $key)->first();
+            return $setting ? $setting->value : $default;
+        } catch (\Exception $e) {
+            \Log::warning('Setting::get() failed for key: ' . $key . ' - ' . $e->getMessage());
+            return $default;
+        }
     }
 
     // Set a setting value by key

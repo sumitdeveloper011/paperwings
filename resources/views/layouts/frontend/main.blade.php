@@ -6,7 +6,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     @php
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        try {
+            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        } catch (\Exception $e) {
+            $settings = [];
+        }
         $gaId = $settings['google_analytics_id'] ?? '';
         $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
         
@@ -76,7 +80,7 @@
     </script>
     @endif
 </head>
-<body>
+<body data-authenticated="{{ auth()->check() ? 'true' : 'false' }}">
     @include('include.frontend.header')
     @include('include.frontend.cart-sidebar')
     @include('include.frontend.wishlist-sidebar')

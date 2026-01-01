@@ -25,23 +25,34 @@ class AuthController extends Controller
     // Display login page
     public function login(Request $request)
     {
-        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
-            return redirect()->route('admin.dashboard')
-                ->with('error', 'Please logout from admin account to access user login.');
+        try {
+            if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'Please logout from admin account to access user login.');
+            }
+
+            if (Auth::check()) {
+                return redirect()->route('home');
+            }
+
+            if ($request->has('intended')) {
+                session(['url.intended' => $request->intended]);
+            }
+
+            $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
+            $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
+
+            return view('include.frontend.login', compact('googleLoginEnabled', 'facebookLoginEnabled'));
+        } catch (\Exception $e) {
+            \Log::error('Login page error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            // Fallback values if settings fail
+            return view('include.frontend.login', [
+                'googleLoginEnabled' => false,
+                'facebookLoginEnabled' => false
+            ]);
         }
-
-        if (Auth::check()) {
-            return redirect()->route('home');
-        }
-
-        if ($request->has('intended')) {
-            session(['url.intended' => $request->intended]);
-        }
-
-        $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
-        $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
-
-        return view('include.frontend.login', compact('googleLoginEnabled', 'facebookLoginEnabled'));
     }
 
     // Handle user login with full security
@@ -140,7 +151,11 @@ class AuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return redirect()->intended(route('home'))->with('success', 'Welcome back! You have been successfully logged in.');
+            // Clear any intended URL from session to prevent redirecting to admin routes
+            $request->session()->forget('url.intended');
+            
+            // Always redirect frontend users to home page
+            return redirect()->route('home')->with('success', 'Welcome back! You have been successfully logged in.');
         }
 
         // Failed login attempt
@@ -159,22 +174,43 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // If already authenticated as admin, redirect to admin dashboard
-        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
-            return redirect()->route('admin.dashboard')
-                ->with('error', 'Please logout from admin account to register a new user account.');
+        try {
+            // If already authenticated, check role and redirect accordingly
+            if (Auth::check()) {
+                try {
+                    if (CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
+                        return redirect()->route('admin.dashboard')
+                            ->with('error', 'Please logout from admin account to register a new user account.');
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Role check failed in register method: ' . $e->getMessage());
+                }
+                
+                // If already authenticated as user, redirect to home
+                return redirect()->route('home');
+            }
+
+            // Get social login settings with error handling
+            try {
+                $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
+                $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
+            } catch (\Exception $e) {
+                \Log::warning('Settings retrieval failed in register method: ' . $e->getMessage());
+                $googleLoginEnabled = false;
+                $facebookLoginEnabled = false;
+            }
+
+            return view('include.frontend.register', compact('googleLoginEnabled', 'facebookLoginEnabled'));
+        } catch (\Exception $e) {
+            \Log::error('Register page error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            // Fallback values if anything fails
+            return view('include.frontend.register', [
+                'googleLoginEnabled' => false,
+                'facebookLoginEnabled' => false
+            ]);
         }
-
-        // If already authenticated as user, redirect to home
-        if (Auth::check()) {
-            return redirect()->route('home');
-        }
-
-        // Get social login settings
-        $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
-        $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
-
-        return view('include.frontend.register', compact('googleLoginEnabled', 'facebookLoginEnabled'));
     }
 
     public function store(RegisterRequest $request)
@@ -200,7 +236,13 @@ class AuthController extends Controller
                 \Log::warning('Could not assign User role: ' . $e->getMessage());
             }
 
-            $user->sendEmailVerificationNotification();
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Exception $e) {
+                // Log email notification error but don't fail registration
+                \Log::error('Email verification notification failed: ' . $e->getMessage());
+                \Log::error('Stack trace: ' . $e->getTraceAsString());
+            }
 
             return redirect()->route('login')->with('success', 'Registration successful! Please check your email to verify your account.');
 
@@ -403,19 +445,19 @@ class AuthController extends Controller
     {
         // Verify the signed URL
         if (!URL::hasValidSignature($request)) {
-            return redirect()->route('home')->with('error', 'Invalid or expired verification link.');
+            return redirect()->route('login')->with('error', 'Invalid or expired verification link.');
         }
 
         $user = User::findOrFail($id);
 
         // Verify the hash matches
         if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
-            return redirect()->route('home')->with('error', 'Invalid verification link.');
+            return redirect()->route('login')->with('error', 'Invalid verification link.');
         }
 
         // Check if already verified
         if ($user->hasVerifiedEmail()) {
-            return redirect()->route('home')->with('info', 'Your email is already verified. You can now log in.');
+            return redirect()->route('login')->with('info', 'Your email is already verified. You can now log in.');
         }
 
         // Mark email as verified
@@ -424,10 +466,10 @@ class AuthController extends Controller
             $user->status = 1;
             $user->save();
 
-            return redirect()->route('home')->with('success', 'Your email has been verified successfully! You can now log in.');
+            return redirect()->route('login')->with('success', 'Your email has been verified successfully! You can now log in.');
         }
 
-        return redirect()->route('home')->with('error', 'Email verification failed. Please try again.');
+        return redirect()->route('login')->with('error', 'Email verification failed. Please try again.');
     }
 
 

@@ -8,7 +8,7 @@
                         <!-- Decorative background element -->
                         <div class="register-card__decoration-top"></div>
                         <div class="register-card__decoration-bottom"></div>
-                        
+
                         <div class="register-card__content">
                             <div class="register-header">
                                 <div class="register-icon-badge">
@@ -17,7 +17,7 @@
                                 <h2 class="register-title">Create Your Account</h2>
                                 <p class="register-subtitle">Join us today and start your journey</p>
                             </div>
-                            
+
                             <form id="registerForm" class="register-form" action="{{ route('register.store') }}" method="POST">
                                 @csrf
                                 @if(session('error'))
@@ -53,7 +53,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-group mb-4">
                                     <label for="registerEmail" class="register-form-label">
                                         <i class="fas fa-envelope"></i>Email Address
@@ -65,7 +65,7 @@
                                         </div>
                                     @enderror
                                 </div>
-                                
+
                                 <div class="row mb-4">
                                     <div class="col-md-6 mb-3 mb-md-0">
                                         <div class="form-group">
@@ -77,12 +77,12 @@
                                                 <button type="button" id="togglePassword" class="password-toggle-btn">
                                                     <i class="fas fa-eye" id="passwordIcon"></i>
                                                 </button>
-                                                @error('password')
-                                                    <div class="invalid-feedback">
-                                                        <i class="fas fa-exclamation-circle"></i> {{ $message }}
-                                                    </div>
-                                                @enderror
                                             </div>
+                                            @error('password')
+                                                <div class="invalid-feedback">
+                                                    <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                                </div>
+                                            @enderror
                                             <div id="passwordStrength" class="password-strength">
                                                 <div id="passwordStrengthBar" class="password-strength-bar"></div>
                                             </div>
@@ -109,12 +109,12 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-group mb-4">
                                     <label class="register-checkbox-label" for="agreeTerms">
                                         <input type="checkbox" id="agreeTerms" name="agreeTerms" value="1" {{ old('agreeTerms') ? 'checked' : '' }} required>
                                         <span>
-                                            I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>
+                                            I agree to the <a href="{{ route('page.show', 'terms-and-conditions') }}" target="_blank">Terms & Conditions</a> and <a href="{{ route('page.show', 'privacy-policy') }}" target="_blank">Privacy Policy</a>
                                         </span>
                                     </label>
                                     @error('agreeTerms')
@@ -123,7 +123,7 @@
                                         </div>
                                     @enderror
                                 </div>
-                                
+
                                 <button type="submit" class="register-submit-btn">
                                     <i class="fas fa-user-plus"></i>Create Account
                                 </button>
@@ -150,10 +150,10 @@
                                     @endif
                                 </div>
                                 @endif
-                                
+
                                 <div class="register-footer">
                                     <p>
-                                        Already have an account? 
+                                        Already have an account?
                                         <a href="{{ route('login') }}">Sign in here</a>
                                     </p>
                                 </div>

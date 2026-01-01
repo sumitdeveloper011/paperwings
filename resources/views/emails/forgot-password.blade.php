@@ -11,12 +11,7 @@
         <tr>
             <td align="center">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; width: 100%; background-color: #ffffff;">
-                    <!-- Top Bar - Logo -->
-                    <tr>
-                        <td style="padding: 20px 40px; text-align: center; background-color: #ffffff;">
-                            <img src="{{$logoUrl}}" alt="Company Logo" style="max-width: 180px; height: auto; display: block; margin: 0 auto;" />
-                        </td>
-                    </tr>
+                    @include('emails.partials.header')
                     
                     <!-- Header Banner - Dark Blue -->
                     <tr>
@@ -115,70 +110,12 @@
                                 Thanks,
                             </p>
                             <p style="margin: 0; color: #000000; font-size: 16px; font-weight: 400;">
-                                The Company Team
+                                The Paper Wings Team
                             </p>
                         </td>
                     </tr>
                     
-                    <!-- Footer - Contact Information -->
-                    <tr>
-                        <td style="padding: 40px 40px 30px 40px; background-color: #f5f5f5;">
-                            <p style="margin: 0 0 15px 0; color: #374E94; font-size: 16px; font-weight: 600; text-align: center;">
-                                Get in touch
-                            </p>
-                            <p style="margin: 0 0 8px 0; color: #000000; font-size: 14px; font-weight: 400; text-align: center;">
-                                {{ $contactPhone ?? '+11 111 333 4444' }}
-                            </p>
-                            <p style="margin: 0 0 25px 0; color: #000000; font-size: 14px; font-weight: 400; text-align: center;">
-                                {{ $contactEmail ?? 'Info@YourCompany.com' }}
-                            </p>
-                            
-                            <!-- Social Media Icons -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                <tr>
-                                    <td align="center" style="padding: 0;">
-                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                                            <tr>
-                                                <!-- Facebook -->
-                                                <td style="padding: 0 8px;">
-                                                    <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                                                        <span style="color: #ffffff; font-size: 16px; font-weight: 700;">f</span>
-                                                    </a>
-                                                </td>
-                                                <!-- Instagram -->
-                                                <td style="padding: 0 8px;">
-                                                    <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                                                        <span style="color: #ffffff; font-size: 16px; font-weight: 700;">i</span>
-                                                    </a>
-                                                </td>
-                                                <!-- Twitter -->
-                                                <td style="padding: 0 8px;">
-                                                    <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                                                        <span style="color: #ffffff; font-size: 14px; font-weight: 700;">t</span>
-                                                    </a>
-                                                </td>
-                                                <!-- LinkedIn -->
-                                                <td style="padding: 0 8px;">
-                                                    <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: #000000; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                                                        <span style="color: #ffffff; font-size: 12px; font-weight: 700;">in</span>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    
-                    <!-- Copyright Bar - Dark Blue -->
-                    <tr>
-                        <td style="padding: 20px 40px; text-align: center; background-color: #374E94;">
-                            <p style="margin: 0; color: #ffffff; font-size: 12px; font-weight: 400;">
-                                Copyrights © Company All Rights Reserved
-                            </p>
-                        </td>
-                    </tr>
+                    @include('emails.partials.footer')
                 </table>
             </td>
         </tr>

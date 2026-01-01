@@ -96,6 +96,7 @@ Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::get('/cart/api/list', [CartController::class, 'list'])->name('cart.api.list');
     Route::get('/cart/render', [CartController::class, 'render'])->name('cart.render');
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
+    Route::post('/cart/check', [CartController::class, 'check'])->name('cart.check');
 });
 
 Route::middleware(['auth', 'prevent.admin'])->group(function () {

@@ -37,7 +37,12 @@
                                     <label for="loginPassword" class="login-form-label">
                                         <i class="fas fa-lock"></i>Password
                                     </label>
-                                    <input type="password" id="loginPassword" name="password" class="login-form-input form-input @error('password') is-invalid @enderror" placeholder="Enter your password" required>
+                                    <div class="password-input-wrapper">
+                                        <input type="password" id="loginPassword" name="password" class="login-form-input form-input login-form-input--password @error('password') is-invalid @enderror" placeholder="Enter your password" required>
+                                        <button type="button" id="toggleLoginPassword" class="password-toggle-btn">
+                                            <i class="fas fa-eye" id="loginPasswordIcon"></i>
+                                        </button>
+                                    </div>
                                     @error('password')
                                         <div class="invalid-feedback">
                                             <i class="fas fa-exclamation-circle"></i> {{ $message }}

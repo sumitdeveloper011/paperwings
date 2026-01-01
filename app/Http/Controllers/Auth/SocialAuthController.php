@@ -95,7 +95,11 @@ class SocialAuthController extends Controller
 
             Auth::login($user, true);
 
-            return redirect()->intended('/');
+            // Clear any intended URL from session to prevent redirecting to admin routes
+            request()->session()->forget('url.intended');
+            
+            // Always redirect frontend users to home page
+            return redirect()->route('home');
 
         } catch (\Exception $e) {
             return redirect()->route('login')
@@ -186,7 +190,11 @@ class SocialAuthController extends Controller
 
             Auth::login($user, true);
 
-            return redirect()->intended('/');
+            // Clear any intended URL from session to prevent redirecting to admin routes
+            request()->session()->forget('url.intended');
+            
+            // Always redirect frontend users to home page
+            return redirect()->route('home');
 
         } catch (\Exception $e) {
             return redirect()->route('login')

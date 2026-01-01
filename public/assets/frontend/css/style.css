@@ -9067,6 +9067,27 @@ select.form-input:focus {
     transform: scale(1.1);
 }
 
+/* Cart Button States */
+.add-to-cart.in-cart,
+.product__add-cart.in-cart,
+.cute-stationery__add-cart.in-cart {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+.add-to-cart.in-cart i,
+.product__add-cart.in-cart i,
+.cute-stationery__add-cart.in-cart i {
+    color: white !important;
+}
+
+.add-to-cart.in-cart:hover,
+.product__add-cart.in-cart:hover,
+.cute-stationery__add-cart.in-cart:hover {
+    background: #218838 !important;
+    transform: scale(1.1);
+}
+
 
 /* ============================================
    Register Page Styles
@@ -9268,6 +9289,10 @@ select.form-input:focus {
     padding-right: 45px;
 }
 
+.login-form-input--password {
+    padding-right: 45px;
+}
+
 /* Password Input Wrapper */
 .password-input-wrapper {
     position: relative;
@@ -9285,6 +9310,12 @@ select.form-input:focus {
     cursor: pointer;
     font-size: 16px;
     padding: 5px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    line-height: 1;
 }
 
 .password-toggle-btn:hover {
@@ -13473,21 +13504,39 @@ select.form-input:focus {
 }
 
 /* 404 Error Page Styles */
+/* Error Pages - General Styles */
+.error-section,
 .error-404-section {
     padding: 100px 0;
     background-color: #f8f9fa;
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
 }
 
+.error-content,
 .error-404__content {
     text-align: center;
 }
 
+.error-icon,
 .error-404__icon {
     font-size: 120px;
     color: var(--lavender);
     margin-bottom: 30px;
+    animation: pulse 2s infinite;
 }
 
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.error-title,
 .error-404__title {
     font-size: 120px;
     font-weight: bold;
@@ -13496,6 +13545,7 @@ select.form-input:focus {
     line-height: 1;
 }
 
+.error-subtitle,
 .error-404__subtitle {
     font-size: 32px;
     color: #333;
@@ -13503,6 +13553,7 @@ select.form-input:focus {
     font-weight: 600;
 }
 
+.error-description,
 .error-404__description {
     font-size: 18px;
     color: #666;
@@ -13510,56 +13561,124 @@ select.form-input:focus {
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
+    line-height: 1.6;
 }
 
+.error-actions,
 .error-404__actions {
     display: flex;
     justify-content: center;
     gap: 15px;
     flex-wrap: wrap;
+    margin-bottom: 40px;
 }
 
+.error-actions .btn,
 .error-404__actions .btn {
     padding: 12px 40px;
     font-size: 16px;
     text-transform: uppercase;
     font-weight: 600;
+    border-radius: 5px;
+    transition: all 0.3s ease;
 }
 
+.error-actions .btn:hover,
+.error-404__actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.error-actions .btn-primary,
 .error-404__actions .btn-primary {
     margin-right: 0;
 }
 
+.error-help {
+    margin-top: 40px;
+    padding: 30px;
+    background: white;
+    border-radius: 10px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+}
+
+.error-help p {
+    margin-bottom: 15px;
+    color: #333;
+    font-weight: 600;
+}
+
+.error-help-list {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.error-help-list li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    color: #666;
+}
+
+.error-help-list li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--lavender);
+    font-size: 20px;
+    line-height: 1;
+}
+
 @media (max-width: 768px) {
+    .error-section,
+    .error-404-section {
+        padding: 60px 0;
+    }
+
+    .error-icon,
     .error-404__icon {
         font-size: 80px;
         margin-bottom: 20px;
     }
 
+    .error-title,
     .error-404__title {
         font-size: 80px;
         margin-bottom: 15px;
     }
 
+    .error-subtitle,
     .error-404__subtitle {
         font-size: 24px;
         margin-bottom: 15px;
     }
 
+    .error-description,
     .error-404__description {
         font-size: 16px;
         margin-bottom: 30px;
         padding: 0 20px;
     }
 
+    .error-actions,
     .error-404__actions {
         flex-direction: column;
         align-items: center;
     }
 
+    .error-actions .btn,
     .error-404__actions .btn {
         width: 100%;
         max-width: 300px;
+    }
+
+    .error-help {
+        padding: 20px;
+        margin-top: 30px;
     }
 }
 

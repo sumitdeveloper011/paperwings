@@ -8,7 +8,7 @@
                     <!-- Decorative background element -->
                     <div class="reset-password-card__decoration-top"></div>
                     <div class="reset-password-card__decoration-bottom"></div>
-                    
+
                     <div class="reset-password-card__content">
                         <div class="reset-password-header">
                             <div class="reset-password-icon-badge">
@@ -17,18 +17,24 @@
                             <h2 class="reset-password-title">Reset Password</h2>
                             <p class="reset-password-subtitle">Enter your new password below. Make sure it's strong and secure.</p>
                         </div>
-                        
-                        <form id="resetPasswordForm" class="reset-password-form" action="{{ route('password.update') }}" method="POST" novalidate>
+
+                        <form id="resetPasswordForm" class="reset-password-form" action="{{ route('password.update') }}" method="POST" novalidate autocomplete="off">
                             @csrf
                             <input type="hidden" name="token" value="{{ $token ?? old('token') }}">
-                            <input type="hidden" name="email" value="{{ $email ?? old('email') }}">
-                            
+                            <!-- Email field - visible but readonly to prevent browser password manager detection -->
+                            <div class="form-group mb-4">
+                                <label class="reset-password-form-label">
+                                    <i class="fas fa-envelope"></i>Email Address
+                                </label>
+                                <input type="text" name="email" value="{{ $email ?? old('email') }}" class="reset-password-form-input" readonly autocomplete="username" style="background-color: #f8f9fa; cursor: not-allowed;">
+                            </div>
+
                             <div class="form-group mb-4">
                                 <label for="resetPassword" class="reset-password-form-label">
                                     <i class="fas fa-lock"></i>New Password
                                 </label>
                                 <div class="password-input-wrapper">
-                                    <input type="password" id="resetPassword" name="password" class="reset-password-form-input reset-password-form-input--password @error('password') is-invalid @enderror" placeholder="Enter your new password" required>
+                                    <input type="password" id="resetPassword" name="password" class="reset-password-form-input reset-password-form-input--password @error('password') is-invalid @enderror" placeholder="Enter your new password" required autocomplete="new-password">
                                     <button type="button" id="toggleResetPassword" class="password-toggle-btn">
                                         <i class="fas fa-eye" id="resetPasswordIcon"></i>
                                     </button>
@@ -40,13 +46,13 @@
                                 @enderror
                                 <div class="invalid-feedback" id="resetPasswordError"></div>
                             </div>
-                            
+
                             <div class="form-group mb-4">
                                 <label for="resetConfirmPassword" class="reset-password-form-label">
                                     <i class="fas fa-lock"></i>Confirm Password
                                 </label>
                                 <div class="password-input-wrapper">
-                                    <input type="password" id="resetConfirmPassword" name="password_confirmation" class="reset-password-form-input reset-password-form-input--password @error('password_confirmation') is-invalid @enderror" placeholder="Re-enter your new password" required>
+                                    <input type="password" id="resetConfirmPassword" name="password_confirmation" class="reset-password-form-input reset-password-form-input--password @error('password_confirmation') is-invalid @enderror" placeholder="Re-enter your new password" required autocomplete="new-password">
                                     <button type="button" id="toggleResetConfirmPassword" class="password-toggle-btn">
                                         <i class="fas fa-eye" id="resetConfirmPasswordIcon"></i>
                                     </button>
@@ -58,11 +64,11 @@
                                 @enderror
                                 <div class="invalid-feedback" id="resetConfirmPasswordError"></div>
                             </div>
-                            
+
                             <button type="submit" class="reset-password-submit-btn">
                                 <i class="fas fa-check-circle"></i>Reset Password
                             </button>
-                            
+
                             <div class="reset-password-back-link">
                                 <a href="{{ route('login') }}">
                                     <i class="fas fa-arrow-left"></i>Back to Login
@@ -75,4 +81,5 @@
         </div>
     </div>
 </section>
+
 @endsection

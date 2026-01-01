@@ -27,17 +27,56 @@ class VerifyEmailNotification extends Notification
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())]
         );
 
-        $logoUrl = url('assets/images/logo.svg');
+        $logoUrl = url('assets/frontend/images/logo.png');
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
-            $logoUrl = config('app.url') . '/assets/images/logo.svg';
+            $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = [
-            'facebook' => config('app.social_facebook', '#'),
-            'instagram' => config('app.social_instagram', '#'),
-            'twitter' => config('app.social_twitter', '#'),
-            'linkedin' => config('app.social_linkedin', '#'),
-        ];
+        // Fetch settings from database (same pattern as AppServiceProvider)
+        $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
+            return \App\Models\Setting::pluck('value', 'key')->toArray();
+        });
+
+        // Get social links from database
+        $socialLinks = [];
+        if (!empty($settings['social_facebook'])) {
+            $socialLinks['facebook'] = $settings['social_facebook'];
+        }
+        if (!empty($settings['social_instagram'])) {
+            $socialLinks['instagram'] = $settings['social_instagram'];
+        }
+        if (!empty($settings['social_twitter'])) {
+            $socialLinks['twitter'] = $settings['social_twitter'];
+        }
+        if (!empty($settings['social_linkedin'])) {
+            $socialLinks['linkedin'] = $settings['social_linkedin'];
+        }
+
+        // Get contact phone from database
+        $contactPhone = null;
+        if (isset($settings['phones']) && is_string($settings['phones'])) {
+            $phones = json_decode($settings['phones'], true) ?? [];
+            $contactPhone = !empty($phones) ? $phones[0] : null;
+        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
+            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
+        }
+        // Fallback if no phone found
+        if (empty($contactPhone)) {
+            $contactPhone = '+880 123 4567';
+        }
+
+        // Get contact email from database
+        $contactEmail = null;
+        if (isset($settings['emails']) && is_string($settings['emails'])) {
+            $emails = json_decode($settings['emails'], true) ?? [];
+            $contactEmail = !empty($emails) ? $emails[0] : null;
+        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
+            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
+        }
+        // Fallback if no email found
+        if (empty($contactEmail)) {
+            $contactEmail = 'info@paperwings.com';
+        }
 
         return (new MailMessage)
             ->subject('Verify Your Email Address - Paper Wings')
@@ -45,8 +84,8 @@ class VerifyEmailNotification extends Notification
                 'verificationUrl' => $verificationUrl,
                 'userName' => $notifiable->first_name,
                 'logoUrl' => $logoUrl,
-                'contactPhone' => config('app.contact_phone', '+880 123 4567'),
-                'contactEmail' => config('app.contact_email', 'info@paperwings.com'),
+                'contactPhone' => $contactPhone,
+                'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
             ]);
     }

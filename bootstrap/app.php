@@ -27,8 +27,81 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Handle 419 - Page Expired (CSRF Token Mismatch)
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session has expired. Please refresh the page and try again.',
+                    'error' => 'CSRF token mismatch'
+                ], 419);
+            }
+            
+            if ($request->is('admin/*')) {
+                return redirect()->route('admin.login')
+                    ->with('error', 'Your session has expired. Please login again.');
+            }
+            
+            return response()->view('frontend.errors.419', [], 419);
+        });
+
+        // Handle 403 - Forbidden
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'You do not have permission to access this resource.',
+                    'error' => 'Access denied'
+                ], 403);
+            }
+            
+            if ($request->is('admin/*')) {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'You do not have permission to access this resource.');
+            }
+            
+            return response()->view('frontend.errors.403', [], 403);
+        });
+
+        // Handle 500 - Internal Server Error
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            // Log the error
+            \Log::error('Unhandled exception: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'url' => $request->fullUrl(),
+                'method' => $request->method(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => app()->environment('production') 
+                        ? 'An error occurred. Please try again later.' 
+                        : $e->getMessage(),
+                    'error' => 'Internal server error'
+                ], 500);
+            }
+
+            // Don't show custom error page in development - show Laravel's debug page
+            if (app()->environment('local', 'development')) {
+                return null;
+            }
+
+            if ($request->is('admin/*')) {
+                return response()->view('admin.errors.500', [], 500);
+            }
+            
+            return response()->view('frontend.errors.500', [], 500);
+        });
+
         // Handle 404 errors - redirect based on user role and route type
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'The requested resource was not found.',
+                    'error' => 'Not found'
+                ], 404);
+            }
+
             if ($request->is('admin/*')) {
                 // Admin route 404
                 if (\Illuminate\Support\Facades\Auth::check()) {
@@ -56,25 +129,23 @@ return Application::configure(basePath: dirname(__DIR__))
                         ->with('error', 'Please login to access the admin panel.');
                 }
             } else {
-                // User route 404
-                if (\Illuminate\Support\Facades\Auth::check()) {
-                    $user = \Illuminate\Support\Facades\Auth::user();
-                    if (\App\Helpers\CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
-                        // Admin user trying to access user route - redirect to admin panel
-                        try {
-                            if (\Illuminate\Support\Facades\Route::has('admin.dashboard')) {
-                                return redirect()->route('admin.dashboard')
-                                    ->with('error', 'Admin users cannot access user routes.');
-                            }
-                        } catch (\Exception $ex) {
-                            // Route doesn't exist
-                        }
-                        return redirect()->route('admin.login')
-                            ->with('error', 'Admin users cannot access user routes.');
-                    }
-                }
+                // User route 404 - show custom 404 page
+                return response()->view('frontend.errors.404', [
+                    'title' => '404 - Page Not Found',
+                    'message' => 'The page you are looking for does not exist.'
+                ], 404);
+            }
+        });
+
+        // Handle 503 - Service Unavailable (Maintenance Mode)
+        $exceptions->render(function (\Illuminate\Foundation\Http\Exceptions\MaintenanceModeException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Service is temporarily unavailable. We are performing maintenance.',
+                    'error' => 'Service unavailable'
+                ], 503);
             }
             
-            return null; // Let Laravel handle the 404 normally for other cases
+            return response()->view('frontend.errors.503', [], 503);
         });
     })->create();

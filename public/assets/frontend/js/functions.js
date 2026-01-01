@@ -113,10 +113,24 @@
     const Wishlist = {
         csrfToken: Utils.getCsrfToken(),
 
+        isAuthenticated: function() {
+            // Check if user is authenticated by checking body data attribute
+            const body = document.body;
+            if (body && body.hasAttribute('data-authenticated')) {
+                return body.getAttribute('data-authenticated') === 'true';
+            }
+            // Fallback: check if user dropdown exists (authenticated) or login link exists (not authenticated)
+            const userDropdown = document.getElementById('userDropdown');
+            const loginLink = document.getElementById('loginLink');
+            return userDropdown !== null && loginLink === null;
+        },
+
         init: function() {
             this.attachEventListeners();
-            this.checkWishlistStatus();
-            this.loadWishlistCount();
+            if (this.isAuthenticated()) {
+                this.checkWishlistStatus();
+                this.loadWishlistCount();
+            }
         },
 
         attachEventListeners: function() {
@@ -344,13 +358,18 @@
             const headerBadge = document.getElementById('wishlist-header-badge');
             if (headerBadge) {
                 headerBadge.textContent = count;
-                headerBadge.style.display = count > 0 ? 'absolute' : 'none';
+                headerBadge.style.display = 'absolute';
             }
         },
 
         checkWishlistStatus: function() {
             const wishlistButtons = document.querySelectorAll('.wishlist-btn[data-product-id]');
             if (wishlistButtons.length === 0) return;
+
+            // Only check if user is authenticated
+            if (!this.isAuthenticated()) {
+                return;
+            }
 
             const productIds = Array.from(wishlistButtons).map(btn => btn.getAttribute('data-product-id'));
 
@@ -368,11 +387,23 @@
                 if (data.success && data.status) {
                     wishlistButtons.forEach(button => {
                         const productId = button.getAttribute('data-product-id');
+                        const icon = button.querySelector('i');
+                        
                         if (data.status[productId]) {
+                            // Product is in wishlist
                             button.classList.add('in-wishlist');
-                            const icon = button.querySelector('i');
                             if (icon) {
+                                // Remove outline heart, add filled heart
+                                icon.classList.remove('far', 'fa-heart');
                                 icon.classList.add('fas', 'fa-heart');
+                            }
+                        } else {
+                            // Product is not in wishlist
+                            button.classList.remove('in-wishlist');
+                            if (icon) {
+                                // Remove filled heart, add outline heart
+                                icon.classList.remove('fas', 'fa-heart');
+                                icon.classList.add('far', 'fa-heart');
                             }
                         }
                     });
@@ -438,7 +469,25 @@
 
         init: function() {
             this.attachEventListeners();
-            this.loadCartCount();
+            // Only load cart count if user is authenticated
+            if (this.isAuthenticated()) {
+                this.loadCartCount();
+            } else {
+                // Set count to 0 for unauthenticated users
+                this.updateCount(0);
+            }
+        },
+
+        isAuthenticated: function() {
+            // Check if user is authenticated by checking body data attribute
+            const body = document.body;
+            if (body && body.hasAttribute('data-authenticated')) {
+                return body.getAttribute('data-authenticated') === 'true';
+            }
+            // Fallback: check if user dropdown exists (authenticated) or login link exists (not authenticated)
+            const userDropdown = document.getElementById('userDropdown');
+            const loginLink = document.getElementById('loginLink');
+            return userDropdown !== null && loginLink === null;
         },
 
         attachEventListeners: function() {
@@ -502,6 +551,8 @@
                     if (data.cart_count !== undefined) {
                         this.updateCount(data.cart_count);
                     }
+                    // Update cart status for all buttons
+                    this.checkCartStatus();
                     Utils.showNotification('Product added to cart successfully!', 'success');
                     this.loadSidebar();
                     this.toggleSidebar();
@@ -576,6 +627,8 @@
                     if (data.cart_count !== undefined) {
                         this.updateCount(data.cart_count);
                     }
+                    // Update cart status for all buttons
+                    this.checkCartStatus();
                     Utils.showNotification('Product removed from cart.', 'success');
                 }
             })
@@ -670,8 +723,60 @@
             const headerBadge = document.getElementById('cart-header-badge');
             if (headerBadge) {
                 headerBadge.textContent = count;
-                headerBadge.style.display = count > 0 ? 'absolute' : 'none';
+                headerBadge.style.display = 'absolute';
             }
+        },
+
+        checkCartStatus: function() {
+            const cartButtons = document.querySelectorAll('.add-to-cart[data-product-id], .product__add-cart[data-product-id]');
+            if (cartButtons.length === 0) return;
+
+            // Only check if user is authenticated
+            if (!this.isAuthenticated()) {
+                return;
+            }
+
+            const productIds = Array.from(cartButtons).map(btn => btn.getAttribute('data-product-id'));
+
+            fetch('/cart/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ product_ids: productIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status) {
+                    cartButtons.forEach(button => {
+                        const productId = button.getAttribute('data-product-id');
+                        const icon = button.querySelector('i');
+                        
+                        if (data.status[productId]) {
+                            // Product is in cart
+                            button.classList.add('in-cart');
+                            if (icon) {
+                                // Change icon to checkmark or keep cart icon with different style
+                                icon.classList.remove('fa-shopping-cart');
+                                icon.classList.add('fa-check');
+                            }
+                        } else {
+                            // Product is not in cart
+                            button.classList.remove('in-cart');
+                            if (icon) {
+                                // Restore cart icon
+                                icon.classList.remove('fa-check');
+                                icon.classList.add('fa-shopping-cart');
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                Utils.error('Error checking cart status:', error);
+            });
         },
 
         loadCartCount: function() {
@@ -682,14 +787,35 @@
                     'Accept': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                // If user is not authenticated (401), set count to 0 silently
+                if (response.status === 401) {
+                    this.updateCount(0);
+                    return null;
+                }
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error('Failed to load cart count: ' + response.status);
+                }
+                
+                return response.json();
+            })
             .then(data => {
-                if (data.success) {
+                if (data && data.success) {
                     this.updateCount(data.count);
+                } else if (data && data.message === 'Unauthenticated.') {
+                    // Handle unauthenticated response
+                    this.updateCount(0);
+                } else if (!data) {
+                    // Response was null (401 handled above)
+                    return;
                 }
             })
             .catch(error => {
-                Utils.error('Error loading cart count:', error);
+                // Silently set count to 0 for any errors (including unauthenticated)
+                // Don't log errors to console for unauthenticated users
+                this.updateCount(0);
             });
         },
 
