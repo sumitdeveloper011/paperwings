@@ -105,16 +105,21 @@
     </style>
 
     @php
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-        $gaId = $settings['google_analytics_id'] ?? '';
-        $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
-        $gaEcommerce = isset($settings['google_analytics_ecommerce']) && $settings['google_analytics_ecommerce'] == '1';
+        try {
+            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+            $gaId = $settings['google_analytics_id'] ?? '';
+            $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
+            $gaEcommerce = isset($settings['google_analytics_ecommerce']) && $settings['google_analytics_ecommerce'] == '1';
+        } catch (\Exception $e) {
+            $gaId = '';
+            $gaEnabled = false;
+            $gaEcommerce = false;
+        }
     @endphp
 
-    @if($gaEnabled && $gaEcommerce && !empty($gaId) && $order->payment_status === 'paid')
+    @if($gaEnabled && $gaEcommerce && !empty($gaId) && $order->payment_status === 'paid' && $order->items && $order->items->count() > 0)
     <!-- Google Analytics E-commerce Tracking -->
     <script>
-        @if($order->items->count() > 0)
         // Track purchase event
         gtag('event', 'purchase', {
             'transaction_id': '{{ $order->order_number }}',
@@ -127,15 +132,14 @@
                 @foreach($order->items as $item)
                 {
                     'item_id': '{{ $item->product_id }}',
-                    'item_name': '{{ addslashes($item->product_name) }}',
-                    'item_category': '{{ $item->product->category->name ?? "Uncategorized" }}',
-                    'price': {{ number_format($item->price, 2, '.', '') }},
-                    'quantity': {{ $item->quantity }}
+                    'item_name': '{{ addslashes($item->product_name ?? 'Product') }}',
+                    'item_category': '{{ isset($item->product->category) ? addslashes($item->product->category->name) : "Uncategorized" }}',
+                    'price': {{ number_format($item->price ?? 0, 2, '.', '') }},
+                    'quantity': {{ $item->quantity ?? 1 }}
                 }@if(!$loop->last),@endif
                 @endforeach
             ]
         });
-        @endif
     </script>
     @endif
 @endsection

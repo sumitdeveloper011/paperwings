@@ -44,6 +44,26 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->view('frontend.errors.419', [], 419);
         });
 
+        // Handle 401 - Unauthenticated
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->is('api/*') || $request->is('cart/*') || $request->is('wishlist/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please login to continue.',
+                    'error' => 'Unauthenticated',
+                    'redirect' => '/login?intended=' . urlencode($request->fullUrl())
+                ], 401);
+            }
+            
+            if ($request->is('admin/*')) {
+                return redirect()->route('admin.login')
+                    ->with('error', 'Please login to access the admin panel.');
+            }
+            
+            return redirect()->route('login')
+                ->with('error', 'Please login to continue.');
+        });
+
         // Handle 403 - Forbidden
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
@@ -63,14 +83,17 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Handle 500 - Internal Server Error
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
-            // Log the error
-            \Log::error('Unhandled exception: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'url' => $request->fullUrl(),
-                'method' => $request->method(),
-            ]);
+            // Don't log AuthenticationException as it's handled above
+            if (!($e instanceof \Illuminate\Auth\AuthenticationException)) {
+                // Log the error
+                \Log::error('Unhandled exception: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'url' => $request->fullUrl(),
+                    'method' => $request->method(),
+                ]);
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([

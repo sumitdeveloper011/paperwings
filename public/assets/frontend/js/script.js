@@ -1,191 +1,33 @@
-// Main Application JavaScript - Optimized
+/**
+ * Main Application JavaScript
+ * Loads and initializes all modules
+ */
 (function() {
     'use strict';
 
-    // Configuration
-    const CONFIG = {
-        debounceDelay: 300,
-        throttleDelay: 100,
-        isDevelopment: false // Set to true for development
-    };
-
-    // Utility Functions
-    const Utils = {
-        // Debounce function
-        debounce: function(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        },
-
-        // Throttle function
-        throttle: function(func, limit) {
-            let inThrottle;
-            return function(...args) {
-                if (!inThrottle) {
-                    func.apply(this, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        },
-
-        // Log function (only in development)
-        log: function(...args) {
-            if (CONFIG.isDevelopment) {
-                console.log(...args);
-            }
-        },
-
-        // Error log (always show)
-        error: function(...args) {
-            console.error(...args);
-        }
-    };
-
-    // Wait for jQuery and DOM to be ready
+    // Wait for jQuery and modules to be ready
     function initScripts() {
-        // Check if jQuery is available
-        if (typeof jQuery === 'undefined' || typeof $ === 'undefined') {
+        if (typeof jQuery === 'undefined') {
+            const Utils = window.ScriptUtils || { log: () => {} };
             Utils.log('jQuery is not loaded yet, retrying...');
             setTimeout(initScripts, 100);
             return;
         }
 
-        // Initialize all modules
-        Carousels.init();
+        const $ = jQuery;
+        const Utils = window.ScriptUtils || { log: () => {}, throttle: (fn, delay) => fn };
+        const CONFIG = Utils.getConfig ? Utils.getConfig() : { throttleDelay: 100 };
+
+        // Initialize remaining modules (smaller ones kept here)
         Animations.init();
         Subscription.init();
-        ScrollToTop.init();
-        CategoryPage.init();
+        ScrollToTop.init(Utils, CONFIG);
+        CategoryPage.init(Utils, CONFIG);
         AddressForm.init();
-        // CartSidebar and WishlistSidebar removed - handled by functions.js (Cart and Wishlist modules)
         RegisterPage.init();
         ProductDetails.init();
         Select2Init.init();
-        HeaderSearch.init();
     }
-
-    // Carousels Module
-    const Carousels = {
-        init: function() {
-            this.initSlickSlider();
-            this.initOwlCarousels();
-            this.initCuteStationeryCarousels();
-            this.initProductTabs();
-            this.initCuteStationeryTabs();
-        },
-
-        initSlickSlider: function() {
-            if (typeof jQuery.fn.slick === 'undefined') {
-                Utils.log('Slick carousel is not loaded yet');
-                return;
-            }
-
-            $('.slider').slick({
-                dots: true,
-                infinite: true,
-                speed: 500,
-                fade: true,
-                cssEase: 'linear',
-                autoplay: true,
-                autoplaySpeed: 5000,
-                arrows: false, // Removed next/previous buttons - using dot navigation only
-                responsive: [{
-                    breakpoint: 768,
-                    settings: {
-                        arrows: false,
-                        dots: true // Keep dots on mobile too
-                    }
-                }]
-            });
-        },
-
-        initOwlCarousels: function() {
-            if (typeof $.fn.owlCarousel === 'undefined') return;
-
-            $('.products-carousel').owlCarousel({
-                loop: true,
-                margin: 5,
-                nav: false,
-                dots: true,
-                autoplay: true,
-                autoplayTimeout: 5000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 },
-                    1200: { items: 6 }
-                }
-            });
-        },
-
-        initCuteStationeryCarousels: function() {
-            if (typeof $.fn.owlCarousel === 'undefined') return;
-
-            $('.cute-stationery-carousel').each(function(index) {
-                try {
-                    $(this).owlCarousel({
-                        loop: true,
-                        margin: 30,
-                        nav: false,
-                        dots: true,
-                        autoplay: true,
-                        autoplayTimeout: 5000,
-                        autoplayHoverPause: true,
-                        responsive: {
-                            0: { items: 1 },
-                            576: { items: 2 },
-                            768: { items: 3 },
-                            992: { items: 4 },
-                            1200: { items: 6 }
-                        }
-                    });
-                    Utils.log('Carousel', index + 1, 'initialized successfully');
-                } catch (error) {
-                    Utils.error('Error initializing carousel', index + 1, ':', error);
-                }
-            });
-        },
-
-        initProductTabs: function() {
-            // Use event delegation
-            $(document).on('click', '.products__tab', function() {
-                const targetTab = $(this).data('tab');
-                $('.products__tab').removeClass('products__tab--active');
-                $('.products__content').removeClass('products__content--active');
-                $(this).addClass('products__tab--active');
-                $('#' + targetTab).addClass('products__content--active');
-                $('#' + targetTab + ' .products-carousel').trigger('refresh.owl.carousel');
-            });
-        },
-
-        initCuteStationeryTabs: function() {
-            // Use event delegation
-            $(document).on('click', '.cute-stationery__nav-item', function(e) {
-                e.preventDefault();
-                const category = $(this).data('category');
-                Utils.log('Tab clicked:', category);
-
-                $('.cute-stationery__nav-item').removeClass('active');
-                $(this).addClass('active');
-                $('.cute-stationery__tab-content').removeClass('active');
-                $('#' + category + '-content').addClass('active');
-
-                setTimeout(function() {
-                    $('#' + category + '-content .cute-stationery-carousel').trigger('refresh.owl.carousel');
-                }, 100);
-            });
-        }
-    };
 
     // Animations Module
     const Animations = {
@@ -289,11 +131,10 @@
 
     // Scroll to Top Module
     const ScrollToTop = {
-        init: function() {
+        init: function(Utils, CONFIG) {
             const scrollToTopBtn = $('#scrollToTop');
             if (!scrollToTopBtn.length) return;
 
-            // Throttled scroll handler
             const handleScroll = Utils.throttle(() => {
                 if ($(window).scrollTop() > 300) {
                     scrollToTopBtn.addClass('show');
@@ -312,13 +153,13 @@
 
     // Category Page Module
     const CategoryPage = {
-        init: function() {
-            this.initPriceRange();
+        init: function(Utils, CONFIG) {
+            this.initPriceRange(Utils, CONFIG);
             this.initViewToggle();
-            this.initFilters();
+            this.initFilters(Utils);
         },
 
-        initPriceRange: function() {
+        initPriceRange: function(Utils, CONFIG) {
             const priceRange = document.getElementById('priceRange');
             const priceMinDisplay = document.querySelector('.price-min');
             const priceMaxDisplay = document.querySelector('.price-max');
@@ -332,7 +173,7 @@
             priceRange.addEventListener('input', Utils.throttle(() => {
                 const value = parseInt(priceRange.value);
                 if (priceMaxDisplay) priceMaxDisplay.textContent = '$' + value;
-                this.applyPriceFilter();
+                this.applyPriceFilter(Utils);
             }, CONFIG.throttleDelay));
         },
 
@@ -348,22 +189,19 @@
             });
         },
 
-        initFilters: function() {
-            // Sub-category filter
+        initFilters: function(Utils) {
             $(document).on('click', '.sidebar-subcategory__link', function(e) {
                 e.preventDefault();
                 $('.sidebar-subcategory__link').removeClass('active');
                 $(this).addClass('active');
             });
 
-            // Brand filter
             $(document).on('change', '.brand-checkbox input', function() {
                 const brand = $(this).parent().text().trim();
                 const isChecked = $(this).is(':checked');
                 Utils.log('Brand filter:', { brand, isChecked });
             });
 
-            // Clear filters
             $(document).on('click', '.clear-filters-btn', () => {
                 $('.brand-checkbox input').prop('checked', false);
                 $('#priceRange').val(100);
@@ -373,14 +211,13 @@
                 $('.sidebar-category__link:first').addClass('active');
             });
 
-            // Sort functionality
             $(document).on('change', '.sort-select', function() {
                 const sortBy = $(this).val();
                 Utils.log('Sort by:', sortBy);
             });
         },
 
-        applyPriceFilter: function() {
+        applyPriceFilter: function(Utils) {
             const maxPrice = $('#priceRange').val();
             if (maxPrice) {
                 Utils.log('Price filter applied:', { min: 0, max: maxPrice });
@@ -458,9 +295,6 @@
         }
     };
 
-    // Cart Sidebar and Wishlist Sidebar modules removed
-    // These are now handled by functions.js (Cart and Wishlist modules) to avoid duplicate event handlers
-
     // Register Page Module
     const RegisterPage = {
         init: function() {
@@ -470,7 +304,6 @@
         },
 
         initPasswordToggle: function() {
-            // Register page password toggle
             $(document).on('click', '#togglePassword', function() {
                 const passwordInput = $('#registerPassword');
                 const passwordIcon = $('#passwordIcon');
@@ -483,7 +316,6 @@
                 }
             });
 
-            // Register page confirm password toggle
             $(document).on('click', '#toggleConfirmPassword', function() {
                 const confirmPasswordInput = $('#registerConfirmPassword');
                 const confirmPasswordIcon = $('#confirmPasswordIcon');
@@ -496,7 +328,6 @@
                 }
             });
 
-            // Login page password toggle
             $(document).on('click', '#toggleLoginPassword', function() {
                 const loginPasswordInput = $('#loginPassword');
                 const loginPasswordIcon = $('#loginPasswordIcon');
@@ -509,7 +340,6 @@
                 }
             });
 
-            // Reset password page password toggle
             $(document).on('click', '#toggleResetPassword', function() {
                 const resetPasswordInput = $('#resetPassword');
                 const resetPasswordIcon = $('#resetPasswordIcon');
@@ -522,7 +352,6 @@
                 }
             });
 
-            // Reset password page confirm password toggle
             $(document).on('click', '#toggleResetConfirmPassword', function() {
                 const resetConfirmPasswordInput = $('#resetConfirmPassword');
                 const resetConfirmPasswordIcon = $('#resetConfirmPasswordIcon');
@@ -618,11 +447,6 @@
                 }
             });
 
-            // Forgot Password Form - Only hide form if there's a success message from server
-            // Don't prevent default submission, let server handle validation
-            // The form will be hidden by server-side success message display
-
-            // User Dropdown
             $(document).on('click', '#userDropdownTrigger', function(e) {
                 e.preventDefault();
                 $('#userDropdown').toggleClass('open');
@@ -699,117 +523,10 @@
         }
     };
 
-    // Header Search Module
-    const HeaderSearch = {
-        init: function() {
-            const searchInput = document.getElementById('header-search-input');
-            const searchBtn = document.getElementById('header-search-btn');
-            const searchDropdown = document.getElementById('search-results-dropdown');
-            const searchResultsList = document.getElementById('search-results-list');
-            const searchLoading = document.getElementById('search-loading');
-            const searchFooter = document.getElementById('search-results-footer');
-            const viewAllResults = document.getElementById('view-all-results');
-
-            if (!searchInput || !searchDropdown) return;
-
-            let searchTimeout;
-            let isSearching = false;
-
-            const performSearch = Utils.debounce((query) => {
-                if (isSearching || query.length < 2) {
-                    if (query.length < 2) {
-                        searchDropdown.style.display = 'none';
-                    }
-                    return;
-                }
-
-                searchLoading.style.display = 'block';
-                searchResultsList.innerHTML = '';
-                searchFooter.style.display = 'none';
-                searchDropdown.style.display = 'block';
-                isSearching = true;
-
-                const url = new URL('/search/results/render', window.location.origin);
-                url.searchParams.set('q', query);
-
-                fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    searchLoading.style.display = 'none';
-                    isSearching = false;
-
-                    if (data.success && data.html && data.html.trim() !== '') {
-                        searchResultsList.innerHTML = data.html;
-                        searchFooter.style.display = 'block';
-                        if (viewAllResults) {
-                            viewAllResults.href = `/search?q=${encodeURIComponent(query)}`;
-                        }
-                    } else {
-                        searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #6c757d;">No products found</div>';
-                        searchFooter.style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    Utils.error('Search error:', error);
-                    searchLoading.style.display = 'none';
-                    isSearching = false;
-                    searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #dc3545;">Error loading results</div>';
-                });
-            }, CONFIG.debounceDelay);
-
-            searchInput.addEventListener('input', function() {
-                const query = this.value.trim();
-                clearTimeout(searchTimeout);
-                if (query.length >= 2) {
-                    searchTimeout = setTimeout(() => performSearch(query), CONFIG.debounceDelay);
-                } else {
-                    searchDropdown.style.display = 'none';
-                }
-            });
-
-            if (searchBtn) {
-                searchBtn.addEventListener('click', function() {
-                    const query = searchInput.value.trim();
-                    if (query) {
-                        window.location.href = `/search?q=${encodeURIComponent(query)}`;
-                    }
-                });
-            }
-
-            searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const query = this.value.trim();
-                    if (query) {
-                        window.location.href = `/search?q=${encodeURIComponent(query)}`;
-                    }
-                }
-            });
-
-            document.addEventListener('click', function(e) {
-                const searchContainer = document.getElementById('header-search');
-                if (searchContainer && !searchContainer.contains(e.target)) {
-                    searchDropdown.style.display = 'none';
-                }
-            });
-
-            searchDropdown.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-        }
-    };
-
     // Start initialization when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initScripts);
     } else {
         initScripts();
     }
-
 })();

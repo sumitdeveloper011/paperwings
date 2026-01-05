@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\ProductView;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -136,14 +137,17 @@ class ProductController extends Controller
             $minPrice = $request->get('min_price');
             $maxPrice = $request->get('max_price');
 
-            // Optimized: Use database aggregation instead of loading all products
-            $priceRange = Product::where('eposnow_category_id', $category->eposnow_category_id)
-                ->active()
-                ->selectRaw('
-                    MIN(COALESCE(discount_price, total_price)) as min_price,
-                    MAX(COALESCE(discount_price, total_price)) as max_price
-                ')
-                ->first();
+            // Optimized: Use cached database aggregation for price range
+            $cacheKey = 'price_range_category_' . $category->eposnow_category_id;
+            $priceRange = Cache::remember($cacheKey, 3600, function () use ($category) {
+                return Product::where('eposnow_category_id', $category->eposnow_category_id)
+                    ->active()
+                    ->selectRaw('
+                        MIN(COALESCE(discount_price, total_price)) as min_price,
+                        MAX(COALESCE(discount_price, total_price)) as max_price
+                    ')
+                    ->first();
+            });
 
             $priceMin = floor($priceRange->min_price ?? 0);
             $priceMax = ceil(($priceRange->max_price ?? 0) / 10) * 10;
@@ -193,13 +197,15 @@ class ProductController extends Controller
                 ]);
             }
 
-            // Get categories with product count for sidebar
-            $categories = Category::active()
-                ->withCount(['products' => function($query) {
-                    $query->where('status', 1);
-                }])
-                ->ordered()
-                ->get();
+            // Optimized: Get categories with product count using whereHas instead of having
+            $cacheKey = 'categories_with_count_all';
+            $categories = Cache::remember($cacheKey, 3600, function () {
+                return Category::active()
+                    ->whereHas('activeProducts')
+                    ->withCount('activeProducts')
+                    ->ordered()
+                    ->get();
+            });
 
             return view('frontend.category.category', compact('title', 'category', 'products', 'categories', 'sort', 'priceMin', 'priceMax', 'minPrice', 'maxPrice'));
 
@@ -230,13 +236,16 @@ class ProductController extends Controller
             $brandsFilter = $request->get('brands', []); // Array of brand IDs
 
 
-            // Optimized: Use database aggregation for price range
-            $priceRange = Product::active()
-                ->selectRaw('
-                    MIN(COALESCE(discount_price, total_price)) as min_price,
-                    MAX(COALESCE(discount_price, total_price)) as max_price
-                ')
-                ->first();
+            // Optimized: Use cached database aggregation for price range
+            $cacheKey = 'price_range_all_products';
+            $priceRange = Cache::remember($cacheKey, 3600, function () {
+                return Product::active()
+                    ->selectRaw('
+                        MIN(COALESCE(discount_price, total_price)) as min_price,
+                        MAX(COALESCE(discount_price, total_price)) as max_price
+                    ')
+                    ->first();
+            });
 
             $priceMin = floor($priceRange->min_price ?? 0);
             $priceMax = ceil(($priceRange->max_price ?? 0) / 10) * 10;
@@ -315,17 +324,16 @@ class ProductController extends Controller
                 ->paginate(12)
                 ->appends($request->query());
 
-            // Get categories with product count for sidebar
-            $categories = Category::active()
-                ->whereHas('products', function($query) {
-                    $query->where('status', 1);
-                })
-                ->withCount(['products' => function($query) {
-                    $query->where('status', 1);
-                }])
-                ->addSelect('id', 'name', 'slug')
-                ->ordered()
-                ->get();
+            // Optimized: Get categories with product count using whereHas instead of having
+            $cacheKey = 'categories_with_count_sidebar';
+            $categories = Cache::remember($cacheKey, 3600, function () {
+                return Category::active()
+                    ->whereHas('activeProducts')
+                    ->withCount('activeProducts')
+                    ->select('id', 'name', 'slug')
+                    ->ordered()
+                    ->get();
+            });
 
             // Get brands with product count for filter
             $brands = \App\Models\Brand::where('status', 1)

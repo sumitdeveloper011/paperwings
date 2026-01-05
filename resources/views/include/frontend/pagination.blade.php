@@ -32,6 +32,10 @@
         }
         $elements[] = [$lastPage => $paginator->url($lastPage)];
     }
+    
+    // Get previous and next URLs with query string preserved
+    $previousUrl = $paginator->previousPageUrl();
+    $nextUrl = $paginator->nextPageUrl();
 @endphp
 
 @if($paginator->hasPages())

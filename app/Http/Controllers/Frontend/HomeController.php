@@ -101,13 +101,10 @@ class HomeController extends Controller
             ->shuffle()
             ->take(18);
 
+        // Optimized: Use activeProducts relationship with whereHas
         $randomCategories = Category::active()
-            ->whereHas('products', function($query) {
-                $query->where('status', 1);
-            })
-            ->withCount(['products' => function($query) {
-                $query->where('status', 1);
-            }])
+            ->whereHas('activeProducts')
+            ->withCount('activeProducts')
             ->take(10)
             ->get()
             ->shuffle()

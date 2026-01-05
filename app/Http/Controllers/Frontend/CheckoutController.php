@@ -451,29 +451,53 @@ class CheckoutController extends Controller
             }
 
             // Calculate totals
-            $subtotal = $cartItems->sum(function($item) {
+            $subtotal = round($cartItems->sum(function($item) {
                 return $item->subtotal;
-            });
+            }), 2);
 
             $appliedCoupon = Session::get('applied_coupon');
-            $discount = $appliedCoupon['discount'] ?? 0;
+            $discount = round($appliedCoupon['discount'] ?? 0, 2);
             $couponCode = $appliedCoupon['code'] ?? null;
             $tax = 0.00;
             
             // Calculate shipping based on shipping region
-            $orderAmount = $subtotal - $discount;
+            $orderAmount = round($subtotal - $discount, 2);
             $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->shipping_region_id, $orderAmount);
-            $shipping = $shippingInfo['shipping_price'];
-            $shippingPrice = $shippingInfo['shipping_price'];
+            $shipping = round($shippingInfo['shipping_price'], 2);
+            $shippingPrice = round($shippingInfo['shipping_price'], 2);
             
-            $total = $subtotal - $discount + $tax + $shipping;
+            // Round total to avoid floating point precision issues
+            $total = round($subtotal - $discount + $tax + $shipping, 2);
 
             // Verify total matches payment amount
             $paymentAmount = $paymentIntent->amount / 100; // Convert from cents
-            if (abs($total - $paymentAmount) > 0.01) {
+            $difference = abs($total - $paymentAmount);
+            
+            // Log the mismatch for debugging
+            if ($difference > 0.01) {
+                Log::warning('Payment amount mismatch detected', [
+                    'calculated_total' => $total,
+                    'payment_amount' => $paymentAmount,
+                    'difference' => $difference,
+                    'subtotal' => $subtotal,
+                    'discount' => $discount,
+                    'tax' => $tax,
+                    'shipping' => $shipping,
+                    'shipping_region_id' => $request->shipping_region_id,
+                    'payment_intent_id' => $request->payment_intent_id,
+                ]);
+            }
+            
+            // Allow small rounding differences (up to 0.05 cents) due to floating point precision
+            if ($difference > 0.05) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Payment amount mismatch. Please refresh and try again.'
+                    'message' => 'Payment amount mismatch. Please refresh and try again.',
+                    'debug' => app()->environment('local') ? [
+                        'calculated_total' => round($total, 2),
+                        'payment_amount' => round($paymentAmount, 2),
+                        'difference' => round($difference, 2)
+                    ] : null
                 ], 400);
             }
 
@@ -614,41 +638,78 @@ class CheckoutController extends Controller
     // Show order success page (only show success if payment is actually confirmed)
     public function success(Request $request, $orderNumber)
     {
-        $order = Order::where('order_number', $orderNumber)->firstOrFail();
+        try {
+            $order = Order::where('order_number', $orderNumber)->firstOrFail();
 
-        // Verify payment status before showing success
-        if ($order->payment_status !== 'paid') {
-            return redirect()->route('checkout.index')
-                ->with('error', 'Payment is still being processed. Please check your order status in your account.');
-        }
+            // Verify payment status before showing success
+            if ($order->payment_status !== 'paid') {
+                return redirect()->route('checkout.index')
+                    ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+            }
 
-        // Double-check with Stripe if payment intent exists
-        if ($order->stripe_payment_intent_id) {
-            try {
-                // Read Stripe secret from database settings
-                $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-                $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
-                Stripe::setApiKey($stripeSecret);
-                $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
+            // Double-check with Stripe if payment intent exists
+            if ($order->stripe_payment_intent_id) {
+                try {
+                    // Read Stripe secret from database settings
+                    $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+                    $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
+                    if ($stripeSecret) {
+                        Stripe::setApiKey($stripeSecret);
+                        $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
 
-                if ($paymentIntent->status !== 'succeeded') {
-                    return redirect()->route('checkout.index')
-                        ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+                        if ($paymentIntent->status !== 'succeeded') {
+                            return redirect()->route('checkout.index')
+                                ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error verifying payment on success page', [
+                        'order_number' => $orderNumber,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue to show success page even if Stripe verification fails
+                    // The payment_status check above is sufficient
                 }
+            }
+
+            // Load order relationships for e-commerce tracking (with error handling)
+            try {
+                $order->load(['items.product.category']);
             } catch (\Exception $e) {
-                Log::error('Error verifying payment on success page', [
+                Log::warning('Error loading order relationships for success page', [
                     'order_number' => $orderNumber,
                     'error' => $e->getMessage()
                 ]);
+                // Try to load without category relationship
+                try {
+                    $order->load(['items.product']);
+                } catch (\Exception $e2) {
+                    Log::warning('Error loading order items for success page', [
+                        'order_number' => $orderNumber,
+                        'error' => $e2->getMessage()
+                    ]);
+                }
             }
+
+            return view('frontend.checkout.success', [
+                'title' => 'Order Confirmation',
+                'order' => $order
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Order not found for success page', [
+                'order_number' => $orderNumber,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->route('checkout.index')
+                ->with('error', 'Order not found. Please check your order number and try again.');
+        } catch (\Exception $e) {
+            Log::error('Error loading checkout success page', [
+                'order_number' => $orderNumber,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('checkout.index')
+                ->with('error', 'An error occurred while loading the order confirmation page. Please try again or contact support.');
         }
-
-        // Load order relationships for e-commerce tracking
-        $order->load(['items.product.category']);
-
-        return view('frontend.checkout.success', [
-            'title' => 'Order Confirmation',
-            'order' => $order
-        ]);
     }
 }

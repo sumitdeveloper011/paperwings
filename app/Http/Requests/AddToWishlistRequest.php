@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +38,7 @@ class AddToWishlistRequest extends FormRequest
     // Get the error messages for the defined validation rules
     protected function failedAuthorization(): void
     {
-        abort(401, 'Please login to add items to wishlist.');
+        throw new AuthenticationException('Please login to add items to wishlist.');
     }
 }
 

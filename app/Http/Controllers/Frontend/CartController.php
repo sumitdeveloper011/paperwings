@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\Wishlist;
 use App\Services\CartService;
 use App\Http\Requests\AddToCartRequest;
 use App\Http\Requests\UpdateCartRequest;

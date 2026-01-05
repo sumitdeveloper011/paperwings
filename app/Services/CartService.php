@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\Wishlist;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -45,16 +46,29 @@ class CartService
             $existingItem->increment('quantity', $quantity);
             $existingItem->price = $price; // Update price in case it changed
             $existingItem->save();
+            
+            // Remove product from wishlist if it exists
+            Wishlist::where('user_id', $cartIdentifier['user_id'])
+                ->where('product_id', $productId)
+                ->delete();
+            
             return $existingItem;
         }
         
         // Create new cart item
-        return $this->cartItem->create([
+        $cartItem = $this->cartItem->create([
             'product_id' => $productId,
             'user_id' => $cartIdentifier['user_id'],
             'quantity' => $quantity,
             'price' => $price,
         ]);
+
+        // Remove product from wishlist if it exists
+        Wishlist::where('user_id', $cartIdentifier['user_id'])
+            ->where('product_id', $productId)
+            ->delete();
+
+        return $cartItem;
     }
 
     // Update cart item quantity

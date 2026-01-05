@@ -4,10 +4,31 @@
 <script src="{{ asset('assets/frontend/js/popper.min.js') }}"></script>
 <script src="{{ asset('assets/frontend/js/bootstrap.min.js') }}"></script>
 
-{{-- Plugin libraries - Must load before application scripts --}}
-<script src="{{ asset('assets/frontend/js/slick.min.js') }}"></script>
-<script src="{{ asset('assets/frontend/js/owl.carousel.min.js') }}"></script>
-<script src="{{ asset('assets/frontend/js/select2.min.js') }}"></script>
+{{-- Plugin libraries - Load conditionally based on page needs --}}
+{{-- Slick Carousel - Only load on pages that use it --}}
+@if(request()->routeIs('home') || request()->routeIs('product.*') || request()->routeIs('category.*') || request()->routeIs('shop.*'))
+<script src="{{ asset('assets/frontend/js/slick.min.js') }}" defer></script>
+@endif
+
+{{-- Owl Carousel - Only load on pages that use it --}}
+@if(request()->routeIs('home') || request()->routeIs('product.*'))
+<script src="{{ asset('assets/frontend/js/owl.carousel.min.js') }}" defer></script>
+@endif
+
+{{-- Select2 - Only load on pages that use it (forms, filters) --}}
+@if(request()->routeIs('shop.*') || request()->routeIs('category.*') || request()->routeIs('checkout.*'))
+<script src="{{ asset('assets/frontend/js/select2.min.js') }}" defer></script>
+@endif
+
+{{-- Core modules - Must load in order --}}
+<script src="{{ asset('assets/frontend/js/modules/utils.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/wishlist.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/cart.js') }}" defer></script>
+
+{{-- Script modules - Load before script.js --}}
+<script src="{{ asset('assets/frontend/js/modules/script-utils.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/carousels.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/search.js') }}" defer></script>
 
 {{-- Main application scripts - Load after dependencies --}}
 {{-- These use DOMContentLoaded, so they can be deferred for better performance --}}
@@ -29,7 +50,7 @@
     } else {
         initAlerts();
     }
-    
+
     function initAlerts() {
         const alerts = document.querySelectorAll('[data-alert]');
         alerts.forEach(function(alert) {

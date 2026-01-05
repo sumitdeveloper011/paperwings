@@ -266,18 +266,9 @@
                                 @endif
                             </div>
 
-                            <!-- Stripe Payment Element -->
-                            <div id="payment-element-container" style="margin: 20px 0; display: none;">
-                                <div id="payment-element">
-                                    <!-- Stripe Elements will create form elements here -->
-                                </div>
-                                <div id="payment-errors" role="alert" style="color: #dc3545; margin-top: 10px; font-size: 0.9rem; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; display: none;"></div>
-                            </div>
-
-                            <!-- Place Order Button -->
-                            <button type="submit" class="place-order-btn" id="submitBtn">
-                                <span id="button-text">Place Order</span>
-                                <span id="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                            <!-- Review Order Button -->
+                            <button type="button" class="place-order-btn" id="reviewOrderBtn">
+                                <span id="button-text">Review Order</span>
                                 <i class="fas fa-arrow-right" id="arrow-icon"></i>
                             </button>
 
@@ -293,375 +284,137 @@
         </div>
     </section>
 
+    <!-- Checkout Review Modal -->
+    <div class="checkout-modal" id="checkoutModal">
+        <div class="checkout-modal__overlay" id="checkoutModalOverlay"></div>
+        <div class="checkout-modal__content">
+            <div class="checkout-modal__header">
+                <h2 class="checkout-modal__title" id="modalTitle">Review Your Order</h2>
+                <button type="button" class="checkout-modal__close" id="checkoutModalClose" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="checkout-modal__body">
+                <!-- Step 1: Order Review -->
+                <div class="checkout-modal__step" id="reviewStep">
+                    <div class="checkout-modal__order-summary">
+                        <h3 class="checkout-modal__section-title">Order Summary</h3>
+                        
+                        <!-- Order Items -->
+                        <div class="checkout-modal__items">
+                            @foreach($cartItems as $cartItem)
+                            <div class="checkout-modal__item">
+                                <div class="checkout-modal__item-image">
+                                    <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
+                                </div>
+                                <div class="checkout-modal__item-info">
+                                    <h4 class="checkout-modal__item-name">{{ $cartItem->product->name }}</h4>
+                                    <div class="checkout-modal__item-details">
+                                        <span>${{ number_format($cartItem->price, 2) }} x {{ $cartItem->quantity }}</span>
+                                        <span class="checkout-modal__item-total">= ${{ number_format($cartItem->subtotal, 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        <!-- Order Totals -->
+                        <div class="checkout-modal__totals">
+                            <div class="checkout-modal__total-row">
+                                <span>Subtotal</span>
+                                <span id="modalSubtotal">${{ number_format($subtotal, 2) }}</span>
+                            </div>
+                            @if($appliedCoupon && $discount > 0)
+                            <div class="checkout-modal__total-row checkout-modal__total-row--discount">
+                                <span>Discount ({{ $appliedCoupon['code'] }})</span>
+                                <span id="modalDiscount">-${{ number_format($discount, 2) }}</span>
+                            </div>
+                            @endif
+                            <div class="checkout-modal__total-row" id="modalShippingRow" style="{{ $shipping == 0 ? 'display: none;' : '' }}">
+                                <span>Shipping</span>
+                                <span id="modalShipping">${{ number_format($shipping, 2) }}</span>
+                            </div>
+                            <div class="checkout-modal__total-row checkout-modal__total-row--final">
+                                <span>Total</span>
+                                <span id="modalTotal">${{ number_format($total, 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-modal__actions">
+                        <button type="button" class="checkout-modal__btn checkout-modal__btn--secondary" id="closeModalBtn">
+                            <i class="fas fa-arrow-left"></i> Back to Checkout
+                        </button>
+                        <button type="button" class="checkout-modal__btn checkout-modal__btn--primary" id="proceedToPaymentBtn">
+                            Proceed to Payment <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Payment -->
+                <div class="checkout-modal__step" id="paymentStep" style="display: none;">
+                    <div class="checkout-modal__payment-section">
+                        <h3 class="checkout-modal__section-title">Payment Details</h3>
+                        
+                        <!-- Final Total Display -->
+                        <div class="checkout-modal__final-total">
+                            <span>Total Amount</span>
+                            <span class="checkout-modal__final-total-amount" id="modalFinalTotal">${{ number_format($total, 2) }}</span>
+                        </div>
+
+                        <!-- Stripe Payment Element -->
+                        <div id="modal-payment-element-container">
+                            <div id="modal-payment-element">
+                                <!-- Stripe Elements will create form elements here -->
+                            </div>
+                            <div id="modal-payment-errors" role="alert" style="color: #dc3545; margin-top: 10px; font-size: 0.9rem; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; display: none;"></div>
+                        </div>
+
+                        <!-- Security Info -->
+                        <div class="checkout-modal__security">
+                            <i class="fas fa-lock"></i>
+                            <span>Your payment information is secure and encrypted</span>
+                        </div>
+                    </div>
+
+                    <div class="checkout-modal__actions">
+                        <button type="button" class="checkout-modal__btn checkout-modal__btn--secondary" id="backToReviewBtn">
+                            <i class="fas fa-arrow-left"></i> Back to Review
+                        </button>
+                        <button type="button" class="checkout-modal__btn checkout-modal__btn--primary" id="placeOrderBtn">
+                            <span id="placeOrderBtnText">Place Order</span>
+                            <span id="placeOrderSpinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Checkout JavaScript Modules --}}
+    <script src="{{ asset('assets/frontend/js/checkout/shipping.js') }}"></script>
+    <script src="{{ asset('assets/frontend/js/checkout/payment.js') }}"></script>
+    <script src="{{ asset('assets/frontend/js/checkout/form.js') }}"></script>
+    <script src="{{ asset('assets/frontend/js/checkout/modal.js') }}"></script>
+    <script src="{{ asset('assets/frontend/js/checkout/checkout.js') }}"></script>
+
     <script>
+        // Initialize checkout with configuration
         document.addEventListener('DOMContentLoaded', function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-            let total = {{ $total }};
-            const subtotal = {{ $subtotal }};
-            let discount = {{ $discount }};
-            let shipping = {{ $shipping }};
-            const stripeKey = @json($stripePublishableKey ?? config('services.stripe.key'));
-            let stripe;
-            let elements;
-            let paymentElement;
-            let paymentIntentClientSecret = null;
 
-            // Same as billing checkbox - simple functionality
-            const sameAsBillingCheckbox = document.getElementById('sameAsBilling');
-            const shippingDetails = document.getElementById('shippingDetails');
-            const shippingInputs = shippingDetails ? shippingDetails.querySelectorAll('input, select') : [];
-
-            // Function to calculate shipping
-            function calculateShipping() {
-                const shippingRegion = document.getElementById('shippingRegion');
-                const billingRegion = document.getElementById('billingRegion');
-                const regionId = shippingRegion ? shippingRegion.value : (billingRegion ? billingRegion.value : null);
-                
-                if (!regionId) {
-                    shipping = 0;
-                    updateTotals();
-                    return;
-                }
-
-                const orderAmount = subtotal - discount;
-                
-                fetch('{{ route("checkout.calculate-shipping") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        region_id: regionId,
-                        subtotal: subtotal,
-                        discount: discount
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        shipping = parseFloat(data.shipping) || 0;
-                        updateTotals();
-                        
-                        // Update shipping display
-                        const shippingRow = document.getElementById('shippingRow');
-                        const shippingValue = document.getElementById('checkoutShipping');
-                        const freeShippingMessage = document.getElementById('freeShippingMessage');
-                        
-                        if (shippingValue) {
-                            if (data.is_free_shipping) {
-                                shippingValue.textContent = '$0.00';
-                                if (freeShippingMessage) freeShippingMessage.style.display = 'inline';
-                            } else {
-                                shippingValue.textContent = '$' + shipping.toFixed(2);
-                                if (freeShippingMessage) freeShippingMessage.style.display = 'none';
-                            }
-                        }
-                        
-                        if (shippingRow) {
-                            shippingRow.style.display = 'flex';
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error calculating shipping:', error);
-                });
-            }
-
-            // Function to update totals
-            function updateTotals() {
-                total = subtotal - discount + shipping;
-                const totalElement = document.getElementById('checkoutTotal');
-                if (totalElement) {
-                    totalElement.textContent = '$' + total.toFixed(2);
-                }
-                
-                // Recreate payment intent with new total
-                if (paymentIntentClientSecret) {
-                    createPaymentIntent();
-                }
-            }
-
-            if (sameAsBillingCheckbox && shippingInputs.length > 0) {
-                sameAsBillingCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        document.getElementById('shippingFirstName').value = document.getElementById('billingFirstName').value;
-                        document.getElementById('shippingLastName').value = document.getElementById('billingLastName').value;
-                        document.getElementById('shippingEmail').value = document.getElementById('billingEmail').value;
-                        document.getElementById('shippingPhone').value = document.getElementById('billingPhone').value;
-                        document.getElementById('shippingAddress').value = document.getElementById('billingAddress').value;
-                        document.getElementById('shippingCity').value = document.getElementById('billingCity').value;
-                        document.getElementById('shippingSuburb').value = document.getElementById('billingSuburb').value;
-                        document.getElementById('shippingRegion').value = document.getElementById('billingRegion').value;
-                        document.getElementById('shippingZip').value = document.getElementById('billingZip').value;
-                        shippingInputs.forEach(input => input.disabled = true);
-                        calculateShipping();
-                    } else {
-                        shippingInputs.forEach(input => input.disabled = false);
-                    }
-                });
-            }
-
-            // Calculate shipping when shipping region changes
-            const shippingRegionSelect = document.getElementById('shippingRegion');
-            if (shippingRegionSelect) {
-                shippingRegionSelect.addEventListener('change', function() {
-                    calculateShipping();
-                });
-            }
-
-            // Calculate shipping when billing region changes (if same as billing is checked)
-            const billingRegionSelect = document.getElementById('billingRegion');
-            if (billingRegionSelect && sameAsBillingCheckbox) {
-                billingRegionSelect.addEventListener('change', function() {
-                    if (sameAsBillingCheckbox.checked) {
-                        calculateShipping();
-                    }
-                });
-            }
-
-            // Calculate shipping on page load if region is selected
-            const initialShippingRegion = document.getElementById('shippingRegion');
-            if (initialShippingRegion && initialShippingRegion.value) {
-                calculateShipping();
-            }
-
-            // Initialize Stripe - only essential code
-            console.log('Initializing Stripe...', { stripeKey: stripeKey ? 'present' : 'missing' });
-
-            if (stripeKey && typeof stripeKey === 'string' && stripeKey.trim() !== '' && stripeKey.startsWith('pk_')) {
-                try {
-                    stripe = Stripe(stripeKey);
-                    console.log('Stripe initialized, creating payment intent...');
-                    // Don't create payment intent immediately - wait for shipping calculation
-                    setTimeout(() => {
-                        createPaymentIntent();
-                    }, 500);
-                } catch (error) {
-                    console.error('Failed to initialize Stripe:', error);
-                    const errorElement = document.getElementById('payment-errors');
-                    if (errorElement) {
-                        errorElement.textContent = 'Failed to initialize payment system: ' + error.message;
-                        errorElement.style.display = 'block';
-                    }
-                }
-            } else {
-                console.warn('Stripe key not configured');
-                const errorElement = document.getElementById('payment-errors');
-                if (errorElement) {
-                    errorElement.innerHTML = '<strong>Payment system is not configured.</strong><br>Please add STRIPE_KEY and STRIPE_SECRET to your .env file.';
-                    errorElement.style.display = 'block';
-                }
-            }
-
-            function createPaymentIntent() {
-                console.log('createPaymentIntent called, total:', total);
-
-                if (total <= 0) {
-                    console.warn('Total is 0 or negative, skipping payment intent creation');
-                    return;
-                }
-
-                console.log('Fetching payment intent from server...');
-                fetch('{{ route("checkout.create-payment-intent") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ amount: total })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Payment intent response:', data);
-                    // Check for both camelCase and snake_case (API might return either)
-                    const clientSecret = data.clientSecret || data.client_secret;
-
-                    console.log('Client secret check:', {
-                        clientSecret: clientSecret,
-                        hasClientSecret: !!clientSecret,
-                        success: data.success
-                    });
-
-                    if (data.success && clientSecret) {
-                        paymentIntentClientSecret = clientSecret;
-                        console.log('Payment intent created, client secret received:', paymentIntentClientSecret);
-
-                        if (!elements) {
-                            console.log('Creating Stripe elements...');
-                            elements = stripe.elements({
-                                clientSecret: paymentIntentClientSecret,
-                                appearance: { theme: 'stripe' }
-                            });
-                            paymentElement = elements.create('payment');
-                            paymentElement.mount('#payment-element');
-                            const container = document.getElementById('payment-element-container');
-                            if (container) {
-                                container.style.display = 'block';
-                                console.log('Payment element mounted and displayed');
-                            }
-                        } else {
-                            console.log('Updating existing elements...');
-                            elements.update({ clientSecret: paymentIntentClientSecret });
-                        }
-                    } else {
-                        console.error('Payment intent creation failed:', data);
-                        const errorElement = document.getElementById('payment-errors');
-                        if (errorElement) {
-                            errorElement.textContent = data.message || 'Failed to initialize payment.';
-                            errorElement.style.display = 'block';
-                        }
-                    }
-                })
-                .catch(error => {
-                    const errorElement = document.getElementById('payment-errors');
-                    if (errorElement) {
-                        errorElement.textContent = 'Failed to initialize payment. Please refresh the page.';
-                        errorElement.style.display = 'block';
-                    }
-                });
-            }
-
-            // Handle form submission - simplified
-            const checkoutForm = document.getElementById('checkoutForm');
-            const submitBtn = document.getElementById('submitBtn');
-
-            // Add click handler to button as well (fallback)
-            if (submitBtn) {
-                submitBtn.addEventListener('click', function(e) {
-                    console.log('Submit button clicked');
-                    // Let the form submit event handle it, but log for debugging
-                });
-            }
-
-            if (checkoutForm) {
-                console.log('Checkout form found, attaching submit handler');
-                checkoutForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Form submit event triggered');
-
-                    // Check if payment is ready
-                    console.log('Payment check:', {
-                        stripe: !!stripe,
-                        elements: !!elements,
-                        clientSecret: !!paymentIntentClientSecret
-                    });
-
-                    if (!stripe || !elements || !paymentIntentClientSecret) {
-                        console.error('Payment not ready');
-                        const errorElement = document.getElementById('payment-errors');
-                        if (errorElement) {
-                            errorElement.textContent = 'Payment system not ready. Please wait for payment form to load and try again.';
-                            errorElement.style.display = 'block';
-                        } else {
-                            alert('Payment system not ready. Please refresh the page.');
-                        }
-                        return;
-                    }
-
-                    const submitBtn = document.getElementById('submitBtn');
-                    const buttonText = document.getElementById('button-text');
-                    const spinner = document.getElementById('spinner');
-                    const arrowIcon = document.getElementById('arrow-icon');
-
-                    if (!submitBtn) {
-                        console.error('Submit button not found');
-                        alert('Submit button not found. Please refresh the page.');
-                        return;
-                    }
-
-                    submitBtn.disabled = true;
-                    if (buttonText) buttonText.textContent = 'Processing...';
-                    if (spinner) spinner.style.display = 'inline-block';
-                    if (arrowIcon) arrowIcon.style.display = 'none';
-
-                    console.log('Starting payment confirmation...');
-
-                    try {
-                        const {error: stripeError, paymentIntent} = await stripe.confirmPayment({
-                            elements,
-                            confirmParams: {
-                                return_url: window.location.origin + '/checkout/success',
-                            },
-                            redirect: 'if_required'
-                        });
-
-                        if (stripeError) {
-                            console.error('Stripe payment error:', stripeError);
-                            const errorElement = document.getElementById('payment-errors');
-                            if (errorElement) {
-                                errorElement.textContent = stripeError.message;
-                                errorElement.style.display = 'block';
-                            } else {
-                                alert('Payment error: ' + stripeError.message);
-                            }
-                            submitBtn.disabled = false;
-                            if (buttonText) buttonText.textContent = 'Place Order';
-                            if (spinner) spinner.style.display = 'none';
-                            if (arrowIcon) arrowIcon.style.display = 'inline-block';
-                            return;
-                        }
-
-                        console.log('Payment confirmed, processing order...', paymentIntent);
-
-                        const formData = new FormData(checkoutForm);
-                        const orderData = {};
-                        formData.forEach((value, key) => {
-                            orderData[key] = value;
-                        });
-                        orderData.payment_intent_id = paymentIntent.id;
-
-                        console.log('Sending order data to server...');
-
-                        const response = await fetch('{{ route("checkout.process-order") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify(orderData)
-                        });
-
-                        const result = await response.json();
-                        console.log('Order processing result:', result);
-
-                        if (result.success) {
-                            console.log('Order successful, redirecting to:', result.redirect_url);
-                            window.location.href = result.redirect_url;
-                        } else {
-                            console.error('Order processing failed:', result.message);
-                            const errorElement = document.getElementById('payment-errors');
-                            if (errorElement) {
-                                errorElement.textContent = result.message || 'Failed to process order.';
-                                errorElement.style.display = 'block';
-                            } else {
-                                alert(result.message || 'Failed to process order.');
-                            }
-                            submitBtn.disabled = false;
-                            if (buttonText) buttonText.textContent = 'Place Order';
-                            if (spinner) spinner.style.display = 'none';
-                            if (arrowIcon) arrowIcon.style.display = 'inline-block';
-                        }
-                    } catch (error) {
-                        console.error('Error in form submission:', error);
-                        const errorElement = document.getElementById('payment-errors');
-                        if (errorElement) {
-                            errorElement.textContent = 'An error occurred: ' + error.message;
-                            errorElement.style.display = 'block';
-                        } else {
-                            alert('An error occurred: ' + error.message);
-                        }
-                        submitBtn.disabled = false;
-                        if (buttonText) buttonText.textContent = 'Place Order';
-                        if (spinner) spinner.style.display = 'none';
-                        if (arrowIcon) arrowIcon.style.display = 'inline-block';
-                    }
-                });
-            }
+            window.initCheckoutConfig({
+                csrfToken: csrfToken,
+                total: {{ $total }},
+                subtotal: {{ $subtotal }},
+                discount: {{ $discount }},
+                shipping: {{ $shipping }},
+                stripeKey: @json($stripePublishableKey ?? config('services.stripe.key')),
+                calculateShippingUrl: '{{ route("checkout.calculate-shipping") }}',
+                createPaymentIntentUrl: '{{ route("checkout.create-payment-intent") }}',
+                processOrderUrl: '{{ route("checkout.process-order") }}'
+            });
         });
     </script>
 @endsection

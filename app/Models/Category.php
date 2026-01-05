@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class Category extends Model
 {
@@ -47,6 +48,27 @@ class Category extends Model
             if ($category->isDirty('name')) {
                 $category->slug = Str::slug($category->name);
             }
+            
+            // Clear categories cache when status changes
+            if ($category->isDirty('status')) {
+                Cache::forget('categories_with_count_all');
+                Cache::forget('categories_with_count_sidebar');
+                Cache::forget('header_categories');
+            }
+        });
+        
+        static::created(function ($category) {
+            // Clear categories cache when new category is created
+            Cache::forget('categories_with_count_all');
+            Cache::forget('categories_with_count_sidebar');
+            Cache::forget('header_categories');
+        });
+        
+        static::deleted(function ($category) {
+            // Clear categories cache when category is deleted
+            Cache::forget('categories_with_count_all');
+            Cache::forget('categories_with_count_sidebar');
+            Cache::forget('header_categories');
         });
     }
 

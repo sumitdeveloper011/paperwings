@@ -54,13 +54,6 @@
                         <div class="footer__column">
                             <h3 class="footer__column-title">USEFUL LINKS</h3>
                             <ul class="footer__links">
-                                @if(isset($footerAboutSection) && $footerAboutSection && $footerAboutSection->button_link)
-                                    <li>
-                                        <a href="{{ $footerAboutSection->button_link }}" class="footer__link">
-                                            {{ $footerAboutSection->title ?? 'About Us' }}
-                                        </a>
-                                    </li>
-                                @endif
                                 <li><a href="{{ route('contact') }}" class="footer__link">Contact Us</a></li>
                                 <li><a href="{{ route('faq.index') }}" class="footer__link">FAQs</a></li>
                                 @if(isset($footerPages) && $footerPages->count() > 0)

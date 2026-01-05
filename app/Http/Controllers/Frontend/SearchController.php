@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Cache;
 
 class SearchController extends Controller
 {
@@ -19,37 +20,43 @@ class SearchController extends Controller
             return response()->json(['products' => []]);
         }
 
-        $products = Product::active()
-            ->withFirstImage()
-            ->with(['category:id,name,slug'])
-            ->selectMinimal()
-            ->where(function($q) use ($query) {
-                $q->where('name', 'like', "{$query}%")
-                  ->orWhere('name', 'like', "% {$query}%")
-                  ->orWhere('slug', 'like', "{$query}%");
-            })
-            ->orderByRaw("
-                CASE 
-                    WHEN name LIKE ? THEN 1
-                    WHEN name LIKE ? THEN 2
-                    WHEN slug LIKE ? THEN 3
-                    ELSE 4
-                END
-            ", ["{$query}%", "% {$query}%", "{$query}%"])
-            ->limit(8)
-            ->get()
-            ->map(function($product) {
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'slug' => $product->slug,
-                    'price' => (float) $product->total_price,
-                    'discount_price' => $product->discount_price ? (float) $product->discount_price : null,
-                    'image' => $product->images->first()?->image_url ?? asset('assets/images/placeholder.jpg'),
-                    'category' => $product->category->name ?? '',
-                    'url' => route('product.detail', $product->slug)
-                ];
-            });
+        // Cache key based on query (short TTL for search results)
+        $cacheKey = 'search_autocomplete_' . md5(strtolower($query));
+        
+        $products = Cache::remember($cacheKey, 300, function() use ($query) {
+            return Product::active()
+                ->withFirstImage()
+                ->with(['category:id,name,slug'])
+                ->selectMinimal()
+                ->where(function($q) use ($query) {
+                    // Prioritize prefix matches (can use index)
+                    $q->where('name', 'like', "{$query}%")
+                      ->orWhere('slug', 'like', "{$query}%")
+                      ->orWhere('name', 'like', "% {$query}%");
+                })
+                ->orderByRaw("
+                    CASE 
+                        WHEN name LIKE ? THEN 1
+                        WHEN slug LIKE ? THEN 2
+                        WHEN name LIKE ? THEN 3
+                        ELSE 4
+                    END
+                ", ["{$query}%", "{$query}%", "% {$query}%"])
+                ->limit(8)
+                ->get()
+                ->map(function($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'slug' => $product->slug,
+                        'price' => (float) $product->total_price,
+                        'discount_price' => $product->discount_price ? (float) $product->discount_price : null,
+                        'image' => $product->images->first()?->image_url ?? asset('assets/images/placeholder.jpg'),
+                        'category' => $product->category->name ?? '',
+                        'url' => route('product.detail', $product->slug)
+                    ];
+                });
+        });
 
         return response()->json(['products' => $products]);
     }
@@ -66,35 +73,46 @@ class SearchController extends Controller
             ]);
         }
 
-        // Get products with images and category
-        $products = Product::active()
-            ->withFirstImage()
-            ->with(['category:id,name,slug'])
-            ->selectMinimal()
-            ->where(function($q) use ($query) {
-                $q->where('name', 'like', "{$query}%")
-                  ->orWhere('name', 'like', "% {$query}%")
-                  ->orWhere('slug', 'like', "{$query}%");
-            })
-            ->orderByRaw("
-                CASE 
-                    WHEN name LIKE ? THEN 1
-                    WHEN name LIKE ? THEN 2
-                    WHEN slug LIKE ? THEN 3
-                    ELSE 4
-                END
-            ", ["{$query}%", "% {$query}%", "{$query}%"])
-            ->limit(8)
-            ->get();
+        // Cache key based on query (short TTL for search results)
+        $cacheKey = 'search_autocomplete_html_' . md5(strtolower($query));
+        
+        $result = Cache::remember($cacheKey, 300, function() use ($query) {
+            // Get products with images and category
+            $products = Product::active()
+                ->withFirstImage()
+                ->with(['category:id,name,slug'])
+                ->selectMinimal()
+                ->where(function($q) use ($query) {
+                    // Prioritize prefix matches (can use index)
+                    $q->where('name', 'like', "{$query}%")
+                      ->orWhere('slug', 'like', "{$query}%")
+                      ->orWhere('name', 'like', "% {$query}%");
+                })
+                ->orderByRaw("
+                    CASE 
+                        WHEN name LIKE ? THEN 1
+                        WHEN slug LIKE ? THEN 2
+                        WHEN name LIKE ? THEN 3
+                        ELSE 4
+                    END
+                ", ["{$query}%", "{$query}%", "% {$query}%"])
+                ->limit(8)
+                ->get();
 
-        $html = view('frontend.search.partials.autocomplete-items', [
-            'products' => $products
-        ])->render();
+            $html = view('frontend.search.partials.autocomplete-items', [
+                'products' => $products
+            ])->render();
+
+            return [
+                'html' => $html,
+                'count' => $products->count()
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'html' => $html,
-            'count' => $products->count()
+            'html' => $result['html'],
+            'count' => $result['count']
         ]);
     }
 
@@ -110,35 +128,46 @@ class SearchController extends Controller
             ]);
         }
 
-        // Get products with images and category
-        $products = Product::active()
-            ->withFirstImage()
-            ->with(['category:id,name,slug'])
-            ->selectMinimal()
-            ->where(function($q) use ($query) {
-                $q->where('name', 'like', "{$query}%")
-                  ->orWhere('name', 'like', "% {$query}%")
-                  ->orWhere('slug', 'like', "{$query}%");
-            })
-            ->orderByRaw("
-                CASE 
-                    WHEN name LIKE ? THEN 1
-                    WHEN name LIKE ? THEN 2
-                    WHEN slug LIKE ? THEN 3
-                    ELSE 4
-                END
-            ", ["{$query}%", "% {$query}%", "{$query}%"])
-            ->limit(5)
-            ->get();
+        // Cache key based on query (short TTL for search results)
+        $cacheKey = 'search_results_html_' . md5(strtolower($query));
+        
+        $result = Cache::remember($cacheKey, 300, function() use ($query) {
+            // Get products with images and category
+            $products = Product::active()
+                ->withFirstImage()
+                ->with(['category:id,name,slug'])
+                ->selectMinimal()
+                ->where(function($q) use ($query) {
+                    // Prioritize prefix matches (can use index)
+                    $q->where('name', 'like', "{$query}%")
+                      ->orWhere('slug', 'like', "{$query}%")
+                      ->orWhere('name', 'like', "% {$query}%");
+                })
+                ->orderByRaw("
+                    CASE 
+                        WHEN name LIKE ? THEN 1
+                        WHEN slug LIKE ? THEN 2
+                        WHEN name LIKE ? THEN 3
+                        ELSE 4
+                    END
+                ", ["{$query}%", "{$query}%", "% {$query}%"])
+                ->limit(5)
+                ->get();
 
-        $html = view('frontend.search.partials.result-items', [
-            'products' => $products
-        ])->render();
+            $html = view('frontend.search.partials.result-items', [
+                'products' => $products
+            ])->render();
+
+            return [
+                'html' => $html,
+                'count' => $products->count()
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'html' => $html,
-            'count' => $products->count()
+            'html' => $result['html'],
+            'count' => $result['count']
         ]);
     }
 

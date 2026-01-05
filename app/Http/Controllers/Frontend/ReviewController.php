@@ -35,7 +35,7 @@ class ReviewController extends Controller
             $verifiedPurchase = false;
             if (Auth::check()) {
                 $verifiedPurchase = Order::where('user_id', Auth::id())
-                    ->whereHas('orderItems', function($query) use ($product) {
+                    ->whereHas('items', function($query) use ($product) {
                         $query->where('product_id', $product->id);
                     })
                     ->where('status', '!=', 'cancelled')

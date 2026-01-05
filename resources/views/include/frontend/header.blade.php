@@ -155,11 +155,11 @@
                             @endif
                             <a href="#" class="header__icon wishlist-trigger">
                                 <i class="far fa-heart"></i>
-                                <span class="header__badge" id="wishlist-header-badge">{{ auth()->check() ? auth()->user()->wishlists->count() : 0 }}</span>
+                                <span class="header__badge" id="wishlist-header-badge">0</span>
                             </a>
                             <a href="#" class="header__icon cart-trigger" id="cart-trigger">
                                 <i class="fas fa-shopping-cart"></i>
-                                <span class="header__badge" id="cart-header-badge" style="display: absolute;">0</span>
+                                <span class="header__badge" id="cart-header-badge">0</span>
                             </a>
 
                         </div>

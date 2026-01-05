@@ -128,6 +128,14 @@
                                 @if($product->discount_price)
                                     <span class="product-card__badge">Sale</span>
                                 @endif
+                                <div class="product-card__actions">
+                                    <button class="product-card__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist">
+                                        <i class="far fa-heart"></i>
+                                    </button>
+                                    <button class="product-card__action add-to-cart" data-product-id="{{ $product->id }}" title="Add to Cart">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="product-card__content">
                                 <h3 class="product-card__title">
@@ -150,8 +158,8 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="pagination-wrapper mt-4">
-                        {{ $products->links() }}
+                    <div class="pagination-wrapper">
+                        @include('include.frontend.pagination', ['paginator' => $products])
                     </div>
                 @else
                     <div class="empty-state">
@@ -166,4 +174,19 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check wishlist and cart status for products on page load
+        if (window.WishlistFunctions && typeof window.WishlistFunctions.checkWishlistStatus === 'function') {
+            window.WishlistFunctions.checkWishlistStatus();
+        }
+        
+        if (window.CartFunctions && typeof window.CartFunctions.checkCartStatus === 'function') {
+            window.CartFunctions.checkCartStatus();
+        }
+    });
+</script>
+@endpush
 

@@ -292,7 +292,7 @@
                             <div class="tab-pane fade {{ $product->accordions->count() == 0 && $product->activeFaqs->count() == 0 ? 'show active' : '' }}" id="reviews" role="tabpanel">
                                 <div class="tab-content-body">
                                     <h3>Customer Reviews</h3>
-                                    
+
                                     @php
                                         $avgRating = $product->average_rating ?? 0;
                                         $reviewsCount = $product->reviews_count ?? 0;
@@ -471,7 +471,7 @@
                         <div class="related-products__header text-center">
                             <h2 class="related-products__title">You May Also Like</h2>
                         </div>
-                        <div class="row">
+                        <div class="row g-4">
                             @if($relatedProducts->count() > 0)
                                 @foreach($relatedProducts as $relatedProduct)
                                     <div class="col-lg-3 col-md-4 col-sm-6">
@@ -512,278 +512,29 @@
     </section>
 
 @push('scripts')
-<!-- Lightbox2 for Product Zoom -->
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+{{-- Lightbox2 for Product Zoom --}}
+<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js" defer></script>
+
+{{-- Product Page JavaScript Modules --}}
+<script src="{{ asset('assets/frontend/js/product/gallery.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/quantity.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/add-to-cart.js') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/forms.js') }}" defer></script>
+
+{{-- Pass route URLs to forms module --}}
 <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Product Image Thumbnail Switching
-            const thumbnailItems = document.querySelectorAll('.thumbnail-item');
-            const mainImage = document.getElementById('mainImage');
+    document.addEventListener('DOMContentLoaded', function() {
+        const reviewForm = document.getElementById('reviewForm');
+        const questionForm = document.getElementById('questionForm');
 
-            thumbnailItems.forEach(function(thumbnail) {
-                thumbnail.addEventListener('click', function() {
-                    const imageUrl = this.getAttribute('data-image');
+        if (reviewForm) {
+            reviewForm.setAttribute('data-review-url', '{{ route("review.store", $product->slug) }}');
+        }
 
-                    if (imageUrl && mainImage) {
-                        // Update main image source with fade effect
-                        mainImage.style.opacity = '0';
-                        setTimeout(function() {
-                            mainImage.src = imageUrl;
-                            mainImage.style.opacity = '1';
-                        }, 150);
-
-                        // Remove active class from all thumbnails
-                        thumbnailItems.forEach(function(item) {
-                            item.classList.remove('active');
-                        });
-
-                        // Add active class to clicked thumbnail
-                        this.classList.add('active');
-                    }
-                });
-            });
-
-            const addToCartBtn = document.getElementById('addToCartBtn');
-            const quantityInput = document.getElementById('quantity');
-            const decreaseQty = document.getElementById('decreaseQty');
-            const increaseQty = document.getElementById('increaseQty');
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-            // Quantity controls
-            if (decreaseQty) {
-                decreaseQty.addEventListener('click', function() {
-                    const currentValue = parseInt(quantityInput.value) || 1;
-                    if (currentValue > 1) {
-                        quantityInput.value = currentValue - 1;
-                    }
-                });
-            }
-
-            if (increaseQty) {
-                increaseQty.addEventListener('click', function() {
-                    const currentValue = parseInt(quantityInput.value) || 1;
-                    if (currentValue < 99) {
-                        quantityInput.value = currentValue + 1;
-                    }
-                });
-            }
-
-            // Add to cart functionality
-            if (addToCartBtn) {
-                addToCartBtn.addEventListener('click', function() {
-                    const productId = this.getAttribute('data-product-id');
-                    const quantity = parseInt(quantityInput.value) || 1;
-                    const btnText = this.querySelector('.btn-text');
-                    const btnIcon = this.querySelector('i');
-
-                    // Disable button and show loading state
-                    this.disabled = true;
-                    if (btnText) btnText.textContent = 'Adding...';
-                    if (btnIcon) {
-                        btnIcon.classList.remove('fa-shopping-cart');
-                        btnIcon.classList.add('fa-spinner', 'fa-spin');
-                    }
-
-                    fetch('/cart/add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            product_id: productId,
-                            quantity: quantity
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Show success message
-                            showNotification('Product added to cart successfully!', 'success');
-
-                            // Update cart count in header if function exists
-                            if (window.updateCartCount) {
-                                window.updateCartCount(data.cart_count);
-                            }
-
-                            // Reset button state
-                            this.disabled = false;
-                            if (btnText) btnText.textContent = 'Add to Cart';
-                            if (btnIcon) {
-                                btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                                btnIcon.classList.add('fa-shopping-cart');
-                            }
-                        } else {
-                            showNotification(data.message || 'Failed to add product to cart.', 'error');
-
-                            // Reset button state
-                            this.disabled = false;
-                            if (btnText) btnText.textContent = 'Add to Cart';
-                            if (btnIcon) {
-                                btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                                btnIcon.classList.add('fa-shopping-cart');
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('An error occurred. Please try again.', 'error');
-
-                        // Reset button state
-                        this.disabled = false;
-                        if (btnText) btnText.textContent = 'Add to Cart';
-                        if (btnIcon) {
-                            btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                            btnIcon.classList.add('fa-shopping-cart');
-                        }
-                    });
-                });
-            }
-
-            // Show notification function
-            function showNotification(message, type = 'success') {
-                const notification = document.createElement('div');
-                notification.className = `cart-notification cart-notification--${type}`;
-                notification.textContent = message;
-                notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: ' + (type === 'success' ? '#10b981' : '#ef4444') + '; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.style.opacity = '0';
-                    notification.style.transition = 'opacity 0.3s';
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 300);
-                }, 3000);
-            }
-
-            // Review Form Submission
-            const reviewForm = document.getElementById('reviewForm');
-            if (reviewForm) {
-                reviewForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    const data = Object.fromEntries(formData);
-
-                    fetch('{{ route("review.store", $product->slug) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(data.message, 'success');
-                            reviewForm.reset();
-                            setTimeout(() => location.reload(), 2000);
-                        } else {
-                            showNotification(data.message || 'Failed to submit review.', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('An error occurred. Please try again.', 'error');
-                    });
-                });
-            }
-
-            // Question Form Submission
-            const questionForm = document.getElementById('questionForm');
-            if (questionForm) {
-                questionForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    const data = Object.fromEntries(formData);
-
-                    fetch('{{ route("question.store", $product->slug) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(data.message, 'success');
-                            questionForm.reset();
-                            setTimeout(() => location.reload(), 2000);
-                        } else {
-                            showNotification(data.message || 'Failed to submit question.', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('An error occurred. Please try again.', 'error');
-                    });
-                });
-            }
-
-            // Answer Form Submissions
-            document.querySelectorAll('.answer-form-inline').forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const questionId = this.getAttribute('data-question-id');
-                    const formData = new FormData(this);
-                    const data = Object.fromEntries(formData);
-
-                    fetch(`/question/${questionId}/answer`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(data.message, 'success');
-                            this.reset();
-                            setTimeout(() => location.reload(), 1500);
-                        } else {
-                            showNotification(data.message || 'Failed to submit answer.', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('An error occurred. Please try again.', 'error');
-                    });
-                });
-            });
-
-            // Helpful Button
-            document.querySelectorAll('.helpful-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const answerId = this.getAttribute('data-answer-id');
-                    fetch(`/answer/${answerId}/helpful`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.innerHTML = `<i class="fas fa-thumbs-up"></i> Helpful (${data.helpful_count})`;
-                            this.disabled = true;
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-                });
-            });
-        });
-    </script>
+        if (questionForm) {
+            questionForm.setAttribute('data-question-url', '{{ route("question.store", $product->slug) }}');
+        }
+    });
+</script>
 @endpush
 @endsection

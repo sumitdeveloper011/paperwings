@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class Product extends Model
 {
@@ -67,6 +68,54 @@ class Product extends Model
             if ($product->isDirty('name')) {
                 $product->slug = Str::slug($product->name);
             }
+            
+            // Clear price range cache when price or status changes
+            if ($product->isDirty(['total_price', 'discount_price', 'status', 'eposnow_category_id'])) {
+                Cache::forget('price_range_all_products');
+                if ($product->eposnow_category_id) {
+                    Cache::forget('price_range_category_' . $product->eposnow_category_id);
+                }
+                // Also clear for old category if category changed
+                if ($product->isDirty('eposnow_category_id') && $product->getOriginal('eposnow_category_id')) {
+                    Cache::forget('price_range_category_' . $product->getOriginal('eposnow_category_id'));
+                }
+            }
+            
+            // Clear categories cache when product status or category changes
+            if ($product->isDirty(['status', 'category_id', 'eposnow_category_id'])) {
+                Cache::forget('categories_with_count_all');
+                Cache::forget('categories_with_count_sidebar');
+                Cache::forget('header_categories');
+                Cache::forget('footer_categories');
+            }
+            
+            // Note: Search caches have short TTL (5 minutes) and will expire naturally
+            // Clearing all search caches is not efficient, so we rely on TTL
+            // If name or slug changes significantly, search results will update within 5 minutes
+        });
+        
+        static::created(function ($product) {
+            // Clear price range cache when new product is created
+            Cache::forget('price_range_all_products');
+            if ($product->eposnow_category_id) {
+                Cache::forget('price_range_category_' . $product->eposnow_category_id);
+            }
+            // Clear categories cache
+            Cache::forget('categories_with_count_all');
+            Cache::forget('categories_with_count_sidebar');
+            Cache::forget('header_categories');
+        });
+        
+        static::deleted(function ($product) {
+            // Clear price range cache when product is deleted
+            Cache::forget('price_range_all_products');
+            if ($product->eposnow_category_id) {
+                Cache::forget('price_range_category_' . $product->eposnow_category_id);
+            }
+            // Clear categories cache
+            Cache::forget('categories_with_count_all');
+            Cache::forget('categories_with_count_sidebar');
+            Cache::forget('header_categories');
         });
     }
 
