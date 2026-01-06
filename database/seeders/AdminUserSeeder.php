@@ -16,13 +16,13 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         $admin = User::updateOrCreate(
-            ['email' => 'admin@paperwings.com'],
+            ['email' => 'admin@paperwings.co.nz'],
             [
                 'uuid' => Str::uuid()->toString(),
-                'first_name' => 'Admin',
-                'last_name' => 'User',
+                'first_name' => 'Sheik',
+                'last_name' => 'Ashaid',
                 'email_verified_at' => now(),
-                'password' => Hash::make('password'),
+                'password' => Hash::make('#Paperwings29waterloord'),
                 'status' => 1, // Active
             ]
         );

@@ -28,7 +28,6 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
-            @if($page->image)
             <div class="modern-card modern-card--glass">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
@@ -38,18 +37,21 @@
                 </div>
                 <div class="modern-card__body">
                     <div class="category-image-large category-image-large--enhanced">
-                        <img src="{{ $page->image_url }}" 
+                        @php
+                            $imageUrl = $page->image ? asset('storage/' . $page->image) : asset('assets/images/placeholder.jpg');
+                        @endphp
+                        <img src="{{ $imageUrl }}" 
                              alt="{{ $page->title }}" 
-                             class="category-image-large__img">
+                             class="category-image-large__img"
+                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                         <div class="category-image-large__overlay">
-                            <a href="{{ $page->image_url }}" target="_blank" class="category-image-large__zoom">
+                            <a href="{{ $imageUrl }}" target="_blank" class="category-image-large__zoom">
                                 <i class="fas fa-search-plus"></i>
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
-            @endif
 
             <div class="modern-card modern-card--glass" style="margin-top: 1.5rem;">
                 <div class="modern-card__header">

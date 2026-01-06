@@ -20,7 +20,7 @@ class AnalyticsController extends Controller
         $totalOrders = Order::where('status', '!=', 'cancelled')->count();
         $totalRevenue = Order::where('status', '!=', 'cancelled')
             ->where('payment_status', 'paid')
-            ->sum('total_amount');
+            ->sum('total');
 
         // Most viewed products
         $mostViewed = ProductView::select('product_id', DB::raw('count(*) as views'))
@@ -107,7 +107,7 @@ class AnalyticsController extends Controller
             ->select(
                 DB::raw('DATE(created_at) as date'),
                 DB::raw('count(*) as orders'),
-                DB::raw('sum(total_amount) as revenue')
+                DB::raw('sum(total) as revenue')
             )
             ->groupBy('date')
             ->orderBy('date', 'desc')
@@ -116,7 +116,7 @@ class AnalyticsController extends Controller
 
         $totalRevenue = Order::where('status', '!=', 'cancelled')
             ->where('payment_status', 'paid')
-            ->sum('total_amount');
+            ->sum('total');
 
         $totalOrders = Order::where('status', '!=', 'cancelled')
             ->where('payment_status', 'paid')

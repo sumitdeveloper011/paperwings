@@ -44,7 +44,7 @@ class Product extends Model
         'eposnow_product_id' => 'integer',
         'eposnow_category_id' => 'integer',
         'eposnow_brand_id' => 'integer',
-        'barcode' => 'integer',
+        'barcode' => 'string',
         'stock' => 'integer',
         'product_type' => 'integer',
         'discount_price' => 'decimal:2',
@@ -68,7 +68,7 @@ class Product extends Model
             if ($product->isDirty('name')) {
                 $product->slug = Str::slug($product->name);
             }
-            
+
             // Clear price range cache when price or status changes
             if ($product->isDirty(['total_price', 'discount_price', 'status', 'eposnow_category_id'])) {
                 Cache::forget('price_range_all_products');
@@ -80,7 +80,7 @@ class Product extends Model
                     Cache::forget('price_range_category_' . $product->getOriginal('eposnow_category_id'));
                 }
             }
-            
+
             // Clear categories cache when product status or category changes
             if ($product->isDirty(['status', 'category_id', 'eposnow_category_id'])) {
                 Cache::forget('categories_with_count_all');
@@ -88,12 +88,12 @@ class Product extends Model
                 Cache::forget('header_categories');
                 Cache::forget('footer_categories');
             }
-            
+
             // Note: Search caches have short TTL (5 minutes) and will expire naturally
             // Clearing all search caches is not efficient, so we rely on TTL
             // If name or slug changes significantly, search results will update within 5 minutes
         });
-        
+
         static::created(function ($product) {
             // Clear price range cache when new product is created
             Cache::forget('price_range_all_products');
@@ -105,7 +105,7 @@ class Product extends Model
             Cache::forget('categories_with_count_sidebar');
             Cache::forget('header_categories');
         });
-        
+
         static::deleted(function ($product) {
             // Clear price range cache when product is deleted
             Cache::forget('price_range_all_products');
@@ -300,7 +300,7 @@ class Product extends Model
         if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
             return $this->images->first()->image_url;
         }
-        
+
         $firstImage = $this->images()->first();
         if ($firstImage) {
             return $firstImage->image_url;
@@ -308,14 +308,14 @@ class Product extends Model
 
         return asset('assets/images/placeholder.jpg');
     }
-    
+
     // Get main image URL attribute safely
     public function getMainImageUrlAttribute(): string
     {
         if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
             return $this->images->first()->image_url;
         }
-        
+
         return asset('assets/images/placeholder.jpg');
     }
 

@@ -20,11 +20,23 @@ class ImportEposNowProductsJob implements ShouldQueue
     use Queueable, InteractsWithQueue, SerializesModels;
 
     protected string $jobId;
+    protected ?array $productIds;
+
+    /**
+     * The number of times the job may be attempted.
+     */
+    public $tries = 1;
+
+    /**
+     * The maximum number of seconds the job can run before timing out.
+     */
+    public $timeout = 3600; // 1 hour
 
     // Create a new job instance
-    public function __construct(string $jobId)
+    public function __construct(string $jobId, ?array $productIds = null)
     {
         $this->jobId = $jobId;
+        $this->productIds = $productIds; // Optional: specific product IDs to import
     }
 
     // Execute the job
@@ -40,9 +52,24 @@ class ImportEposNowProductsJob implements ShouldQueue
             $this->updateProgress(5, 0, 0, 'Connecting to EPOSNOW API...');
 
             try {
-                $this->updateProgress(10, 0, 0, 'Fetching products from EPOSNOW API (this may take a few minutes)...');
-                $products = $eposNowService->getAllProducts();
-                $this->updateProgress(20, 0, 0, 'Products fetched successfully. Processing data...');
+                if ($this->productIds !== null && !empty($this->productIds)) {
+                    // Retry mode: fetch all products and filter by IDs
+                    $this->updateProgress(10, 0, 0, 'Fetching products from EPOSNOW API for retry...');
+                    $allProducts = $eposNowService->getAllProducts();
+                    
+                    // Filter products by IDs
+                    $products = array_filter($allProducts, function($product) {
+                        return isset($product['Id']) && in_array($product['Id'], $this->productIds);
+                    });
+                    $products = array_values($products); // Re-index array
+                    
+                    $this->updateProgress(20, 0, 0, 'Found ' . count($products) . ' products to retry. Processing...');
+                } else {
+                    // Normal mode: fetch all products
+                    $this->updateProgress(10, 0, 0, 'Fetching products from EPOSNOW API (this may take a few minutes)...');
+                    $products = $eposNowService->getAllProducts();
+                    $this->updateProgress(20, 0, 0, 'Products fetched successfully. Processing data...');
+                }
             } catch (\Exception $e) {
                 if (stripos($e->getMessage(), 'rate limit') !== false || 
                     stripos($e->getMessage(), 'maximum API limit') !== false) {
@@ -71,10 +98,20 @@ class ImportEposNowProductsJob implements ShouldQueue
             $failed = [];
             $imagesImported = 0;
 
-            $chunks = array_chunk($products, 50);
+            $chunks = array_chunk($products, 25); // Reduced chunk size for better performance
+            $totalChunks = count($chunks);
+
+            Log::info('Starting product import processing', [
+                'total_products' => $total,
+                'total_chunks' => $totalChunks,
+                'chunk_size' => 25
+            ]);
 
             foreach ($chunks as $chunkIndex => $chunk) {
-                DB::transaction(function () use ($chunk, $categoryRepository, $eposNowService, &$processed, &$inserted, &$updated, &$failed, &$imagesImported, $total) {
+                try {
+                    DB::transaction(function () use ($chunk, $categoryRepository, &$processed, &$inserted, &$updated, &$failed, $total) {
+                        // Set transaction timeout
+                        DB::statement('SET SESSION innodb_lock_wait_timeout = 300');
                     foreach ($chunk as $product) {
                         try {
                             if (!isset($product['Id']) || !isset($product['Name'])) {
@@ -105,9 +142,7 @@ class ImportEposNowProductsJob implements ShouldQueue
                                 'eposnow_product_id' => $eposnowProductId,
                                 'eposnow_category_id' => $product['CategoryId'] ?? null,
                                 'eposnow_brand_id' => $product['BrandId'] ?? null,
-                                'barcode' => is_array($product['Barcode'] ?? null) 
-                                    ? (string) ($product['Barcode'][0] ?? null) 
-                                    : (string) ($product['Barcode'] ?? null) ?? null,
+                                'barcode' => $this->normalizeBarcode($product['Barcode'] ?? null),
                                 'stock' => null,
                                 'product_type' => null,
                                 'name' => $productName,
@@ -151,6 +186,9 @@ class ImportEposNowProductsJob implements ShouldQueue
                                 $inserted++;
                             }
 
+                            // Image import disabled during bulk import to improve performance
+                            // Images can be imported separately using: php artisan products:import-images
+                            /*
                             if ($savedProduct && !$savedProduct->images()->exists()) {
                                 try {
                                     $images = $eposNowService->getProductImages((string) $eposnowProductId);
@@ -190,6 +228,7 @@ class ImportEposNowProductsJob implements ShouldQueue
                                     ]);
                                 }
                             }
+                            */
 
                             $processed++;
                         } catch (\Exception $e) {
@@ -205,24 +244,69 @@ class ImportEposNowProductsJob implements ShouldQueue
                             ]);
                         }
                     }
-                });
+                    }, 5); // 5 attempts for transaction
+                } catch (\Exception $e) {
+                    Log::error('Product import chunk failed', [
+                        'chunk_index' => $chunkIndex,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    
+                    // Mark all items in this chunk as failed
+                    foreach ($chunk as $product) {
+                        $failed[] = [
+                            'id' => $product['Id'] ?? 'unknown',
+                            'name' => $product['Name'] ?? 'unknown',
+                            'error' => 'Chunk processing failed: ' . $e->getMessage()
+                        ];
+                        $processed++;
+                    }
+                }
 
-                $percentage = (int)(($processed / $total) * 100);
-                $status = "Processing... {$processed}/{$total} products";
-                $this->updateProgress($percentage, $processed, $total, $status);
+                $percentage = min(99, (int)(($processed / $total) * 100));
+                $status = "Processing... {$processed}/{$total} products (Chunk " . ($chunkIndex + 1) . "/{$totalChunks})";
+                $this->updateProgress($percentage, $processed, $total, $status, [
+                    'inserted' => $inserted,
+                    'updated' => $updated,
+                    'failed' => count($failed)
+                ]);
+
+                // Log progress every 10 chunks
+                if (($chunkIndex + 1) % 10 == 0) {
+                    Log::info('Product import chunk progress', [
+                        'chunk' => $chunkIndex + 1,
+                        'total_chunks' => $totalChunks,
+                        'processed' => $processed,
+                        'total' => $total,
+                        'inserted' => $inserted,
+                        'updated' => $updated,
+                        'failed' => count($failed)
+                    ]);
+                }
             }
 
-            $finalStatus = "Import completed! Inserted: {$inserted}, Updated: {$updated}, Images: {$imagesImported}";
+            $finalStatus = "Import completed! Inserted: {$inserted}, Updated: {$updated}";
             if (!empty($failed)) {
                 $finalStatus .= ", Failed: " . count($failed);
             }
+            $finalStatus .= " (Images import disabled - import separately)";
+
+            Log::info('Product import completed successfully', [
+                'job_id' => $this->jobId,
+                'total' => $total,
+                'processed' => $processed,
+                'inserted' => $inserted,
+                'updated' => $updated,
+                'failed' => count($failed)
+            ]);
 
             $this->updateProgress(100, $processed, $total, $finalStatus, [
                 'inserted' => $inserted,
                 'updated' => $updated,
                 'failed' => count($failed),
-                'images_imported' => $imagesImported,
-                'failed_items' => $failed
+                'images_imported' => 0,
+                'failed_items' => $failed,
+                'status' => 'completed'
             ]);
 
         } catch (\Exception $e) {
@@ -252,6 +336,28 @@ class ImportEposNowProductsJob implements ShouldQueue
         ], $additional);
 
         Cache::put("product_import_{$this->jobId}", $progressData, 3600);
+    }
+
+    /**
+     * Normalize barcode value - convert empty strings to null and handle array
+     */
+    private function normalizeBarcode($barcode): ?string
+    {
+        if (is_array($barcode)) {
+            $barcode = $barcode[0] ?? null;
+        }
+        
+        if ($barcode === null || $barcode === '' || $barcode === '0') {
+            return null;
+        }
+        
+        // Convert to string and trim
+        $barcode = trim((string) $barcode);
+        if ($barcode === '') {
+            return null;
+        }
+        
+        return $barcode;
     }
 
     // Handle a job failure

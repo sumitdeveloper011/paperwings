@@ -421,12 +421,12 @@
                         Starting import...
                     </div>
                     <div class="progress" style="height: 25px; margin-top: 15px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" 
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
                              id="importProgressBar"
                              style="width: 0%;"
-                             aria-valuenow="0" 
-                             aria-valuemin="0" 
+                             aria-valuenow="0"
+                             aria-valuemin="0"
                              aria-valuemax="100">
                             <span id="importProgressText">0%</span>
                         </div>
@@ -462,6 +462,9 @@
                 </div>
             </div>
             <div class="modal-footer" id="importModalFooter" style="display: none;">
+                <button type="button" id="retryFailedBtn" class="btn btn-warning" style="display: none;">
+                    <i class="fas fa-redo"></i> Retry Failed Products
+                </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
             </div>
@@ -506,7 +509,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const importBtn = document.getElementById('importProductsBtn');
     if (!importBtn) return;
-    
+
     const modal = document.getElementById('importProgressModal');
     const progressBar = document.getElementById('importProgressBar');
     const progressText = document.getElementById('importProgressText');
@@ -514,9 +517,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const importStats = document.getElementById('importStats');
     const modalFooter = document.getElementById('importModalFooter');
     const closeModalBtn = document.getElementById('closeModalBtn');
-    
+    const retryFailedBtn = document.getElementById('retryFailedBtn');
+
     let jobId = null;
     let statusCheckInterval = null;
+    let currentJobId = null; // Store current job ID for retry
 
     // Initialize Bootstrap modal if using Bootstrap
     let bootstrapModal = null;
@@ -553,12 +558,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is OK
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                });
+            }
+
+            // Check content-type before parsing JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    throw new Error('Response is not JSON. Server returned: ' + text.substring(0, 200));
+                });
+            }
+
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 jobId = data.job_id;
                 progressMessage.textContent = 'Import job started! Checking status...';
-                
+
                 // Start polling for status
                 startStatusPolling();
             } else {
@@ -567,7 +589,14 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            progressMessage.textContent = 'Error: ' + error.message;
+            let errorMessage = 'Error: ' + error.message;
+
+            // Better error message for JSON parse errors
+            if (error.message.includes('JSON.parse') || error.message.includes('Unexpected token')) {
+                errorMessage = 'Server returned invalid response. Please check server logs.';
+            }
+
+            progressMessage.textContent = errorMessage;
             progressBar.classList.remove('progress-bar-animated');
             progressBar.style.width = '0%';
             importBtn.disabled = false;
@@ -583,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const baseUrl = '{{ url("admin/products/import-status") }}';
             const encodedJobId = encodeURIComponent(jobId);
             const statusUrl = `${baseUrl}?jobId=${encodedJobId}`;
-            
+
             fetch(statusUrl, {
                 method: 'GET',
                 headers: {
@@ -616,19 +645,19 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (!data) return;
-                
+
                 if (data.success && data.data) {
                     const progress = data.data;
-                    
+
                     // Update progress bar
                     const percentage = progress.percentage || 0;
                     progressBar.style.width = percentage + '%';
                     progressBar.setAttribute('aria-valuenow', percentage);
                     progressText.textContent = percentage + '%';
-                    
+
                     // Update message
                     progressMessage.textContent = progress.message || 'Processing...';
-                    
+
                     // Update stats if available
                     if (progress.inserted !== undefined || progress.updated !== undefined) {
                         importStats.style.display = 'block';
@@ -645,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('statFailed').textContent = progress.failed;
                         }
                     }
-                    
+
                     // Check if completed
                     if (progress.status === 'completed' || percentage === 100) {
                         clearInterval(statusCheckInterval);
@@ -653,18 +682,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         progressBar.classList.add('bg-success');
                         progressMessage.textContent = progress.message || 'Import completed successfully!';
                         modalFooter.style.display = 'block';
+                        
+                        // Show retry button if there are failed products
+                        if (progress.failed > 0 && jobId) {
+                            currentJobId = jobId;
+                            retryFailedBtn.style.display = 'inline-block';
+                            retryFailedBtn.disabled = false;
+                            retryFailedBtn.innerHTML = '<i class="fas fa-redo"></i> Retry Failed Products';
+                            retryFailedBtn.onclick = function() {
+                                retryFailedProducts(currentJobId);
+                            };
+                        } else {
+                            retryFailedBtn.style.display = 'none';
+                        }
+                        
                         importBtn.disabled = false;
                         importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
                     } else if (progress.status === 'failed' || progress.status === 'rate_limited') {
                         clearInterval(statusCheckInterval);
                         progressBar.classList.remove('progress-bar-animated');
                         progressBar.classList.add('bg-danger');
-                        
+
                         let errorMessage = progress.message || 'Import failed!';
                         if (progress.status === 'rate_limited') {
                             errorMessage = '⚠️ API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
                         }
-                        
+
                         progressMessage.textContent = errorMessage;
                         modalFooter.style.display = 'block';
                         importBtn.disabled = false;
@@ -684,6 +727,78 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000); // Check every 2 seconds
     }
 
+    // Retry failed products function
+    function retryFailedProducts(jobIdToRetry) {
+        if (!jobIdToRetry) {
+            alert('No job ID available for retry');
+            return;
+        }
+
+        // Disable retry button
+        retryFailedBtn.disabled = true;
+        retryFailedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Retrying...';
+
+        // Reset progress
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', '0');
+        progressText.textContent = '0%';
+        progressMessage.textContent = 'Retrying failed products...';
+        progressBar.classList.remove('bg-success', 'bg-danger');
+        progressBar.classList.add('progress-bar-animated');
+        importStats.style.display = 'none';
+        modalFooter.style.display = 'none';
+
+        // Start retry
+        fetch('{{ route("admin.products.retryFailedProducts") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                jobId: jobIdToRetry
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                });
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    throw new Error('Response is not JSON. Server returned: ' + text.substring(0, 200));
+                });
+            }
+
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                jobId = data.job_id;
+                currentJobId = data.job_id;
+                progressMessage.textContent = 'Retry started for ' + data.failed_count + ' products! Checking status...';
+                
+                // Start polling for status
+                startStatusPolling();
+            } else {
+                throw new Error(data.message || 'Failed to retry');
+            }
+        })
+        .catch(error => {
+            console.error('Retry Error:', error);
+            progressMessage.textContent = 'Error: ' + error.message;
+            progressBar.classList.remove('progress-bar-animated');
+            retryFailedBtn.disabled = false;
+            retryFailedBtn.innerHTML = '<i class="fas fa-redo"></i> Retry Failed Products';
+            modalFooter.style.display = 'block';
+        });
+    }
+
     // Clean up interval when modal is closed
     if (typeof $ !== 'undefined') {
         $(modal).on('hidden.bs.modal', function() {
@@ -691,6 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
             }
+            retryFailedBtn.style.display = 'none';
         });
     }
 });

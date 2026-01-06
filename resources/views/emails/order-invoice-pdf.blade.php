@@ -1,207 +1,163 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Invoice - {{ $order->order_number }}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 20px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            color: #2c3e50;
-        }
-        .invoice-info {
-            display: table;
-            width: 100%;
-            margin-bottom: 30px;
-        }
-        .invoice-info-row {
-            display: table-row;
-        }
-        .invoice-info-cell {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            padding: 10px;
-        }
-        .info-label {
-            font-weight: bold;
-            color: #6c757d;
-            margin-bottom: 5px;
-        }
-        .info-value {
-            color: #2c3e50;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        th {
-            background-color: #f8f9fa;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid #333;
-            font-weight: bold;
-        }
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .totals {
-            margin-top: 20px;
-            float: right;
-            width: 300px;
-        }
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #ddd;
-        }
-        .total-row--final {
-            font-size: 16px;
-            font-weight: bold;
-            border-top: 2px solid #333;
-            border-bottom: 2px solid #333;
-            padding: 10px 0;
-            margin-top: 10px;
-        }
-        .address-box {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .address-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        .footer {
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            font-size: 10px;
-            color: #6c757d;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Details - #{{ $order->order_number }}</title>
 </head>
-<body>
-    <div class="header">
-        <h1>INVOICE</h1>
-        <p>Order #{{ $order->order_number }}</p>
-    </div>
-
-    <div class="invoice-info">
-        <div class="invoice-info-row">
-            <div class="invoice-info-cell">
-                <div class="info-label">Invoice Date:</div>
-                <div class="info-value">{{ $order->created_at->format('F d, Y') }}</div>
-
-                <div class="info-label" style="margin-top: 15px;">Order Number:</div>
-                <div class="info-value">{{ $order->order_number }}</div>
-
-                <div class="info-label" style="margin-top: 15px;">Payment Status:</div>
-                <div class="info-value" style="text-transform: capitalize;">{{ $order->payment_status }}</div>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #000000; background-color: #ffffff;">
+    <div style="max-width: 800px; margin: 0 auto; padding: 40px; background-color: #ffffff;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 40px;">
+            @if(isset($logoUrl))
+            <img src="{{ $logoUrl }}" alt="Company Logo" style="max-width: 180px; height: auto; margin-bottom: 30px; display: block; margin-left: auto; margin-right: auto;" />
+            @endif
+            
+            <div style="background-color: #374E94; color: #ffffff; padding: 40px 30px; border-radius: 8px; margin-bottom: 30px;">
+                <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">ORDER CONFIRMATION</p>
+                <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">Thank You For Your Order!</h1>
             </div>
-            <div class="invoice-info-cell">
-                <div class="address-box">
-                    <div class="address-title">Bill To:</div>
-                    <div>
-                        {{ $order->billing_full_name }}<br>
-                        {{ $order->billing_street_address }}<br>
-                        @if($order->billing_suburb){{ $order->billing_suburb }}, @endif
-                        {{ $order->billing_city }}<br>
-                        @if($order->billingRegion){{ $order->billingRegion->name }}, @endif
-                        {{ $order->billing_zip_code }}<br>
-                        {{ $order->billing_country }}<br>
-                        Email: {{ $order->billing_email }}<br>
-                        Phone: {{ $order->billing_phone }}
-                    </div>
+        </div>
+
+        <!-- Order Information -->
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <div>
+                    <div style="font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; margin-bottom: 5px;">Order Number</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #374E94;">#{{ $order->order_number }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; margin-bottom: 5px;">Order Date</div>
+                    <div style="font-size: 18px; font-weight: 600; color: #000000;">{{ $order->created_at->format('F d, Y') }}</div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 1px solid #e9ecef;">
+                <div>
+                    <div style="font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; margin-bottom: 5px;">Order Status</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #e95c67;">{{ ucfirst($order->status) }}</div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Item</th>
-                <th class="text-right">Quantity</th>
-                <th class="text-right">Price</th>
-                <th class="text-right">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($order->items as $item)
-            <tr>
-                <td>{{ $item->product_name }}</td>
-                <td class="text-right">{{ $item->quantity }}</td>
-                <td class="text-right">${{ number_format($item->price, 2) }}</td>
-                <td class="text-right">${{ number_format($item->subtotal, 2) }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+        <!-- Order Items -->
+        <h2 style="font-size: 18px; font-weight: 700; color: #374E94; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">Order Items</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 15px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; border-bottom: 2px solid #e9ecef; width: 100px;">Image</th>
+                    <th style="padding: 15px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; border-bottom: 2px solid #e9ecef;">Product</th>
+                    <th style="padding: 15px; text-align: right; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666666; border-bottom: 2px solid #e9ecef; width: 120px;">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($order->items as $item)
+                <tr>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
+                        @php
+                            $productImage = asset('assets/images/placeholder.jpg');
+                            if ($item->product && isset($item->product->main_image_url)) {
+                                $productImage = $item->product->main_image_url;
+                            } elseif ($item->product && $item->product->images && $item->product->images->count() > 0) {
+                                $productImage = $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
+                            }
+                        @endphp
+                        <img src="{{ $productImage }}" alt="{{ $item->product_name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; display: block;" />
+                    </td>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #e9ecef; vertical-align: top; padding-left: 15px;">
+                        <div style="font-size: 16px; font-weight: 600; color: #000000; margin-bottom: 5px;">{{ $item->product_name }}</div>
+                        @if($item->product && $item->product->eposnow_product_id)
+                        <div style="font-size: 12px; color: #666666; margin-bottom: 3px;">SKU: {{ $item->product->eposnow_product_id }}</div>
+                        @endif
+                        <div style="font-size: 12px; color: #666666;">Quantity: {{ $item->quantity }}</div>
+                    </td>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #e9ecef; vertical-align: top; text-align: right;">
+                        <div style="font-size: 16px; font-weight: 700; color: #e95c67;">${{ number_format($item->subtotal, 2) }}</div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
 
-    <div class="totals">
-        <div class="total-row">
-            <span>Subtotal:</span>
-            <span>${{ number_format($order->subtotal, 2) }}</span>
-        </div>
-        @if($order->discount > 0)
-        <div class="total-row">
-            <span>Discount ({{ $order->coupon_code }}):</span>
-            <span>-${{ number_format($order->discount, 2) }}</span>
-        </div>
-        @endif
-        @if($order->shipping > 0 || $order->shipping_price > 0)
-        <div class="total-row">
-            <span>Shipping:</span>
-            <span>${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
-        </div>
-        @endif
-        <div class="total-row total-row--final">
-            <span>Total:</span>
-            <span>${{ number_format($order->total, 2) }}</span>
-        </div>
-    </div>
-
-    <div style="clear: both; margin-top: 30px;">
-        <div class="address-box" style="width: 48%; float: left; margin-right: 2%;">
-            <div class="address-title">Shipping Address:</div>
-            <div>
-                {{ $order->shipping_full_name }}<br>
-                {{ $order->shipping_street_address }}<br>
-                @if($order->shipping_suburb){{ $order->shipping_suburb }}, @endif
-                {{ $order->shipping_city }}<br>
-                @if($order->shippingRegion){{ $order->shippingRegion->name }}, @endif
-                {{ $order->shipping_zip_code }}<br>
-                {{ $order->shipping_country }}
+        <!-- Order Totals -->
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                <span style="color: #666666; font-weight: 400;">Subtotal</span>
+                <span style="color: #000000; font-weight: 400;">${{ number_format($order->subtotal, 2) }}</span>
+            </div>
+            @if($order->discount > 0)
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                <span style="color: #666666; font-weight: 400;">Discount{{ $order->coupon_code ? ' (' . $order->coupon_code . ')' : '' }}</span>
+                <span style="color: #000000; font-weight: 400;">-${{ number_format($order->discount, 2) }}</span>
+            </div>
+            @endif
+            @if(($order->shipping_price ?? $order->shipping) > 0)
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                <span style="color: #666666; font-weight: 400;">Shipping</span>
+                <span style="color: #000000; font-weight: 400;">${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
+            </div>
+            @endif
+            @if($order->tax > 0)
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                <span style="color: #666666; font-weight: 400;">Tax</span>
+                <span style="color: #000000; font-weight: 400;">${{ number_format($order->tax, 2) }}</span>
+            </div>
+            @endif
+            <div style="display: flex; justify-content: space-between; padding-top: 15px; margin-top: 15px; border-top: 2px solid #e9ecef;">
+                <span style="color: #374E94; font-size: 18px; font-weight: 700;">Total</span>
+                <span style="color: #e95c67; font-size: 24px; font-weight: 700;">${{ number_format($order->total, 2) }}</span>
             </div>
         </div>
-    </div>
 
-    <div class="footer">
-        <p>Thank you for your business!</p>
-        <p>This is an automated invoice. Please keep this for your records.</p>
+        <!-- Shipping & Billing Address -->
+        <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+            <div style="flex: 1;">
+                <h3 style="font-size: 14px; font-weight: 700; color: #374E94; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; margin-top: 0;">Shipping Address</h3>
+                <div style="font-size: 14px; color: #000000; line-height: 1.8;">
+                    {{ $order->shipping_full_name }}<br>
+                    {{ $order->shipping_street_address }}<br>
+                    @if($order->shipping_suburb){{ $order->shipping_suburb }}<br>@endif
+                    {{ $order->shipping_city }}, @if($order->shippingRegion){{ $order->shippingRegion->name }}@endif {{ $order->shipping_zip_code }}<br>
+                    {{ $order->shipping_country }}
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <h3 style="font-size: 14px; font-weight: 700; color: #374E94; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; margin-top: 0;">Billing Address</h3>
+                <div style="font-size: 14px; color: #000000; line-height: 1.8;">
+                    {{ $order->billing_full_name }}<br>
+                    {{ $order->billing_street_address }}<br>
+                    @if($order->billing_suburb){{ $order->billing_suburb }}<br>@endif
+                    {{ $order->billing_city }}, @if($order->billingRegion){{ $order->billingRegion->name }}@endif {{ $order->billing_zip_code }}<br>
+                    {{ $order->billing_country }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="font-size: 14px; font-weight: 700; color: #374E94; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; margin-top: 0;">Payment Method</h3>
+            <div style="font-size: 14px; color: #000000; line-height: 1.8;">
+                {{ ucfirst($order->payment_method ?? 'N/A') }}<br>
+                @if($order->payment_status)
+                Status: {{ ucfirst($order->payment_status) }}
+                @endif
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #e9ecef; text-align: center;">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 16px; font-weight: 600; color: #374E94; margin-bottom: 10px;">Get in touch</div>
+                @if(isset($contactPhone))
+                <div style="font-size: 14px; color: #000000; margin-bottom: 5px;">{{ $contactPhone }}</div>
+                @endif
+                @if(isset($contactEmail))
+                <div style="font-size: 14px; color: #000000; margin-bottom: 5px;">{{ $contactEmail }}</div>
+                @endif
+            </div>
+            <div style="background-color: #374E94; color: #ffffff; padding: 15px; border-radius: 8px; font-size: 12px; margin-top: 20px;">
+                Copyrights © {{ date('Y') }} PaperWings All Rights Reserved
+            </div>
+        </div>
     </div>
 </body>
 </html>

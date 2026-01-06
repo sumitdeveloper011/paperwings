@@ -32,7 +32,7 @@
                 <p class="modern-card__subtitle">{{ $users->total() }} total users</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form" id="search-form">
+                <form method="GET" class="filter-form" id="search-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
                         <input type="text" name="search" id="search-input" class="search-form__input"
@@ -46,22 +46,18 @@
                             <i class="fas fa-spinner fa-spin"></i>
                         </div>
                     </div>
-                </form>
-                <div class="filter-dropdown">
                     <select name="role" id="role-filter" class="filter-select">
                         <option value="">All Roles</option>
                         @foreach($roles as $role)
                             <option value="{{ $role->name }}" {{ $roleFilter === $role->name ? 'selected' : '' }}>{{ $role->name }}</option>
                         @endforeach
                     </select>
-                </div>
-                <div class="filter-dropdown">
                     <select name="status" id="status-filter" class="filter-select">
                         <option value="">All Status</option>
                         <option value="1" {{ $status === '1' ? 'selected' : '' }}>Active</option>
                         <option value="0" {{ $status === '0' ? 'selected' : '' }}>Inactive</option>
                     </select>
-                </div>
+                </form>
             </div>
         </div>
 
@@ -124,6 +120,30 @@
     font-size: 0.875rem;
 }
 
+.filter-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    min-width: 150px;
+    height: 38px;
+    background-color: white;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
 .status-form {
     display: inline-block;
 }
@@ -134,11 +154,31 @@
     border-radius: 4px;
     font-size: 0.875rem;
     cursor: pointer;
+    background-color: white;
+    min-width: 100px;
+    transition: all 0.2s ease;
+}
+
+.status-select:hover {
+    border-color: #667eea;
 }
 
 .status-select:focus {
     outline: none;
     border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .filter-form .search-form__wrapper,
+    .filter-form .filter-select {
+        width: 100%;
+    }
 }
 
 .search-loading {

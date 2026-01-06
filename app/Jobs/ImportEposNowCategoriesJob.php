@@ -19,6 +19,16 @@ class ImportEposNowCategoriesJob implements ShouldQueue
     use Queueable, InteractsWithQueue, SerializesModels;
 
     protected string $jobId;
+    
+    /**
+     * The number of times the job may be attempted.
+     */
+    public $tries = 1;
+    
+    /**
+     * The maximum number of seconds the job can run before timing out.
+     */
+    public $timeout = 3600; // 1 hour timeout
 
     // Create a new job instance
     public function __construct(string $jobId)
@@ -70,83 +80,125 @@ class ImportEposNowCategoriesJob implements ShouldQueue
             $failed = [];
 
             $chunks = array_chunk($categories, 50);
+            $totalChunks = count($chunks);
+
+            Log::info('Starting category import processing', [
+                'total_categories' => $total,
+                'total_chunks' => $totalChunks,
+                'chunk_size' => 50
+            ]);
 
             foreach ($chunks as $chunkIndex => $chunk) {
-                DB::transaction(function () use ($chunk, $categoryRepository, &$processed, &$inserted, &$updated, &$failed, $total) {
-                    foreach ($chunk as $cat) {
-                        try {
-                            if (!isset($cat['Id']) || !isset($cat['Name'])) {
-                                $failed[] = [
-                                    'id' => $cat['Id'] ?? 'unknown',
-                                    'name' => $cat['Name'] ?? 'unknown',
-                                    'error' => 'Missing required fields (Id or Name)'
-                                ];
-                                $processed++;
-                                continue;
-                            }
-
-                            $eposnowCategoryId = $cat['Id'];
-                            $categoryName = $cat['Name'];
-                            $categorySlug = Str::slug($categoryName);
-
-                            $existing = Category::where('eposnow_category_id', $eposnowCategoryId)->first();
-
-                            $categoryData = [
-                                'eposnow_category_id' => $eposnowCategoryId,
-                                'name' => $categoryName,
-                                'slug' => $categorySlug,
-                                'description' => $cat['Description'] ?? null,
-                                'status' => 1,
-                                'image' => null,
-                            ];
-
-                            if ($existing) {
-                                $hasChanges = false;
-                                if ($existing->name !== $categoryName) {
-                                    $hasChanges = true;
-                                }
-                                if ($existing->description !== ($categoryData['description'])) {
-                                    $hasChanges = true;
-                                }
-                                if ($existing->slug !== $categorySlug) {
-                                    $hasChanges = true;
-                                }
-
-                                if ($hasChanges) {
-                                    if (empty($existing->uuid)) {
-                                        $categoryData['uuid'] = Str::uuid();
-                                    }
-                                    $categoryRepository->update($existing, $categoryData);
-                                    $updated++;
-                                } else {
+                try {
+                    DB::transaction(function () use ($chunk, $categoryRepository, &$processed, &$inserted, &$updated, &$failed, $total) {
+                        foreach ($chunk as $cat) {
+                            try {
+                                if (!isset($cat['Id']) || !isset($cat['Name'])) {
+                                    $failed[] = [
+                                        'id' => $cat['Id'] ?? 'unknown',
+                                        'name' => $cat['Name'] ?? 'unknown',
+                                        'error' => 'Missing required fields (Id or Name)'
+                                    ];
                                     $processed++;
                                     continue;
                                 }
-                            } else {
-                                $categoryData['uuid'] = Str::uuid();
-                                $categoryRepository->create($categoryData);
-                                $inserted++;
+
+                                $eposnowCategoryId = $cat['Id'];
+                                $categoryName = $cat['Name'];
+                                $categorySlug = Str::slug($categoryName);
+
+                                $existing = Category::where('eposnow_category_id', $eposnowCategoryId)->first();
+
+                                $categoryData = [
+                                    'eposnow_category_id' => $eposnowCategoryId,
+                                    'name' => $categoryName,
+                                    'slug' => $categorySlug,
+                                    'description' => $cat['Description'] ?? null,
+                                    'status' => 1,
+                                    'image' => null,
+                                ];
+
+                                if ($existing) {
+                                    $hasChanges = false;
+                                    if ($existing->name !== $categoryName) {
+                                        $hasChanges = true;
+                                    }
+                                    if ($existing->description !== ($categoryData['description'])) {
+                                        $hasChanges = true;
+                                    }
+                                    if ($existing->slug !== $categorySlug) {
+                                        $hasChanges = true;
+                                    }
+
+                                    if ($hasChanges) {
+                                        if (empty($existing->uuid)) {
+                                            $categoryData['uuid'] = Str::uuid();
+                                        }
+                                        $categoryRepository->update($existing, $categoryData);
+                                        $updated++;
+                                    } else {
+                                        $processed++;
+                                        continue;
+                                    }
+                                } else {
+                                    $categoryData['uuid'] = Str::uuid();
+                                    $categoryRepository->create($categoryData);
+                                    $inserted++;
+                                }
+
+                                $processed++;
+                            } catch (\Exception $e) {
+                                $failed[] = [
+                                    'id' => $cat['Id'] ?? 'unknown',
+                                    'name' => $cat['Name'] ?? 'unknown',
+                                    'error' => $e->getMessage()
+                                ];
+                                $processed++;
+                                Log::error('Category import failed', [
+                                    'category_id' => $cat['Id'] ?? null,
+                                    'error' => $e->getMessage()
+                                ]);
                             }
-
-                            $processed++;
-                        } catch (\Exception $e) {
-                            $failed[] = [
-                                'id' => $cat['Id'] ?? 'unknown',
-                                'name' => $cat['Name'] ?? 'unknown',
-                                'error' => $e->getMessage()
-                            ];
-                            $processed++;
-                            Log::error('Category import failed', [
-                                'category_id' => $cat['Id'] ?? null,
-                                'error' => $e->getMessage()
-                            ]);
                         }
-                    }
-                });
+                    });
 
-                $percentage = (int)(($processed / $total) * 100);
-                $status = "Processing... {$processed}/{$total} categories";
-                $this->updateProgress($percentage, $processed, $total, $status);
+                    $percentage = min(99, (int)(($processed / $total) * 100));
+                    $status = "Processing... {$processed}/{$total} categories (Chunk " . ($chunkIndex + 1) . "/{$totalChunks})";
+                    $this->updateProgress($percentage, $processed, $total, $status, [
+                        'inserted' => $inserted,
+                        'updated' => $updated,
+                        'failed' => count($failed)
+                    ]);
+
+                    // Log progress every 10 chunks
+                    if (($chunkIndex + 1) % 10 == 0) {
+                        Log::info('Category import chunk progress', [
+                            'chunk' => $chunkIndex + 1,
+                            'total_chunks' => $totalChunks,
+                            'processed' => $processed,
+                            'total' => $total,
+                            'inserted' => $inserted,
+                            'updated' => $updated,
+                            'failed' => count($failed)
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Category import chunk failed', [
+                        'chunk_index' => $chunkIndex,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    
+                    // Mark all items in this chunk as failed
+                    foreach ($chunk as $cat) {
+                        $failed[] = [
+                            'id' => $cat['Id'] ?? 'unknown',
+                            'name' => $cat['Name'] ?? 'unknown',
+                            'error' => 'Chunk processing failed: ' . $e->getMessage()
+                        ];
+                        $processed++;
+                    }
+                }
             }
 
             $finalStatus = "Import completed! Inserted: {$inserted}, Updated: {$updated}";
@@ -154,11 +206,21 @@ class ImportEposNowCategoriesJob implements ShouldQueue
                 $finalStatus .= ", Failed: " . count($failed);
             }
 
+            Log::info('Category import completed successfully', [
+                'job_id' => $this->jobId,
+                'total' => $total,
+                'processed' => $processed,
+                'inserted' => $inserted,
+                'updated' => $updated,
+                'failed' => count($failed)
+            ]);
+
             $this->updateProgress(100, $processed, $total, $finalStatus, [
                 'inserted' => $inserted,
                 'updated' => $updated,
                 'failed' => count($failed),
-                'failed_items' => $failed
+                'failed_items' => $failed,
+                'status' => 'completed'
             ]);
 
         } catch (\Exception $e) {

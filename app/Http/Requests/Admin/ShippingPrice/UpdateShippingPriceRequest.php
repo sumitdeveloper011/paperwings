@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin\ShippingPrice;
 
+use App\Models\ShippingPrice;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,7 +18,13 @@ class UpdateShippingPriceRequest extends FormRequest
     public function rules(): array
     {
         $shippingPrice = $this->route('shipping_price');
-        $shippingPriceId = $shippingPrice ? $shippingPrice->id : null;
+        
+        // Handle both model instance and ID
+        if ($shippingPrice instanceof ShippingPrice) {
+            $shippingPriceId = $shippingPrice->id;
+        } else {
+            $shippingPriceId = $shippingPrice;
+        }
 
         return [
             'region_id' => [

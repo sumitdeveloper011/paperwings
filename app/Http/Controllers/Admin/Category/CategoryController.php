@@ -34,6 +34,26 @@ class CategoryController extends Controller
     public function getCategoriesForEposNow(Request $request): JsonResponse|RedirectResponse
     {
         try {
+            // Pre-check API limit before starting import
+            $apiCheck = $this->eposNow->checkApiLimit();
+            
+            if (!$apiCheck['available']) {
+                $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
+                
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'status' => 'rate_limited',
+                        'can_retry_after' => now()->addMinutes(30)->toDateTimeString()
+                    ], 429);
+                }
+                
+                return redirect()->route('admin.categories.index')
+                    ->with('error', $message);
+            }
+            
+            // Continue with import if API is available
             $jobId = time() . '_' . uniqid();
 
             Cache::put("category_import_{$jobId}", [

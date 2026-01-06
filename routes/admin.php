@@ -59,6 +59,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
         Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
+        Route::post('retry-failed-products', [ProductController::class, 'retryFailedProducts'])->name('retryFailedProducts');
     });
     Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
     Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');

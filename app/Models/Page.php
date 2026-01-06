@@ -43,7 +43,7 @@ class Page extends Model
     // Get image URL attribute
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
+        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/placeholder.jpg');
     }
 
     // Get route key name

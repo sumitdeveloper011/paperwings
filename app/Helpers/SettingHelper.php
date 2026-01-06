@@ -29,7 +29,7 @@ class SettingHelper
         if ($logo && !empty($logo)) {
             return asset('storage/' . $logo);
         }
-        return asset('assets/images/logo.svg');
+        return asset('assets/frontend/images/logo.png');
     }
 
     // Get favicon URL with fallback

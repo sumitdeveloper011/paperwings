@@ -54,6 +54,26 @@ class ProductController extends Controller
     public function getProductsForEposNow(Request $request): JsonResponse|RedirectResponse
     {
         try {
+            // Pre-check API limit before starting import
+            $apiCheck = $this->eposNow->checkApiLimit();
+            
+            if (!$apiCheck['available']) {
+                $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
+                
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'status' => 'rate_limited',
+                        'can_retry_after' => now()->addMinutes(30)->toDateTimeString()
+                    ], 429);
+                }
+                
+                return redirect()->route('admin.products.index')
+                    ->with('error', $message);
+            }
+            
+            // Continue with import if API is available
             $jobId = time() . '_' . uniqid();
 
             Cache::put("product_import_{$jobId}", [
@@ -65,11 +85,8 @@ class ProductController extends Controller
                 'updated_at' => now()->toDateTimeString()
             ], 3600);
 
-            if (config('queue.default') === 'sync') {
-                ImportEposNowProductsJob::dispatchSync($jobId);
-            } else {
-                ImportEposNowProductsJob::dispatch($jobId);
-            }
+            // Always use async dispatch - don't use sync for long-running jobs
+            ImportEposNowProductsJob::dispatch($jobId);
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -92,6 +109,118 @@ class ProductController extends Controller
 
             return redirect()->route('admin.products.index')
                 ->with('error', 'Failed to start import: ' . $e->getMessage());
+        }
+    }
+
+    // Retry failed products from a previous import job
+    public function retryFailedProducts(Request $request): JsonResponse|RedirectResponse
+    {
+        try {
+            $jobId = $request->input('jobId');
+            
+            if (!$jobId) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job ID is required'
+                    ], 400);
+                }
+                return redirect()->route('admin.products.index')
+                    ->with('error', 'Job ID is required');
+            }
+
+            // Get failed items from cache
+            $cacheKey = "product_import_{$jobId}";
+            $progressData = Cache::get($cacheKey);
+
+            if (!$progressData || empty($progressData['failed_items'])) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No failed products found for this job ID or job data has expired.'
+                    ], 404);
+                }
+                return redirect()->route('admin.products.index')
+                    ->with('error', 'No failed products found for this job ID or job data has expired.');
+            }
+
+            $failedItems = $progressData['failed_items'];
+            $failedProductIds = array_map(function($item) {
+                return $item['id'] ?? null;
+            }, $failedItems);
+
+            // Filter out invalid IDs
+            $failedProductIds = array_filter($failedProductIds, function($id) {
+                return $id !== null && $id !== 'unknown' && is_numeric($id);
+            });
+
+            if (empty($failedProductIds)) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No valid product IDs found in failed items.'
+                    ], 400);
+                }
+                return redirect()->route('admin.products.index')
+                    ->with('error', 'No valid product IDs found in failed items.');
+            }
+
+            // Pre-check API limit
+            $apiCheck = $this->eposNow->checkApiLimit();
+            
+            if (!$apiCheck['available']) {
+                $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
+                
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'status' => 'rate_limited'
+                    ], 429);
+                }
+                
+                return redirect()->route('admin.products.index')
+                    ->with('error', $message);
+            }
+
+            // Create new job ID for retry
+            $retryJobId = time() . '_retry_' . uniqid();
+
+            Cache::put("product_import_{$retryJobId}", [
+                'percentage' => 0,
+                'processed' => 0,
+                'total' => count($failedProductIds),
+                'message' => 'Retrying failed products...',
+                'status' => 'queued',
+                'updated_at' => now()->toDateTimeString(),
+                'failed_product_ids' => array_values($failedProductIds)
+            ], 3600);
+
+            // Dispatch job with specific product IDs
+            ImportEposNowProductsJob::dispatch($retryJobId, array_values($failedProductIds));
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Retry started for ' . count($failedProductIds) . ' failed products!',
+                    'job_id' => $retryJobId,
+                    'failed_count' => count($failedProductIds)
+                ]);
+            }
+
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Retry started for ' . count($failedProductIds) . ' failed products! Job ID: ' . $retryJobId)
+                ->with('job_id', $retryJobId);
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to retry: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->route('admin.products.index')
+                ->with('error', 'Failed to retry: ' . $e->getMessage());
         }
     }
 

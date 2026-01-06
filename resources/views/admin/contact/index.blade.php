@@ -26,7 +26,7 @@
                 <p class="modern-card__subtitle">{{ $messages->total() }} total messages</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="filter-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
                         <input type="text" name="search" class="search-form__input" 
@@ -37,14 +37,14 @@
                             </a>
                         @endif
                     </div>
-                    <select name="status" class="form-select" style="margin-left: 10px; width: auto;">
+                    <select name="status" class="filter-select">
                         <option value="">All Status</option>
                         <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="in_progress" {{ $status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
                         <option value="solved" {{ $status == 'solved' ? 'selected' : '' }}>Solved</option>
                         <option value="closed" {{ $status == 'closed' ? 'selected' : '' }}>Closed</option>
                     </select>
-                    <button type="submit" class="btn btn-primary" style="margin-left: 10px;">Filter</button>
+                    <button type="submit" class="btn btn-primary">Filter</button>
                 </form>
             </div>
         </div>
@@ -119,5 +119,42 @@
         </div>
     </div>
 </div>
+
+<style>
+.filter-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    min-width: 150px;
+    height: 38px;
+}
+
+.filter-form .btn {
+    height: 38px;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .filter-form .search-form__wrapper,
+    .filter-form .filter-select,
+    .filter-form .btn {
+        width: 100%;
+    }
+}
+</style>
 @endsection
 

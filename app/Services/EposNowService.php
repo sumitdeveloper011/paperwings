@@ -17,13 +17,13 @@ class EposNowService
     {
         // Read from database settings, fallback to config/env
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-        
+
         $this->baseUrl = rtrim(
             $settings['eposnow_api_base'] ?? config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'),
             '/'
         );
         $this->apiKey = $settings['eposnow_api_key'] ?? config('eposnow.api_key');
-        
+
         // If base URL doesn't end with /api/v4/, add it
         if (!str_ends_with($this->baseUrl, '/api/v4')) {
             $this->baseUrl = rtrim($this->baseUrl, '/') . '/api/v4';
@@ -44,39 +44,172 @@ class EposNowService
     {
         $page = 1;
         $allProducts = [];
+        $maxPages = 1000; // Safety limit to prevent infinite loops
+        $emptyPageCount = 0;
+        $maxEmptyPages = 2; // Stop after 2 consecutive empty pages
+        $previousPageIds = []; // Track IDs from previous page to detect duplicates
+        $duplicatePageCount = 0;
+        $maxDuplicatePages = 2; // Stop after 2 consecutive duplicate pages
 
-        while (true) {
+        while ($page <= $maxPages) {
             try {
                 $products = $this->makeRequest(
                     "{$this->baseUrl}/Product",
                     ['page' => $page]
                 );
 
-                if (empty($products)) {
+                // Check if response is valid array
+                if (!is_array($products)) {
+                    Log::warning('EposNow Products API returned non-array response', [
+                        'page' => $page,
+                        'response_type' => gettype($products),
+                        'response' => $products
+                    ]);
                     break;
                 }
 
-                $allProducts = array_merge($allProducts, $products);
-                $page++;
+                // If empty page, increment empty counter
+                if (empty($products) || count($products) === 0) {
+                    $emptyPageCount++;
+                    Log::info('EPOSNOW Products Import: Empty page detected', [
+                        'page' => $page,
+                        'empty_page_count' => $emptyPageCount,
+                        'total_products_so_far' => count($allProducts)
+                    ]);
 
-                usleep(500000);
+                    if ($emptyPageCount >= $maxEmptyPages) {
+                        Log::info('EPOSNOW Products Import: Reached end of pagination (empty pages)', [
+                            'pages_fetched' => $page - 1,
+                            'total_products' => count($allProducts)
+                        ]);
+                        break;
+                    }
+                    $page++;
+                    continue;
+                }
+
+                // Reset empty counter if we got data
+                $emptyPageCount = 0;
+
+                // Check for duplicate data - extract IDs from current page
+                $currentPageIds = [];
+                foreach ($products as $product) {
+                    if (isset($product['Id'])) {
+                        $currentPageIds[] = (string)$product['Id'];
+                    }
+                }
+
+                // Check if current page has same IDs as previous page (duplicate data)
+                if (!empty($previousPageIds) && !empty($currentPageIds)) {
+                    $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
+                        && count($currentPageIds) === count($previousPageIds);
+
+                    if ($isDuplicate) {
+                        $duplicatePageCount++;
+                        Log::warning('EPOSNOW Products Import: Duplicate page detected', [
+                            'page' => $page,
+                            'duplicate_page_count' => $duplicatePageCount,
+                            'product_ids' => array_slice($currentPageIds, 0, 5) // Log first 5 IDs
+                        ]);
+
+                        if ($duplicatePageCount >= $maxDuplicatePages) {
+                            Log::info('EPOSNOW Products Import: Stopping due to duplicate pages', [
+                                'pages_fetched' => $page - 1,
+                                'total_products' => count($allProducts),
+                                'last_page' => $page - 1
+                            ]);
+                            break;
+                        }
+                        $page++;
+                        continue;
+                    }
+                }
+
+                // Reset duplicate counter if we got new data
+                $duplicatePageCount = 0;
+                $previousPageIds = $currentPageIds;
+
+                // Merge products
+                $allProducts = array_merge($allProducts, $products);
+
+                // Log progress for debugging (every page for first 10, then every 5)
+                if ($page <= 10 || $page % 5 == 0) {
+                    Log::info('EPOSNOW Products Import Progress', [
+                        'page' => $page,
+                        'products_on_page' => count($products),
+                        'total_products' => count($allProducts),
+                        'sample_ids' => array_slice($currentPageIds, 0, 3) // Log first 3 IDs
+                    ]);
+                }
+
+                $page++;
+                usleep(500000); // 0.5 second delay between requests
 
             } catch (\Exception $e) {
-                // If rate limit error, throw it up so job can handle it
+                // If rate limit error and we have data, return partial data
+                if ((stripos($e->getMessage(), 'rate limit') !== false ||
+                    stripos($e->getMessage(), 'maximum API limit') !== false) &&
+                    count($allProducts) > 0) {
+                    Log::warning('EposNow Products API Rate Limit: Returning partial data', [
+                        'products_fetched' => count($allProducts),
+                        'last_page' => $page - 1,
+                        'error' => $e->getMessage()
+                    ]);
+                    return $allProducts;
+                }
+
+                // If rate limit error but no data, throw it up so job can handle it
                 if (stripos($e->getMessage(), 'rate limit') !== false ||
                     stripos($e->getMessage(), 'maximum API limit') !== false) {
                     throw $e;
                 }
 
-                Log::error('Error fetching products page', [
+                Log::error('EposNow Products API Error', [
                     'page' => $page,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'total_products_so_far' => count($allProducts)
                 ]);
+
+                // If we have some data, return it instead of failing completely
+                if (count($allProducts) > 0) {
+                    Log::warning('EposNow Products API Error but returning partial data', [
+                        'products_fetched' => count($allProducts),
+                        'last_page' => $page - 1
+                    ]);
+                    return $allProducts;
+                }
+
                 break;
             }
         }
 
-        return $allProducts;
+        if ($page > $maxPages) {
+            Log::warning('EPOSNOW Products Import: Reached maximum page limit', [
+                'max_pages' => $maxPages,
+                'total_products' => count($allProducts)
+            ]);
+        }
+
+        // Remove duplicates based on Id before returning
+        $uniqueProducts = [];
+        $seenIds = [];
+
+        foreach ($allProducts as $product) {
+            $productId = isset($product['Id']) ? (string)$product['Id'] : null;
+            if ($productId && !isset($seenIds[$productId])) {
+                $seenIds[$productId] = true;
+                $uniqueProducts[] = $product;
+            }
+        }
+
+        Log::info('EPOSNOW Products Import: Completed fetching', [
+            'total_pages' => $page - 1,
+            'total_products_fetched' => count($allProducts),
+            'unique_products' => count($uniqueProducts),
+            'duplicates_removed' => count($allProducts) - count($uniqueProducts)
+        ]);
+
+        return $uniqueProducts;
     }
 
     // Fetch all categories from EposNow API
@@ -92,29 +225,117 @@ class EposNowService
     {
         $page = 1;
         $allCategories = [];
+        $maxPages = 1000; // Safety limit to prevent infinite loops
+        $emptyPageCount = 0;
+        $maxEmptyPages = 2; // Stop after 2 consecutive empty pages
+        $previousPageIds = []; // Track IDs from previous page to detect duplicates
+        $duplicatePageCount = 0;
+        $maxDuplicatePages = 2; // Stop after 2 consecutive duplicate pages
 
-        while (true) {
+        while ($page <= $maxPages) {
             try {
                 $categories = $this->getCategories($page);
 
-                if (empty($categories) || !is_array($categories)) {
+                // Check if response is valid array
+                if (!is_array($categories)) {
+                    Log::warning('EposNow Categories API returned non-array response', [
+                        'page' => $page,
+                        'response_type' => gettype($categories),
+                        'response' => $categories
+                    ]);
                     break;
                 }
 
-                $allCategories = array_merge($allCategories, $categories);
-                $page++;
+                // If empty page, increment empty counter
+                if (empty($categories) || count($categories) === 0) {
+                    $emptyPageCount++;
+                    Log::info('EPOSNOW Categories Import: Empty page detected', [
+                        'page' => $page,
+                        'empty_page_count' => $emptyPageCount,
+                        'total_categories_so_far' => count($allCategories)
+                    ]);
 
-                // Log progress for debugging
-                if ($page % 5 == 0) {
+                    if ($emptyPageCount >= $maxEmptyPages) {
+                        Log::info('EPOSNOW Categories Import: Reached end of pagination (empty pages)', [
+                            'pages_fetched' => $page - 1,
+                            'total_categories' => count($allCategories)
+                        ]);
+                        break;
+                    }
+                    $page++;
+                    continue;
+                }
+
+                // Reset empty counter if we got data
+                $emptyPageCount = 0;
+
+                // Check for duplicate data - extract IDs from current page
+                $currentPageIds = [];
+                foreach ($categories as $cat) {
+                    if (isset($cat['Id'])) {
+                        $currentPageIds[] = (string)$cat['Id'];
+                    }
+                }
+
+                // Check if current page has same IDs as previous page (duplicate data)
+                if (!empty($previousPageIds) && !empty($currentPageIds)) {
+                    $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
+                        && count($currentPageIds) === count($previousPageIds);
+
+                    if ($isDuplicate) {
+                        $duplicatePageCount++;
+                        Log::warning('EPOSNOW Categories Import: Duplicate page detected', [
+                            'page' => $page,
+                            'duplicate_page_count' => $duplicatePageCount,
+                            'category_ids' => array_slice($currentPageIds, 0, 5) // Log first 5 IDs
+                        ]);
+
+                        if ($duplicatePageCount >= $maxDuplicatePages) {
+                            Log::info('EPOSNOW Categories Import: Stopping due to duplicate pages', [
+                                'pages_fetched' => $page - 1,
+                                'total_categories' => count($allCategories),
+                                'last_page' => $page - 1
+                            ]);
+                            break;
+                        }
+                        $page++;
+                        continue;
+                    }
+                }
+
+                // Reset duplicate counter if we got new data
+                $duplicatePageCount = 0;
+                $previousPageIds = $currentPageIds;
+
+                // Merge categories
+                $allCategories = array_merge($allCategories, $categories);
+
+                // Log progress for debugging (every page for first 10, then every 5)
+                if ($page <= 10 || $page % 5 == 0) {
                     Log::info('EPOSNOW Categories Import Progress', [
-                        'pages_fetched' => $page - 1,
-                        'total_categories' => count($allCategories)
+                        'page' => $page,
+                        'categories_on_page' => count($categories),
+                        'total_categories' => count($allCategories),
+                        'sample_ids' => array_slice($currentPageIds, 0, 3) // Log first 3 IDs
                     ]);
                 }
 
-                usleep(500000);
+                $page++;
+                usleep(500000); // 0.5 second delay between requests
             } catch (\Exception $e) {
-                // If rate limit error, throw it up so job can handle it
+                // If rate limit error and we have data, return partial data
+                if ((stripos($e->getMessage(), 'rate limit') !== false ||
+                    stripos($e->getMessage(), 'maximum API limit') !== false) &&
+                    count($allCategories) > 0) {
+                    Log::warning('EposNow Categories API Rate Limit: Returning partial data', [
+                        'categories_fetched' => count($allCategories),
+                        'last_page' => $page - 1,
+                        'error' => $e->getMessage()
+                    ]);
+                    return $allCategories;
+                }
+
+                // If rate limit error but no data, throw it up so job can handle it
                 if (stripos($e->getMessage(), 'rate limit') !== false ||
                     stripos($e->getMessage(), 'maximum API limit') !== false) {
                     throw $e;
@@ -122,13 +343,50 @@ class EposNowService
 
                 Log::error('EposNow Categories API Error', [
                     'page' => $page,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'total_categories_so_far' => count($allCategories)
                 ]);
-                break;
+
+                // If we have some data, return it instead of failing completely
+                if (count($allCategories) > 0) {
+                    Log::warning('EposNow Categories API Error but returning partial data', [
+                        'categories_fetched' => count($allCategories),
+                        'last_page' => $page - 1
+                    ]);
+                    return $allCategories;
+                }
+
+                throw $e;
             }
         }
 
-        return $allCategories;
+        if ($page > $maxPages) {
+            Log::warning('EPOSNOW Categories Import: Reached maximum page limit', [
+                'max_pages' => $maxPages,
+                'total_categories' => count($allCategories)
+            ]);
+        }
+
+        // Remove duplicates based on Id before returning
+        $uniqueCategories = [];
+        $seenIds = [];
+
+        foreach ($allCategories as $cat) {
+            $catId = isset($cat['Id']) ? (string)$cat['Id'] : null;
+            if ($catId && !isset($seenIds[$catId])) {
+                $seenIds[$catId] = true;
+                $uniqueCategories[] = $cat;
+            }
+        }
+
+        Log::info('EPOSNOW Categories Import: Completed fetching', [
+            'total_pages' => $page - 1,
+            'total_categories_fetched' => count($allCategories),
+            'unique_categories' => count($uniqueCategories),
+            'duplicates_removed' => count($allCategories) - count($uniqueCategories)
+        ]);
+
+        return $uniqueCategories;
     }
 
     // Get product images from EposNow API
@@ -389,5 +647,53 @@ class EposNowService
         }
 
         throw new \Exception('EposNow API Error: Maximum retries reached');
+    }
+
+    /**
+     * Check if API limit is available by making a test request
+     */
+    public function checkApiLimit(): array
+    {
+        try {
+            // Make a single test request to check API status
+            $response = Http::withHeaders($this->headers())
+                ->withoutVerifying()
+                ->timeout(10)
+                ->get("{$this->baseUrl}/Category?page=1");
+
+            if ($response->status() === 403) {
+                $body = $response->body();
+                if (stripos($body, 'maximum API limit') !== false ||
+                    stripos($body, 'rate limit') !== false ||
+                    stripos($body, 'too many requests') !== false) {
+                    return [
+                        'available' => false,
+                        'message' => 'API rate limit has been reached. Please wait before trying again.',
+                        'status' => 403
+                    ];
+                }
+            }
+
+            if ($response->failed()) {
+                return [
+                    'available' => false,
+                    'message' => 'API request failed. Please check your API credentials.',
+                    'status' => $response->status()
+                ];
+            }
+
+            return [
+                'available' => true,
+                'message' => 'API is available',
+                'status' => $response->status()
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'available' => false,
+                'message' => 'Error checking API: ' . $e->getMessage(),
+                'status' => 0
+            ];
+        }
     }
 }

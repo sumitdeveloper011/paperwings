@@ -145,8 +145,21 @@ body {
 }
 
 /* Login Page Styles */
+body.login-page-body {
+    overflow: hidden;
+    height: 100vh;
+    position: fixed;
+    width: 100%;
+}
+
+html.login-page-html {
+    overflow: hidden;
+    height: 100%;
+}
+
 .login-page {
     min-height: 100vh;
+    height: 100vh;
     display: flex;
     background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
     position: relative;
@@ -194,6 +207,21 @@ body {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.login-page__logo {
+    height: 50px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
+}
+
+.login-page__brand-text {
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 .login-page__content {
@@ -326,6 +354,7 @@ body {
 .login-form__group {
     margin-bottom: 1.5rem;
     position: relative;
+    overflow: hidden;
 }
 
 .login-form__input {
@@ -418,14 +447,28 @@ body {
 
 /* Login Page Responsive Design */
 @media (max-width: 768px) {
+    body.login-page-body {
+        position: relative;
+        overflow-y: auto;
+        height: auto;
+    }
+
+    html.login-page-html {
+        overflow-y: auto;
+        height: auto;
+    }
+
     .login-page {
         flex-direction: column;
+        min-height: 100vh;
+        height: auto;
     }
 
     .login-page__left-panel,
     .login-page__right-panel {
         flex: none;
         min-height: 50vh;
+        overflow: hidden;
     }
 
     .login-form {
@@ -455,6 +498,14 @@ body {
 
     .login-page__title {
         font-size: 2rem;
+    }
+
+    .login-page__logo {
+        height: 40px;
+    }
+    
+    .login-page__brand-text {
+        font-size: 1.5rem;
     }
 
     .login-form__title {

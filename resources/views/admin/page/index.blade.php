@@ -78,12 +78,15 @@
                                 <tr class="modern-table__row modern-table__row--animated" style="animation-delay: {{ $index * 0.05 }}s;">
                                     <td class="modern-table__td">
                                         <div class="category-image category-image--enhanced">
-                                            <img src="{{ $page->image_url }}" 
+                                            @php
+                                                $imageUrl = $page->image ? asset('storage/' . $page->image) : asset('assets/images/placeholder.jpg');
+                                            @endphp
+                                            <img src="{{ $imageUrl }}" 
                                                  alt="{{ $page->title }}" 
                                                  class="category-image__img"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                             <div class="category-image__overlay">
-                                                <a href="{{ $page->image_url }}" target="_blank" class="category-image__view">
+                                                <a href="{{ $imageUrl }}" target="_blank" class="category-image__view">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                             </div>
