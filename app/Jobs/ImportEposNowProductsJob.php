@@ -136,6 +136,8 @@ class ImportEposNowProductsJob implements ShouldQueue
 
                             $existing = Product::where('eposnow_product_id', $eposnowProductId)->first();
 
+                            $description = $product['Description'] ?? null;
+
                             $productData = [
                                 'category_id' => $categoryId,
                                 'brand_id' => null,
@@ -144,13 +146,16 @@ class ImportEposNowProductsJob implements ShouldQueue
                                 'eposnow_brand_id' => $product['BrandId'] ?? null,
                                 'barcode' => $this->normalizeBarcode($product['Barcode'] ?? null),
                                 'stock' => null,
-                                'product_type' => null,
+                                'product_type' => rand(1, 3), // Random 1, 2, or 3
                                 'name' => $productName,
                                 'slug' => $slug,
                                 'total_price' => $product['SalePrice'] ?? 0.00,
                                 'discount_price' => null,
-                                'description' => $product['Description'] ?? null,
-                                'short_description' => null,
+                                'description' => $description,
+                                'short_description' => $description, // Same as description
+                                'meta_title' => $productName, // Product name as meta title
+                                'meta_description' => $this->truncateDescription($description, 160), // Truncated description for meta
+                                'meta_keywords' => $this->generateMetaKeywords($productName, $categoryId), // Generate keywords
                                 'status' => 1,
                             ];
 
@@ -358,6 +363,64 @@ class ImportEposNowProductsJob implements ShouldQueue
         }
         
         return $barcode;
+    }
+
+    /**
+     * Truncate description for meta description (max 160 characters)
+     */
+    private function truncateDescription(?string $description, int $maxLength = 160): ?string
+    {
+        if (empty($description)) {
+            return null;
+        }
+        
+        // Remove HTML tags
+        $description = strip_tags($description);
+        
+        // Trim whitespace
+        $description = trim($description);
+        
+        if (strlen($description) <= $maxLength) {
+            return $description;
+        }
+        
+        // Truncate and add ellipsis
+        return substr($description, 0, $maxLength - 3) . '...';
+    }
+
+    /**
+     * Generate meta keywords from product name and category
+     */
+    private function generateMetaKeywords(string $productName, int $categoryId): ?string
+    {
+        $keywords = [];
+        
+        // Add product name words
+        $nameWords = explode(' ', strtolower($productName));
+        $keywords = array_merge($keywords, array_filter($nameWords, function($word) {
+            return strlen($word) > 3; // Only words longer than 3 characters
+        }));
+        
+        // Add category name if available
+        if ($categoryId) {
+            try {
+                $category = \App\Models\Category::find($categoryId);
+                if ($category && $category->name) {
+                    $categoryWords = explode(' ', strtolower($category->name));
+                    $keywords = array_merge($keywords, array_filter($categoryWords, function($word) {
+                        return strlen($word) > 3;
+                    }));
+                }
+            } catch (\Exception $e) {
+                // Category not found, skip
+            }
+        }
+        
+        // Remove duplicates and limit to 10 keywords
+        $keywords = array_unique($keywords);
+        $keywords = array_slice($keywords, 0, 10);
+        
+        return !empty($keywords) ? implode(', ', $keywords) : null;
     }
 
     // Handle a job failure

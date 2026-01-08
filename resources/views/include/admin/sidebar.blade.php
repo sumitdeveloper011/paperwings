@@ -21,7 +21,7 @@
                 </a>
             </li>
 
-            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.categories.*') || request()->routeIs('admin.products.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('admin.pages.*') || request()->routeIs('admin.about-sections.*') ? 'active' : '' }}">
+            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.categories.*') || request()->routeIs('admin.products.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('admin.pages.*') || request()->routeIs('admin.about-sections.*') || request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
                 <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Content Management">
                     <i class="fas fa-folder-open"></i>
                     <span>Content Management</span>
@@ -38,6 +38,12 @@
                         <a href="{{ route('admin.products.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
                             <i class="fas fa-box"></i>
                             <span>Products</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.bundles.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
+                            <i class="fas fa-boxes"></i>
+                            <span>Product Bundles</span>
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
@@ -95,7 +101,7 @@
                 </ul>
             </li>
 
-            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.product-faqs.*') || request()->routeIs('admin.tags.*') || request()->routeIs('admin.questions.*') || request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
+            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.product-faqs.*') || request()->routeIs('admin.tags.*') || request()->routeIs('admin.questions.*') ? 'active' : '' }}">
                 <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Product Features">
                     <i class="fas fa-cube"></i>
                     <span>Product Features</span>
@@ -118,12 +124,6 @@
                         <a href="{{ route('admin.questions.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.questions.*') ? 'active' : '' }}">
                             <i class="fas fa-comments"></i>
                             <span>Questions & Answers</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.bundles.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
-                            <i class="fas fa-boxes"></i>
-                            <span>Product Bundles</span>
                         </a>
                     </li>
                 </ul>

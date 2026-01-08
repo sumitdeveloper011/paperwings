@@ -32,6 +32,11 @@ class StoreProductRequest extends FormRequest
             'accordion_data.*.content' => 'required_with:accordion_data|string',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'tag_ids' => 'nullable|array',
+            'tag_ids.*' => 'exists:tags,id',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500',
+            'meta_keywords' => 'nullable|string|max:500',
             'status' => 'required|in:1,0',
         ];
     }

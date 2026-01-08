@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('product_answers', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid');
             $table->foreignId('question_id')->constrained('product_questions')->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             $table->string('name')->nullable();

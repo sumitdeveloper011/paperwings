@@ -39,7 +39,7 @@
                 <p class="modern-card__subtitle">{{ $faqs->total() }} total FAQs</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="filter-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
                         <input type="text" name="search" class="search-form__input"
@@ -50,6 +50,27 @@
                             </a>
                         @endif
                     </div>
+                    @if(isset($categories))
+                        <select name="category_id" class="filter-select" onchange="this.form.submit()">
+                            <option value="">All Categories</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ isset($categoryId) && $categoryId == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @endif
+                    @if(isset($products))
+                        <select name="product_id" class="filter-select" onchange="this.form.submit()">
+                            <option value="">All Products</option>
+                            @foreach($products as $product)
+                                <option value="{{ $product->id }}" {{ isset($productId) && $productId == $product->id ? 'selected' : '' }}>
+                                    {{ $product->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @endif
+                    <button type="submit" class="btn btn-primary">Filter</button>
                 </form>
             </div>
         </div>
@@ -61,9 +82,9 @@
                         <thead class="modern-table__head">
                             <tr>
                                 <th class="modern-table__th">Product</th>
-                                <th class="modern-table__th">Question</th>
-                                <th class="modern-table__th">Status</th>
-                                <th class="modern-table__th">Sort Order</th>
+                                <th class="modern-table__th">Category</th>
+                                <th class="modern-table__th">FAQs Count</th>
+                                <th class="modern-table__th">Created</th>
                                 <th class="modern-table__th modern-table__th--actions">Actions</th>
                             </tr>
                         </thead>
@@ -74,21 +95,12 @@
                                         <strong>{{ $faq->product->name ?? 'N/A' }}</strong>
                                     </td>
                                     <td class="modern-table__td">
-                                        <div class="text-truncate" style="max-width: 300px;" title="{{ $faq->question }}">
-                                            {{ Str::limit($faq->question, 60) }}
-                                        </div>
+                                        {{ $faq->category->name ?? 'N/A' }}
                                     </td>
                                     <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.product-faqs.updateStatus', $faq) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="1" {{ $faq->status ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ !$faq->status ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
+                                        <span class="badge bg-primary">{{ count($faq->faqs ?? []) }} FAQ(s)</span>
                                     </td>
-                                    <td class="modern-table__td">{{ $faq->sort_order ?? 0 }}</td>
+                                    <td class="modern-table__td">{{ $faq->created_at->format('M d, Y') }}</td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
                                             <a href="{{ route('admin.product-faqs.show', $faq) }}"

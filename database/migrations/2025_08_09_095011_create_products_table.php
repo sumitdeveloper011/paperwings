@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('eposnow_product_id')->nullable();
             $table->unsignedBigInteger('eposnow_category_id')->nullable();
             $table->unsignedBigInteger('eposnow_brand_id')->nullable();
-            $table->string('barcode', 500);
+            $table->text('barcode')->nullable();
             $table->integer('stock')->nullable();
             $table->integer('product_type')->nullable();
             $table->string('name');
@@ -27,6 +27,9 @@ return new class extends Migration
             $table->decimal('total_price', 10, 2)->nullable();
             $table->decimal('discount_price', 10, 2)->nullable();
             $table->text('description')->nullable();
+            $table->string('meta_title')->nullable();
+            $table->text('meta_description')->nullable();
+            $table->string('meta_keywords', 500)->nullable();
             $table->text('short_description')->nullable();
             $table->tinyInteger('status')->default(1)->comment('1: Active, 0: Inactive');
             $table->timestamps();

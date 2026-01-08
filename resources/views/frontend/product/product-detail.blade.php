@@ -238,13 +238,26 @@
                                     </li>
                                 @endforeach
                             @endif
-                            @if($product->activeFaqs->count() > 0)
+                            @php
+                                $hasActiveFaqs = false;
+                                foreach($product->activeFaqs as $productFaq) {
+                                    if ($productFaq->faqs && is_array($productFaq->faqs)) {
+                                        foreach($productFaq->faqs as $faqItem) {
+                                            if (isset($faqItem['status']) && $faqItem['status']) {
+                                                $hasActiveFaqs = true;
+                                                break 2;
+                                            }
+                                        }
+                                    }
+                                }
+                            @endphp
+                            @if($hasActiveFaqs)
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link {{ $product->accordions->count() == 0 ? 'active' : '' }}" id="faqs-tab" data-bs-toggle="tab" data-bs-target="#faqs" type="button" role="tab">FAQs</button>
                                 </li>
                             @endif
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ $product->accordions->count() == 0 && $product->activeFaqs->count() == 0 ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
+                                <button class="nav-link {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
                             </li>
                             @if($product->approvedQuestions->count() > 0)
                                 <li class="nav-item" role="presentation">
@@ -265,21 +278,39 @@
                                 @endforeach
                             @endif
 
-                            @if($product->activeFaqs->count() > 0)
+                            @php
+                                $activeFaqsList = collect();
+                                foreach($product->activeFaqs as $productFaq) {
+                                    if ($productFaq->faqs && is_array($productFaq->faqs)) {
+                                        foreach($productFaq->faqs as $index => $faqItem) {
+                                            if (isset($faqItem['status']) && $faqItem['status']) {
+                                                $activeFaqsList->push([
+                                                    'id' => $productFaq->id . '_' . $index,
+                                                    'question' => $faqItem['question'] ?? '',
+                                                    'answer' => $faqItem['answer'] ?? '',
+                                                    'sort_order' => $faqItem['sort_order'] ?? 999
+                                                ]);
+                                            }
+                                        }
+                                    }
+                                }
+                                $activeFaqsList = $activeFaqsList->sortBy('sort_order');
+                            @endphp
+                            @if($activeFaqsList->count() > 0)
                                 <div class="tab-pane fade {{ $product->accordions->count() == 0 ? 'show active' : '' }}" id="faqs" role="tabpanel">
                                     <div class="tab-content-body">
                                         <h3>Frequently Asked Questions</h3>
                                         <div class="accordion" id="productFaqAccordion">
-                                            @foreach($product->activeFaqs as $faq)
+                                            @foreach($activeFaqsList as $faq)
                                                 <div class="accordion-item">
-                                                    <h2 class="accordion-header" id="faqHeading{{ $faq->id }}">
-                                                        <button class="accordion-button {{ !$loop->first ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse{{ $faq->id }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
-                                                            {{ $faq->question }}
+                                                    <h2 class="accordion-header" id="faqHeading{{ $faq['id'] }}">
+                                                        <button class="accordion-button {{ !$loop->first ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse{{ $faq['id'] }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                                                            {{ $faq['question'] }}
                                                         </button>
                                                     </h2>
-                                                    <div id="faqCollapse{{ $faq->id }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="faqHeading{{ $faq->id }}">
+                                                    <div id="faqCollapse{{ $faq['id'] }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="faqHeading{{ $faq['id'] }}">
                                                         <div class="accordion-body">
-                                                            {!! $faq->answer !!}
+                                                            {!! $faq['answer'] !!}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -289,7 +320,7 @@
                                 </div>
                             @endif
 
-                            <div class="tab-pane fade {{ $product->accordions->count() == 0 && $product->activeFaqs->count() == 0 ? 'show active' : '' }}" id="reviews" role="tabpanel">
+                            <div class="tab-pane fade {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'show active' : '' }}" id="reviews" role="tabpanel">
                                 <div class="tab-content-body">
                                     <h3>Customer Reviews</h3>
 

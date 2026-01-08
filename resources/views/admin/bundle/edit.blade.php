@@ -90,54 +90,6 @@
                         </div>
                     </div>
 
-                    <!-- Pricing Information -->
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-dollar-sign"></i>
-                                Pricing Information
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="bundle_price" class="form-label">Bundle Price (NZD) <span class="text-danger">*</span></label>
-                                        <input type="number" 
-                                               class="form-control @error('bundle_price') is-invalid @enderror" 
-                                               id="bundle_price" 
-                                               name="bundle_price" 
-                                               value="{{ old('bundle_price', $bundle->bundle_price) }}" 
-                                               step="0.01"
-                                               min="0"
-                                               placeholder="0.00"
-                                               required>
-                                        @error('bundle_price')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="discount_percentage" class="form-label">Discount Percentage</label>
-                                        <input type="number" 
-                                               class="form-control @error('discount_percentage') is-invalid @enderror" 
-                                               id="discount_percentage" 
-                                               name="discount_percentage" 
-                                               value="{{ old('discount_percentage', $bundle->discount_percentage) }}" 
-                                               step="0.01"
-                                               min="0"
-                                               max="100"
-                                               placeholder="0">
-                                        @error('discount_percentage')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Product Selection -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -178,6 +130,79 @@
                                 <h6 class="mb-2">Selected Products:</h6>
                                 <div id="selectedProductsContainer" class="selected-products-container">
                                     <!-- Will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing Information -->
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-dollar-sign"></i>
+                                Pricing Information
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> Select products first to see the total value. Then set your bundle price below. Discount percentage will be calculated automatically.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="bundle_price" class="form-label">Bundle Price (NZD) <span class="text-danger">*</span></label>
+                                        <input type="number" 
+                                               class="form-control @error('bundle_price') is-invalid @enderror" 
+                                               id="bundle_price" 
+                                               name="bundle_price" 
+                                               value="{{ old('bundle_price', $bundle->bundle_price) }}" 
+                                               step="0.01"
+                                               min="0"
+                                               placeholder="0.00"
+                                               required>
+                                        <small class="form-text text-muted">Set the price customers will pay for this bundle</small>
+                                        @error('bundle_price')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="discount_percentage" class="form-label">Discount Percentage (Auto-calculated)</label>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="discount_percentage"
+                                               name="discount_percentage"
+                                               value="{{ old('discount_percentage', $bundle->discount_percentage) }}"
+                                               readonly
+                                               style="background-color: #f8f9fa; cursor: not-allowed;">
+                                        <small class="form-text text-muted">Automatically calculated based on total products price vs bundle price</small>
+                                        <input type="hidden" id="discount_percentage_hidden" name="discount_percentage">
+                                        @error('discount_percentage')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="pricing-summary">
+                                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                            <div>
+                                                <strong>Total Products Value:</strong>
+                                                <span id="totalProductsValue" class="text-primary ms-2">$0.00</span>
+                                            </div>
+                                            <div>
+                                                <strong>Bundle Price:</strong>
+                                                <span id="displayBundlePrice" class="text-success ms-2">$0.00</span>
+                                            </div>
+                                            <div>
+                                                <strong>Customer Saves:</strong>
+                                                <span id="customerSavings" class="text-danger ms-2">$0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -491,20 +516,42 @@
             const bundlePrice = parseFloat($('#bundle_price').val()) || 0;
             const savings = totalPrice - bundlePrice;
 
+            // Calculate discount percentage
+            let discountPercentage = 0;
+            if (totalPrice > 0 && bundlePrice > 0) {
+                discountPercentage = ((totalPrice - bundlePrice) / totalPrice) * 100;
+                discountPercentage = Math.max(0, Math.min(100, discountPercentage)); // Clamp between 0-100
+            }
+
+            // Update summary sidebar
             $('#summaryProductCount').text(productCount);
             $('#summaryTotalPrice').text('$' + totalPrice.toFixed(2));
             $('#summaryBundlePrice').text('$' + bundlePrice.toFixed(2));
             $('#summarySavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
-            
+
             if (savings > 0) {
                 $('#summarySavings').removeClass('text-danger').addClass('text-success');
             } else {
                 $('#summarySavings').removeClass('text-success').addClass('text-danger');
             }
+
+            // Update pricing section
+            $('#totalProductsValue').text('$' + totalPrice.toFixed(2));
+            $('#displayBundlePrice').text('$' + bundlePrice.toFixed(2));
+            $('#customerSavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
+
+            // Update discount percentage (both visible and hidden)
+            $('#discount_percentage').val(discountPercentage.toFixed(2) + '%');
+            $('#discount_percentage_hidden').val(discountPercentage.toFixed(2));
         }
 
         // Bundle price change
         $('#bundle_price').on('input', updateSummary);
+        
+        // Initial summary update on page load
+        setTimeout(function() {
+            updateSummary();
+        }, 500);
 
         // Form submission - prepare product_ids and quantities arrays
         $('#bundleForm').on('submit', function(e) {

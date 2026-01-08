@@ -13,6 +13,7 @@ class ProductBundle extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'name',
         'slug',
         'description',
@@ -35,16 +36,53 @@ class ProductBundle extends Model
         parent::boot();
 
         static::creating(function ($bundle) {
+            // Generate UUID if not provided
+            if (empty($bundle->uuid)) {
+                $bundle->uuid = Str::uuid();
+            }
+            
             if (empty($bundle->slug)) {
-                $bundle->slug = Str::slug($bundle->name);
+                $bundle->slug = static::makeUniqueSlug($bundle->name);
+            } else {
+                // If slug is provided, ensure it's unique
+                $bundle->slug = static::makeUniqueSlug($bundle->slug, $bundle->id ?? null);
             }
         });
 
         static::updating(function ($bundle) {
-            if ($bundle->isDirty('name')) {
-                $bundle->slug = Str::slug($bundle->name);
+            // If name changed, update slug to match (unless slug was explicitly changed)
+            if ($bundle->isDirty('name') && !$bundle->isDirty('slug')) {
+                $bundle->slug = static::makeUniqueSlug($bundle->name, $bundle->id);
+            } elseif ($bundle->isDirty('slug')) {
+                // If slug is being updated, ensure it's unique
+                $bundle->slug = static::makeUniqueSlug($bundle->slug, $bundle->id);
             }
         });
+    }
+
+    /**
+     * Generate a unique slug from a string
+     *
+     * @param string $name
+     * @param int|null $excludeId Bundle ID to exclude from uniqueness check
+     * @return string
+     */
+    protected static function makeUniqueSlug(string $name, ?int $excludeId = null): string
+    {
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (static::where('slug', $slug)
+            ->when($excludeId, function ($query) use ($excludeId) {
+                return $query->where('id', '!=', $excludeId);
+            })
+            ->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 
     // Get the items relationship
@@ -77,5 +115,15 @@ class ProductBundle extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'uuid';
     }
 }

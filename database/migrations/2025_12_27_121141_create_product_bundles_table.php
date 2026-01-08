@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('product_bundles', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();

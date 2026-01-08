@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
+use App\Models\Tag;
 use App\Models\ProductView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -43,7 +44,6 @@ class ProductController extends Controller
     // Display product detail page
     public function productDetail($slug){
         try {
-            $title = 'Product Detail';
             if (!$slug) {
                 abort(404);
             }
@@ -65,6 +65,9 @@ class ProductController extends Controller
             ->active()
             ->where('slug', $slug)
             ->firstOrFail();
+
+            // Use meta_title if available, otherwise use product name
+            $title = $product->meta_title ?? $product->name ?? 'Product Detail';
 
             \App\Models\ProductView::create([
                 'product_id' => $product->id,
@@ -235,6 +238,9 @@ class ProductController extends Controller
             // Get brand filter (support multiple brands)
             $brandsFilter = $request->get('brands', []); // Array of brand IDs
 
+            // Get tags filter (support multiple tags)
+            $tagsFilter = $request->get('tags', []); // Array of tag IDs
+
 
             // Optimized: Use cached database aggregation for price range
             $cacheKey = 'price_range_all_products';
@@ -275,6 +281,12 @@ class ProductController extends Controller
                 $query->whereIn('brand_id', $brandsFilter);
             }
 
+            // Apply tags filter (multiple tags)
+            if (!empty($tagsFilter) && is_array($tagsFilter)) {
+                $query->whereHas('tags', function($q) use ($tagsFilter) {
+                    $q->whereIn('tags.id', $tagsFilter);
+                });
+            }
 
             // Apply price filter if provided
             if ($minPrice !== null || $maxPrice !== null) {
@@ -342,11 +354,22 @@ class ProductController extends Controller
                 ->orderBy('name')
                 ->get();
 
+            // Get tags with product count for filter
+            $tags = \App\Models\Tag::whereHas('products', function($q) {
+                    $q->active();
+                })
+                ->withCount(['products' => function($q) {
+                    $q->active();
+                }])
+                ->orderBy('name')
+                ->get();
+
             return view('frontend.shop.shop', compact(
                 'title',
                 'products',
                 'categories',
                 'brands',
+                'tags',
                 'sort',
                 'priceMin',
                 'priceMax',
@@ -354,7 +377,8 @@ class ProductController extends Controller
                 'maxPrice',
                 'categorySlug',
                 'categoriesFilter',
-                'brandsFilter'
+                'brandsFilter',
+                'tagsFilter'
             ));
 
         } catch (\Exception $e) {

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('slug')->nullable();
             $table->integer('status')->default(1)->comment('1 = Active, 0 = Inactive');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('status');
             $table->index('slug');

@@ -73,12 +73,41 @@ class BundleController extends Controller
             'sort_order' => $validated['sort_order'] ?? 0,
         ]);
 
-        // Attach products
-        foreach ($validated['product_ids'] as $index => $productId) {
-            $bundle->products()->attach($productId, [
-                'quantity' => $validated['quantities'][$index] ?? 1
-            ]);
+        // Attach products - remove duplicates and prepare sync data
+        $productsData = [];
+        $productIds = array_unique($validated['product_ids']); // Remove duplicates
+        
+        foreach ($productIds as $index => $productId) {
+            // Find the quantity for this product (handle array index mismatch after removing duplicates)
+            $originalIndex = array_search($productId, $validated['product_ids']);
+            $quantity = isset($validated['quantities'][$originalIndex]) 
+                ? $validated['quantities'][$originalIndex] 
+                : 1;
+            
+            $productsData[$productId] = [
+                'quantity' => max(1, (int)$quantity) // Ensure quantity is at least 1
+            ];
         }
+        
+        // Use sync to attach products (handles duplicates automatically)
+        $bundle->products()->sync($productsData);
+
+        // Auto-calculate discount percentage based on total products price vs bundle price
+        $bundle->load('products');
+        $totalProductsPrice = $bundle->products->sum(function($product) {
+            return ($product->discount_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
+        });
+        
+        $discountPercentage = 0;
+        if ($totalProductsPrice > 0 && $bundle->bundle_price > 0) {
+            $discountPercentage = (($totalProductsPrice - $bundle->bundle_price) / $totalProductsPrice) * 100;
+            $discountPercentage = max(0, min(100, $discountPercentage)); // Clamp between 0-100
+        }
+        
+        // Update discount percentage
+        $bundle->update([
+            'discount_percentage' => round($discountPercentage, 2)
+        ]);
 
         return redirect()->route('admin.bundles.index')
             ->with('success', 'Bundle created successfully!');
@@ -113,7 +142,7 @@ class BundleController extends Controller
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                  ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
@@ -172,18 +201,46 @@ class BundleController extends Controller
             'description' => $validated['description'] ?? null,
             'image' => $validated['image'] ?? $bundle->image,
             'bundle_price' => $validated['bundle_price'],
-            'discount_percentage' => $validated['discount_percentage'] ?? null,
+            // Discount percentage will be calculated after products are synced
             'status' => $validated['status'] ?? $bundle->status,
             'sort_order' => $validated['sort_order'] ?? $bundle->sort_order,
         ]);
 
-        // Sync products
-        $bundle->products()->detach();
-        foreach ($validated['product_ids'] as $index => $productId) {
-            $bundle->products()->attach($productId, [
-                'quantity' => $validated['quantities'][$index] ?? 1
-            ]);
+        // Sync products - remove duplicates and prepare sync data
+        $productsData = [];
+        $productIds = array_unique($validated['product_ids']); // Remove duplicates
+        
+        foreach ($productIds as $index => $productId) {
+            // Find the quantity for this product (handle array index mismatch after removing duplicates)
+            $originalIndex = array_search($productId, $validated['product_ids']);
+            $quantity = isset($validated['quantities'][$originalIndex]) 
+                ? $validated['quantities'][$originalIndex] 
+                : 1;
+            
+            $productsData[$productId] = [
+                'quantity' => max(1, (int)$quantity) // Ensure quantity is at least 1
+            ];
         }
+        
+        // Use sync to update products (handles duplicates automatically)
+        $bundle->products()->sync($productsData);
+
+        // Auto-calculate discount percentage based on total products price vs bundle price
+        $bundle->load('products');
+        $totalProductsPrice = $bundle->products->sum(function($product) {
+            return ($product->discount_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
+        });
+        
+        $discountPercentage = 0;
+        if ($totalProductsPrice > 0 && $bundle->bundle_price > 0) {
+            $discountPercentage = (($totalProductsPrice - $bundle->bundle_price) / $totalProductsPrice) * 100;
+            $discountPercentage = max(0, min(100, $discountPercentage)); // Clamp between 0-100
+        }
+        
+        // Update discount percentage
+        $bundle->update([
+            'discount_percentage' => round($discountPercentage, 2)
+        ]);
 
         return redirect()->route('admin.bundles.index')
             ->with('success', 'Bundle updated successfully!');

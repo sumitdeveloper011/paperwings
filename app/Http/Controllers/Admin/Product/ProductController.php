@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\Product\UpdateProductStatusRequest;
 use App\Models\Product;
 use App\Models\ProductAccordion;
 use App\Models\ProductImage;
+use App\Models\Tag;
 use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
@@ -352,8 +353,9 @@ class ProductController extends Controller
     {
         $categories = $this->categoryRepository->getActive();
         $brands = $this->brandRepository->all();
+        $tags = Tag::orderBy('name')->get();
 
-        return view('admin.product.create', compact('categories', 'brands'));
+        return view('admin.product.create', compact('categories', 'brands', 'tags'));
     }
 
     // Store a newly created resource in storage
@@ -377,6 +379,9 @@ class ProductController extends Controller
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
+
+        // Auto-fill meta fields if empty
+        $validated = $this->autoFillMetaFields($validated);
 
         $product = $this->productRepository->create($validated);
 
@@ -405,6 +410,11 @@ class ProductController extends Controller
             }
         }
 
+        // Sync tags
+        if ($request->has('tag_ids')) {
+            $product->tags()->sync($request->tag_ids);
+        }
+
         return redirect()->route('admin.products.index')
             ->with('success', 'Product created successfully!');
     }
@@ -419,11 +429,12 @@ class ProductController extends Controller
     // Show the form for editing the specified resource
     public function edit(Product $product): View
     {
-        $product->load(['category', 'brand', 'images', 'accordions']);
+        $product->load(['category', 'brand', 'images', 'accordions', 'tags']);
         $categories = $this->categoryRepository->getActive();
         $brands = $this->brandRepository->all();
+        $tags = Tag::orderBy('name')->get();
 
-        return view('admin.product.edit', compact('product', 'categories', 'brands'));
+        return view('admin.product.edit', compact('product', 'categories', 'brands', 'tags'));
     }
 
     // Update the specified resource in storage
@@ -447,6 +458,9 @@ class ProductController extends Controller
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
+
+        // Auto-fill meta fields if empty
+        $validated = $this->autoFillMetaFields($validated, $product);
 
         $this->productRepository->update($product, $validated);
 
@@ -485,6 +499,13 @@ class ProductController extends Controller
                     ]);
                 }
             }
+        }
+
+        // Sync tags
+        if ($request->has('tag_ids')) {
+            $product->tags()->sync($request->tag_ids);
+        } else {
+            $product->tags()->sync([]);
         }
 
         return redirect()->route('admin.products.index')
@@ -536,6 +557,94 @@ class ProductController extends Controller
     }
 
     // Import product images from EposNow
+    /**
+     * Auto-fill meta fields if they are empty
+     */
+    protected function autoFillMetaFields(array $validated, ?Product $product = null): array
+    {
+        // Meta Title: Use product name if empty
+        if (empty($validated['meta_title'])) {
+            $validated['meta_title'] = $validated['name'] ?? ($product ? $product->name : null);
+        }
+
+        // Meta Description: Use short_description if empty, truncate if needed
+        if (empty($validated['meta_description'])) {
+            $description = $validated['short_description'] ?? ($product ? $product->short_description : null);
+            if ($description) {
+                $validated['meta_description'] = $this->truncateDescription($description, 160);
+            }
+        }
+
+        // Meta Keywords: Generate from product name and category if empty
+        if (empty($validated['meta_keywords'])) {
+            $productName = $validated['name'] ?? ($product ? $product->name : null);
+            $categoryId = $validated['category_id'] ?? ($product ? $product->category_id : null);
+            if ($productName) {
+                $validated['meta_keywords'] = $this->generateMetaKeywords($productName, $categoryId);
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
+     * Truncate description for meta description (max 160 characters)
+     */
+    protected function truncateDescription(?string $description, int $maxLength = 160): ?string
+    {
+        if (empty($description)) {
+            return null;
+        }
+        
+        // Remove HTML tags
+        $description = strip_tags($description);
+        
+        // Trim whitespace
+        $description = trim($description);
+        
+        if (strlen($description) <= $maxLength) {
+            return $description;
+        }
+        
+        // Truncate and add ellipsis
+        return substr($description, 0, $maxLength - 3) . '...';
+    }
+
+    /**
+     * Generate meta keywords from product name and category
+     */
+    protected function generateMetaKeywords(string $productName, ?int $categoryId): ?string
+    {
+        $keywords = [];
+        
+        // Add product name words
+        $nameWords = explode(' ', strtolower($productName));
+        $keywords = array_merge($keywords, array_filter($nameWords, function($word) {
+            return strlen($word) > 3; // Only words longer than 3 characters
+        }));
+        
+        // Add category name if available
+        if ($categoryId) {
+            try {
+                $category = $this->categoryRepository->find($categoryId);
+                if ($category && $category->name) {
+                    $categoryWords = explode(' ', strtolower($category->name));
+                    $keywords = array_merge($keywords, array_filter($categoryWords, function($word) {
+                        return strlen($word) > 3;
+                    }));
+                }
+            } catch (\Exception $e) {
+                // Category not found, skip
+            }
+        }
+        
+        // Remove duplicates and limit to 10 keywords
+        $keywords = array_unique($keywords);
+        $keywords = array_slice($keywords, 0, 10);
+        
+        return !empty($keywords) ? implode(', ', $keywords) : null;
+    }
+
     protected function importProductImages(string $eposnowProductId, int $productId): void
     {
         try {

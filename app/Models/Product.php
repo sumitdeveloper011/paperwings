@@ -176,7 +176,7 @@ class Product extends Model
     // Get active FAQs relationship
     public function activeFaqs(): HasMany
     {
-        return $this->hasMany(ProductFaq::class)->where('status', true);
+        return $this->hasMany(ProductFaq::class);
     }
 
     // Get tags relationship

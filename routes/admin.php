@@ -102,6 +102,9 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('reviews', ReviewController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('reviews/{review}/status', [ReviewController::class, 'updateStatus'])->name('reviews.updateStatus');
 
+    Route::prefix('product-faqs')->name('product-faqs.')->group(function () {
+        Route::get('search-products', [ProductFaqController::class, 'searchProducts'])->name('searchProducts');
+    });
     Route::resource('product-faqs', ProductFaqController::class);
     Route::patch('product-faqs/{product_faq}/status', [ProductFaqController::class, 'updateStatus'])->name('product-faqs.updateStatus');
 

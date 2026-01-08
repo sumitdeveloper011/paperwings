@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('cart_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id')->nullable()->comment('For authenticated users');
-            $table->string('session_id')->nullable()->comment('For guest users');
+            $table->unsignedBigInteger('user_id')->comment('For authenticated users');
             $table->unsignedBigInteger('product_id');
             $table->integer('quantity')->default(1);
             $table->decimal('price', 10, 2)->comment('Price snapshot at time of adding to cart');
@@ -26,16 +25,10 @@ return new class extends Migration
 
             // Indexes
             $table->index('user_id');
-            $table->index('session_id');
             $table->index('product_id');
 
             // Composite indexes for better query performance
             $table->index(['user_id', 'product_id']);
-            $table->index(['session_id', 'product_id']);
-
-            // Note: Unique constraints are handled at application level
-            // We can't use database unique constraints because user_id and session_id can both be null
-            // The CartController handles duplicate prevention
         });
     }
 

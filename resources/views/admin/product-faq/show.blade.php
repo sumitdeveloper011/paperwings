@@ -35,22 +35,12 @@
                         <span>{{ $productFaq->product->name ?? 'N/A' }}</span>
                     </div>
                     <div class="info-row">
-                        <strong>Question:</strong>
-                        <span>{{ $productFaq->question }}</span>
+                        <strong>Category:</strong>
+                        <span>{{ $productFaq->category->name ?? 'N/A' }}</span>
                     </div>
                     <div class="info-row">
-                        <strong>Answer:</strong>
-                        <div class="mt-2">{!! nl2br(e($productFaq->answer)) !!}</div>
-                    </div>
-                    <div class="info-row">
-                        <strong>Status:</strong>
-                        <span class="badge {{ $productFaq->status ? 'bg-success' : 'bg-secondary' }}">
-                            {{ $productFaq->status ? 'Active' : 'Inactive' }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <strong>Sort Order:</strong>
-                        <span>{{ $productFaq->sort_order ?? 0 }}</span>
+                        <strong>Total FAQs:</strong>
+                        <span class="badge bg-primary">{{ count($productFaq->faqs ?? []) }} FAQ(s)</span>
                     </div>
                     <div class="info-row">
                         <strong>Created:</strong>
@@ -61,6 +51,59 @@
                         <span>{{ $productFaq->updated_at->format('M d, Y h:i A') }}</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- FAQs List -->
+            @if(!empty($productFaq->faqs) && count($productFaq->faqs) > 0)
+                <div class="modern-card mt-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-question-circle"></i>
+                            FAQs ({{ count($productFaq->faqs) }})
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        @foreach($productFaq->faqs as $index => $faq)
+                            <div class="faq-item-detail mb-4 pb-4 {{ !$loop->last ? 'border-bottom' : '' }}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <span class="badge bg-secondary me-2">FAQ #{{ $index + 1 }}</span>
+                                        <span class="badge {{ $faq['status'] ?? true ? 'bg-success' : 'bg-secondary' }}">
+                                            {{ ($faq['status'] ?? true) ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </div>
+                                    @if(isset($faq['sort_order']))
+                                        <small class="text-muted">Sort Order: {{ $faq['sort_order'] }}</small>
+                                    @endif
+                                </div>
+                                <div class="mb-2">
+                                    <strong class="text-primary">
+                                        <i class="fas fa-question-circle"></i> Question:
+                                    </strong>
+                                    <p class="mb-0 mt-1">{{ $faq['question'] ?? 'N/A' }}</p>
+                                </div>
+                                <div>
+                                    <strong class="text-success">
+                                        <i class="fas fa-check-circle"></i> Answer:
+                                    </strong>
+                                    <div class="mt-1 p-3 bg-light rounded">
+                                        {!! nl2br(e($faq['answer'] ?? 'N/A')) !!}
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <div class="modern-card mt-4">
+                    <div class="modern-card__body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            No FAQs found for this product.
+                        </div>
+                    </div>
+                </div>
+            @endif
             </div>
         </div>
     </div>

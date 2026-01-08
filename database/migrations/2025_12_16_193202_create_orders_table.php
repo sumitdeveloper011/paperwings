@@ -48,6 +48,7 @@ return new class extends Migration
             $table->string('coupon_code')->nullable();
             $table->decimal('tax', 10, 2)->default(0);
             $table->decimal('shipping', 10, 2)->default(0);
+            $table->decimal('shipping_price', 10, 2)->nullable()->comment('Actual shipping price charged');
             $table->decimal('total', 10, 2);
 
             // Payment information

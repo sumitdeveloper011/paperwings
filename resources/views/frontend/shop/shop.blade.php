@@ -87,6 +87,23 @@
                         </div>
                         @endif
 
+                        <!-- Tags Filter -->
+                        @if(isset($tags) && $tags->count() > 0)
+                        <div class="filter-group mb-4">
+                            <h5>Tags</h5>
+                            <div class="filter-checkboxes">
+                                @foreach($tags as $tag)
+                                    <div class="form-check">
+                                        <input class="form-check-input tag-filter" type="checkbox" value="{{ $tag->id }}" id="tag{{ $tag->id }}"
+                                            {{ in_array($tag->id, $tagsFilter ?? []) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="tag{{ $tag->id }}">
+                                            {{ $tag->name }} ({{ $tag->products_count }})
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
 
                         <button class="btn btn-primary w-100" id="applyFilters">Apply Filters</button>
                     </div>
@@ -354,7 +371,7 @@
             if (clearFiltersBtn) {
                 clearFiltersBtn.addEventListener('click', function() {
                     // Uncheck all checkboxes
-                    document.querySelectorAll('.category-filter, .brand-filter').forEach(cb => cb.checked = false);
+                    document.querySelectorAll('.category-filter, .brand-filter, .tag-filter').forEach(cb => cb.checked = false);
                     
                     // Reset price
                     document.getElementById('minPrice').value = '{{ $priceMin }}';
@@ -490,6 +507,16 @@
                     currentUrl.searchParams.delete('brands');
                 }
 
+                // Get selected tags
+                const selectedTags = Array.from(document.querySelectorAll('.tag-filter:checked')).map(cb => cb.value);
+                if (selectedTags.length > 0) {
+                    currentUrl.searchParams.delete('tags');
+                    selectedTags.forEach(id => {
+                        currentUrl.searchParams.append('tags[]', id);
+                    });
+                } else {
+                    currentUrl.searchParams.delete('tags');
+                }
 
                 // Get price range
                 const minPrice = minPriceInput.value;
@@ -543,6 +570,14 @@
                     });
                 });
 
+                // Tags
+                document.querySelectorAll('.tag-filter:checked').forEach(cb => {
+                    activeFilters.push({
+                        type: 'tag',
+                        value: cb.value,
+                        label: cb.nextElementSibling.textContent.trim()
+                    });
+                });
 
                 // Price
                 const minPrice = minPriceInput.value;
@@ -574,6 +609,8 @@
                 document.getElementById('category' + value).checked = false;
             } else if (type === 'brand') {
                 document.getElementById('brand' + value).checked = false;
+            } else if (type === 'tag') {
+                document.getElementById('tag' + value).checked = false;
             } else if (type === 'price') {
                 document.getElementById('minPrice').value = '{{ $priceMin }}';
                 document.getElementById('maxPrice').value = '{{ $priceMax }}';

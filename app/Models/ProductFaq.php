@@ -14,15 +14,12 @@ class ProductFaq extends Model
     protected $fillable = [
         'uuid',
         'product_id',
-        'question',
-        'answer',
-        'sort_order',
-        'status',
+        'category_id',
+        'faqs', // JSON column
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
-        'status' => 'boolean',
+        'faqs' => 'array', // Auto JSON encode/decode
     ];
 
     protected static function boot()
@@ -42,16 +39,16 @@ class ProductFaq extends Model
         return $this->belongsTo(Product::class);
     }
 
-    // Scope to filter active FAQs
-    public function scopeActive($query)
+    // Get the category relationship
+    public function category(): BelongsTo
     {
-        return $query->where('status', true);
+        return $this->belongsTo(Category::class);
     }
 
-    // Scope to order FAQs
-    public function scopeOrdered($query)
+    // Scope to filter active FAQs (check if any FAQ in JSON is active)
+    public function scopeActive($query)
     {
-        return $query->orderBy('sort_order')->orderBy('id');
+        return $query->whereJsonContains('faqs', [['status' => true]]);
     }
 
     // Get route key name

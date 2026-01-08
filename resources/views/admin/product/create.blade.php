@@ -217,6 +217,55 @@
                         </div>
                     </div>
 
+                    <!-- SEO Meta Fields -->
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-search"></i>
+                                SEO Meta Fields
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <small>These fields are optional. They help improve search engine visibility. If left empty, they will be auto-generated from product information.</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="meta_title" class="form-label">Meta Title</label>
+                                <input type="text" class="form-control @error('meta_title') is-invalid @enderror"
+                                       id="meta_title" name="meta_title" value="{{ old('meta_title') }}"
+                                       placeholder="Leave empty to use product name" maxlength="255">
+                                <small class="form-text text-muted">Recommended: 50-60 characters. Leave empty to use product name.</small>
+                                @error('meta_title')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="meta_description" class="form-label">Meta Description</label>
+                                <textarea class="form-control @error('meta_description') is-invalid @enderror"
+                                          id="meta_description" name="meta_description" rows="3" maxlength="500"
+                                          placeholder="Leave empty to use short description">{{ old('meta_description') }}</textarea>
+                                <small class="form-text text-muted">Recommended: 150-160 characters. Leave empty to use short description.</small>
+                                @error('meta_description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="meta_keywords" class="form-label">Meta Keywords</label>
+                                <input type="text" class="form-control @error('meta_keywords') is-invalid @enderror"
+                                       id="meta_keywords" name="meta_keywords" value="{{ old('meta_keywords') }}"
+                                       placeholder="e.g., product, category, brand (comma separated)" maxlength="500">
+                                <small class="form-text text-muted">Comma-separated keywords. Leave empty to auto-generate from product name and category.</small>
+                                @error('meta_keywords')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Product Images -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -283,6 +332,24 @@
                                     @endforeach
                                 </select>
                                 @error('brand_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tag_ids" class="form-label">Tags</label>
+                                <select class="form-select select2-tags @error('tag_ids') is-invalid @enderror"
+                                        id="tag_ids" 
+                                        name="tag_ids[]" 
+                                        multiple>
+                                    @foreach($tags ?? [] as $tag)
+                                        <option value="{{ $tag->id }}" {{ in_array($tag->id, old('tag_ids', [])) ? 'selected' : '' }}>
+                                            {{ $tag->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="form-text text-muted">Select multiple tags for this product</small>
+                                @error('tag_ids')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -524,5 +591,37 @@ function resetForm() {
         document.getElementById('subcategory_id').innerHTML = '<option value="">Select Sub Category</option>';
     }
 }
+
+// Initialize Select2 for tags
+if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+    $('.select2-tags').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select tags...',
+        allowClear: true,
+        width: '100%'
+    });
+} else {
+    setTimeout(function() {
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+            $('.select2-tags').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select tags...',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    }, 500);
+}
 </script>
+
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+@endpush
+
+@push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@endpush
 @endsection

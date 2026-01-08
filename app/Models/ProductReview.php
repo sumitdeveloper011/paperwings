@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class ProductReview extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'product_id',
         'user_id',
         'name',
@@ -28,6 +30,17 @@ class ProductReview extends Model
         'verified_purchase' => 'boolean',
         'helpful_count' => 'integer',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($review) {
+            if (empty($review->uuid)) {
+                $review->uuid = Str::uuid();
+            }
+        });
+    }
 
     // Get the product relationship
     public function product(): BelongsTo
@@ -74,5 +87,15 @@ class ProductReview extends Model
             2 => '<span class="badge bg-danger">Rejected</span>',
             default => '<span class="badge bg-secondary">Unknown</span>',
         };
+    }
+
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'uuid';
     }
 }

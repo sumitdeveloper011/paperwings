@@ -23,7 +23,7 @@
     <div class="content-body">
         <form method="POST" action="{{ route('admin.bundles.store') }}" enctype="multipart/form-data" id="bundleForm">
             @csrf
-            
+
             <div class="row">
                 <!-- Left Column - Main Bundle Information -->
                 <div class="col-lg-8">
@@ -38,11 +38,11 @@
                         <div class="modern-card__body">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Bundle Name <span class="text-danger">*</span></label>
-                                <input type="text" 
-                                       class="form-control @error('name') is-invalid @enderror" 
-                                       id="name" 
-                                       name="name" 
-                                       value="{{ old('name') }}" 
+                                <input type="text"
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       id="name"
+                                       name="name"
+                                       value="{{ old('name') }}"
                                        placeholder="Enter bundle name"
                                        required>
                                 @error('name')
@@ -52,9 +52,9 @@
 
                             <div class="mb-3">
                                 <label for="description" class="form-label">Description</label>
-                                <textarea class="form-control @error('description') is-invalid @enderror" 
-                                          id="description" 
-                                          name="description" 
+                                <textarea class="form-control @error('description') is-invalid @enderror"
+                                          id="description"
+                                          name="description"
                                           rows="4"
                                           placeholder="Enter bundle description">{{ old('description') }}</textarea>
                                 @error('description')
@@ -64,10 +64,10 @@
 
                             <div class="mb-3">
                                 <label for="image" class="form-label">Bundle Image</label>
-                                <input type="file" 
-                                       class="form-control @error('image') is-invalid @enderror" 
-                                       id="image" 
-                                       name="image" 
+                                <input type="file"
+                                       class="form-control @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
                                        accept="image/*"
                                        onchange="previewImage(this, 'imagePreview')">
                                 <small class="form-text text-muted">Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB.</small>
@@ -77,54 +77,6 @@
                                 @error('image')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pricing Information -->
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-dollar-sign"></i>
-                                Pricing Information
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="bundle_price" class="form-label">Bundle Price (NZD) <span class="text-danger">*</span></label>
-                                        <input type="number" 
-                                               class="form-control @error('bundle_price') is-invalid @enderror" 
-                                               id="bundle_price" 
-                                               name="bundle_price" 
-                                               value="{{ old('bundle_price') }}" 
-                                               step="0.01"
-                                               min="0"
-                                               placeholder="0.00"
-                                               required>
-                                        @error('bundle_price')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="discount_percentage" class="form-label">Discount Percentage</label>
-                                        <input type="number" 
-                                               class="form-control @error('discount_percentage') is-invalid @enderror" 
-                                               id="discount_percentage" 
-                                               name="discount_percentage" 
-                                               value="{{ old('discount_percentage') }}" 
-                                               step="0.01"
-                                               min="0"
-                                               max="100"
-                                               placeholder="0">
-                                        @error('discount_percentage')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -170,6 +122,79 @@
                         </div>
                     </div>
 
+                    <!-- Pricing Information -->
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-dollar-sign"></i>
+                                Pricing Information
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> Select products first to see the total value. Then set your bundle price below. Discount percentage will be calculated automatically.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="bundle_price" class="form-label">Bundle Price (NZD) <span class="text-danger">*</span></label>
+                                        <input type="number"
+                                               class="form-control @error('bundle_price') is-invalid @enderror"
+                                               id="bundle_price"
+                                               name="bundle_price"
+                                               value="{{ old('bundle_price') }}"
+                                               step="0.01"
+                                               min="0"
+                                               placeholder="0.00"
+                                               required>
+                                        <small class="form-text text-muted">Set the price customers will pay for this bundle</small>
+                                        @error('bundle_price')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="discount_percentage" class="form-label">Discount Percentage (Auto-calculated)</label>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="discount_percentage"
+                                               name="discount_percentage"
+                                               value="{{ old('discount_percentage') }}"
+                                               readonly
+                                               style="background-color: #f8f9fa; cursor: not-allowed;">
+                                        <small class="form-text text-muted">Automatically calculated based on total products price vs bundle price</small>
+                                        <input type="hidden" id="discount_percentage_hidden" name="discount_percentage">
+                                        @error('discount_percentage')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="pricing-summary">
+                                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                            <div>
+                                                <strong>Total Products Value:</strong>
+                                                <span id="totalProductsValue" class="text-primary ms-2">$0.00</span>
+                                            </div>
+                                            <div>
+                                                <strong>Bundle Price:</strong>
+                                                <span id="displayBundlePrice" class="text-success ms-2">$0.00</span>
+                                            </div>
+                                            <div>
+                                                <strong>Customer Saves:</strong>
+                                                <span id="customerSavings" class="text-danger ms-2">$0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Additional Settings -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -183,11 +208,11 @@
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="sort_order" class="form-label">Sort Order</label>
-                                        <input type="number" 
-                                               class="form-control @error('sort_order') is-invalid @enderror" 
-                                               id="sort_order" 
-                                               name="sort_order" 
-                                               value="{{ old('sort_order', 0) }}" 
+                                        <input type="number"
+                                               class="form-control @error('sort_order') is-invalid @enderror"
+                                               id="sort_order"
+                                               name="sort_order"
+                                               value="{{ old('sort_order', 0) }}"
                                                min="0">
                                         @error('sort_order')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -197,8 +222,8 @@
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="status" class="form-label">Status</label>
-                                        <select class="form-select @error('status') is-invalid @enderror" 
-                                                id="status" 
+                                        <select class="form-select @error('status') is-invalid @enderror"
+                                                id="status"
                                                 name="status">
                                             <option value="1" {{ old('status', 1) == 1 ? 'selected' : '' }}>Active</option>
                                             <option value="0" {{ old('status') == 0 ? 'selected' : '' }}>Inactive</option>
@@ -300,103 +325,135 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-$(document).ready(function() {
-    // Wait for Select2 to be available
-    if (typeof $.fn.select2 === 'undefined') {
-        console.error('Select2 is not loaded');
-        return;
-    }
-
-    let selectedProducts = [];
-    let productQuantities = {};
-
-    // Format product display in dropdown (must be defined before Select2 initialization)
-    function formatProduct(product) {
-        if (product.loading) {
-            return 'Searching...';
+// Wait for jQuery and Select2 to be fully loaded
+(function() {
+    function initSelect2() {
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+            initializeBundleForm();
+        } else {
+            setTimeout(initSelect2, 100);
         }
-        return $('<div class="product-select-item">' +
-            '<div class="product-select-name">' + product.text + '</div>' +
-            '</div>');
     }
 
-    function formatProductSelection(product) {
-        return product.text || product.name;
-    }
-
-    // Initialize Select2
-    $('#product_ids').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Click to search and select products...',
-        allowClear: true,
-        ajax: {
-            url: '{{ route("admin.bundles.searchProducts") }}',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) {
-                return {
-                    search: params.term || '',
-                    category_id: $('#category_filter').val() || '',
-                    page: params.page || 1
-                };
-            },
-            processResults: function (data, params) {
-                params.page = params.page || 1;
-                return {
-                    results: data.results,
-                    pagination: {
-                        more: data.pagination.more
-                    }
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 0,
-        templateResult: formatProduct,
-        templateSelection: formatProductSelection
-    });
-
-    // Trigger initial load when dropdown opens
-    $('#product_ids').on('select2:open', function() {
-        if ($('#product_ids').data('select2').dropdown.$results.find('li').length === 0) {
-            $('#product_ids').data('select2').trigger('query', {term: ''});
-        }
-    });
-
-    // Category filter change
-    $('#category_filter').on('change', function() {
-        $('#product_ids').val(null).trigger('change');
-        selectedProducts = [];
-        productQuantities = {};
-        updateSummary();
-    });
-
-    // Product selection change
-    $('#product_ids').on('select2:select', function (e) {
-        const data = e.params.data;
-        if (!selectedProducts.find(p => p.id == data.id)) {
-            selectedProducts.push({
-                id: data.id,
-                name: data.name,
-                price: parseFloat(data.price) || 0,
-                quantity: 1
+    function initializeBundleForm() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                initBundleForm();
             });
-            productQuantities[data.id] = 1;
+        } else {
+            initBundleForm();
         }
-        updateSelectedProductsList();
-        updateSummary();
-    });
+    }
 
-    $('#product_ids').on('select2:unselect', function (e) {
-        const data = e.params.data;
-        selectedProducts = selectedProducts.filter(p => p.id != data.id);
-        delete productQuantities[data.id];
-        updateSelectedProductsList();
-        updateSummary();
-    });
+    function initBundleForm() {
+        // Check if element exists
+        if ($('#product_ids').length === 0) {
+            console.error('Product select element not found');
+            return;
+        }
 
-    // Update selected products list
-    function updateSelectedProductsList() {
+        let selectedProducts = [];
+        let productQuantities = {};
+
+        // Format product display in dropdown (must be defined before Select2 initialization)
+        function formatProduct(product) {
+            if (product.loading) {
+                return 'Searching...';
+            }
+            return $('<div class="product-select-item">' +
+                '<div class="product-select-name">' + product.text + '</div>' +
+                '</div>');
+        }
+
+        function formatProductSelection(product) {
+            return product.text || product.name;
+        }
+
+        // Destroy existing Select2 instance if any
+        if ($('#product_ids').data('select2')) {
+            $('#product_ids').select2('destroy');
+        }
+
+        // Initialize Select2
+        $('#product_ids').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Click to search and select products...',
+            allowClear: true,
+            ajax: {
+                url: '{{ route("admin.bundles.searchProducts") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        search: params.term || '',
+                        category_id: $('#category_filter').val() || '',
+                        page: params.page || 1
+                    };
+                },
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results || [],
+                        pagination: {
+                            more: (data.pagination && data.pagination.more) || false
+                        }
+                    };
+                },
+                cache: true,
+                error: function(xhr, status, error) {
+                    console.error('Select2 AJAX error:', error);
+                }
+            },
+            minimumInputLength: 0,
+            templateResult: formatProduct,
+            templateSelection: formatProductSelection,
+            escapeMarkup: function(markup) {
+                return markup;
+            }
+        });
+
+        // Category filter change
+        $('#category_filter').on('change', function() {
+            $('#product_ids').val(null).trigger('change');
+            selectedProducts = [];
+            productQuantities = {};
+            updateSummary();
+        });
+
+            // Product selection change
+        $('#product_ids').on('select2:select', function (e) {
+            const data = e.params.data;
+            // Check if product already exists (prevent duplicates)
+            if (!selectedProducts.find(p => p.id == data.id)) {
+                selectedProducts.push({
+                    id: data.id,
+                    name: data.name,
+                    price: parseFloat(data.price) || 0,
+                    quantity: 1
+                });
+                productQuantities[data.id] = 1;
+            } else {
+                // If duplicate, show message and remove from select2
+                alert('This product is already added to the bundle.');
+                const currentValues = $('#product_ids').val() || [];
+                const newValues = currentValues.filter(id => id != data.id);
+                $('#product_ids').val(newValues).trigger('change');
+                return;
+            }
+            updateSelectedProductsList();
+            updateSummary();
+        });
+
+        $('#product_ids').on('select2:unselect', function (e) {
+            const data = e.params.data;
+            selectedProducts = selectedProducts.filter(p => p.id != data.id);
+            delete productQuantities[data.id];
+            updateSelectedProductsList();
+            updateSummary();
+        });
+
+        // Update selected products list
+        function updateSelectedProductsList() {
         const container = $('#selectedProductsContainer');
         if (selectedProducts.length === 0) {
             container.html('<p class="text-muted">No products selected yet</p>');
@@ -414,10 +471,10 @@ $(document).ready(function() {
                 <td>${product.name}</td>
                 <td>$${product.price.toFixed(2)}</td>
                 <td>
-                    <input type="number" 
-                           class="form-control form-control-sm quantity-input" 
-                           value="${quantity}" 
-                           min="1" 
+                    <input type="number"
+                           class="form-control form-control-sm quantity-input"
+                           value="${quantity}"
+                           min="1"
                            data-product-id="${product.id}"
                            style="width: 70px;">
                 </td>
@@ -453,60 +510,95 @@ $(document).ready(function() {
         });
     }
 
-    // Update summary
-    function updateSummary() {
-        const productCount = selectedProducts.length;
-        let totalPrice = 0;
-        
-        selectedProducts.forEach(product => {
-            const quantity = productQuantities[product.id] || 1;
-            totalPrice += product.price * quantity;
+        // Update summary
+        function updateSummary() {
+            const productCount = selectedProducts.length;
+            let totalPrice = 0;
+
+            selectedProducts.forEach(product => {
+                const quantity = productQuantities[product.id] || 1;
+                totalPrice += product.price * quantity;
+            });
+
+            const bundlePrice = parseFloat($('#bundle_price').val()) || 0;
+            const savings = totalPrice - bundlePrice;
+
+            // Calculate discount percentage
+            let discountPercentage = 0;
+            if (totalPrice > 0 && bundlePrice > 0) {
+                discountPercentage = ((totalPrice - bundlePrice) / totalPrice) * 100;
+                discountPercentage = Math.max(0, Math.min(100, discountPercentage)); // Clamp between 0-100
+            }
+
+            // Update summary sidebar
+            $('#summaryProductCount').text(productCount);
+            $('#summaryTotalPrice').text('$' + totalPrice.toFixed(2));
+            $('#summaryBundlePrice').text('$' + bundlePrice.toFixed(2));
+            $('#summarySavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
+
+            if (savings > 0) {
+                $('#summarySavings').removeClass('text-danger').addClass('text-success');
+            } else {
+                $('#summarySavings').removeClass('text-success').addClass('text-danger');
+            }
+
+            // Update pricing section
+            $('#totalProductsValue').text('$' + totalPrice.toFixed(2));
+            $('#displayBundlePrice').text('$' + bundlePrice.toFixed(2));
+            $('#customerSavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
+
+            // Update discount percentage (both visible and hidden)
+            $('#discount_percentage').val(discountPercentage.toFixed(2) + '%');
+            $('#discount_percentage_hidden').val(discountPercentage.toFixed(2));
+        }
+
+        // Bundle price change
+        $('#bundle_price').on('input', updateSummary);
+
+        // Initial summary update on page load (if bundle_price has old value)
+        setTimeout(function() {
+            if ($('#bundle_price').val()) {
+                updateSummary();
+            }
+        }, 500);
+
+        // Form submission - prepare product_ids and quantities arrays
+        $('#bundleForm').on('submit', function(e) {
+            if (selectedProducts.length < 2) {
+                e.preventDefault();
+                alert('Please select at least 2 products');
+                return false;
+            }
+
+            // Remove any duplicate product IDs before submission
+            const uniqueProducts = [];
+            const seenIds = new Set();
+
+            selectedProducts.forEach((product) => {
+                if (!seenIds.has(product.id)) {
+                    seenIds.add(product.id);
+                    uniqueProducts.push(product);
+                }
+            });
+
+            // Create hidden inputs for product_ids and quantities (only unique products)
+            uniqueProducts.forEach((product, index) => {
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'product_ids[]',
+                    value: product.id
+                }).appendTo(this);
+
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'quantities[]',
+                    value: productQuantities[product.id] || 1
+                }).appendTo(this);
+            });
         });
 
-        const bundlePrice = parseFloat($('#bundle_price').val()) || 0;
-        const savings = totalPrice - bundlePrice;
-
-        $('#summaryProductCount').text(productCount);
-        $('#summaryTotalPrice').text('$' + totalPrice.toFixed(2));
-        $('#summaryBundlePrice').text('$' + bundlePrice.toFixed(2));
-        $('#summarySavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
-        
-        if (savings > 0) {
-            $('#summarySavings').removeClass('text-danger').addClass('text-success');
-        } else {
-            $('#summarySavings').removeClass('text-success').addClass('text-danger');
-        }
-    }
-
-    // Bundle price change
-    $('#bundle_price').on('input', updateSummary);
-
-    // Form submission - prepare product_ids and quantities arrays
-    $('#bundleForm').on('submit', function(e) {
-        if (selectedProducts.length < 2) {
-            e.preventDefault();
-            alert('Please select at least 2 products');
-            return false;
-        }
-
-        // Create hidden inputs for product_ids and quantities
-        selectedProducts.forEach((product, index) => {
-            $('<input>').attr({
-                type: 'hidden',
-                name: 'product_ids[]',
-                value: product.id
-            }).appendTo(this);
-
-            $('<input>').attr({
-                type: 'hidden',
-                name: 'quantities[]',
-                value: productQuantities[product.id] || 1
-            }).appendTo(this);
-        });
-    });
-
-    // Image preview
-    function previewImage(input, previewId) {
+        // Image preview
+        function previewImage(input, previewId) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -517,8 +609,8 @@ $(document).ready(function() {
         }
     }
 
-    // Reset form
-    function resetForm() {
+        // Reset form
+        function resetForm() {
         if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
             $('#bundleForm')[0].reset();
             $('#product_ids').val(null).trigger('change');
@@ -530,10 +622,14 @@ $(document).ready(function() {
         }
     }
 
-    // Make functions available globally
-    window.resetForm = resetForm;
-    window.previewImage = previewImage;
-});
+        // Make functions available globally
+        window.resetForm = resetForm;
+        window.previewImage = previewImage;
+    }
+
+    // Start initialization
+    initSelect2();
+})();
 </script>
 @endpush
 

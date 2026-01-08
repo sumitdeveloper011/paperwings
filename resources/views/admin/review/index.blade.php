@@ -24,11 +24,14 @@
     <div class="modern-card">
         <div class="modern-card__header">
             <div class="modern-card__header-content">
-                <h3 class="modern-card__title">All Reviews</h3>
+                <h3 class="modern-card__title">
+                    <i class="fas fa-list"></i>
+                    All Reviews
+                </h3>
                 <p class="modern-card__subtitle">{{ $reviews->total() }} total reviews</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="filter-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
                         <input type="text" name="search" class="search-form__input"
@@ -39,12 +42,13 @@
                             </a>
                         @endif
                     </div>
-                    <select name="status" class="filter-select" onchange="this.form.submit()">
+                    <select name="status" class="filter-select">
                         <option value="">All Status</option>
                         <option value="0" {{ $status === '0' ? 'selected' : '' }}>Pending</option>
                         <option value="1" {{ $status === '1' ? 'selected' : '' }}>Approved</option>
                         <option value="2" {{ $status === '2' ? 'selected' : '' }}>Rejected</option>
                     </select>
+                    <button type="submit" class="btn btn-primary">Filter</button>
                 </form>
             </div>
         </div>
@@ -74,12 +78,14 @@
                                         <div>
                                             <strong>{{ $review->reviewer_name ?? $review->name }}</strong>
                                             @if($review->verified_purchase)
-                                                <span class="badge bg-success" title="Verified Purchase">
+                                                <span class="badge bg-success ms-1" title="Verified Purchase">
                                                     <i class="fas fa-check-circle"></i>
                                                 </span>
                                             @endif
                                         </div>
-                                        <small class="text-muted">{{ $review->email }}</small>
+                                        @if($review->email)
+                                            <small class="text-muted">{{ $review->email }}</small>
+                                        @endif
                                     </td>
                                     <td class="modern-table__td">
                                         <div class="rating-display">
@@ -149,20 +155,4 @@
     </div>
 </div>
 
-<style>
-.rating-display {
-    display: flex;
-    align-items: center;
-}
-.rating-display .fa-star {
-    font-size: 0.875rem;
-}
-.filter-select {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    margin-left: 0.5rem;
-}
-</style>
 @endsection
