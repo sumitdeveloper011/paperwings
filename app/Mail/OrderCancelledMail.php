@@ -8,11 +8,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
-use Barryvdh\DomPDF\Facade\Pdf;
 
-class OrderConfirmationMail extends Mailable
+class OrderCancelledMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -54,14 +52,14 @@ class OrderConfirmationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Confirmation - Order #' . $this->order->order_number,
+            subject: 'Order Cancelled - Order #' . $this->order->order_number,
         );
     }
 
     // Get the message content definition
     public function content(): Content
     {
-        // Fetch settings from database (same pattern as AppServiceProvider)
+        // Fetch settings from database
         $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
             return \App\Models\Setting::pluck('value', 'key')->toArray();
         });
@@ -115,7 +113,7 @@ class OrderConfirmationMail extends Mailable
         $orderViewUrl = route('account.order-details', $this->order->order_number);
 
         return new Content(
-            view: 'emails.order-confirmation',
+            view: 'emails.order-cancelled',
             with: [
                 'order' => $this->order,
                 'logoUrl' => $logoUrl,
@@ -125,73 +123,5 @@ class OrderConfirmationMail extends Mailable
                 'orderViewUrl' => $orderViewUrl,
             ],
         );
-    }
-
-    // Get the attachments for the message
-    public function attachments(): array
-    {
-        // Fetch settings from database for PDF
-        $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
-            return \App\Models\Setting::pluck('value', 'key')->toArray();
-        });
-
-        // Get logo URL
-        $logoUrl = url('assets/frontend/images/logo.png');
-        if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
-            $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
-        }
-
-        // Get contact phone from database
-        $contactPhone = null;
-        if (isset($settings['phones']) && is_string($settings['phones'])) {
-            $phones = json_decode($settings['phones'], true) ?? [];
-            $contactPhone = !empty($phones) ? $phones[0] : null;
-        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
-            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
-        }
-        if (empty($contactPhone)) {
-            $contactPhone = '+11 111 333 4444';
-        }
-
-        // Get contact email from database
-        $contactEmail = null;
-        if (isset($settings['emails']) && is_string($settings['emails'])) {
-            $emails = json_decode($settings['emails'], true) ?? [];
-            $contactEmail = !empty($emails) ? $emails[0] : null;
-        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
-            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
-        }
-        if (empty($contactEmail)) {
-            $contactEmail = 'Info@YourCompany.com';
-        }
-
-        $pdf = Pdf::loadView('emails.order-invoice-pdf', [
-            'order' => $this->order,
-            'logoUrl' => $logoUrl,
-            'contactPhone' => $contactPhone,
-            'contactEmail' => $contactEmail,
-        ])->setPaper('a4', 'portrait')->setOption('margin-top', 15)
-          ->setOption('margin-bottom', 15)
-          ->setOption('margin-left', 15)
-          ->setOption('margin-right', 15);
-        $pdfPath = storage_path('app/temp/invoice_' . $this->order->order_number . '_' . time() . '.pdf');
-
-        if (!file_exists(storage_path('app/temp'))) {
-            mkdir(storage_path('app/temp'), 0755, true);
-        }
-
-        $pdf->save($pdfPath);
-
-        register_shutdown_function(function() use ($pdfPath) {
-            if (file_exists($pdfPath)) {
-                @unlink($pdfPath);
-            }
-        });
-
-        return [
-            Attachment::fromPath($pdfPath)
-                ->as('Invoice_' . $this->order->order_number . '.pdf')
-                ->withMime('application/pdf'),
-        ];
     }
 }

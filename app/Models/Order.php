@@ -49,6 +49,8 @@ class Order extends Model
         'stripe_payment_intent_id',
         'stripe_charge_id',
         'status',
+        'tracking_id',
+        'tracking_url',
         'notes',
         'admin_viewed_at',
     ];

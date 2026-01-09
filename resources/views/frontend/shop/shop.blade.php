@@ -22,92 +22,191 @@
             <div class="row">
                 <!-- Filters Sidebar -->
                 <div class="col-lg-3 col-md-4">
-                    <div class="filters-sidebar">
-                        <div class="filters-header">
-                            <h3>Filters</h3>
-                            <button class="btn btn-sm btn-link clear-filters" id="clearFilters">Clear All</button>
-                        </div>
-
-                        <!-- Active Filters -->
-                        <div class="active-filters mb-3" id="activeFilters" style="display: none;">
-                            <h5>Active Filters:</h5>
-                            <div class="filter-chips" id="filterChips"></div>
-                        </div>
-
-                        <!-- Price Range Filter -->
-                        <div class="filter-group mb-4">
-                            <h5>PRICE RANGE</h5>
-                            <div class="price-range-wrapper">
-                                <div class="price-inputs">
-                                    <input type="number" class="price-input" id="minPrice" placeholder="Min" value="{{ $minPrice ?? $priceMin }}" min="{{ $priceMin }}" max="{{ $priceMax }}">
-                                    <input type="number" class="price-input" id="maxPrice" placeholder="Max" value="{{ $maxPrice ?? $priceMax }}" min="{{ $priceMin }}" max="{{ $priceMax }}">
+                    <div class="category-sidebar">
+                        <!-- Categories Widget -->
+                        <div class="sidebar-widget">
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-th-large sidebar-widget__icon"></i>
+                                    Categories
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <!-- Category Search Box (only show if more than 10 categories) -->
+                                @if($categories && $categories->count() > 10)
+                                <div class="category-search-box mb-3">
+                                    <input type="text" class="category-search-input" id="categorySearch" placeholder="Search categories...">
+                                    <i class="fas fa-search category-search-icon"></i>
                                 </div>
-                                <div class="price-slider-container">
-                                    <div class="price-slider-track"></div>
-                                    <input type="range" class="price-slider-input price-slider-min" id="priceSliderMin" min="{{ $priceMin }}" max="{{ $priceMax }}" value="{{ $minPrice ?? $priceMin }}">
-                                    <input type="range" class="price-slider-input price-slider-max" id="priceSliderMax" min="{{ $priceMin }}" max="{{ $priceMax }}" value="{{ $maxPrice ?? $priceMax }}">
-                                    <div class="price-display-overlay">
-                                        <span id="priceDisplay">${{ $minPrice ?? $priceMin }} - ${{ $maxPrice ?? $priceMax }}</span>
+                                @endif
+
+                                <!-- Categories List Container -->
+                                <div class="categories-list-container" id="categoriesListContainer">
+                                    <ul class="sidebar-categories" id="categoriesList">
+                                        @if($categories && $categories->count() > 0)
+                                        @foreach($categories as $index => $category)
+                                        <li class="sidebar-category {{ $index >= 10 ? 'category-item-hidden' : '' }}"
+                                            data-category-name="{{ strtolower($category->name) }}"
+                                            data-category-index="{{ $index }}">
+                                            <label class="sidebar-category__link sidebar-category__link--checkbox">
+                                                <input class="category-filter" type="checkbox" value="{{ $category->id }}" id="category{{ $category->id }}"
+                                                    {{ in_array($category->id, $categoriesFilter ?? []) ? 'checked' : '' }}>
+                                                <span class="sidebar-category__name">{{ $category->name }} <span class="category-count">({{ $category->active_products_count ?? 0 }})</span></span>
+                                            </label>
+                                        </li>
+                                        @endforeach
+                                        @else
+                                        <li class="sidebar-category--empty">
+                                            <span class="sidebar-category__empty-text">No categories available</span>
+                                        </li>
+                                        @endif
+                                    </ul>
+                                </div>
+
+                                <!-- Load More Button (only show if more than 10 categories) -->
+                                @if($categories && $categories->count() > 10)
+                                <div class="text-center mt-3">
+                                    <button type="button" class="btn-load-more-categories" id="loadMoreCategories" data-items-per-page="10">
+                                        <span class="load-more-text">Load More</span>
+                                        <span class="load-all-text" style="display: none;">Show All</span>
+                                        <i class="fas fa-chevron-down ms-1"></i>
+                                    </button>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Price Range Widget -->
+                        <div class="sidebar-widget">
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-dollar-sign sidebar-widget__icon"></i>
+                                    Price Range
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <div class="price-filter">
+                                    <div class="price-range-display">
+                                        <div class="price-range-display__item">
+                                            <span class="price-range-display__label">Min</span>
+                                            <span class="price-range-display__value">$<span id="priceMinDisplay">{{ $minPrice ?? $priceMin }}</span></span>
+                                        </div>
+                                        <div class="price-range-display__divider">-</div>
+                                        <div class="price-range-display__item">
+                                            <span class="price-range-display__label">Max</span>
+                                            <span class="price-range-display__value">$<span id="priceMaxDisplay">{{ $maxPrice ?? $priceMax }}</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="price-range-slider">
+                                        <input type="range" class="price-range" id="priceRange"
+                                               min="{{ $priceMin }}"
+                                               max="{{ $priceMax }}"
+                                               value="{{ $maxPrice ?? $priceMax }}"
+                                               step="1">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Category Filter -->
-                        <div class="filter-group mb-4">
-                            <h5>Categories</h5>
-                            <div class="filter-checkboxes">
-                                @foreach($categories as $category)
-                                    <div class="form-check">
-                                        <input class="form-check-input category-filter" type="checkbox" value="{{ $category->id }}" id="category{{ $category->id }}" 
-                                            {{ in_array($category->id, $categoriesFilter ?? []) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="category{{ $category->id }}">
-                                            {{ $category->name }} ({{ $category->products_count }})
-                                        </label>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <!-- Brand Filter -->
+                        <!-- Brands Widget -->
                         @if(isset($brands) && $brands->count() > 0)
-                        <div class="filter-group mb-4">
-                            <h5>Brands</h5>
-                            <div class="filter-checkboxes">
-                                @foreach($brands as $brand)
-                                    <div class="form-check">
-                                        <input class="form-check-input brand-filter" type="checkbox" value="{{ $brand->id }}" id="brand{{ $brand->id }}"
-                                            {{ in_array($brand->id, $brandsFilter ?? []) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="brand{{ $brand->id }}">
-                                            {{ $brand->name }} ({{ $brand->active_products_count }})
+                        <div class="sidebar-widget">
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-tags sidebar-widget__icon"></i>
+                                    Brands
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <ul class="sidebar-categories">
+                                    @foreach($brands as $brand)
+                                    <li class="sidebar-category">
+                                        <label class="sidebar-category__link" style="cursor: pointer; margin: 0;">
+                                            <input class="brand-filter" type="checkbox" value="{{ $brand->id }}" id="brand{{ $brand->id }}"
+                                                {{ in_array($brand->id, $brandsFilter ?? []) ? 'checked' : '' }}
+                                                style="position: absolute; opacity: 0; width: 0; height: 0;">
+                                            <span class="sidebar-category__icon-wrapper">
+                                                <i class="fas fa-tag sidebar-category__icon"></i>
+                                            </span>
+                                            <span class="sidebar-category__content">
+                                                <span class="sidebar-category__name">{{ $brand->name }}</span>
+                                                <span class="category-count">{{ $brand->active_products_count ?? 0 }} items</span>
+                                            </span>
+                                            <i class="fas fa-chevron-right sidebar-category__arrow"></i>
                                         </label>
-                                    </div>
-                                @endforeach
+                                    </li>
+                                    @endforeach
+                                </ul>
                             </div>
                         </div>
                         @endif
 
-                        <!-- Tags Filter -->
+                        <!-- Tags Widget -->
                         @if(isset($tags) && $tags->count() > 0)
-                        <div class="filter-group mb-4">
-                            <h5>Tags</h5>
-                            <div class="filter-checkboxes">
-                                @foreach($tags as $tag)
-                                    <div class="form-check">
-                                        <input class="form-check-input tag-filter" type="checkbox" value="{{ $tag->id }}" id="tag{{ $tag->id }}"
-                                            {{ in_array($tag->id, $tagsFilter ?? []) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="tag{{ $tag->id }}">
-                                            {{ $tag->name }} ({{ $tag->products_count }})
-                                        </label>
-                                    </div>
-                                @endforeach
+                        <div class="sidebar-widget">
+                            <div class="sidebar-widget__header">
+                                <h3 class="sidebar-widget__title">
+                                    <i class="fas fa-hashtag sidebar-widget__icon"></i>
+                                    Tags
+                                </h3>
+                            </div>
+                            <div class="sidebar-widget__body">
+                                <!-- Tag Search Box (only show if more than 10 tags) -->
+                                @if($tags->count() > 10)
+                                <div class="category-search-box mb-3">
+                                    <input type="text" class="category-search-input" id="tagSearch" placeholder="Search tags...">
+                                    <i class="fas fa-search category-search-icon"></i>
+                                </div>
+                                @endif
+
+                                <!-- Tags List Container -->
+                                <div class="categories-list-container" id="tagsListContainer">
+                                    <ul class="sidebar-categories" id="tagsList">
+                                        @foreach($tags as $index => $tag)
+                                        <li class="sidebar-category {{ $index >= 10 ? 'category-item-hidden' : '' }}"
+                                            data-category-name="{{ strtolower($tag->name) }}"
+                                            data-category-index="{{ $index }}">
+                                            <label class="sidebar-category__link sidebar-category__link--checkbox">
+                                                <input class="tag-filter" type="checkbox" value="{{ $tag->id }}" id="tag{{ $tag->id }}"
+                                                    {{ in_array($tag->id, $tagsFilter ?? []) ? 'checked' : '' }}>
+                                                <span class="sidebar-category__icon-wrapper">
+                                                    <i class="fas fa-hashtag sidebar-category__icon"></i>
+                                                </span>
+                                                <span class="sidebar-category__content">
+                                                    <span class="sidebar-category__name">{{ $tag->name }}</span>
+                                                    <span class="category-count">{{ $tag->products_count ?? 0 }} items</span>
+                                                </span>
+                                                <i class="fas fa-chevron-right sidebar-category__arrow"></i>
+                                            </label>
+                                        </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+
+                                <!-- Load More Button (only show if more than 10 tags) -->
+                                @if($tags->count() > 10)
+                                <div class="text-center mt-3">
+                                    <button type="button" class="btn-load-more-categories" id="loadMoreTags" data-items-per-page="10">
+                                        <span class="load-more-text">Load More</span>
+                                        <span class="load-all-text" style="display: none;">Show All</span>
+                                        <i class="fas fa-chevron-down ms-1"></i>
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                         </div>
                         @endif
 
-                        <button class="btn btn-primary w-100" id="applyFilters">Apply Filters</button>
+                        <!-- Clear Filters Button -->
+                        <div class="sidebar-widget">
+                            <div class="sidebar-widget__body">
+                                <button class="btn btn-primary w-100" id="applyFilters">Apply Filters</button>
+                                <button class="btn btn-link w-100 mt-2" id="clearFilters" style="text-decoration: none;">Clear All Filters</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
 
                 <!-- Products Grid -->
                 <div class="col-lg-9 col-md-8">
@@ -176,175 +275,6 @@
         </div>
     </section>
 
-@push('styles')
-<style>
-.price-range-wrapper {
-    position: relative;
-}
-
-.price-inputs {
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-}
-
-.price-input {
-    flex: 1;
-    padding: 0.625rem 0.875rem;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #2c3e50;
-    background: #fff;
-    transition: all 0.2s ease;
-    -moz-appearance: textfield;
-}
-
-.price-input::-webkit-outer-spin-button,
-.price-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.price-input:focus {
-    outline: none;
-    border-color: var(--coral-red);
-    box-shadow: 0 0 0 3px rgba(233, 92, 103, 0.1);
-}
-
-.price-slider-container {
-    position: relative;
-    height: 40px;
-    margin: 1.5rem 0;
-}
-
-.price-slider-track {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: #e9ecef;
-    border-radius: 3px;
-    transform: translateY(-50%);
-    z-index: 1;
-}
-
-.price-slider-input {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    width: 100%;
-    height: 6px;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-    z-index: 2;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.price-slider-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    background: var(--coral-red);
-    border: 3px solid #fff;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(233, 92, 103, 0.3);
-    transition: all 0.2s ease;
-    pointer-events: all;
-}
-
-.price-slider-input::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(233, 92, 103, 0.4);
-}
-
-.price-slider-input::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: var(--coral-red);
-    border: 3px solid #fff;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(233, 92, 103, 0.3);
-    transition: all 0.2s ease;
-    pointer-events: all;
-    -moz-appearance: none;
-}
-
-.price-slider-input::-moz-range-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(233, 92, 103, 0.4);
-}
-
-.price-slider-input::-moz-range-track {
-    background: transparent;
-    height: 6px;
-}
-
-.price-slider-min {
-    z-index: 3;
-}
-
-.price-slider-max {
-    z-index: 2;
-}
-
-.price-display-overlay {
-    position: absolute;
-    top: -35px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--coral-red);
-    color: #fff;
-    padding: 0.375rem 0.875rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
-    font-weight: 700;
-    white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(233, 92, 103, 0.3);
-    z-index: 10;
-}
-
-.price-display-overlay::after {
-    content: '';
-    position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid var(--coral-red);
-}
-
-.price-slider-input:active + .price-slider-input + .price-display-overlay,
-.price-slider-input:focus + .price-slider-input + .price-display-overlay {
-    transform: translateX(-50%) scale(1.05);
-}
-
-@media (max-width: 768px) {
-    .price-inputs {
-        gap: 0.5rem;
-    }
-    
-    .price-display-overlay {
-        font-size: 0.8rem;
-        padding: 0.3rem 0.7rem;
-        top: -32px;
-    }
-}
-</style>
-@endpush
 
 @push('scripts')
     <script>
@@ -352,6 +282,10 @@
             const sortSelect = document.getElementById('sortSelect');
             const applyFiltersBtn = document.getElementById('applyFilters');
             const clearFiltersBtn = document.getElementById('clearFilters');
+            const priceRange = document.getElementById('priceRange');
+            const priceMinDisplay = document.getElementById('priceMinDisplay');
+            const priceMaxDisplay = document.getElementById('priceMaxDisplay');
+
 
             // Sort functionality
             if (sortSelect) {
@@ -372,118 +306,32 @@
                 clearFiltersBtn.addEventListener('click', function() {
                     // Uncheck all checkboxes
                     document.querySelectorAll('.category-filter, .brand-filter, .tag-filter').forEach(cb => cb.checked = false);
-                    
-                    // Reset price
-                    document.getElementById('minPrice').value = '{{ $priceMin }}';
-                    document.getElementById('maxPrice').value = '{{ $priceMax }}';
-                    document.getElementById('priceSliderMin').value = '{{ $priceMin }}';
-                    document.getElementById('priceSliderMax').value = '{{ $priceMax }}';
-                    updatePriceDisplay();
-                    
+
+                    // Reset price slider
+                    if (priceRange) {
+                        priceRange.value = '{{ $priceMax }}';
+                        if (priceMaxDisplay) {
+                            priceMaxDisplay.textContent = '{{ $priceMax }}';
+                        }
+                    }
+
                     // Redirect to clean URL
                     window.location.href = '{{ route("shop") }}';
                 });
             }
 
-            // Price Slider - Dual Range
-            const priceSliderMin = document.getElementById('priceSliderMin');
-            const priceSliderMax = document.getElementById('priceSliderMax');
-            const minPriceInput = document.getElementById('minPrice');
-            const maxPriceInput = document.getElementById('maxPrice');
-            const priceDisplay = document.getElementById('priceDisplay');
-            const priceSliderTrack = document.querySelector('.price-slider-track');
-
-            function updatePriceDisplay() {
-                const min = minPriceInput.value || '{{ $priceMin }}';
-                const max = maxPriceInput.value || '{{ $priceMax }}';
-                if (priceDisplay) {
-                    priceDisplay.textContent = `$${min} - $${max}`;
-                }
-                updateSliderTrack();
-            }
-
-            function updateSliderTrack() {
-                if (!priceSliderMin || !priceSliderMax || !priceSliderTrack) return;
-                
-                const min = parseFloat(priceSliderMin.value);
-                const max = parseFloat(priceSliderMax.value);
-                const minVal = parseFloat(priceSliderMin.min);
-                const maxVal = parseFloat(priceSliderMax.max);
-                
-                const minPercent = ((min - minVal) / (maxVal - minVal)) * 100;
-                const maxPercent = ((max - minVal) / (maxVal - minVal)) * 100;
-                
-                priceSliderTrack.style.background = `linear-gradient(to right, 
-                    #e9ecef 0%, 
-                    #e9ecef ${minPercent}%, 
-                    var(--coral-red) ${minPercent}%, 
-                    var(--coral-red) ${maxPercent}%, 
-                    #e9ecef ${maxPercent}%, 
-                    #e9ecef 100%)`;
-            }
-
-            if (priceSliderMin && priceSliderMax) {
-                priceSliderMin.addEventListener('input', function() {
-                    const minVal = parseFloat(this.value);
-                    const maxVal = parseFloat(priceSliderMax.value);
-                    
-                    if (minVal > maxVal) {
-                        this.value = maxVal;
-                    }
-                    
-                    minPriceInput.value = this.value;
-                    updatePriceDisplay();
-                });
-
-                priceSliderMax.addEventListener('input', function() {
-                    const minVal = parseFloat(priceSliderMin.value);
-                    const maxVal = parseFloat(this.value);
-                    
-                    if (maxVal < minVal) {
-                        this.value = minVal;
-                    }
-                    
-                    maxPriceInput.value = this.value;
-                    updatePriceDisplay();
+            // Price filter functionality - update display as slider moves
+            if (priceRange && priceMaxDisplay) {
+                // Update max price display as slider moves
+                priceRange.addEventListener('input', function() {
+                    const maxValue = this.value;
+                    priceMaxDisplay.textContent = maxValue;
                 });
             }
-
-            if (minPriceInput && maxPriceInput) {
-                minPriceInput.addEventListener('input', function() {
-                    const minVal = parseFloat(this.value) || parseFloat(this.min);
-                    const maxVal = parseFloat(maxPriceInput.value) || parseFloat(maxPriceInput.max);
-                    
-                    if (minVal > maxVal) {
-                        this.value = maxVal;
-                    }
-                    
-                    if (priceSliderMin) {
-                        priceSliderMin.value = this.value;
-                    }
-                    updatePriceDisplay();
-                });
-
-                maxPriceInput.addEventListener('input', function() {
-                    const minVal = parseFloat(minPriceInput.value) || parseFloat(minPriceInput.min);
-                    const maxVal = parseFloat(this.value) || parseFloat(this.max);
-                    
-                    if (maxVal < minVal) {
-                        this.value = minVal;
-                    }
-                    
-                    if (priceSliderMax) {
-                        priceSliderMax.value = this.value;
-                    }
-                    updatePriceDisplay();
-                });
-            }
-
-            // Initialize slider track
-            updatePriceDisplay();
 
             function updateUrl() {
                 const currentUrl = new URL(window.location.href);
-                
+
                 // Get selected categories
                 const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
                 if (selectedCategories.length > 0) {
@@ -518,18 +366,17 @@
                     currentUrl.searchParams.delete('tags');
                 }
 
-                // Get price range
-                const minPrice = minPriceInput.value;
-                const maxPrice = maxPriceInput.value;
-                if (minPrice && minPrice != '{{ $priceMin }}') {
-                    currentUrl.searchParams.set('min_price', minPrice);
-                } else {
-                    currentUrl.searchParams.delete('min_price');
-                }
-                if (maxPrice && maxPrice != '{{ $priceMax }}') {
-                    currentUrl.searchParams.set('max_price', maxPrice);
-                } else {
-                    currentUrl.searchParams.delete('max_price');
+                // Get price range from slider if applied
+                if (priceRange) {
+                    const maxPrice = priceRange.value;
+                    const priceMax = parseInt(priceRange.getAttribute('max')) || 100;
+                    if (maxPrice < priceMax) {
+                        currentUrl.searchParams.set('min_price', priceRange.getAttribute('min') || 0);
+                        currentUrl.searchParams.set('max_price', maxPrice);
+                    } else {
+                        currentUrl.searchParams.delete('min_price');
+                        currentUrl.searchParams.delete('max_price');
+                    }
                 }
 
                 // Get sort
@@ -540,83 +387,10 @@
                 // Reset to page 1
                 currentUrl.searchParams.delete('page');
 
-                // Update active filters display
-                updateActiveFilters();
-
                 // Redirect
                 window.location.href = currentUrl.toString();
             }
-
-            function updateActiveFilters() {
-                const activeFilters = [];
-                const filterChips = document.getElementById('filterChips');
-                const activeFiltersDiv = document.getElementById('activeFilters');
-
-                // Categories
-                document.querySelectorAll('.category-filter:checked').forEach(cb => {
-                    activeFilters.push({
-                        type: 'category',
-                        value: cb.value,
-                        label: cb.nextElementSibling.textContent.trim()
-                    });
-                });
-
-                // Brands
-                document.querySelectorAll('.brand-filter:checked').forEach(cb => {
-                    activeFilters.push({
-                        type: 'brand',
-                        value: cb.value,
-                        label: cb.nextElementSibling.textContent.trim()
-                    });
-                });
-
-                // Tags
-                document.querySelectorAll('.tag-filter:checked').forEach(cb => {
-                    activeFilters.push({
-                        type: 'tag',
-                        value: cb.value,
-                        label: cb.nextElementSibling.textContent.trim()
-                    });
-                });
-
-                // Price
-                const minPrice = minPriceInput.value;
-                const maxPrice = maxPriceInput.value;
-                if (minPrice && minPrice != '{{ $priceMin }}' || maxPrice && maxPrice != '{{ $priceMax }}') {
-                    activeFilters.push({
-                        type: 'price',
-                        value: `${minPrice}-${maxPrice}`,
-                        label: `Price: $${minPrice} - $${maxPrice}`
-                    });
-                }
-
-                if (activeFilters.length > 0) {
-                    filterChips.innerHTML = activeFilters.map(filter => 
-                        `<span class="badge bg-primary me-2 mb-2">${filter.label} <button type="button" class="btn-close btn-close-white ms-1" onclick="removeFilter('${filter.type}', '${filter.value}')"></button></span>`
-                    ).join('');
-                    activeFiltersDiv.style.display = 'block';
-                } else {
-                    activeFiltersDiv.style.display = 'none';
-                }
-            }
-
-            // Initialize active filters display
-            updateActiveFilters();
         });
-
-        function removeFilter(type, value) {
-            if (type === 'category') {
-                document.getElementById('category' + value).checked = false;
-            } else if (type === 'brand') {
-                document.getElementById('brand' + value).checked = false;
-            } else if (type === 'tag') {
-                document.getElementById('tag' + value).checked = false;
-            } else if (type === 'price') {
-                document.getElementById('minPrice').value = '{{ $priceMin }}';
-                document.getElementById('maxPrice').value = '{{ $priceMax }}';
-            }
-            updateUrl();
-        }
     </script>
 @endpush
 @endsection

@@ -59,10 +59,11 @@
         // Store payment handler reference globally for updateTotals
         window.checkoutPaymentHandler = paymentHandler;
 
-        // Initialize Checkout Modal
-        const checkoutModal = new CheckoutModal();
-        checkoutModal.init(checkoutConfig, paymentHandler, checkoutForm);
-        window.checkoutModal = checkoutModal;
+        // Initialize Checkout Steps
+        const checkoutSteps = new CheckoutModal(); // CheckoutModal is now CheckoutSteps
+        const checkoutForm = document.getElementById('checkoutForm');
+        checkoutSteps.init(checkoutConfig, paymentHandler, checkoutForm);
+        window.checkoutSteps = checkoutSteps;
 
         // Calculate shipping (don't create payment intent automatically - wait for modal)
         const initialRegionId = formHandler.getShippingRegionId();
@@ -94,9 +95,9 @@
                 shipping: checkoutConfig.shipping
             });
 
-            // Update modal totals if modal is open
-            if (window.checkoutModal && window.checkoutModal.isOpen()) {
-                window.checkoutModal.updateModalTotals();
+            // Update review totals if on review step
+            if (window.checkoutSteps && window.checkoutSteps.currentStep === 2) {
+                window.checkoutSteps.updateReviewTotals();
             }
 
             // Recreate payment intent if it exists (but don't auto-create - wait for modal)

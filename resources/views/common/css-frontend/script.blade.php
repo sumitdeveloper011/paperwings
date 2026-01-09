@@ -20,6 +20,12 @@
 <script src="{{ asset('assets/frontend/js/select2.min.js') }}" defer></script>
 @endif
 
+{{-- jQuery Validation Plugin - Load only on checkout page --}}
+@if(request()->routeIs('checkout.*'))
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/form-validation.js') }}" defer></script>
+@endif
+
 {{-- Core modules - Must load in order --}}
 <script src="{{ asset('assets/frontend/js/modules/utils.js') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/wishlist.js') }}" defer></script>

@@ -56,14 +56,14 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/product/{slug}', [ProductController::class, 'productDetail'])->name('product.detail');
     Route::get('/category/{slug}', [ProductController::class, 'productByCategory'])->name('product.by.category');
     Route::get('/shop', [ProductController::class, 'shop'])->name('shop');
-    
+
     Route::post('/product/{slug}/review', [ReviewController::class, 'store'])->name('review.store');
     Route::post('/review/{review}/helpful', [ReviewController::class, 'helpful'])->name('review.helpful');
-    
+
     Route::post('/product/{slug}/question', [QuestionController::class, 'store'])->name('question.store');
     Route::post('/question/{question}/answer', [QuestionController::class, 'storeAnswer'])->name('question.answer');
     Route::post('/answer/{answer}/helpful', [QuestionController::class, 'helpful'])->name('answer.helpful');
-    
+
     Route::get('/bundles', [BundleController::class, 'index'])->name('bundles.index');
     Route::get('/bundle/{slug}', [BundleController::class, 'show'])->name('bundle.show');
 });

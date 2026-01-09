@@ -78,12 +78,12 @@
                     <h3 class="modern-card__title">Order Status</h3>
                 </div>
                 <div class="modern-card__body">
-                    <form method="POST" action="{{ route('admin.orders.updateStatus', $order) }}">
+                    <form method="POST" action="{{ route('admin.orders.updateStatus', $order) }}" id="statusForm">
                         @csrf
                         @method('PATCH')
                         <div class="form-group">
                             <label>Order Status</label>
-                            <select name="status" class="form-control" onchange="this.form.submit()">
+                            <select name="status" id="orderStatus" class="form-control">
                                 <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>Pending</option>
                                 <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>Processing</option>
                                 <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>Shipped</option>
@@ -91,7 +91,20 @@
                                 <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
                         </div>
+
+                        <!-- Hidden fields for tracking -->
+                        <input type="hidden" name="tracking_id" id="trackingIdInput" value="{{ $order->tracking_id ?? '' }}">
+                        <input type="hidden" name="tracking_url" id="trackingUrlInput" value="{{ $order->tracking_url ?? '' }}">
                     </form>
+
+                    @if($order->tracking_id)
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <strong>Tracking ID:</strong> {{ $order->tracking_id }}<br>
+                        @if($order->tracking_url)
+                        <strong>Tracking URL:</strong> <a href="{{ $order->tracking_url }}" target="_blank">{{ $order->tracking_url }}</a>
+                        @endif
+                    </div>
+                    @endif
 
                     <form method="POST" action="{{ route('admin.orders.updatePaymentStatus', $order) }}" class="mt-3">
                         @csrf
@@ -119,28 +132,28 @@
                         <span>Subtotal:</span>
                         <span>${{ number_format($order->subtotal, 2) }}</span>
                     </div>
-                    
+
                     @if($order->discount > 0)
                     <div class="order-summary-row">
                         <span>Discount ({{ $order->coupon_code ?? 'Coupon' }}):</span>
                         <span class="text-danger">-${{ number_format($order->discount, 2) }}</span>
                     </div>
                     @endif
-                    
+
                     @if($order->shipping > 0 || $order->shipping_price > 0)
                     <div class="order-summary-row">
                         <span>Shipping:</span>
                         <span>${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
                     </div>
                     @endif
-                    
+
                     @if($order->tax > 0)
                     <div class="order-summary-row">
                         <span>Tax:</span>
                         <span>${{ number_format($order->tax, 2) }}</span>
                     </div>
                     @endif
-                    
+
                     <div class="order-summary-row order-summary-row--total">
                         <span><strong>Total:</strong></span>
                         <span><strong>${{ number_format($order->total, 2) }}</strong></span>
@@ -310,5 +323,125 @@
     border-bottom: none;
 }
 </style>
+
+<!-- Tracking Modal -->
+<div class="modal fade" id="trackingModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Tracking Information</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tracking ID / Number</label>
+                    <input type="text" class="form-control" id="trackingId"
+                           placeholder="e.g., TRK123456789" value="{{ $order->tracking_id ?? '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Tracking URL (Optional)</label>
+                    <input type="url" class="form-control" id="trackingUrl"
+                           placeholder="https://tracking.courier.com/track/TRK123456789" value="{{ $order->tracking_url ?? '' }}">
+                    <small class="form-text text-muted">Direct link to track shipment</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveTrackingBtn">Save & Update Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('orderStatus');
+    const trackingModal = document.getElementById('trackingModal');
+    const trackingIdInput = document.getElementById('trackingIdInput');
+    const trackingUrlInput = document.getElementById('trackingUrlInput');
+    const trackingId = document.getElementById('trackingId');
+    const trackingUrl = document.getElementById('trackingUrl');
+    const saveBtn = document.getElementById('saveTrackingBtn');
+    const cancelBtn = trackingModal.querySelector('[data-dismiss="modal"]');
+    const statusForm = document.getElementById('statusForm');
+    let previousStatus = statusSelect.value; // Store current status
+
+    statusSelect.addEventListener('change', function() {
+        const selectedStatus = this.value;
+
+        // Sirf "shipped" status te popup kholo
+        if (selectedStatus === 'shipped') {
+            // Previous status store karo
+            previousStatus = statusSelect.options[statusSelect.selectedIndex - 1]?.value || '{{ $order->status }}';
+
+            // jQuery modal show karo
+            if (typeof $ !== 'undefined') {
+                $('#trackingModal').modal('show');
+            } else {
+                // Bootstrap 5
+                const modal = new bootstrap.Modal(trackingModal);
+                modal.show();
+            }
+        } else {
+            // Baaki statuses te direct submit karo
+            statusForm.submit();
+        }
+    });
+
+    // Cancel button handler
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Status dropdown ko previous value par reset karo
+            statusSelect.value = previousStatus;
+
+            // Modal band karo
+            if (typeof $ !== 'undefined') {
+                $('#trackingModal').modal('hide');
+            } else {
+                const modal = bootstrap.Modal.getInstance(trackingModal);
+                if (modal) modal.hide();
+            }
+        });
+    }
+
+    // Modal close event (agar user modal ke bahar click kare ya ESC press kare)
+    if (typeof $ !== 'undefined') {
+        $('#trackingModal').on('hidden.bs.modal', function() {
+            // Status dropdown ko previous value par reset karo
+            if (statusSelect.value === 'shipped') {
+                statusSelect.value = previousStatus;
+            }
+        });
+    } else {
+        trackingModal.addEventListener('hidden.bs.modal', function() {
+            // Status dropdown ko previous value par reset karo
+            if (statusSelect.value === 'shipped') {
+                statusSelect.value = previousStatus;
+            }
+        });
+    }
+
+    saveBtn.addEventListener('click', function() {
+        // Tracking values hidden inputs mein daalo
+        trackingIdInput.value = trackingId.value;
+        trackingUrlInput.value = trackingUrl.value;
+
+        // Modal band karo
+        if (typeof $ !== 'undefined') {
+            $('#trackingModal').modal('hide');
+        } else {
+            const modal = bootstrap.Modal.getInstance(trackingModal);
+            if (modal) modal.hide();
+        }
+
+        // Form submit karo
+        statusForm.submit();
+    });
+});
+</script>
 @endsection
 

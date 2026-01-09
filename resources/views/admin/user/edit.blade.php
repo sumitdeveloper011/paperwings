@@ -148,7 +148,6 @@
                                                {{ in_array($role->id, old('roles', $user->roles->pluck('id')->toArray())) ? 'checked' : '' }}>
                                         <label class="form-check-label-modern" for="role_{{ $role->id }}">
                                             <strong>{{ $role->name }}</strong>
-                                            <small class="text-muted">({{ $role->permissions_count ?? 0 }} permissions)</small>
                                         </label>
                                     </div>
                                 @endforeach

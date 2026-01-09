@@ -2648,6 +2648,16 @@ html.login-page-html {
     color: #b83d4a;
 }
 
+.badge--warning {
+    background: rgba(246, 149, 50, 0.2);
+    color: #b86a1f;
+}
+
+.badge--info {
+    background: rgba(158, 189, 213, 0.2);
+    color: #2d5a7a;
+}
+
 /* Timestamp List */
 .timestamp-list {
     display: flex;

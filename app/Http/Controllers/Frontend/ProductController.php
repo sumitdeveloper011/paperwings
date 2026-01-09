@@ -10,29 +10,47 @@ use App\Models\Tag;
 use App\Models\ProductView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
-    private $viewPath = 'frontend.product.';
+    protected $viewPath = 'frontend.product.';
 
-    // Display product page
-    public function product($slug){
+    public function index(Request $request)
+    {
         try {
-            $title = 'Product';
-            if (!$slug) {
-                return view('frontend.errors.404', [
-                    'title' => '404 - Product Not Found',
-                    'message' => 'Product not found. The product you are looking for does not exist.'
-                ]);
+            $title = 'Products';
+            $query = Product::active();
+
+            // Apply filters
+            if ($request->has('category')) {
+                $query->where('category_id', $request->category);
             }
-            $product = Product::where('slug', $slug)->first();
-            if (!$product) {
-                return view('frontend.errors.404', [
-                    'title' => '404 - Product Not Found',
-                    'message' => 'Product not found. The product you are looking for does not exist.'
-                ]);
+
+            if ($request->has('brand')) {
+                $query->where('brand_id', $request->brand);
             }
-            return view($this->viewPath . 'product', compact('title', 'product'));
+
+            // Apply sorting
+            $sort = $request->get('sort', 'name');
+            switch ($sort) {
+                case 'price_low':
+                    $query->orderBy('total_price', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('total_price', 'desc');
+                    break;
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('name', 'asc');
+            }
+
+            $products = $query->paginate(12);
+
+            return view($this->viewPath . 'index', compact('title', 'products'));
         } catch (\Exception $e) {
             return view('frontend.errors.404', [
                 'title' => '404 - Error',
@@ -41,84 +59,55 @@ class ProductController extends Controller
         }
     }
 
-    // Display product detail page
-    public function productDetail($slug){
+    public function show($slug)
+    {
         try {
-            if (!$slug) {
-                abort(404);
-            }
-            $product = Product::with([
-                'images' => function($query) {
-                    $query->select('id', 'product_id', 'image')->orderBy('id');
-                },
-                'accordions',
-                'category:id,name,slug',
-                'brand:id,name',
-                'approvedReviews.user',
-                'activeFaqs',
-                'tags',
-                'approvedQuestions.answers' => function($query) {
-                    $query->where('status', 1)->orderBy('helpful_count', 'desc');
-                }
-            ])
-            ->withCount(['approvedReviews', 'views'])
-            ->active()
-            ->where('slug', $slug)
-            ->firstOrFail();
+            $title = 'Product Details';
+            $product = Product::where('slug', $slug)
+                ->with(['images', 'category', 'brand', 'tags', 'approvedReviews', 'activeFaqs'])
+                ->firstOrFail();
 
-            // Use meta_title if available, otherwise use product name
-            $title = $product->meta_title ?? $product->name ?? 'Product Detail';
-
-            \App\Models\ProductView::create([
-                'product_id' => $product->id,
-                'user_id' => auth()->id(),
-                'session_id' => session()->getId(),
-                'ip_address' => request()->ip(),
-                'viewed_at' => now(),
-            ]);
-
-            $recentlyViewed = session('recently_viewed', []);
-            if (!in_array($product->id, $recentlyViewed)) {
-                array_unshift($recentlyViewed, $product->id);
-                $recentlyViewed = array_slice($recentlyViewed, 0, 20); // Keep last 20
-                session(['recently_viewed' => $recentlyViewed]);
+            // Track product view
+            if (!session()->has('viewed_products')) {
+                session(['viewed_products' => []]);
             }
 
-            $relatedProducts = Product::with([
-                'images' => function($query) {
-                    $query->select('id', 'product_id', 'image')
-                          ->orderBy('id')
-                          ->limit(1);
-                }
-            ])
-            ->active()
-            ->where('id', '!=', $product->id)
-            ->where(function($query) use ($product) {
-                $query->where('eposnow_category_id', $product->eposnow_category_id)
-                      ->orWhere('brand_id', $product->brand_id)
-                      ->orWhereBetween('total_price', [
-                          $product->total_price * 0.7,
-                          $product->total_price * 1.3
-                      ]);
-            })
-            ->select('id', 'name', 'slug', 'total_price', 'discount_price', 'eposnow_category_id', 'status', 'brand_id')
-            ->take(20) // Get more than needed, then shuffle
-            ->get()
+            $viewedProducts = session('viewed_products', []);
+            if (!in_array($product->id, $viewedProducts)) {
+                $viewedProducts[] = $product->id;
+                session(['viewed_products' => $viewedProducts]);
+
+                \App\Models\ProductView::create([
+                    'product_id' => $product->id,
+                    'user_id' => Auth::id(),
+                    'session_id' => session()->getId(),
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+            }
+
+            // Get related products (same category, exclude current product)
+            $relatedProducts = Product::where('category_id', $product->category_id)
+                ->where('id', '!=', $product->id)
+                ->active()
+                ->with(['images' => function($q) {
+                    $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+                }])
+                ->limit(8)
             ->shuffle()
             ->take(8);
-            
+
             return view($this->viewPath . 'product-detail', compact('title', 'product', 'relatedProducts'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             abort(404);
         } catch (\Exception $e) {
-            \Log::error('Product detail error', ['error' => $e->getMessage(), 'slug' => $slug]);
+            Log::error('Product detail error', ['error' => $e->getMessage(), 'slug' => $slug]);
             abort(404);
         }
     }
 
     public function productByCategory($slug, Request $request){
         try {
-            $title = 'Products by Category';
             if (!$slug) {
                 return view('frontend.errors.404', [
                     'title' => 'Category Not Found',
@@ -132,6 +121,9 @@ class ProductController extends Controller
                     'message' => 'Category not found. The category you are looking for does not exist.'
                 ]);
             }
+
+            // Set title to category name
+            $title = $category->name;
 
             // Get sort parameter from request
             $sort = $request->get('sort', 'featured');
@@ -210,7 +202,9 @@ class ProductController extends Controller
                     ->get();
             });
 
-            return view('frontend.category.category', compact('title', 'category', 'products', 'categories', 'sort', 'priceMin', 'priceMax', 'minPrice', 'maxPrice'));
+            $subtitle = 'Browse products in ' . $category->name;
+
+            return view('frontend.category.category', compact('title', 'category', 'products', 'categories', 'sort', 'priceMin', 'priceMax', 'minPrice', 'maxPrice', 'subtitle'));
 
         } catch (\Exception $e) {
             return view('frontend.errors.404', [
@@ -336,15 +330,28 @@ class ProductController extends Controller
                 ->paginate(12)
                 ->appends($request->query());
 
-            // Optimized: Get categories with product count using whereHas instead of having
+            // Optimized: Get categories with product count using LEFT JOIN
             $cacheKey = 'categories_with_count_sidebar';
+            // Clear cache temporarily for testing
+            Cache::forget($cacheKey);
             $categories = Cache::remember($cacheKey, 3600, function () {
-                return Category::active()
-                    ->whereHas('activeProducts')
-                    ->withCount('activeProducts')
-                    ->select('id', 'name', 'slug')
-                    ->ordered()
+                $categories = Category::where('categories.status', 1)
+                    ->select('categories.id', 'categories.name', 'categories.slug', 'categories.eposnow_category_id')
+                    ->leftJoin('products', function($join) {
+                        $join->on('products.eposnow_category_id', '=', 'categories.eposnow_category_id')
+                             ->where('products.status', '=', 1);
+                    })
+                    ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.eposnow_category_id')
+                    ->selectRaw('COUNT(products.id) as active_products_count')
+                    ->havingRaw('active_products_count > 0')
+                    ->orderBy('categories.name', 'asc')
                     ->get();
+
+                // Ensure count is an integer
+                return $categories->map(function($category) {
+                    $category->active_products_count = (int) $category->active_products_count;
+                    return $category;
+                });
             });
 
             // Get brands with product count for filter

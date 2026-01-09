@@ -271,7 +271,7 @@
                                             <small class="text-muted">{{ $order->created_at->format('h:i A') }}</small>
                                         </td>
                                         <td class="modern-table__td">
-                                            <span class="badge badge-info">{{ $order->items->count() }} items</span>
+                                            <span class="badge badge--info">{{ $order->items_count ?? $order->items->count() ?? 0 }} items</span>
                                         </td>
                                         <td class="modern-table__td">
                                             <strong>${{ number_format($order->total, 2) }}</strong>

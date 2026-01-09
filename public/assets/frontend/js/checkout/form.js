@@ -35,7 +35,27 @@ class CheckoutFormHandler {
                 } else {
                     shippingInputs.forEach(input => input.disabled = false);
                 }
+
+                // Re-validate form when checkbox state changes
+                this.revalidateForm();
             });
+        }
+    }
+
+    /**
+     * Re-validate form (useful when conditional fields change)
+     */
+    revalidateForm() {
+        if (typeof jQuery !== 'undefined' && typeof window.CheckoutModal !== 'undefined') {
+            // Access the validator from CheckoutModal instance if available
+            const checkoutForm = document.getElementById('checkoutForm');
+            if (checkoutForm && jQuery(checkoutForm).data('validator')) {
+                const validator = jQuery(checkoutForm).data('validator');
+                if (validator) {
+                    validator.resetForm();
+                    validator.form();
+                }
+            }
         }
     }
 

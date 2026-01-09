@@ -23,10 +23,12 @@
         Subscription.init();
         ScrollToTop.init(Utils, CONFIG);
         CategoryPage.init(Utils, CONFIG);
+        ShopPage.init();
         AddressForm.init();
         RegisterPage.init();
         ProductDetails.init();
         Select2Init.init();
+        MegaMenu.init();
     }
 
     // Animations Module
@@ -157,6 +159,8 @@
             this.initPriceRange(Utils, CONFIG);
             this.initViewToggle();
             this.initFilters(Utils);
+            this.initCategorySearch();
+            this.initLoadMoreCategories();
         },
 
         initPriceRange: function(Utils, CONFIG) {
@@ -222,6 +226,101 @@
             if (maxPrice) {
                 Utils.log('Price filter applied:', { min: 0, max: maxPrice });
             }
+        },
+
+        initCategorySearch: function() {
+            const categorySearch = document.getElementById('categorySearch');
+            const categoriesList = document.getElementById('categoriesList');
+
+            if (!categorySearch || !categoriesList) return;
+
+            categorySearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const categoryItems = categoriesList.querySelectorAll('.sidebar-category');
+
+                categoryItems.forEach(item => {
+                    const categoryName = item.getAttribute('data-category-name');
+                    if (categoryName && categoryName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                // Show/hide empty message
+                const visibleItems = categoriesList.querySelectorAll('.sidebar-category:not(.hidden)');
+                const emptyMessage = categoriesList.querySelector('.sidebar-category--empty');
+
+                if (visibleItems.length === 0 && searchTerm !== '') {
+                    if (!emptyMessage || emptyMessage.classList.contains('hidden')) {
+                        const noResults = document.createElement('li');
+                        noResults.className = 'sidebar-category--empty';
+                        noResults.innerHTML = '<span class="sidebar-category__empty-text">No categories found</span>';
+                        if (emptyMessage) {
+                            emptyMessage.replaceWith(noResults);
+                        } else {
+                            categoriesList.appendChild(noResults);
+                        }
+                    }
+                } else if (emptyMessage && searchTerm === '') {
+                    emptyMessage.remove();
+                }
+            });
+        },
+
+        initLoadMoreCategories: function() {
+            const loadMoreBtn = document.getElementById('loadMoreCategories');
+            const categoriesList = document.getElementById('categoriesListContainer');
+
+            if (!loadMoreBtn || !categoriesList) return;
+
+            const itemsPerPage = parseInt(loadMoreBtn.getAttribute('data-items-per-page')) || 10;
+            const allItems = Array.from(categoriesList.querySelectorAll('.sidebar-category'));
+
+            // Ensure items beyond the first page are hidden (in case HTML didn't add the class)
+            allItems.forEach((item, index) => {
+                if (index >= itemsPerPage) {
+                    if (!item.classList.contains('category-item-hidden')) {
+                        item.classList.add('category-item-hidden');
+                    }
+                } else {
+                    // Ensure first 10 items are visible
+                    item.classList.remove('category-item-hidden');
+                    item.classList.remove('show-item');
+                }
+            });
+
+            loadMoreBtn.addEventListener('click', function() {
+                const hiddenItems = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
+
+                if (hiddenItems.length === 0) {
+                    // Show all items
+                    allItems.forEach(item => {
+                        if (!item.classList.contains('hidden')) {
+                            item.classList.remove('category-item-hidden');
+                            item.classList.add('show-item');
+                        }
+                    });
+                    this.querySelector('.load-more-text').style.display = 'none';
+                    this.querySelector('.load-all-text').style.display = 'inline';
+                    this.classList.add('hide-button');
+                } else {
+                    // Show next batch
+                    const itemsToShow = Math.min(itemsPerPage, hiddenItems.length);
+                    for (let i = 0; i < itemsToShow; i++) {
+                        hiddenItems[i].classList.remove('category-item-hidden');
+                        hiddenItems[i].classList.add('show-item');
+                    }
+
+                    // Check if all items are now visible
+                    const remainingHidden = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
+                    if (remainingHidden.length === 0) {
+                        this.querySelector('.load-more-text').style.display = 'none';
+                        this.querySelector('.load-all-text').style.display = 'inline';
+                        this.classList.add('hide-button');
+                    }
+                }
+            });
         }
     };
 
@@ -301,6 +400,7 @@
             this.initPasswordToggle();
             this.initPasswordStrength();
             this.initFormFocus();
+            this.initInvalidFeedback();
         },
 
         initPasswordToggle: function() {
@@ -366,11 +466,33 @@
         },
 
         initPasswordStrength: function() {
+            // Function to clear server-side validation errors
+            function clearPasswordErrors(input) {
+                const formGroup = input.closest('.form-group');
+                const invalidFeedback = formGroup.find('.invalid-feedback');
+
+                // Remove is-invalid class
+                input.removeClass('is-invalid');
+
+                // Hide error message
+                invalidFeedback.css('display', 'none');
+
+                // Reset border color (remove inline styles that might have been set by validation)
+                // The default styles will be applied from CSS
+                input.css({
+                    'border-color': '',
+                    'background-color': ''
+                });
+            }
+
             $('#registerPassword').on('input', function() {
                 const password = $(this).val();
                 const strengthBar = $('#passwordStrengthBar');
                 const strengthContainer = $('#passwordStrength');
                 const passwordHint = $('#passwordHint');
+
+                // Clear server-side errors when user starts typing
+                clearPasswordErrors($(this));
 
                 if (password.length === 0) {
                     strengthContainer.css('display', 'none');
@@ -406,9 +528,12 @@
                 const confirmPassword = $(this).val();
                 const matchMessage = $('#passwordMatch');
 
+                // Clear server-side errors when user starts typing
+                clearPasswordErrors($(this));
+
                 if (confirmPassword.length === 0) {
                     matchMessage.text('');
-                    $(this).css('border-color', '#e9ecef');
+                    $(this).css('border-color', '');
                     return;
                 }
 
@@ -437,8 +562,31 @@
                 'transform': 'translateY(0)'
             };
 
+            // Function to clear server-side validation errors
+            function clearFieldErrors(input) {
+                if (input.hasClass('is-invalid')) {
+                    const formGroup = input.closest('.form-group');
+                    const invalidFeedback = formGroup.find('.invalid-feedback');
+
+                    // Remove is-invalid class
+                    input.removeClass('is-invalid');
+
+                    // Hide error message
+                    invalidFeedback.css('display', 'none');
+                }
+            }
+
             $(document).on('focus', '.register-form-input, .login-form-input, .forgot-password-form-input', function() {
                 $(this).css(focusStyles);
+
+                // Clear errors when field is focused (for password fields, this happens on input too)
+                if ($(this).hasClass('register-form-input--password')) {
+                    // For password fields, errors are cleared on input, so we don't need to do it here
+                    // But we can still clear on focus for immediate feedback
+                    clearFieldErrors($(this));
+                } else {
+                    clearFieldErrors($(this));
+                }
             });
 
             $(document).on('blur', '.register-form-input, .login-form-input, .forgot-password-form-input', function() {
@@ -457,6 +605,35 @@
                 if (!userDropdown.is(e.target) && userDropdown.has(e.target).length === 0) {
                     userDropdown.removeClass('open');
                 }
+            });
+        },
+
+        initInvalidFeedback: function() {
+            // Show invalid-feedback for password fields when input has is-invalid class
+            // This handles cases where CSS :has() selector is not supported
+            function showInvalidFeedback() {
+                $('.password-input-wrapper').each(function() {
+                    const wrapper = $(this);
+                    const input = wrapper.find('input.is-invalid');
+
+                    if (input.length > 0) {
+                        // Find the invalid-feedback within the same form-group
+                        const formGroup = wrapper.closest('.form-group');
+                        const invalidFeedback = formGroup.find('.invalid-feedback');
+
+                        if (invalidFeedback.length > 0) {
+                            invalidFeedback.css('display', 'block');
+                        }
+                    }
+                });
+            }
+
+            // Run on page load
+            showInvalidFeedback();
+
+            // Also check when form is submitted (in case errors are added dynamically)
+            $('#registerForm').on('submit', function() {
+                setTimeout(showInvalidFeedback, 100);
             });
         }
     };
@@ -512,6 +689,206 @@
         }
     };
 
+    // Shop Page Module
+    const ShopPage = {
+        init: function() {
+            this.initCategorySearch();
+            this.initTagSearch();
+            this.initLoadMoreCategories();
+            this.initLoadMoreTags();
+        },
+
+        initCategorySearch: function() {
+            const categorySearch = document.getElementById('categorySearch');
+            const categoriesList = document.getElementById('categoriesList');
+
+            if (!categorySearch || !categoriesList) return;
+
+            categorySearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const categoryItems = categoriesList.querySelectorAll('.sidebar-category');
+
+                categoryItems.forEach(item => {
+                    const categoryName = item.getAttribute('data-category-name');
+                    if (categoryName && categoryName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                // Show/hide empty message
+                const visibleItems = categoriesList.querySelectorAll('.sidebar-category:not(.hidden)');
+                const emptyMessage = categoriesList.querySelector('.sidebar-category--empty');
+
+                if (visibleItems.length === 0 && searchTerm !== '') {
+                    if (!emptyMessage || emptyMessage.classList.contains('hidden')) {
+                        const noResults = document.createElement('li');
+                        noResults.className = 'sidebar-category--empty';
+                        noResults.innerHTML = '<span class="sidebar-category__empty-text">No categories found</span>';
+                        if (emptyMessage) {
+                            emptyMessage.replaceWith(noResults);
+                        } else {
+                            categoriesList.appendChild(noResults);
+                        }
+                    }
+                } else if (emptyMessage && searchTerm === '') {
+                    emptyMessage.remove();
+                }
+            });
+        },
+
+        initTagSearch: function() {
+            const tagSearch = document.getElementById('tagSearch');
+            const tagsList = document.getElementById('tagsList');
+
+            if (!tagSearch || !tagsList) return;
+
+            tagSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const tagItems = tagsList.querySelectorAll('.sidebar-category');
+
+                tagItems.forEach(item => {
+                    const tagName = item.getAttribute('data-category-name');
+                    if (tagName && tagName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                // Show/hide empty message
+                const visibleItems = tagsList.querySelectorAll('.sidebar-category:not(.hidden)');
+                const emptyMessage = tagsList.querySelector('.sidebar-category--empty');
+
+                if (visibleItems.length === 0 && searchTerm !== '') {
+                    if (!emptyMessage || emptyMessage.classList.contains('hidden')) {
+                        const noResults = document.createElement('li');
+                        noResults.className = 'sidebar-category--empty';
+                        noResults.innerHTML = '<span class="sidebar-category__empty-text">No tags found</span>';
+                        if (emptyMessage) {
+                            emptyMessage.replaceWith(noResults);
+                        } else {
+                            tagsList.appendChild(noResults);
+                        }
+                    }
+                } else if (emptyMessage && searchTerm === '') {
+                    emptyMessage.remove();
+                }
+            });
+        },
+
+        initLoadMoreCategories: function() {
+            const loadMoreBtn = document.getElementById('loadMoreCategories');
+            const categoriesList = document.getElementById('categoriesListContainer');
+
+            if (!loadMoreBtn || !categoriesList) return;
+
+            const itemsPerPage = parseInt(loadMoreBtn.getAttribute('data-items-per-page')) || 10;
+            const allItems = Array.from(categoriesList.querySelectorAll('.sidebar-category'));
+
+            // Ensure items beyond the first page are hidden (in case HTML didn't add the class)
+            allItems.forEach((item, index) => {
+                if (index >= itemsPerPage) {
+                    if (!item.classList.contains('category-item-hidden')) {
+                        item.classList.add('category-item-hidden');
+                    }
+                } else {
+                    // Ensure first 10 items are visible
+                    item.classList.remove('category-item-hidden');
+                    item.classList.remove('show-item');
+                }
+            });
+
+            loadMoreBtn.addEventListener('click', function() {
+                const hiddenItems = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
+
+                if (hiddenItems.length === 0) {
+                    // Show all items
+                    allItems.forEach(item => {
+                        if (!item.classList.contains('hidden')) {
+                            item.classList.remove('category-item-hidden');
+                            item.classList.add('show-item');
+                        }
+                    });
+                    this.querySelector('.load-more-text').style.display = 'none';
+                    this.querySelector('.load-all-text').style.display = 'inline';
+                    this.classList.add('hide-button');
+                } else {
+                    // Show next batch
+                    const itemsToShow = Math.min(itemsPerPage, hiddenItems.length);
+                    for (let i = 0; i < itemsToShow; i++) {
+                        hiddenItems[i].classList.remove('category-item-hidden');
+                        hiddenItems[i].classList.add('show-item');
+                    }
+
+                    // Check if all items are now visible
+                    const remainingHidden = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
+                    if (remainingHidden.length === 0) {
+                        this.querySelector('.load-more-text').style.display = 'none';
+                        this.querySelector('.load-all-text').style.display = 'inline';
+                        this.classList.add('hide-button');
+                    }
+                }
+            });
+        },
+
+        initLoadMoreTags: function() {
+            const loadMoreBtn = document.getElementById('loadMoreTags');
+            const tagsList = document.getElementById('tagsListContainer');
+
+            if (!loadMoreBtn || !tagsList) return;
+
+            const itemsPerPage = parseInt(loadMoreBtn.getAttribute('data-items-per-page')) || 10;
+            const allItems = Array.from(tagsList.querySelectorAll('.sidebar-category'));
+
+            // Ensure items beyond the first page are hidden (in case HTML didn't add the class)
+            allItems.forEach((item, index) => {
+                if (index >= itemsPerPage) {
+                    if (!item.classList.contains('category-item-hidden')) {
+                        item.classList.add('category-item-hidden');
+                    }
+                } else {
+                    // Ensure first 10 items are visible
+                    item.classList.remove('category-item-hidden');
+                    item.classList.remove('show-item');
+                }
+            });
+
+            loadMoreBtn.addEventListener('click', function() {
+                const hiddenItems = tagsList.querySelectorAll('.category-item-hidden:not(.hidden)');
+
+                if (hiddenItems.length === 0) {
+                    // Show all items
+                    allItems.forEach(item => {
+                        if (!item.classList.contains('hidden')) {
+                            item.classList.remove('category-item-hidden');
+                            item.classList.add('show-item');
+                        }
+                    });
+                    this.querySelector('.load-more-text').style.display = 'none';
+                    this.querySelector('.load-all-text').style.display = 'inline';
+                    this.classList.add('hide-button');
+                } else {
+                    // Show next batch
+                    const itemsToShow = Math.min(itemsPerPage, hiddenItems.length);
+                    for (let i = 0; i < itemsToShow; i++) {
+                        hiddenItems[i].classList.remove('category-item-hidden');
+                        hiddenItems[i].classList.add('show-item');
+                    }
+
+                    // Check if all items are now visible
+                    const remainingHidden = tagsList.querySelectorAll('.category-item-hidden:not(.hidden)');
+                    if (remainingHidden.length === 0) {
+                        this.querySelector('.load-more-text').style.display = 'none';
+                        this.querySelector('.load-all-text').style.display = 'inline';
+                        this.classList.add('hide-button');
+                    }
+                }
+            });
+        }
+    };
+
     // Select2 Initialization
     const Select2Init = {
         init: function() {
@@ -519,6 +896,97 @@
             $('#editCountry, #editRegion, #editDistrict, #editCity').select2({
                 theme: 'bootstrap-5',
                 width: '100%'
+            });
+        }
+    };
+
+    // Mega Menu Module
+    const MegaMenu = {
+        init: function() {
+            const megaMenuWrapper = document.querySelector('.mega-menu-wrapper');
+            const megaMenuTrigger = document.getElementById('megaMenuTrigger');
+            const megaMenu = document.getElementById('megaMenu');
+
+            if (!megaMenuWrapper || !megaMenuTrigger || !megaMenu) {
+                console.log('Mega Menu elements not found');
+                return;
+            }
+
+            console.log('Mega Menu initialized');
+
+            // Toggle menu on click (works for both desktop and mobile)
+            megaMenuTrigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Mega menu button clicked');
+                megaMenu.style.display = 'block';
+                megaMenuWrapper.classList.toggle('active');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!megaMenuWrapper.contains(e.target)) {
+                    megaMenuWrapper.classList.remove('active');
+                    megaMenu.style.display = 'none';
+                }
+            });
+
+            // Close menu on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && megaMenuWrapper.classList.contains('active')) {
+                    megaMenuWrapper.classList.remove('active');
+                }
+            });
+
+            // Prevent menu from closing when clicking inside
+            megaMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Also add hover support for desktop
+            let hoverTimeout;
+
+            megaMenuWrapper.addEventListener('mouseenter', function() {
+                clearTimeout(hoverTimeout);
+                megaMenu.style.display = 'block';
+                this.classList.add('active');
+            });
+
+            megaMenuWrapper.addEventListener('mouseleave', function(e) {
+                // Check if mouse is moving to the menu
+                const relatedTarget = e.relatedTarget;
+                if (relatedTarget && (megaMenu.contains(relatedTarget) || megaMenu === relatedTarget)) {
+                    return; // Don't close if moving to menu
+                }
+
+                // Add small delay before closing
+                hoverTimeout = setTimeout(() => {
+                    if (!this.classList.contains('force-open')) {
+                        this.classList.remove('active');
+                        megaMenu.style.display = 'none';
+                    }
+                }, 200); // 200ms delay
+            });
+
+            // Keep menu open when hovering over it
+            megaMenu.addEventListener('mouseenter', function() {
+                clearTimeout(hoverTimeout);
+                megaMenuWrapper.classList.add('active');
+                megaMenu.style.display = 'block';
+            });
+
+            megaMenu.addEventListener('mouseleave', function(e) {
+                const relatedTarget = e.relatedTarget;
+                if (relatedTarget && (megaMenuWrapper.contains(relatedTarget) || megaMenuWrapper === relatedTarget)) {
+                    return; // Don't close if moving back to button
+                }
+
+                hoverTimeout = setTimeout(() => {
+                    if (!megaMenuWrapper.classList.contains('force-open')) {
+                        megaMenuWrapper.classList.remove('active');
+                        megaMenu.style.display = 'none';
+                    }
+                }, 200);
             });
         }
     };

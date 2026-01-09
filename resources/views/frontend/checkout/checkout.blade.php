@@ -10,8 +10,27 @@
     <!-- Checkout Section -->
     <section class="checkout-section">
         <div class="container">
+            <!-- Checkout Steps Indicator -->
+            <div class="checkout-steps" id="checkoutStepsIndicator">
+                <div class="checkout-step checkout-step--active" data-step="1">
+                    <div class="checkout-step__number">1</div>
+                    <div class="checkout-step__label">Details</div>
+                </div>
+                <div class="checkout-step" data-step="2">
+                    <div class="checkout-step__number">2</div>
+                    <div class="checkout-step__label">Review</div>
+                </div>
+                <div class="checkout-step" data-step="3">
+                    <div class="checkout-step__number">3</div>
+                    <div class="checkout-step__label">Payment</div>
+                </div>
+            </div>
+
             <form class="checkout-form" id="checkoutForm">
                 @csrf
+
+                <!-- Step 1: Form Details -->
+                <div class="checkout-step-content" id="checkoutStep1">
                 <div class="row">
                     <!-- Left Column - Forms -->
                     <div class="col-lg-8">
@@ -41,7 +60,10 @@
                                     <label for="billingPhone" class="form-label">Phone Number <span class="required">*</span></label>
                                     <input type="tel" id="billingPhone" name="billing_phone" class="form-input"
                                            value="{{ $billingAddress->phone ?? $user->userDetail->phone ?? '' }}"
-                                           placeholder="Enter your phone number" required>
+                                           placeholder="Enter your phone number"
+                                           pattern="[\d\+\s\-]+"
+                                           inputmode="numeric"
+                                           required>
                                 </div>
                                 <div class="form-group form-group--full">
                                     <label for="billingAddress" class="form-label">Street Address <span class="required">*</span></label>
@@ -77,7 +99,11 @@
                                     <label for="billingZip" class="form-label">Postcode <span class="required">*</span></label>
                                     <input type="text" id="billingZip" name="billing_zip_code" class="form-input"
                                            value="{{ $billingAddress->zip_code ?? '' }}"
-                                           placeholder="Enter your postcode" required>
+                                           placeholder="Enter your postcode"
+                                           pattern="\d{4}"
+                                           maxlength="4"
+                                           inputmode="numeric"
+                                           required>
                                 </div>
                                 <div class="form-group">
                                     <label for="billingCountry" class="form-label">Country <span class="required">*</span></label>
@@ -121,7 +147,10 @@
                                         <label for="shippingPhone" class="form-label">Phone Number <span class="required">*</span></label>
                                         <input type="tel" id="shippingPhone" name="shipping_phone" class="form-input"
                                                value="{{ $shippingAddress->phone ?? $user->userDetail->phone ?? '' }}"
-                                               placeholder="Enter your phone number" required>
+                                               placeholder="Enter your phone number"
+                                               pattern="[\d\+\s\-]+"
+                                               inputmode="numeric"
+                                               required>
                                     </div>
                                     <div class="form-group form-group--full">
                                         <label for="shippingAddress" class="form-label">Street Address <span class="required">*</span></label>
@@ -157,7 +186,11 @@
                                         <label for="shippingZip" class="form-label">Postcode <span class="required">*</span></label>
                                         <input type="text" id="shippingZip" name="shipping_zip_code" class="form-input"
                                                value="{{ $shippingAddress->zip_code ?? '' }}"
-                                               placeholder="Enter your postcode" required>
+                                               placeholder="Enter your postcode"
+                                               pattern="\d{4}"
+                                               maxlength="4"
+                                               inputmode="numeric"
+                                               required>
                                     </div>
                                     <div class="form-group">
                                         <label for="shippingCountry" class="form-label">Country <span class="required">*</span></label>
@@ -280,117 +313,122 @@
                         </div>
                     </div>
                 </div>
+                </div>
+                <!-- End Step 1: Form Details -->
+
+                <!-- Step 2: Review Order -->
+                <div class="checkout-step-content" id="checkoutStep2" style="display: none;">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="checkout-review-block">
+                                <h2 class="checkout-review-block__title">Review Your Order</h2>
+
+                                <!-- Order Summary -->
+                                <div class="checkout-review-block__summary">
+                                    <h3 class="checkout-review-block__section-title">Order Summary</h3>
+
+                                    <!-- Order Items -->
+                                    <div class="checkout-review-block__items">
+                                        @foreach($cartItems as $cartItem)
+                                        <div class="checkout-review-block__item">
+                                            <div class="checkout-review-block__item-image">
+                                                <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
+                                            </div>
+                                            <div class="checkout-review-block__item-info">
+                                                <h4 class="checkout-review-block__item-name">{{ $cartItem->product->name }}</h4>
+                                                <div class="checkout-review-block__item-details">
+                                                    <span>${{ number_format($cartItem->price, 2) }} x {{ $cartItem->quantity }}</span>
+                                                    <span class="checkout-review-block__item-total">= ${{ number_format($cartItem->subtotal, 2) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endforeach
+                                    </div>
+
+                                    <!-- Order Totals -->
+                                    <div class="checkout-review-block__totals">
+                                        <div class="checkout-review-block__total-row">
+                                            <span>Subtotal</span>
+                                            <span id="reviewSubtotal">${{ number_format($subtotal, 2) }}</span>
+                                        </div>
+                                        @if($appliedCoupon && $discount > 0)
+                                        <div class="checkout-review-block__total-row checkout-review-block__total-row--discount">
+                                            <span>Discount ({{ $appliedCoupon['code'] }})</span>
+                                            <span id="reviewDiscount">-${{ number_format($discount, 2) }}</span>
+                                        </div>
+                                        @endif
+                                        <div class="checkout-review-block__total-row" id="reviewShippingRow" style="{{ $shipping == 0 ? 'display: none;' : '' }}">
+                                            <span>Shipping</span>
+                                            <span id="reviewShipping">${{ number_format($shipping, 2) }}</span>
+                                        </div>
+                                        <div class="checkout-review-block__total-row checkout-review-block__total-row--final">
+                                            <span>Total</span>
+                                            <span id="reviewTotal">${{ number_format($total, 2) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="checkout-review-block__actions">
+                                    <button type="button" class="checkout-review-block__btn checkout-review-block__btn--secondary" id="backToFormBtn">
+                                        <i class="fas fa-arrow-left"></i> Back to Details
+                                    </button>
+                                    <button type="button" class="checkout-review-block__btn checkout-review-block__btn--primary" id="proceedToPaymentBtn">
+                                        Proceed to Payment <i class="fas fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Step 2: Review Order -->
+
+                <!-- Step 3: Payment -->
+                <div class="checkout-step-content" id="checkoutStep3" style="display: none;">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="checkout-payment-block">
+                                <h2 class="checkout-payment-block__title">Complete Payment</h2>
+
+                                <!-- Final Total Display -->
+                                <div class="checkout-payment-block__final-total">
+                                    <span>Total Amount</span>
+                                    <span class="checkout-payment-block__final-total-amount" id="paymentFinalTotal">${{ number_format($total, 2) }}</span>
+                                </div>
+
+                                <!-- Stripe Payment Element -->
+                                <div id="payment-element-container">
+                                    <div id="payment-element">
+                                        <!-- Stripe Elements will create form elements here -->
+                                    </div>
+                                    <div id="payment-errors" role="alert" style="color: #dc3545; margin-top: 10px; font-size: 0.9rem; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; display: none;"></div>
+                                </div>
+
+                                <!-- Security Info -->
+                                <div class="checkout-payment-block__security">
+                                    <i class="fas fa-lock"></i>
+                                    <span>Your payment information is secure and encrypted</span>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="checkout-payment-block__actions">
+                                    <button type="button" class="checkout-payment-block__btn checkout-payment-block__btn--secondary" id="backToReviewBtn">
+                                        <i class="fas fa-arrow-left"></i> Back to Review
+                                    </button>
+                                    <button type="button" class="checkout-payment-block__btn checkout-payment-block__btn--primary" id="placeOrderBtn">
+                                        <span id="placeOrderBtnText">Place Order</span>
+                                        <span id="placeOrderSpinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Step 3: Payment -->
             </form>
         </div>
     </section>
 
-    <!-- Checkout Review Modal -->
-    <div class="checkout-modal" id="checkoutModal">
-        <div class="checkout-modal__overlay" id="checkoutModalOverlay"></div>
-        <div class="checkout-modal__content">
-            <div class="checkout-modal__header">
-                <h2 class="checkout-modal__title" id="modalTitle">Review Your Order</h2>
-                <button type="button" class="checkout-modal__close" id="checkoutModalClose" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="checkout-modal__body">
-                <!-- Step 1: Order Review -->
-                <div class="checkout-modal__step" id="reviewStep">
-                    <div class="checkout-modal__order-summary">
-                        <h3 class="checkout-modal__section-title">Order Summary</h3>
-                        
-                        <!-- Order Items -->
-                        <div class="checkout-modal__items">
-                            @foreach($cartItems as $cartItem)
-                            <div class="checkout-modal__item">
-                                <div class="checkout-modal__item-image">
-                                    <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
-                                </div>
-                                <div class="checkout-modal__item-info">
-                                    <h4 class="checkout-modal__item-name">{{ $cartItem->product->name }}</h4>
-                                    <div class="checkout-modal__item-details">
-                                        <span>${{ number_format($cartItem->price, 2) }} x {{ $cartItem->quantity }}</span>
-                                        <span class="checkout-modal__item-total">= ${{ number_format($cartItem->subtotal, 2) }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-
-                        <!-- Order Totals -->
-                        <div class="checkout-modal__totals">
-                            <div class="checkout-modal__total-row">
-                                <span>Subtotal</span>
-                                <span id="modalSubtotal">${{ number_format($subtotal, 2) }}</span>
-                            </div>
-                            @if($appliedCoupon && $discount > 0)
-                            <div class="checkout-modal__total-row checkout-modal__total-row--discount">
-                                <span>Discount ({{ $appliedCoupon['code'] }})</span>
-                                <span id="modalDiscount">-${{ number_format($discount, 2) }}</span>
-                            </div>
-                            @endif
-                            <div class="checkout-modal__total-row" id="modalShippingRow" style="{{ $shipping == 0 ? 'display: none;' : '' }}">
-                                <span>Shipping</span>
-                                <span id="modalShipping">${{ number_format($shipping, 2) }}</span>
-                            </div>
-                            <div class="checkout-modal__total-row checkout-modal__total-row--final">
-                                <span>Total</span>
-                                <span id="modalTotal">${{ number_format($total, 2) }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="checkout-modal__actions">
-                        <button type="button" class="checkout-modal__btn checkout-modal__btn--secondary" id="closeModalBtn">
-                            <i class="fas fa-arrow-left"></i> Back to Checkout
-                        </button>
-                        <button type="button" class="checkout-modal__btn checkout-modal__btn--primary" id="proceedToPaymentBtn">
-                            Proceed to Payment <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Step 2: Payment -->
-                <div class="checkout-modal__step" id="paymentStep" style="display: none;">
-                    <div class="checkout-modal__payment-section">
-                        <h3 class="checkout-modal__section-title">Payment Details</h3>
-                        
-                        <!-- Final Total Display -->
-                        <div class="checkout-modal__final-total">
-                            <span>Total Amount</span>
-                            <span class="checkout-modal__final-total-amount" id="modalFinalTotal">${{ number_format($total, 2) }}</span>
-                        </div>
-
-                        <!-- Stripe Payment Element -->
-                        <div id="modal-payment-element-container">
-                            <div id="modal-payment-element">
-                                <!-- Stripe Elements will create form elements here -->
-                            </div>
-                            <div id="modal-payment-errors" role="alert" style="color: #dc3545; margin-top: 10px; font-size: 0.9rem; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; display: none;"></div>
-                        </div>
-
-                        <!-- Security Info -->
-                        <div class="checkout-modal__security">
-                            <i class="fas fa-lock"></i>
-                            <span>Your payment information is secure and encrypted</span>
-                        </div>
-                    </div>
-
-                    <div class="checkout-modal__actions">
-                        <button type="button" class="checkout-modal__btn checkout-modal__btn--secondary" id="backToReviewBtn">
-                            <i class="fas fa-arrow-left"></i> Back to Review
-                        </button>
-                        <button type="button" class="checkout-modal__btn checkout-modal__btn--primary" id="placeOrderBtn">
-                            <span id="placeOrderBtnText">Place Order</span>
-                            <span id="placeOrderSpinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     {{-- Checkout JavaScript Modules --}}
     <script src="{{ asset('assets/frontend/js/checkout/shipping.js') }}"></script>

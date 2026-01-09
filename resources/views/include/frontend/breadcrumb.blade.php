@@ -9,6 +9,9 @@
                         </ol>
                     </nav>
                     <h1 class="page-title">{{ $title ?? 'Page Title' }}</h1>
+                    @if(isset($subtitle))
+                    <p class="page-subtitle">{{ $subtitle }}</p>
+                    @endif
                 </div>
             </div>
         </div>

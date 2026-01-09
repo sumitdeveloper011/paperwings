@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -44,9 +45,9 @@ class AuthController extends Controller
 
             return view('include.frontend.login', compact('googleLoginEnabled', 'facebookLoginEnabled'));
         } catch (\Exception $e) {
-            \Log::error('Login page error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+            Log::error('Login page error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
             // Fallback values if settings fail
             return view('include.frontend.login', [
                 'googleLoginEnabled' => false,
@@ -153,7 +154,7 @@ class AuthController extends Controller
 
             // Clear any intended URL from session to prevent redirecting to admin routes
             $request->session()->forget('url.intended');
-            
+
             // Always redirect frontend users to home page
             return redirect()->route('home')->with('success', 'Welcome back! You have been successfully logged in.');
         }
@@ -183,9 +184,9 @@ class AuthController extends Controller
                             ->with('error', 'Please logout from admin account to register a new user account.');
                     }
                 } catch (\Exception $e) {
-                    \Log::warning('Role check failed in register method: ' . $e->getMessage());
+                    Log::warning('Role check failed in register method: ' . $e->getMessage());
                 }
-                
+
                 // If already authenticated as user, redirect to home
                 return redirect()->route('home');
             }
@@ -195,16 +196,16 @@ class AuthController extends Controller
                 $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
                 $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
             } catch (\Exception $e) {
-                \Log::warning('Settings retrieval failed in register method: ' . $e->getMessage());
+                Log::warning('Settings retrieval failed in register method: ' . $e->getMessage());
                 $googleLoginEnabled = false;
                 $facebookLoginEnabled = false;
             }
 
             return view('include.frontend.register', compact('googleLoginEnabled', 'facebookLoginEnabled'));
         } catch (\Exception $e) {
-            \Log::error('Register page error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+            Log::error('Register page error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
             // Fallback values if anything fails
             return view('include.frontend.register', [
                 'googleLoginEnabled' => false,
@@ -233,22 +234,22 @@ class AuthController extends Controller
                 }
             } catch (\Exception $e) {
                 // Role might not exist, continue without role assignment
-                \Log::warning('Could not assign User role: ' . $e->getMessage());
+                Log::warning('Could not assign User role: ' . $e->getMessage());
             }
 
             try {
                 $user->sendEmailVerificationNotification();
             } catch (\Exception $e) {
                 // Log email notification error but don't fail registration
-                \Log::error('Email verification notification failed: ' . $e->getMessage());
-                \Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('Email verification notification failed: ' . $e->getMessage());
+                Log::error('Stack trace: ' . $e->getTraceAsString());
             }
 
-            return redirect()->route('login')->with('success', 'Registration successful! Please check your email to verify your account.');
+            return redirect()->route('register')->with('success', 'Registration successful! Please check your email to verify your account.');
 
         } catch (\Exception $e) {
-            \Log::error('Registration error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Registration error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return redirect()->back()
                 ->withInput()
@@ -311,8 +312,8 @@ class AuthController extends Controller
             return back()->with('success', 'If that email address exists in our system, we have sent a password reset link.');
 
         } catch (\Exception $e) {
-            \Log::error('Password reset request error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Password reset request error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return back()->with('error', 'An error occurred while processing your request. Please try again.');
         }
@@ -387,7 +388,7 @@ class AuthController extends Controller
 
             // Check if token is expired (60 minutes)
             if (now()->diffInMinutes($resetRecord->created_at) > 60) {
-                \DB::table('password_reset_tokens')->where('email', $email)->delete();
+                DB::table('password_reset_tokens')->where('email', $email)->delete();
                 return back()->withErrors([
                     'email' => 'This password reset link has expired. Please request a new one.'
                 ])->withInput();
@@ -425,8 +426,8 @@ class AuthController extends Controller
             return redirect()->route('login')->with('success', 'Your password has been reset successfully. Please login with your new password.');
 
         } catch (\Exception $e) {
-            \Log::error('Password reset error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Password reset error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return back()->with('error', 'An error occurred while resetting your password. Please try again.')->withInput();
         }
@@ -471,8 +472,4 @@ class AuthController extends Controller
 
         return redirect()->route('login')->with('error', 'Email verification failed. Please try again.');
     }
-
-
-
-
 }

@@ -14,7 +14,9 @@ use App\Repositories\SliderRepository;
 use App\Repositories\SubCategoryRepository;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 class AppServiceProvider extends ServiceProvider
 {
     // Register any application services
@@ -33,9 +35,9 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         if (app()->environment('local')) {
-            \DB::listen(function ($query) {
+            DB::listen(function ($query) {
                 if ($query->time > 100) {
-                    \Log::warning('Slow Query Detected', [
+                    Log::warning('Slow Query Detected', [
                         'sql' => $query->sql,
                         'bindings' => $query->bindings,
                         'time' => $query->time . 'ms',
@@ -47,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
                 $queryCounts[$queryKey] = ($queryCounts[$queryKey] ?? 0) + 1;
 
                 if ($queryCounts[$queryKey] > 5) {
-                    \Log::info('Potential N+1 Query Pattern', [
+                    Log::info('Potential N+1 Query Pattern', [
                         'sql' => $query->sql,
                         'count' => $queryCounts[$queryKey],
                         'time' => $query->time . 'ms',
@@ -62,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
                     try {
                         return \App\Models\Setting::pluck('value', 'key')->toArray();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch header settings: ' . $e->getMessage());
+                        Log::warning('Failed to fetch header settings: ' . $e->getMessage());
                         return [];
                     }
                 });
@@ -95,7 +97,7 @@ class AppServiceProvider extends ServiceProvider
                     $socialLinks['pinterest'] = $settings['social_pinterest'];
                 }
 
-                // Optimized: Use activeProducts relationship with whereHas
+                // Optimized: Use activeProducts relationship with whereHas (fetch all for mega menu)
                 $categories = \Illuminate\Support\Facades\Cache::remember('header_categories', 1800, function() {
                     try {
                         return \App\Models\Category::active()
@@ -103,18 +105,17 @@ class AppServiceProvider extends ServiceProvider
                             ->withCount('activeProducts')
                             ->select('id', 'name', 'slug')
                             ->ordered()
-                            ->take(10)
                             ->get();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch header categories: ' . $e->getMessage());
+                        Log::warning('Failed to fetch header categories: ' . $e->getMessage());
                         return collect([]);
                     }
                 });
 
                 $userData = null;
-                if (auth()->check()) {
+                if (Auth::check()) {
                     try {
-                        $user = auth()->user();
+                        $user = Auth::user();
                         $userData = [
                             'name' => $user->name,
                             'email' => $user->email,
@@ -123,7 +124,7 @@ class AppServiceProvider extends ServiceProvider
                             'initial' => strtoupper(substr($user->first_name ?? ($user->name ?? 'U'), 0, 1))
                         ];
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch user data for header: ' . $e->getMessage());
+                        Log::warning('Failed to fetch user data for header: ' . $e->getMessage());
                         $userData = null;
                     }
                 }
@@ -146,7 +147,7 @@ class AppServiceProvider extends ServiceProvider
                     'userData' => $userData
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Header view composer error: ' . $e->getMessage(), [
+                Log::error('Header view composer error: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
@@ -169,7 +170,7 @@ class AppServiceProvider extends ServiceProvider
                     try {
                         return \App\Models\Setting::pluck('value', 'key')->toArray();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch footer settings: ' . $e->getMessage());
+                        Log::warning('Failed to fetch footer settings: ' . $e->getMessage());
                         return [];
                     }
                 });
@@ -204,7 +205,7 @@ class AppServiceProvider extends ServiceProvider
                         $pages = \App\Models\Page::select('id', 'title', 'slug')
                             ->whereIn('slug', $pageSlugs)
                             ->get();
-                        
+
                         // Sort by custom order (SQLite doesn't support FIELD function)
                         $driverName = \Illuminate\Support\Facades\DB::getDriverName();
                         if ($driverName === 'sqlite') {
@@ -219,7 +220,7 @@ class AppServiceProvider extends ServiceProvider
                             })->values();
                         }
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch footer pages: ' . $e->getMessage());
+                        Log::warning('Failed to fetch footer pages: ' . $e->getMessage());
                         return collect([]);
                     }
                 });
@@ -230,7 +231,7 @@ class AppServiceProvider extends ServiceProvider
                             ->ordered()
                             ->first();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch footer about section: ' . $e->getMessage());
+                        Log::warning('Failed to fetch footer about section: ' . $e->getMessage());
                         return null;
                     }
                 });
@@ -245,7 +246,7 @@ class AppServiceProvider extends ServiceProvider
                             ->take(5)
                             ->get();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch footer categories: ' . $e->getMessage());
+                        Log::warning('Failed to fetch footer categories: ' . $e->getMessage());
                         return collect([]);
                     }
                 });
@@ -289,7 +290,7 @@ class AppServiceProvider extends ServiceProvider
                     'footerAboutSection' => $aboutSection,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Footer view composer error: ' . $e->getMessage(), [
+                Log::error('Footer view composer error: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
@@ -317,7 +318,7 @@ class AppServiceProvider extends ServiceProvider
                     try {
                         return \App\Models\Setting::pluck('value', 'key')->toArray();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
+                        Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
                         return [];
                     }
                 });
@@ -329,7 +330,7 @@ class AppServiceProvider extends ServiceProvider
                     'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Admin layout view composer error: ' . $e->getMessage(), [
+                Log::error('Admin layout view composer error: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
@@ -350,7 +351,7 @@ class AppServiceProvider extends ServiceProvider
                     try {
                         return \App\Models\Setting::pluck('value', 'key')->toArray();
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
+                        Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
                         return [];
                     }
                 });
@@ -362,7 +363,7 @@ class AppServiceProvider extends ServiceProvider
                     'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Admin include view composer error: ' . $e->getMessage(), [
+                Log::error('Admin include view composer error: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()

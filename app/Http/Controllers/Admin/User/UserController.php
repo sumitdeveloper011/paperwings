@@ -8,13 +8,15 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
     // Display a listing of users
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $status = $request->get('status');
@@ -64,7 +66,10 @@ class UserController extends Controller
     // Show the form for creating a new user
     public function create(): View
     {
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
+        // Exclude SuperAdmin and User roles from selection
+        $roles = \Spatie\Permission\Models\Role::whereNotIn('name', ['SuperAdmin', 'User'])
+            ->orderBy('name')
+            ->get();
         return view('admin.user.create', compact('roles'));
     }
 
@@ -102,7 +107,7 @@ class UserController extends Controller
             Log::info('User created by admin', [
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'created_by' => auth()->id()
+                'created_by' => Auth::id()
             ]);
 
             return redirect()->route('admin.users.index')
@@ -110,7 +115,7 @@ class UserController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to create user', [
                 'error' => $e->getMessage(),
-                'created_by' => auth()->id()
+                'created_by' => Auth::id()
             ]);
 
             return back()->withInput()
@@ -121,11 +126,15 @@ class UserController extends Controller
     // Display the specified user
     public function show(User $user): View
     {
-        $user->load(['userDetail', 'addresses.region', 'wishlists.product', 'roles']);
-        
-        // Get user orders
+        $user->load(['userDetail', 'addresses.region', 'wishlists.product', 'roles'])
+            ->loadCount(['wishlists', 'addresses', 'orders']);
+
+        // Get user orders with items (load items first, then products)
         $orders = Order::where('user_id', $user->id)
-            ->with(['items.product'])
+            ->with(['items' => function($query) {
+                $query->with('product');
+            }])
+            ->withCount('items')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -135,7 +144,10 @@ class UserController extends Controller
     // Show the form for editing the specified user
     public function edit(User $user): View
     {
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
+        // Exclude SuperAdmin and User roles from selection
+        $roles = \Spatie\Permission\Models\Role::whereNotIn('name', ['SuperAdmin', 'User'])
+            ->orderBy('name')
+            ->get();
         $user->load('roles');
         return view('admin.user.edit', compact('user', 'roles'));
     }
@@ -181,7 +193,7 @@ class UserController extends Controller
             Log::info('User updated by admin', [
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'updated_by' => auth()->id()
+                'updated_by' => Auth::id()
             ]);
 
             return redirect()->route('admin.users.index')
@@ -190,7 +202,7 @@ class UserController extends Controller
             Log::error('Failed to update user', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
-                'updated_by' => auth()->id()
+                'updated_by' => Auth::id()
             ]);
 
             return back()->withInput()
@@ -216,7 +228,7 @@ class UserController extends Controller
         Log::info('User status updated', [
             'user_id' => $user->id,
             'status' => $request->status,
-            'updated_by' => auth()->id()
+            'updated_by' => Auth::id()
         ]);
 
         return redirect()->route('admin.users.index')
@@ -240,7 +252,7 @@ class UserController extends Controller
         Log::info('User deleted', [
             'user_id' => $userId,
             'email' => $userEmail,
-            'deleted_by' => auth()->id()
+            'deleted_by' => Auth::id()
         ]);
 
         return redirect()->route('admin.users.index')

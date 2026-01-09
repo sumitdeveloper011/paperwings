@@ -29,7 +29,7 @@ class AdminAuthMiddleware
 
         if (!$user->isActive()) {
             Auth::logout();
-            
+
             CommonHelper::logSecurityEvent('Inactive user attempted admin access', $user, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -41,7 +41,8 @@ class AdminAuthMiddleware
             ]);
         }
 
-        if (!CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
+        // Allow SuperAdmin, Admin, Manager, and Editor roles to access admin panel
+        if (!CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin', 'Manager', 'Editor'])) {
             CommonHelper::logSecurityEvent('Unauthorized admin access attempt', $user, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -55,4 +56,4 @@ class AdminAuthMiddleware
 
         return $next($request);
     }
-} 
+}

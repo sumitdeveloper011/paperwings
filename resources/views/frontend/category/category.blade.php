@@ -15,29 +15,53 @@
                                 </h3>
                             </div>
                             <div class="sidebar-widget__body">
-                                <ul class="sidebar-categories">
-                                    @if($categories && $categories->count() > 0)
-                                    @foreach($categories as $category)
-                                    <li class="sidebar-category">
-                                        <a href="{{ route('product.by.category', $category->slug) }}"
-                                           class="sidebar-category__link {{ request()->route('product.by.category') && request()->route('slug') == $category->slug ? 'active' : '' }}">
-                                            <span class="sidebar-category__icon-wrapper">
-                                                <i class="fas fa-folder sidebar-category__icon"></i>
-                                            </span>
-                                            <span class="sidebar-category__content">
-                                                <span class="sidebar-category__name">{{ $category->name }}</span>
-                                                <span class="category-count">{{ $category->products_count ?? 0 }} items</span>
-                                            </span>
-                                            <i class="fas fa-chevron-right sidebar-category__arrow"></i>
-                                        </a>
-                                    </li>
-                                    @endforeach
-                                    @else
-                                    <li class="sidebar-category--empty">
-                                        <span class="sidebar-category__empty-text">No categories available</span>
-                                    </li>
-                                    @endif
-                                </ul>
+                                <!-- Category Search Box (only show if more than 10 categories) -->
+                                @if($categories && $categories->count() > 10)
+                                <div class="category-search-box mb-3">
+                                    <input type="text" class="category-search-input" id="categorySearch" placeholder="Search categories...">
+                                    <i class="fas fa-search category-search-icon"></i>
+                                </div>
+                                @endif
+
+                                <!-- Categories List Container -->
+                                <div class="categories-list-container" id="categoriesListContainer">
+                                    <ul class="sidebar-categories" id="categoriesList">
+                                        @if($categories && $categories->count() > 0)
+                                        @foreach($categories as $index => $catItem)
+                                        <li class="sidebar-category {{ $index >= 10 ? 'category-item-hidden' : '' }}"
+                                            data-category-name="{{ strtolower($catItem->name) }}"
+                                            data-category-index="{{ $index }}">
+                                            <a href="{{ route('product.by.category', $catItem->slug) }}"
+                                               class="sidebar-category__link {{ isset($category) && $category->slug == $catItem->slug ? 'active' : '' }}">
+                                                <span class="sidebar-category__icon-wrapper">
+                                                    <i class="fas fa-folder sidebar-category__icon"></i>
+                                                </span>
+                                                <span class="sidebar-category__content">
+                                                    <span class="sidebar-category__name">{{ $catItem->name }}</span>
+                                                    <span class="category-count">{{ $catItem->active_products_count ?? 0 }} items</span>
+                                                </span>
+                                                <i class="fas fa-chevron-right sidebar-category__arrow"></i>
+                                            </a>
+                                        </li>
+                                        @endforeach
+                                        @else
+                                        <li class="sidebar-category--empty">
+                                            <span class="sidebar-category__empty-text">No categories available</span>
+                                        </li>
+                                        @endif
+                                    </ul>
+                                </div>
+
+                                <!-- Load More Button (only show if more than 10 categories) -->
+                                @if($categories && $categories->count() > 10)
+                                <div class="text-center mt-3">
+                                    <button type="button" class="btn-load-more-categories" id="loadMoreCategories" data-items-per-page="10">
+                                        <span class="load-more-text">Load More</span>
+                                        <span class="load-all-text" style="display: none;">Show All</span>
+                                        <i class="fas fa-chevron-down ms-1"></i>
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                         </div>
 
@@ -149,6 +173,7 @@
         </div>
     </section>
 
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sortSelect = document.getElementById('sortSelect');
@@ -156,6 +181,7 @@
             const priceMinDisplay = document.getElementById('priceMinDisplay');
             const priceMaxDisplay = document.getElementById('priceMaxDisplay');
             const applyPriceFilter = document.getElementById('applyPriceFilter');
+
 
             // Sort functionality
             if (sortSelect) {

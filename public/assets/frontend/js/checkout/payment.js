@@ -65,6 +65,9 @@ class PaymentHandler {
             }
         }
 
+        // Clear elements instance to allow fresh creation
+        this.elements = null;
+
         try {
             const response = await fetch(this.createPaymentIntentUrl, {
                 method: 'POST',
@@ -85,16 +88,12 @@ class PaymentHandler {
                 this.paymentIntentClientSecret = clientSecret;
                 console.log('Payment intent created, client secret received');
 
-                if (!this.elements) {
-                    console.log('Creating Stripe elements...');
-                    this.elements = this.stripe.elements({
-                        clientSecret: this.paymentIntentClientSecret,
-                        appearance: { theme: 'stripe' }
-                    });
-                } else {
-                    console.log('Updating existing elements with new client secret...');
-                    this.elements.update({ clientSecret: this.paymentIntentClientSecret });
-                }
+                // Always create fresh elements instance
+                console.log('Creating Stripe elements...');
+                this.elements = this.stripe.elements({
+                    clientSecret: this.paymentIntentClientSecret,
+                    appearance: { theme: 'stripe' }
+                });
 
                 // Create payment element (don't mount yet - will mount in modal when user proceeds to payment)
                 // The element will be created and mounted by the modal when needed
@@ -136,28 +135,43 @@ class PaymentHandler {
                     appearance: { theme: 'stripe' }
                 });
             }
-            
+
             // Check if modal container exists, otherwise use regular container
-            const modalContainer = document.getElementById('modal-payment-element');
-            const regularContainer = document.getElementById('payment-element');
-            const mountTarget = modalContainer ? '#modal-payment-element' : '#payment-element';
-            
+            const mountTarget = '#payment-element';
+
             this.paymentElement = this.elements.create('payment');
             this.paymentElement.mount(mountTarget);
             await new Promise(resolve => setTimeout(resolve, 500));
         }
 
         // Verify element is still mounted
-        const modalPaymentContainer = document.getElementById('modal-payment-element');
-        const regularPaymentContainer = document.getElementById('payment-element');
-        const paymentElementContainer = modalPaymentContainer || regularPaymentContainer;
-        
+        const paymentElementContainer = document.getElementById('payment-element');
+
         if (!paymentElementContainer || !paymentElementContainer.children.length) {
-            console.warn('Payment element container empty, remounting...');
-            const mountTarget = modalPaymentContainer ? '#modal-payment-element' : '#payment-element';
-            this.paymentElement = this.elements.create('payment');
-            this.paymentElement.mount(mountTarget);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            console.warn('Payment element container empty, checking if element exists...');
+            // Only create if element doesn't exist
+            if (!this.paymentElement) {
+                try {
+                    this.paymentElement = this.elements.create('payment');
+                    this.paymentElement.mount('#payment-element');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error('Error creating payment element:', error);
+                    if (error.message && error.message.includes('one Element')) {
+                        console.log('Payment element already exists, skipping creation');
+                    } else {
+                        throw error;
+                    }
+                }
+            } else {
+                // Element exists but not mounted, try to remount
+                try {
+                    this.paymentElement.mount('#payment-element');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error('Error remounting payment element:', error);
+                }
+            }
         }
 
         const {error: stripeError, paymentIntent} = await this.stripe.confirmPayment({
@@ -183,6 +197,8 @@ class PaymentHandler {
                         console.warn('Error unmounting payment element:', e);
                     }
                 }
+                // Clear elements instance to allow recreation
+                this.elements = null;
                 throw new Error('PAYMENT_INTENT_RECREATE');
             } else {
                 throw new Error(stripeError.message || 'Payment failed. Please try again.');
@@ -192,12 +208,50 @@ class PaymentHandler {
         console.log('Payment confirmed, processing order...', paymentIntent);
 
         // Process order
+        // If "same as billing" is checked, copy billing values to shipping fields before submission
+        const sameAsBillingCheckbox = document.getElementById('sameAsBilling');
+        const shippingFieldsToCopy = [
+            { billing: 'billing_first_name', shipping: 'shipping_first_name' },
+            { billing: 'billing_last_name', shipping: 'shipping_last_name' },
+            { billing: 'billing_email', shipping: 'shipping_email' },
+            { billing: 'billing_phone', shipping: 'shipping_phone' },
+            { billing: 'billing_street_address', shipping: 'shipping_street_address' },
+            { billing: 'billing_city', shipping: 'shipping_city' },
+            { billing: 'billing_suburb', shipping: 'shipping_suburb' },
+            { billing: 'billing_region_id', shipping: 'shipping_region_id' },
+            { billing: 'billing_zip_code', shipping: 'shipping_zip_code' }
+        ];
+
+        if (sameAsBillingCheckbox && sameAsBillingCheckbox.checked) {
+            // Enable shipping fields and copy billing values
+            shippingFieldsToCopy.forEach(({ billing, shipping }) => {
+                const billingField = form.querySelector(`[name="${billing}"]`);
+                const shippingField = form.querySelector(`[name="${shipping}"]`);
+                if (billingField && shippingField) {
+                    // Enable shipping field temporarily
+                    shippingField.disabled = false;
+                    // Copy value from billing to shipping
+                    shippingField.value = billingField.value;
+                }
+            });
+        }
+
         const formData = new FormData(form);
         const orderData = {};
         formData.forEach((value, key) => {
             orderData[key] = value;
         });
         orderData.payment_intent_id = paymentIntent.id;
+
+        // Restore disabled state of shipping fields after form data collection
+        if (sameAsBillingCheckbox && sameAsBillingCheckbox.checked) {
+            shippingFieldsToCopy.forEach(({ shipping }) => {
+                const shippingField = form.querySelector(`[name="${shipping}"]`);
+                if (shippingField) {
+                    shippingField.disabled = true;
+                }
+            });
+        }
 
         const response = await fetch(this.processOrderUrl, {
             method: 'POST',
@@ -230,7 +284,7 @@ class PaymentHandler {
         // Try modal error element first, then regular
         const modalErrorElement = document.getElementById('modal-payment-errors');
         const errorElement = document.getElementById('payment-errors');
-        
+
         if (modalErrorElement) {
             modalErrorElement.innerHTML = message;
             modalErrorElement.style.display = 'block';

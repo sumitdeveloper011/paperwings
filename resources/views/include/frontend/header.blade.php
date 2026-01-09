@@ -173,31 +173,48 @@
             <div class="container">
                 <div class="row align-items-center">
                                     <div class="col-md-3">
-                    <div class="nav__categories-dropdown">
-                        <button class="nav__categories-btn">
+                    <div class="nav__categories-dropdown mega-menu-wrapper">
+                        <button type="button" class="nav__categories-btn" id="megaMenuTrigger">
                             <i class="fas fa-bars"></i>
                             Browse Categories
+                            <i class="fas fa-chevron-down ms-2 mega-menu-arrow"></i>
                         </button>
-                        <div class="nav__categories-menu">
-                            <ul class="nav__categories-list">
+                        <div class="mega-menu" id="megaMenu" style="display: none;">
+                            <div class="mega-menu__container">
                                 @if(isset($headerCategories) && $headerCategories->count() > 0)
-                                    @foreach($headerCategories as $category)
-                                        <li class="nav__category-item">
-                                            <a href="{{ route('product.by.category', $category->slug) }}" class="nav__category-link">
-                                                <i class="fas fa-tag"></i>
-                                                <span>{{ $category->name }}</span>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                @else
-                                    <li class="nav__category-item">
-                                        <a href="#" class="nav__category-link">
-                                            <i class="fas fa-tag"></i>
-                                            <span>No Categories Available</span>
+                                    <div class="mega-menu__content">
+                                        <div class="mega-menu__columns">
+                                            @php
+                                                $categoriesPerColumn = ceil($headerCategories->count() / 4);
+                                                $columns = $headerCategories->chunk($categoriesPerColumn);
+                                            @endphp
+                                            @foreach($columns as $columnCategories)
+                                                <div class="mega-menu__column">
+                                                    <ul class="mega-menu__list">
+                                                        @foreach($columnCategories as $category)
+                                                            <li class="mega-menu__item">
+                                                                <a href="{{ route('product.by.category', $category->slug) }}" class="mega-menu__link">
+                                                                    <span class="mega-menu__link-name">{{ $category->name }}</span>
+                                                                </a>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    <div class="mega-menu__footer">
+                                        <a href="{{ route('shop') }}" class="mega-menu__view-all">
+                                            View All Categories
+                                            <i class="fas fa-arrow-right ms-2"></i>
                                         </a>
-                                    </li>
+                                    </div>
+                                @else
+                                    <div class="mega-menu__empty">
+                                        <p class="mega-menu__empty-text">No categories available</p>
+                                    </div>
                                 @endif
-                            </ul>
+                            </div>
                         </div>
                     </div>
                 </div>

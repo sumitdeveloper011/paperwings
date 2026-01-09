@@ -48,7 +48,7 @@ class Category extends Model
             if ($category->isDirty('name')) {
                 $category->slug = Str::slug($category->name);
             }
-            
+
             // Clear categories cache when status changes
             if ($category->isDirty('status')) {
                 Cache::forget('categories_with_count_all');
@@ -56,14 +56,14 @@ class Category extends Model
                 Cache::forget('header_categories');
             }
         });
-        
+
         static::created(function ($category) {
             // Clear categories cache when new category is created
             Cache::forget('categories_with_count_all');
             Cache::forget('categories_with_count_sidebar');
             Cache::forget('header_categories');
         });
-        
+
         static::deleted(function ($category) {
             // Clear categories cache when category is deleted
             Cache::forget('categories_with_count_all');
@@ -81,7 +81,8 @@ class Category extends Model
     // Get active products relationship
     public function activeProducts(): HasMany
     {
-        return $this->hasMany(Product::class)->where('status', 1);
+        return $this->hasMany(Product::class, 'eposnow_category_id', 'eposnow_category_id')
+                    ->where('status', 1);
     }
 
     // Scope to filter active categories

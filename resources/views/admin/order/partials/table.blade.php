@@ -25,25 +25,55 @@
                     </td>
                     <td>{{ $order->created_at->format('M d, Y') }}</td>
                     <td>
-                        <span class="badge badge-info">{{ $order->items->count() }} items</span>
+                        <span class="badge badge--info">{{ $order->items_count ?? $order->items->count() ?? 0 }} items</span>
                     </td>
-                    <td><strong>${{ number_format($order->total, 2) }}</strong></td>
+                    <td><strong>${{ number_format($order->total ?? 0, 2) }}</strong></td>
                     <td>
-                        <span class="badge badge-{{ $order->status === 'delivered' ? 'success' : ($order->status === 'cancelled' ? 'danger' : 'warning') }}">
-                            {{ ucfirst($order->status) }}
+                        @php
+                            $orderStatus = $order->status ?? null;
+                            $statusBadgeClass = 'badge--warning';
+                            if ($orderStatus === 'delivered') {
+                                $statusBadgeClass = 'badge--success';
+                            } elseif ($orderStatus === 'cancelled') {
+                                $statusBadgeClass = 'badge--danger';
+                            } elseif ($orderStatus === 'shipped') {
+                                $statusBadgeClass = 'badge--info';
+                            }
+                        @endphp
+                        @if($orderStatus)
+                        <span class="badge {{ $statusBadgeClass }}">
+                            {{ ucfirst($orderStatus) }}
                         </span>
+                        @else
+                        <span class="badge badge--secondary">N/A</span>
+                        @endif
                     </td>
                     <td>
-                        <span class="badge badge-{{ $order->payment_status === 'paid' ? 'success' : ($order->payment_status === 'failed' ? 'danger' : 'warning') }}">
-                            {{ ucfirst($order->payment_status) }}
+                        @php
+                            $paymentStatus = $order->payment_status ?? null;
+                            $paymentBadgeClass = 'badge--warning';
+                            if ($paymentStatus === 'paid') {
+                                $paymentBadgeClass = 'badge--success';
+                            } elseif ($paymentStatus === 'failed') {
+                                $paymentBadgeClass = 'badge--danger';
+                            } elseif ($paymentStatus === 'refunded') {
+                                $paymentBadgeClass = 'badge--secondary';
+                            }
+                        @endphp
+                        @if($paymentStatus)
+                        <span class="badge {{ $paymentBadgeClass }}">
+                            {{ ucfirst($paymentStatus) }}
                         </span>
+                        @else
+                        <span class="badge badge--secondary">N/A</span>
+                        @endif
                     </td>
                     <td>
                         <div class="action-buttons">
                             <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-info" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <form method="POST" action="{{ route('admin.orders.destroy', $order) }}" 
+                            <form method="POST" action="{{ route('admin.orders.destroy', $order) }}"
                                   class="delete-form" onsubmit="return confirm('Are you sure you want to delete this order?');">
                                 @csrf
                                 @method('DELETE')

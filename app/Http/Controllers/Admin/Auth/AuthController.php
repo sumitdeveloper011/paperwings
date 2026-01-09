@@ -14,7 +14,7 @@ class AuthController extends Controller
     // Show the login form
     public function login()
     {
-        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['Admin', 'SuperAdmin'])) {
+        if (Auth::check() && CommonHelper::hasAnyRole(Auth::user(), ['SuperAdmin', 'Admin', 'Manager', 'Editor'])) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -45,7 +45,7 @@ class AuthController extends Controller
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
-            
+
             CommonHelper::logSecurityEvent('Rate limit exceeded for login', null, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -62,7 +62,7 @@ class AuthController extends Controller
 
         if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
             RateLimiter::hit($key, $decayMinutes * 60);
-            
+
             CommonHelper::logSecurityEvent('Malicious input detected in login attempt', null, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -81,7 +81,7 @@ class AuthController extends Controller
 
             if (!$user->isActive()) {
                 Auth::logout();
-                
+
                 CommonHelper::logSecurityEvent('Inactive user login attempt', $user, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent()
@@ -92,9 +92,9 @@ class AuthController extends Controller
                 ])->onlyInput('email');
             }
 
-            if (!CommonHelper::hasAnyRole($user, ['Admin', 'SuperAdmin'])) {
+            if (!CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin', 'Manager', 'Editor'])) {
                 Auth::logout();
-                
+
                 CommonHelper::logSecurityEvent('Non-admin user login attempt', $user, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
@@ -120,7 +120,7 @@ class AuthController extends Controller
         }
 
         RateLimiter::hit($key, $decayMinutes * 60);
-        
+
         CommonHelper::logSecurityEvent('Failed login attempt', null, [
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -136,7 +136,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = Auth::user();
-        
+
         if ($user) {
             CommonHelper::logSecurityEvent('Admin logout', $user, [
                 'ip_address' => $request->ip(),

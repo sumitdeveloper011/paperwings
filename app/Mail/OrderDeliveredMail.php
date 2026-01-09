@@ -12,7 +12,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class OrderConfirmationMail extends Mailable
+class OrderDeliveredMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -54,14 +54,14 @@ class OrderConfirmationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Confirmation - Order #' . $this->order->order_number,
+            subject: 'Order Delivered - Order #' . $this->order->order_number,
         );
     }
 
     // Get the message content definition
     public function content(): Content
     {
-        // Fetch settings from database (same pattern as AppServiceProvider)
+        // Fetch settings from database
         $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
             return \App\Models\Setting::pluck('value', 'key')->toArray();
         });
@@ -115,7 +115,7 @@ class OrderConfirmationMail extends Mailable
         $orderViewUrl = route('account.order-details', $this->order->order_number);
 
         return new Content(
-            view: 'emails.order-confirmation',
+            view: 'emails.order-delivered',
             with: [
                 'order' => $this->order,
                 'logoUrl' => $logoUrl,

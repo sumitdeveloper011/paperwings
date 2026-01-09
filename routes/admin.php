@@ -41,8 +41,12 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chartData');
+
+    // Dashboard - requires dashboard.view permission
+    Route::middleware('permission:dashboard.view')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chartData');
+    });
 
     Route::prefix('categories')->name('categories.')->group(function () {
         Route::get('get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('getCategoriesForEposNow');
@@ -64,6 +68,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
     Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
     Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
+    // Products - permission checks in controller
     Route::resource('products', ProductController::class);
 
     Route::resource('sliders', SliderController::class);
@@ -121,28 +126,63 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('bundles', BundleController::class);
     Route::patch('bundles/{bundle}/status', [BundleController::class, 'updateStatus'])->name('bundles.updateStatus');
 
-    Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
-    Route::get('analytics/product-views', [AnalyticsController::class, 'productViews'])->name('analytics.productViews');
-    Route::get('analytics/conversion', [AnalyticsController::class, 'conversion'])->name('analytics.conversion');
-    Route::get('analytics/sales', [AnalyticsController::class, 'sales'])->name('analytics.sales');
+    // Analytics - requires analytics.view permission
+    Route::middleware('permission:analytics.view')->group(function () {
+        Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+        Route::get('analytics/product-views', [AnalyticsController::class, 'productViews'])->name('analytics.productViews');
+        Route::get('analytics/conversion', [AnalyticsController::class, 'conversion'])->name('analytics.conversion');
+        Route::get('analytics/sales', [AnalyticsController::class, 'sales'])->name('analytics.sales');
+    });
 
-    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
-    Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
+    // Settings - requires settings permissions
+    Route::middleware('permission:settings.view')->group(function () {
+        Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    });
+    Route::middleware('permission:settings.edit')->group(function () {
+        Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+        Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
+    });
 
     Route::get('api-settings', [ApiSettingsController::class, 'index'])->name('api-settings.index');
     Route::put('api-settings', [ApiSettingsController::class, 'update'])->name('api-settings.update');
 
-    // Roles and Permissions Management
-    Route::resource('roles', RoleController::class);
-    Route::resource('permissions', PermissionController::class);
+    // Roles and Permissions Management - Only SuperAdmin can access
+    Route::middleware('role:SuperAdmin')->group(function () {
+        Route::resource('roles', RoleController::class);
+        Route::resource('permissions', PermissionController::class);
+    });
 
-    Route::resource('users', UserController::class);
-    Route::patch('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.updateStatus');
+    // Users - requires users permissions
+    // Note: Specific routes (create) must come before parameterized routes ({user})
+    Route::middleware('permission:users.create')->group(function () {
+        Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+    });
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
+    });
+    Route::middleware('permission:users.edit')->group(function () {
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.updateStatus');
+    });
+    Route::middleware('permission:users.delete')->group(function () {
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 
-    Route::resource('orders', OrderController::class)->except(['create', 'store', 'edit', 'update']);
-    Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
-    Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
+    // Orders - requires orders permissions
+    Route::middleware('permission:orders.view')->group(function () {
+        Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    });
+    Route::middleware('permission:orders.edit')->group(function () {
+        Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+        Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
+    });
+    Route::middleware('permission:orders.delete')->group(function () {
+        Route::delete('orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
+    });
 
     Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');

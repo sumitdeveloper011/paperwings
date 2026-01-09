@@ -22,7 +22,7 @@
                                 @csrf
                                 @if(session('error'))
                                     <div class="alert alert-danger mb-4" style="padding: 12px; background: #f8d7da; color: #721c24; border-radius: 4px; border: 1px solid #f5c6cb;">
-                                        {{ session('error') }}
+                                        <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
                                     </div>
                                 @endif
                                 <div class="row mb-4">
