@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage discount coupons and promotional codes</p>
             </div>
             <div class="page-header__actions">
+                @can('coupons.create')
                 <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Coupon</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -141,16 +143,21 @@
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('coupons.view')
                                             <a href="{{ route('admin.coupons.show', $coupon) }}"
                                                class="action-btn action-btn--view"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('coupons.edit')
                                             <a href="{{ route('admin.coupons.edit', $coupon) }}"
                                                class="action-btn action-btn--edit"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('coupons.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.coupons.destroy', $coupon) }}"
                                                   class="action-form"
@@ -161,6 +168,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -189,10 +197,12 @@
                         </a>
                     @else
                         <p class="empty-state__text">Start by creating your first coupon</p>
+                        @can('coupons.create')
                         <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i>
                             Add Coupon
                         </a>
+                        @endcan
                     @endif
                 </div>
             @endif

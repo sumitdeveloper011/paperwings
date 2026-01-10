@@ -12,10 +12,12 @@
                 </h1>
             </div>
             <div class="page-header__actions">
+                @can('testimonials.create')
                 <a href="{{ route('admin.testimonials.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Testimonial</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -73,7 +75,7 @@
                             @foreach($testimonials as $testimonial)
                                 <tr class="modern-table__row">
                                     <td class="modern-table__td">
-                                        <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->name }}" 
+                                        <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->name }}"
                                              class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;">
                                     </td>
                                     <td class="modern-table__td">
@@ -108,14 +110,19 @@
                                     <td class="modern-table__td">{{ $testimonial->sort_order ?? 0 }}</td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('testimonials.view')
                                             <a href="{{ route('admin.testimonials.show', $testimonial) }}"
                                                class="action-btn action-btn--view" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('testimonials.edit')
                                             <a href="{{ route('admin.testimonials.edit', $testimonial) }}"
                                                class="action-btn action-btn--edit" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('testimonials.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.testimonials.destroy', $testimonial) }}"
                                                   class="action-form"
@@ -126,6 +133,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -146,10 +154,12 @@
                     </div>
                     <h3 class="empty-state__title">No Testimonials Found</h3>
                     <p class="empty-state__text">Start by creating your first testimonial</p>
+                    @can('testimonials.create')
                     <a href="{{ route('admin.testimonials.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Add Testimonial
                     </a>
+                    @endcan
                 </div>
             @endif
         </div>

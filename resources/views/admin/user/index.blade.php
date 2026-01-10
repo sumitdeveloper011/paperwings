@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage users and assign roles</p>
             </div>
             <div class="page-header__actions">
+                @can('users.create')
                 <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add User</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -174,7 +176,7 @@
         flex-direction: column;
         width: 100%;
     }
-    
+
     .filter-form .search-form__wrapper,
     .filter-form .filter-select {
         width: 100%;

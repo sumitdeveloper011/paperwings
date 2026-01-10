@@ -70,9 +70,12 @@
                     </td>
                     <td>
                         <div class="action-buttons">
+                            @can('orders.view')
                             <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-info" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            @endcan
+                            @can('orders.delete')
                             <form method="POST" action="{{ route('admin.orders.destroy', $order) }}"
                                   class="delete-form" onsubmit="return confirm('Are you sure you want to delete this order?');">
                                 @csrf
@@ -81,6 +84,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @endcan
                         </div>
                     </td>
                 </tr>

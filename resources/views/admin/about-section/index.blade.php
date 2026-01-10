@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage homepage about section</p>
             </div>
             <div class="page-header__actions">
+                @can('about-sections.create')
                 <a href="{{ route('admin.about-sections.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add About Section</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -75,7 +77,7 @@
                                 <tr class="modern-table__row">
                                     <td class="modern-table__td">
                                         @if($aboutSection->image_url)
-                                            <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}" 
+                                            <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}"
                                                  class="img-thumbnail" style="width: 80px; height: 50px; object-fit: cover;">
                                         @else
                                             <span class="text-muted">No Image</span>
@@ -116,14 +118,19 @@
                                     <td class="modern-table__td">{{ $aboutSection->sort_order ?? 0 }}</td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('about-sections.view')
                                             <a href="{{ route('admin.about-sections.show', $aboutSection) }}"
                                                class="action-btn action-btn--view" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('about-sections.edit')
                                             <a href="{{ route('admin.about-sections.edit', $aboutSection) }}"
                                                class="action-btn action-btn--edit" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('about-sections.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.about-sections.destroy', $aboutSection) }}"
                                                   class="action-form"
@@ -134,6 +141,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -162,10 +170,12 @@
                         </a>
                     @else
                         <p class="empty-state__text">Start by creating your first about section</p>
+                        @can('about-sections.create')
                         <a href="{{ route('admin.about-sections.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i>
                             Add About Section
                         </a>
+                        @endcan
                     @endif
                 </div>
             @endif

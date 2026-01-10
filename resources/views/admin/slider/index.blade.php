@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage your website sliders</p>
             </div>
             <div class="page-header__actions">
+                @can('sliders.create')
                 <a href="{{ route('admin.sliders.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Slider</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -73,8 +75,8 @@
                                     </td>
                                     <td class="modern-table__td">
                                         <div class="category-image category-image--enhanced">
-                                            <img src="{{ $slider->image_url }}" 
-                                                 alt="{{ $slider->heading }}" 
+                                            <img src="{{ $slider->image_url }}"
+                                                 alt="{{ $slider->heading }}"
                                                  class="category-image__img"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
                                             <div class="category-image__overlay">
@@ -112,7 +114,7 @@
                                             <div class="status-toggle-wrapper">
                                                 <label class="status-toggle">
                                                     <input type="hidden" name="status" value="{{ $slider->status == 1 ? '0' : '1' }}">
-                                                    <input type="checkbox" 
+                                                    <input type="checkbox"
                                                            {{ $slider->status == 1 ? 'checked' : '' }}
                                                            onchange="this.previousElementSibling.value = this.checked ? '1' : '0'; this.form.submit();">
                                                     <span class="status-toggle__slider">
@@ -147,24 +149,31 @@
                                                     <i class="fas fa-arrow-down"></i>
                                                 </button>
                                             </form>
-                                            <a href="{{ route('admin.sliders.show', $slider) }}" 
-                                               class="action-btn action-btn--view action-btn--ripple" 
+                                            @can('sliders.view')
+                                            <a href="{{ route('admin.sliders.show', $slider) }}"
+                                               class="action-btn action-btn--view action-btn--ripple"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('admin.sliders.edit', $slider) }}" 
-                                               class="action-btn action-btn--edit action-btn--ripple" 
+                                            @endcan
+                                            @can('sliders.edit')
+                                            <a href="{{ route('admin.sliders.edit', $slider) }}"
+                                               class="action-btn action-btn--edit action-btn--ripple"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('sliders.create')
                                             <form method="POST" action="{{ route('admin.sliders.duplicate', $slider) }}" class="action-form">
                                                 @csrf
                                                 <button type="submit" class="action-btn action-btn--secondary action-btn--ripple" title="Duplicate">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
                                             </form>
-                                            <form method="POST" 
-                                                  action="{{ route('admin.sliders.destroy', $slider) }}" 
+                                            @endcan
+                                            @can('sliders.delete')
+                                            <form method="POST"
+                                                  action="{{ route('admin.sliders.destroy', $slider) }}"
                                                   class="action-form"
                                                   onsubmit="return confirm('Are you sure you want to delete this slider?')">
                                                 @csrf
@@ -173,6 +182,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -187,10 +197,12 @@
                     </div>
                     <h3 class="empty-state__title">No Sliders Found</h3>
                     <p class="empty-state__text">Start by creating your first slider</p>
+                    @can('sliders.create')
                     <a href="{{ route('admin.sliders.create') }}" class="btn btn-primary btn-ripple">
                         <i class="fas fa-plus"></i>
                         Add Slider
                     </a>
+                    @endcan
                 </div>
             @endif
         </div>

@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage your website pages</p>
             </div>
             <div class="page-header__actions">
+                @can('pages.create')
                 <a href="{{ route('admin.pages.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Page</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -35,7 +37,7 @@
                 <form method="GET" class="search-form">
                     <div class="search-form__wrapper">
                         <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input" 
+                        <input type="text" name="search" class="search-form__input"
                                placeholder="Search pages..." value="{{ $search }}">
                         @if($search)
                             <a href="{{ route('admin.pages.index') }}" class="search-form__clear">
@@ -81,8 +83,8 @@
                                             @php
                                                 $imageUrl = $page->image ? asset('storage/' . $page->image) : asset('assets/images/placeholder.jpg');
                                             @endphp
-                                            <img src="{{ $imageUrl }}" 
-                                                 alt="{{ $page->title }}" 
+                                            <img src="{{ $imageUrl }}"
+                                                 alt="{{ $page->title }}"
                                                  class="category-image__img"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                             <div class="category-image__overlay">
@@ -111,18 +113,23 @@
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons action-buttons--enhanced">
-                                            <a href="{{ route('admin.pages.show', $page) }}" 
-                                               class="action-btn action-btn--view action-btn--ripple" 
+                                            @can('pages.view')
+                                            <a href="{{ route('admin.pages.show', $page) }}"
+                                               class="action-btn action-btn--view action-btn--ripple"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('admin.pages.edit', $page) }}" 
-                                               class="action-btn action-btn--edit action-btn--ripple" 
+                                            @endcan
+                                            @can('pages.edit')
+                                            <a href="{{ route('admin.pages.edit', $page) }}"
+                                               class="action-btn action-btn--edit action-btn--ripple"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <form method="POST" 
-                                                  action="{{ route('admin.pages.destroy', $page) }}" 
+                                            @endcan
+                                            @can('pages.delete')
+                                            <form method="POST"
+                                                  action="{{ route('admin.pages.destroy', $page) }}"
                                                   class="action-form"
                                                   onsubmit="return confirm('Are you sure you want to delete this page?')">
                                                 @csrf
@@ -131,6 +138,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

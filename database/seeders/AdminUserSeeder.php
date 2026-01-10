@@ -15,7 +15,8 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::updateOrCreate(
+        // SuperAdmin User
+        $superAdmin = User::updateOrCreate(
             ['email' => 'admin@paperwings.co.nz'],
             [
                 'uuid' => Str::uuid()->toString(),
@@ -28,8 +29,49 @@ class AdminUserSeeder extends Seeder
         );
 
         // Assign SuperAdmin role
-        if (!$admin->hasRole('SuperAdmin')) {
-            $admin->assignRole('SuperAdmin');
+        if (!$superAdmin->hasRole('SuperAdmin')) {
+            $superAdmin->assignRole('SuperAdmin');
         }
+
+        // Admin User
+        $adminUser = User::updateOrCreate(
+            ['email' => 'adminuser@paperwings.co.nz'],
+            [
+                'uuid' => Str::uuid()->toString(),
+                'first_name' => 'Admin',
+                'last_name' => 'User',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'status' => 1, // Active
+            ]
+        );
+
+        // Assign Admin role
+        if (!$adminUser->hasRole('Admin')) {
+            $adminUser->assignRole('Admin');
+        }
+
+        // Manager User
+        $managerUser = User::updateOrCreate(
+            ['email' => 'manager@paperwings.co.nz'],
+            [
+                'uuid' => Str::uuid()->toString(),
+                'first_name' => 'Manager',
+                'last_name' => 'User',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'status' => 1, // Active
+            ]
+        );
+
+        // Assign Manager role
+        if (!$managerUser->hasRole('Manager')) {
+            $managerUser->assignRole('Manager');
+        }
+
+        $this->command->info('Admin users created successfully!');
+        $this->command->info('SuperAdmin: admin@paperwings.co.nz');
+        $this->command->info('Admin: adminuser@paperwings.co.nz (password: password)');
+        $this->command->info('Manager: manager@paperwings.co.nz (password: password)');
     }
 }

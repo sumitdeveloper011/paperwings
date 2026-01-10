@@ -79,10 +79,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($request->is('admin/*')) {
-                // Don't show custom error page in development - show Laravel's debug page
-                if (app()->environment('local', 'development')) {
-                    return null;
-                }
                 return response()->view('admin.errors.403', ['exception' => $e], 403);
             }
 

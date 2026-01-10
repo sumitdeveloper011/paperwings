@@ -48,78 +48,212 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chartData');
     });
 
-    Route::prefix('categories')->name('categories.')->group(function () {
-        Route::get('get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('getCategoriesForEposNow');
-        Route::get('import-status', [CategoryController::class, 'checkImportStatus'])->name('importStatus');
+    // Categories - requires categories permissions
+    Route::middleware('permission:categories.view')->group(function () {
+        Route::prefix('categories')->name('categories.')->group(function () {
+            Route::get('get-categories-for-epos-now', [CategoryController::class, 'getCategoriesForEposNow'])->name('getCategoriesForEposNow');
+            Route::get('import-status', [CategoryController::class, 'checkImportStatus'])->name('importStatus');
+        });
+        Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+        Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
     });
-    Route::patch('categories/{category}/status', [CategoryController::class, 'updateStatus'])->name('categories.updateStatus');
-    Route::resource('categories', CategoryController::class);
+    Route::middleware('permission:categories.create')->group(function () {
+        Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
+        Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    });
+    Route::middleware('permission:categories.edit')->group(function () {
+        Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+        Route::put('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+        Route::patch('categories/{category}/status', [CategoryController::class, 'updateStatus'])->name('categories.updateStatus');
+    });
+    Route::middleware('permission:categories.delete')->group(function () {
+        Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    });
 
-    Route::resource('subcategories', SubCategoryController::class);
-    Route::patch('subcategories/{subcategory}/status', [SubCategoryController::class, 'updateStatus'])->name('subcategories.updateStatus');
+    // Subcategories - Hidden for now, kept for future use
+    // Route::resource('subcategories', SubCategoryController::class);
+    // Route::patch('subcategories/{subcategory}/status', [SubCategoryController::class, 'updateStatus'])->name('subcategories.updateStatus');
 
+    // Brands - no permissions in seeder, accessible to all admin roles
     Route::resource('brands', BrandController::class);
 
-    Route::prefix('products')->name('products.')->group(function () {
-        Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
-        Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
-        Route::post('retry-failed-products', [ProductController::class, 'retryFailedProducts'])->name('retryFailedProducts');
+    // Products - requires products permissions
+    Route::middleware('permission:products.view')->group(function () {
+        Route::prefix('products')->name('products.')->group(function () {
+            Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
+            Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
+        });
+        Route::get('products', [ProductController::class, 'index'])->name('products.index');
+        Route::get('products/{product}', [ProductController::class, 'show'])->name('products.show');
+        Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
     });
-    Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
-    Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
-    Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
-    // Products - permission checks in controller
-    Route::resource('products', ProductController::class);
+    Route::middleware('permission:products.create')->group(function () {
+        Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
+        Route::post('products', [ProductController::class, 'store'])->name('products.store');
+        Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
+        Route::post('products/retry-failed-products', [ProductController::class, 'retryFailedProducts'])->name('products.retryFailedProducts');
+    });
+    Route::middleware('permission:products.edit')->group(function () {
+        Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+        Route::put('products/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::patch('products/{product}/status', [ProductController::class, 'updateStatus'])->name('products.updateStatus');
+    });
+    Route::middleware('permission:products.delete')->group(function () {
+        Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+    });
 
-    Route::resource('sliders', SliderController::class);
-    Route::patch('sliders/{slider}/status', [SliderController::class, 'updateStatus'])->name('sliders.updateStatus');
-    Route::patch('sliders/{slider}/move-up', [SliderController::class, 'moveUp'])->name('sliders.moveUp');
-    Route::patch('sliders/{slider}/move-down', [SliderController::class, 'moveDown'])->name('sliders.moveDown');
-    Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
-    Route::post('sliders/{slider}/duplicate', [SliderController::class, 'duplicate'])->name('sliders.duplicate');
+    // Sliders - requires sliders permissions
+    Route::middleware('permission:sliders.view')->group(function () {
+        Route::get('sliders', [SliderController::class, 'index'])->name('sliders.index');
+        Route::get('sliders/{slider}', [SliderController::class, 'show'])->name('sliders.show');
+    });
+    Route::middleware('permission:sliders.create')->group(function () {
+        Route::get('sliders/create', [SliderController::class, 'create'])->name('sliders.create');
+        Route::post('sliders', [SliderController::class, 'store'])->name('sliders.store');
+        Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
+        Route::post('sliders/{slider}/duplicate', [SliderController::class, 'duplicate'])->name('sliders.duplicate');
+    });
+    Route::middleware('permission:sliders.edit')->group(function () {
+        Route::get('sliders/{slider}/edit', [SliderController::class, 'edit'])->name('sliders.edit');
+        Route::put('sliders/{slider}', [SliderController::class, 'update'])->name('sliders.update');
+        Route::patch('sliders/{slider}/status', [SliderController::class, 'updateStatus'])->name('sliders.updateStatus');
+        Route::patch('sliders/{slider}/move-up', [SliderController::class, 'moveUp'])->name('sliders.moveUp');
+        Route::patch('sliders/{slider}/move-down', [SliderController::class, 'moveDown'])->name('sliders.moveDown');
+    });
+    Route::middleware('permission:sliders.delete')->group(function () {
+        Route::delete('sliders/{slider}', [SliderController::class, 'destroy'])->name('sliders.destroy');
+    });
 
-    Route::resource('pages', PageController::class);
-    Route::post('pages/upload-image', [PageController::class, 'uploadImage'])->name('pages.uploadImage');
+    // Pages - requires pages permissions
+    Route::middleware('permission:pages.view')->group(function () {
+        Route::get('pages', [PageController::class, 'index'])->name('pages.index');
+        Route::get('pages/{page}', [PageController::class, 'show'])->name('pages.show');
+    });
+    Route::middleware('permission:pages.create')->group(function () {
+        Route::get('pages/create', [PageController::class, 'create'])->name('pages.create');
+        Route::post('pages', [PageController::class, 'store'])->name('pages.store');
+        Route::post('pages/upload-image', [PageController::class, 'uploadImage'])->name('pages.uploadImage');
+    });
+    Route::middleware('permission:pages.edit')->group(function () {
+        Route::get('pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
+        Route::put('pages/{page}', [PageController::class, 'update'])->name('pages.update');
+    });
+    Route::middleware('permission:pages.delete')->group(function () {
+        Route::delete('pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
+    });
 
-    Route::resource('about-sections', AboutSectionController::class);
-    Route::patch('about-sections/{about_section}/status', [AboutSectionController::class, 'updateStatus'])->name('about-sections.updateStatus');
+    // About Sections - requires about-sections permissions
+    Route::middleware('permission:about-sections.view')->group(function () {
+        Route::get('about-sections', [AboutSectionController::class, 'index'])->name('about-sections.index');
+        Route::get('about-sections/{about_section}', [AboutSectionController::class, 'show'])->name('about-sections.show');
+    });
+    Route::middleware('permission:about-sections.create')->group(function () {
+        Route::get('about-sections/create', [AboutSectionController::class, 'create'])->name('about-sections.create');
+        Route::post('about-sections', [AboutSectionController::class, 'store'])->name('about-sections.store');
+    });
+    Route::middleware('permission:about-sections.edit')->group(function () {
+        Route::get('about-sections/{about_section}/edit', [AboutSectionController::class, 'edit'])->name('about-sections.edit');
+        Route::put('about-sections/{about_section}', [AboutSectionController::class, 'update'])->name('about-sections.update');
+        Route::patch('about-sections/{about_section}/status', [AboutSectionController::class, 'updateStatus'])->name('about-sections.updateStatus');
+    });
+    Route::middleware('permission:about-sections.delete')->group(function () {
+        Route::delete('about-sections/{about_section}', [AboutSectionController::class, 'destroy'])->name('about-sections.destroy');
+    });
 
+    // Contacts - no permissions in seeder, accessible to all admin roles
     Route::resource('contacts', ContactController::class)->except(['create', 'store']);
 
-    Route::resource('coupons', CouponController::class);
-    Route::patch('coupons/{coupon}/status', [CouponController::class, 'updateStatus'])->name('coupons.updateStatus');
+    // Coupons - requires coupons permissions
+    Route::middleware('permission:coupons.view')->group(function () {
+        Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
+        Route::get('coupons/{coupon}', [CouponController::class, 'show'])->name('coupons.show');
+    });
+    Route::middleware('permission:coupons.create')->group(function () {
+        Route::get('coupons/create', [CouponController::class, 'create'])->name('coupons.create');
+        Route::post('coupons', [CouponController::class, 'store'])->name('coupons.store');
+    });
+    Route::middleware('permission:coupons.edit')->group(function () {
+        Route::get('coupons/{coupon}/edit', [CouponController::class, 'edit'])->name('coupons.edit');
+        Route::put('coupons/{coupon}', [CouponController::class, 'update'])->name('coupons.update');
+        Route::patch('coupons/{coupon}/status', [CouponController::class, 'updateStatus'])->name('coupons.updateStatus');
+    });
+    Route::middleware('permission:coupons.delete')->group(function () {
+        Route::delete('coupons/{coupon}', [CouponController::class, 'destroy'])->name('coupons.destroy');
+    });
 
+    // Regions - no permissions in seeder, accessible to all admin roles
     Route::resource('regions', RegionController::class);
     Route::patch('regions/{region}/status', [RegionController::class, 'updateStatus'])->name('regions.updateStatus');
 
-    Route::resource('shipping-prices', ShippingPriceController::class);
-    Route::patch('shipping-prices/{shipping_price}/status', [ShippingPriceController::class, 'updateStatus'])->name('shipping-prices.updateStatus');
+    // Shipping Prices - Only SuperAdmin can access
+    Route::middleware('role:SuperAdmin')->group(function () {
+        Route::resource('shipping-prices', ShippingPriceController::class);
+        Route::patch('shipping-prices/{shipping_price}/status', [ShippingPriceController::class, 'updateStatus'])->name('shipping-prices.updateStatus');
+    });
 
-    Route::resource('testimonials', TestimonialController::class);
-    Route::patch('testimonials/{testimonial}/status', [TestimonialController::class, 'updateStatus'])->name('testimonials.updateStatus');
+    // Testimonials - requires testimonials permissions
+    Route::middleware('permission:testimonials.view')->group(function () {
+        Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
+        Route::get('testimonials/{testimonial}', [TestimonialController::class, 'show'])->name('testimonials.show');
+    });
+    Route::middleware('permission:testimonials.create')->group(function () {
+        Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
+        Route::post('testimonials', [TestimonialController::class, 'store'])->name('testimonials.store');
+    });
+    Route::middleware('permission:testimonials.edit')->group(function () {
+        Route::get('testimonials/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('testimonials.edit');
+        Route::put('testimonials/{testimonial}', [TestimonialController::class, 'update'])->name('testimonials.update');
+        Route::patch('testimonials/{testimonial}/status', [TestimonialController::class, 'updateStatus'])->name('testimonials.updateStatus');
+    });
+    Route::middleware('permission:testimonials.delete')->group(function () {
+        Route::delete('testimonials/{testimonial}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
+    });
 
-    Route::resource('special-offers-banners', SpecialOffersBannerController::class);
-    Route::patch('special-offers-banners/{special_offers_banner}/status', [SpecialOffersBannerController::class, 'updateStatus'])->name('special-offers-banners.updateStatus');
+    // Special Offers - requires special-offers permissions
+    Route::middleware('permission:special-offers.view')->group(function () {
+        Route::get('special-offers-banners', [SpecialOffersBannerController::class, 'index'])->name('special-offers-banners.index');
+        Route::get('special-offers-banners/{special_offers_banner}', [SpecialOffersBannerController::class, 'show'])->name('special-offers-banners.show');
+    });
+    Route::middleware('permission:special-offers.create')->group(function () {
+        Route::get('special-offers-banners/create', [SpecialOffersBannerController::class, 'create'])->name('special-offers-banners.create');
+        Route::post('special-offers-banners', [SpecialOffersBannerController::class, 'store'])->name('special-offers-banners.store');
+    });
+    Route::middleware('permission:special-offers.edit')->group(function () {
+        Route::get('special-offers-banners/{special_offers_banner}/edit', [SpecialOffersBannerController::class, 'edit'])->name('special-offers-banners.edit');
+        Route::put('special-offers-banners/{special_offers_banner}', [SpecialOffersBannerController::class, 'update'])->name('special-offers-banners.update');
+        Route::patch('special-offers-banners/{special_offers_banner}/status', [SpecialOffersBannerController::class, 'updateStatus'])->name('special-offers-banners.updateStatus');
+    });
+    Route::middleware('permission:special-offers.delete')->group(function () {
+        Route::delete('special-offers-banners/{special_offers_banner}', [SpecialOffersBannerController::class, 'destroy'])->name('special-offers-banners.destroy');
+    });
 
+    // FAQs - no permissions in seeder, accessible to all admin roles
     Route::resource('faqs', FaqController::class);
     Route::patch('faqs/{faq}/status', [FaqController::class, 'updateStatus'])->name('faqs.updateStatus');
 
+    // Reviews - no permissions in seeder, accessible to all admin roles
     Route::resource('reviews', ReviewController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('reviews/{review}/status', [ReviewController::class, 'updateStatus'])->name('reviews.updateStatus');
 
+    // Product FAQs - no permissions in seeder, accessible to all admin roles
     Route::prefix('product-faqs')->name('product-faqs.')->group(function () {
         Route::get('search-products', [ProductFaqController::class, 'searchProducts'])->name('searchProducts');
     });
     Route::resource('product-faqs', ProductFaqController::class);
     Route::patch('product-faqs/{product_faq}/status', [ProductFaqController::class, 'updateStatus'])->name('product-faqs.updateStatus');
 
+    // Tags - no permissions in seeder, accessible to all admin roles
     Route::resource('tags', TagController::class);
 
+    // Questions - no permissions in seeder, accessible to all admin roles
     Route::resource('questions', QuestionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('questions/{question}/status', [QuestionController::class, 'updateStatus'])->name('questions.updateStatus');
+
+    // Answers - no permissions in seeder, accessible to all admin roles
     Route::resource('answers', AnswerController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('answers/{answer}/status', [AnswerController::class, 'updateStatus'])->name('answers.updateStatus');
 
+    // Bundles - no permissions in seeder, accessible to all admin roles
     Route::prefix('bundles')->name('bundles.')->group(function () {
         Route::get('search-products', [BundleController::class, 'searchProducts'])->name('searchProducts');
     });
@@ -143,8 +277,11 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
     });
 
-    Route::get('api-settings', [ApiSettingsController::class, 'index'])->name('api-settings.index');
-    Route::put('api-settings', [ApiSettingsController::class, 'update'])->name('api-settings.update');
+    // API Settings - Only SuperAdmin can access
+    Route::middleware('role:SuperAdmin')->group(function () {
+        Route::get('api-settings', [ApiSettingsController::class, 'index'])->name('api-settings.index');
+        Route::put('api-settings', [ApiSettingsController::class, 'update'])->name('api-settings.update');
+    });
 
     // Roles and Permissions Management - Only SuperAdmin can access
     Route::middleware('role:SuperAdmin')->group(function () {
@@ -184,19 +321,21 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::delete('orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
     });
 
+    // Subscriptions - no permissions in seeder, accessible to all admin roles
     Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');
     Route::get('subscriptions/export', [SubscriptionController::class, 'export'])->name('subscriptions.export');
 
+    // Notifications - no permissions in seeder, accessible to all admin roles
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/render', [NotificationController::class, 'render'])->name('notifications.render');
     Route::post('notifications/{order}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 
+    // Profile - accessible to all authenticated admin users
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
     Route::put('profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.updateAvatar');
     Route::put('profile/two-factor', [ProfileController::class, 'updateTwoFactor'])->name('profile.updateTwoFactor');
 });
-

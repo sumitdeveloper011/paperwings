@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage and organize your products</p>
             </div>
             <div class="page-header__actions">
+                @can('products.create')
                 <a href="{{ route('admin.products.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Product</span>
                 </a>
+                @endcan
                 <button type="button" id="importProductsBtn" class="btn btn-primary btn-icon">
                     <i class="fas fa-download"></i>
                     <span>Import from EposNow</span>
@@ -172,16 +174,21 @@
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('products.view')
                                             <a href="{{ route('admin.products.show', $product) }}"
                                                class="action-btn action-btn--view"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('products.edit')
                                             <a href="{{ route('admin.products.edit', $product) }}"
                                                class="action-btn action-btn--edit"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('products.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.products.destroy', $product) }}"
                                                   class="action-form"
@@ -192,6 +199,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -682,7 +690,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         progressBar.classList.add('bg-success');
                         progressMessage.textContent = progress.message || 'Import completed successfully!';
                         modalFooter.style.display = 'block';
-                        
+
                         // Show retry button if there are failed products
                         if (progress.failed > 0 && jobId) {
                             currentJobId = jobId;
@@ -695,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             retryFailedBtn.style.display = 'none';
                         }
-                        
+
                         importBtn.disabled = false;
                         importBtn.innerHTML = '<i class="fas fa-download"></i> <span>Import from EposNow</span>';
                     } else if (progress.status === 'failed' || progress.status === 'rate_limited') {
@@ -782,7 +790,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 jobId = data.job_id;
                 currentJobId = data.job_id;
                 progressMessage.textContent = 'Retry started for ' + data.failed_count + ' products! Checking status...';
-                
+
                 // Start polling for status
                 startStatusPolling();
             } else {

@@ -12,10 +12,12 @@
                 </h1>
             </div>
             <div class="page-header__actions">
+                @can('special-offers.create')
                 <a href="{{ route('admin.special-offers-banners.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Banner</span>
                 </a>
+                @endcan
             </div>
         </div>
     </div>
@@ -74,7 +76,7 @@
                                 <tr class="modern-table__row">
                                     <td class="modern-table__td">
                                         @if($banner->image_url)
-                                            <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" 
+                                            <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}"
                                                  class="img-thumbnail" style="width: 80px; height: 50px; object-fit: cover;">
                                         @else
                                             <span class="text-muted">No Image</span>
@@ -123,14 +125,19 @@
                                     <td class="modern-table__td">{{ $banner->sort_order ?? 0 }}</td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('special-offers.view')
                                             <a href="{{ route('admin.special-offers-banners.show', $banner) }}"
                                                class="action-btn action-btn--view" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('special-offers.edit')
                                             <a href="{{ route('admin.special-offers-banners.edit', $banner) }}"
                                                class="action-btn action-btn--edit" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('special-offers.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.special-offers-banners.destroy', $banner) }}"
                                                   class="action-form"
@@ -141,6 +148,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -161,10 +169,12 @@
                     </div>
                     <h3 class="empty-state__title">No Banners Found</h3>
                     <p class="empty-state__text">Start by creating your first special offers banner</p>
+                    @can('special-offers.create')
                     <a href="{{ route('admin.special-offers-banners.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Add Banner
                     </a>
+                    @endcan
                 </div>
             @endif
         </div>

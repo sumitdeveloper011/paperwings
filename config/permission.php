@@ -181,9 +181,10 @@ return [
         /*
          * By default all permissions are cached for 24 hours to speed up performance.
          * When permissions or roles are updated the cache is flushed automatically.
+         * Set to 0 seconds to disable caching (permissions will be checked directly from database).
          */
 
-        'expiration_time' => \DateInterval::createFromDateString('24 hours'),
+        'expiration_time' => \DateInterval::createFromDateString('0 seconds'),
 
         /*
          * The cache key used to store all permissions.

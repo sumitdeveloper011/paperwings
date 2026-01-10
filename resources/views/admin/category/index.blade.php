@@ -13,10 +13,12 @@
                 <p class="page-header__subtitle">Manage and organize your product categories</p>
             </div>
             <div class="page-header__actions">
+                @can('categories.create')
                 <a href="{{ route('admin.categories.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Category</span>
                 </a>
+                @endcan
                 <button type="button" id="importCategoriesBtn" class="btn btn-primary btn-icon">
                     <i class="fas fa-download"></i>
                     <span>Import from EposNow</span>
@@ -117,16 +119,21 @@
                                     </td>
                                     <td class="modern-table__td modern-table__td--actions">
                                         <div class="action-buttons">
+                                            @can('categories.view')
                                             <a href="{{ route('admin.categories.show', $category) }}"
                                                class="action-btn action-btn--view"
                                                title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('categories.edit')
                                             <a href="{{ route('admin.categories.edit', $category) }}"
                                                class="action-btn action-btn--edit"
                                                title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('categories.delete')
                                             <form method="POST"
                                                   action="{{ route('admin.categories.destroy', $category) }}"
                                                   class="action-form"
@@ -137,6 +144,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -194,12 +202,12 @@
                         Starting import...
                     </div>
                     <div class="progress" style="height: 25px; margin-top: 15px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" 
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
                              id="importProgressBar"
                              style="width: 0%;"
-                             aria-valuenow="0" 
-                             aria-valuemin="0" 
+                             aria-valuenow="0"
+                             aria-valuemin="0"
                              aria-valuemax="100">
                             <span id="importProgressText">0%</span>
                         </div>
@@ -279,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const importStats = document.getElementById('importStats');
     const modalFooter = document.getElementById('importModalFooter');
     const closeModalBtn = document.getElementById('closeModalBtn');
-    
+
     let jobId = null;
     let statusCheckInterval = null;
 
@@ -323,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 jobId = data.job_id;
                 progressMessage.textContent = 'Import job started! Checking status...';
-                
+
                 // Start polling for status
                 startStatusPolling();
             } else {
@@ -349,11 +357,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const baseUrl = '{{ url("admin/categories/import-status") }}';
             const encodedJobId = encodeURIComponent(jobId);
             const statusUrl = `${baseUrl}?jobId=${encodedJobId}`;
-            
+
             console.log('Checking status for job:', jobId);
             console.log('Status URL:', statusUrl);
             console.log('Base URL from route helper:', '{{ route("admin.categories.importStatus") }}');
-            
+
             fetch(statusUrl, {
                 method: 'GET',
                 headers: {
@@ -373,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(text => {
                 // Trim whitespace and check for valid JSON
                 text = text.trim();
-                
+
                 // Try to parse JSON
                 try {
                     const json = JSON.parse(text);
@@ -381,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch (e) {
                     console.error('JSON Parse Error:', e);
                     console.error('Response text (first 1000 chars):', text.substring(0, 1000));
-                    
+
                     // Try to extract JSON if there's extra content
                     const jsonMatch = text.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
@@ -391,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.error('Failed to parse extracted JSON:', e2);
                         }
                     }
-                    
+
                     // If still can't parse, show error but don't break polling
                     progressMessage.textContent = 'Error parsing response. Job may still be running...';
                     return null;
@@ -402,19 +410,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data) {
                     return;
                 }
-                
+
                 if (data.success && data.data) {
                     const progress = data.data;
-                    
+
                     // Update progress bar
                     const percentage = progress.percentage || 0;
                     progressBar.style.width = percentage + '%';
                     progressBar.setAttribute('aria-valuenow', percentage);
                     progressText.textContent = percentage + '%';
-                    
+
                     // Update message
                     progressMessage.textContent = progress.message || 'Processing...';
-                    
+
                     // Update stats if available
                     if (progress.inserted !== undefined || progress.updated !== undefined) {
                         importStats.style.display = 'block';
@@ -428,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('statFailed').textContent = progress.failed;
                         }
                     }
-                    
+
                     // Check if completed
                     if (progress.status === 'completed' || percentage === 100) {
                         clearInterval(statusCheckInterval);
@@ -442,12 +450,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         clearInterval(statusCheckInterval);
                         progressBar.classList.remove('progress-bar-animated');
                         progressBar.classList.add('bg-danger');
-                        
+
                         let errorMessage = progress.message || 'Import failed!';
                         if (progress.status === 'rate_limited') {
                             errorMessage = '⚠️ API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
                         }
-                        
+
                         progressMessage.textContent = errorMessage;
                         modalFooter.style.display = 'block';
                         importBtn.disabled = false;

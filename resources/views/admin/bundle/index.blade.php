@@ -69,8 +69,8 @@
                                 <tr class="modern-table__row">
                                     <td class="modern-table__td">
                                         @if($bundle->image)
-                                            <img src="{{ asset('storage/' . $bundle->image) }}" 
-                                                 alt="{{ $bundle->name }}" 
+                                            <img src="{{ asset('storage/' . $bundle->image) }}"
+                                                 alt="{{ $bundle->name }}"
                                                  style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                         @else

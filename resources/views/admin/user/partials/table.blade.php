@@ -63,14 +63,19 @@
                     <td>{{ $user->created_at->format('M d, Y') }}</td>
                     <td>
                         <div class="action-buttons">
+                            @can('users.view')
                             <a href="{{ route('admin.users.show', $user) }}" class="action-btn action-btn--view" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            @endcan
+                            @can('users.edit')
                             <a href="{{ route('admin.users.edit', $user) }}" class="action-btn action-btn--edit" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            @endcan
+                            @can('users.delete')
                             @if(!$user->hasRole('SuperAdmin'))
-                                <form method="POST" action="{{ route('admin.users.destroy', $user) }}" 
+                                <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
                                       class="action-form" onsubmit="return confirm('Are you sure you want to delete this user?');">
                                     @csrf
                                     @method('DELETE')
@@ -79,6 +84,7 @@
                                     </button>
                                 </form>
                             @endif
+                            @endcan
                         </div>
                     </td>
                 </tr>
