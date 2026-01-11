@@ -1,5 +1,6 @@
-@if ($paginator->hasPages())
+@if ($paginator instanceof \Illuminate\Pagination\LengthAwarePaginator)
     <nav class="pagination-modern" role="navigation" aria-label="Pagination Navigation">
+        @if ($paginator->hasPages())
         <ul class="pagination-list">
             {{-- Previous Page Link --}}
             @if ($paginator->onFirstPage())
@@ -22,7 +23,56 @@
             @endif
 
             {{-- Pagination Elements --}}
-            @foreach ($elements as $element)
+            @php
+                $paginationElements = $elements ?? null;
+                if (!$paginationElements) {
+                    if (method_exists($paginator, 'elements')) {
+                        try {
+                            $paginationElements = $paginator->elements();
+                        } catch (\Exception $e) {
+                            $paginationElements = null;
+                        }
+                    }
+                    
+                    // Fallback: create pagination elements manually with window
+                    if (!$paginationElements && $paginator instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                        $currentPage = $paginator->currentPage();
+                        $lastPage = $paginator->lastPage();
+                        $paginationElements = [];
+                        $onEachSide = 2; // Show 2 pages on each side of current page
+                        
+                        // Show first page if we're not near the start
+                        if ($currentPage > $onEachSide + 1) {
+                            $paginationElements[] = [1 => $paginator->url(1)];
+                            if ($currentPage > $onEachSide + 2) {
+                                $paginationElements[] = '...';
+                            }
+                        }
+                        
+                        // Show pages around current page
+                        $start = max(1, $currentPage - $onEachSide);
+                        $end = min($lastPage, $currentPage + $onEachSide);
+                        
+                        $pageRange = [];
+                        for ($i = $start; $i <= $end; $i++) {
+                            $pageRange[$i] = $paginator->url($i);
+                        }
+                        if (!empty($pageRange)) {
+                            $paginationElements[] = $pageRange;
+                        }
+                        
+                        // Show last page if we're not near the end
+                        if ($currentPage < $lastPage - $onEachSide) {
+                            if ($currentPage < $lastPage - $onEachSide - 1) {
+                                $paginationElements[] = '...';
+                            }
+                            $paginationElements[] = [$lastPage => $paginator->url($lastPage)];
+                        }
+                    }
+                }
+            @endphp
+            @if($paginationElements && is_array($paginationElements))
+            @foreach ($paginationElements as $element)
                 {{-- "Three Dots" Separator --}}
                 @if (is_string($element))
                     <li class="pagination-item pagination-item--disabled" aria-disabled="true">
@@ -47,6 +97,7 @@
                     @endforeach
                 @endif
             @endforeach
+            @endif
 
             {{-- Next Page Link --}}
             @if ($paginator->hasMorePages())
@@ -68,14 +119,15 @@
                 </li>
             @endif
         </ul>
+        @endif
 
-        {{-- Pagination Info --}}
+        {{-- Pagination Info - Always show even if no pages --}}
         <div class="pagination-info">
             <span class="pagination-info-text">
                 Showing 
-                <strong>{{ $paginator->firstItem() }}</strong> 
+                <strong>{{ $paginator->firstItem() ?? 0 }}</strong> 
                 to 
-                <strong>{{ $paginator->lastItem() }}</strong> 
+                <strong>{{ $paginator->lastItem() ?? 0 }}</strong> 
                 of 
                 <strong>{{ $paginator->total() }}</strong> 
                 results

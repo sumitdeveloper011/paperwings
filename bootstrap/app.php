@@ -168,10 +168,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     $user = \Illuminate\Support\Facades\Auth::user();
                     if (\App\Helpers\CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
                         // Admin user trying to access non-existent admin route - show 404 page
-                        // Don't show custom error page in development - show Laravel's debug page
-                        if (app()->environment('local', 'development')) {
-                            return null;
-                        }
                         return response()->view('admin.errors.404', [
                             'title' => '404 - Page Not Found',
                             'message' => 'The requested admin page does not exist.'

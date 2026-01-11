@@ -8,8 +8,22 @@ use Illuminate\Support\Str;
 
 class SpecialOffersBannerSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates special offers banners.
+     * Will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  SpecialOffersBannerSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding special offers banners...');
+
         $banners = [
             [
                 'title' => 'Summer Sale - Up to 50% OFF',
@@ -94,7 +108,26 @@ class SpecialOffersBannerSeeder extends Seeder
             );
         }
 
-        $this->command->info('Special Offers Banners seeded successfully!');
+        $created = 0;
+        $updated = 0;
+
+        foreach ($banners as $bannerData) {
+            $banner = SpecialOffersBanner::updateOrCreate(
+                ['title' => $bannerData['title']],
+                array_merge($bannerData, ['uuid' => Str::uuid()])
+            );
+
+            if ($banner->wasRecentlyCreated) {
+                $created++;
+            } else {
+                $updated++;
+            }
+        }
+
+        $this->command->info("✅ Special Offers Banners seeded successfully!");
+        $this->command->info("  • Created: {$created}");
+        $this->command->info("  • Updated: {$updated}");
+        $this->command->info("  • Total: " . count($banners));
     }
 }
 

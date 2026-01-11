@@ -193,7 +193,7 @@
                                                     <ul class="mega-menu__list">
                                                         @foreach($columnCategories as $category)
                                                             <li class="mega-menu__item">
-                                                                <a href="{{ route('product.by.category', $category->slug) }}" class="mega-menu__link">
+                                                                <a href="{{ route('category.show', $category->slug) }}" class="mega-menu__link">
                                                                     <span class="mega-menu__link-name">{{ $category->name }}</span>
                                                                 </a>
                                                             </li>

@@ -550,8 +550,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!this.checkValidity()) {
             e.preventDefault();
             e.stopPropagation();
+            this.classList.add('was-validated');
+            return false;
         }
         
+        // Form is valid, allow submission
         this.classList.add('was-validated');
     });
 });

@@ -12,6 +12,10 @@
                 <p class="page-header__subtitle">Manage product bundles</p>
             </div>
             <div class="page-header__actions">
+                <a href="{{ route('admin.bundles.trash') }}" class="btn btn-warning btn-icon" style="background-color: #ffc107; color: #000; border-color: #ffc107;">
+                    <i class="fas fa-trash-restore"></i>
+                    <span>Trash</span>
+                </a>
                 <a href="{{ route('admin.bundles.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>
                     <span>Add Bundle</span>
@@ -34,125 +38,134 @@
                 <p class="modern-card__subtitle">{{ $bundles->total() }} total bundles</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search bundles..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.bundles.index') }}" class="search-form__clear">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search bundles..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($bundles->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">Image</th>
-                                <th class="modern-table__th">Name</th>
-                                <th class="modern-table__th">Products</th>
-                                <th class="modern-table__th">Bundle Price</th>
-                                <th class="modern-table__th">Discount</th>
-                                <th class="modern-table__th">Status</th>
-                                <th class="modern-table__th modern-table__th--actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($bundles as $bundle)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        @if($bundle->image)
-                                            <img src="{{ asset('storage/' . $bundle->image) }}"
-                                                 alt="{{ $bundle->name }}"
-                                                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
-                                        @else
-                                            <div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-image text-muted"></i>
-                                            </div>
-                                        @endif
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <strong>{{ $bundle->name }}</strong>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <span class="badge bg-primary">{{ $bundle->products_count }}</span>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <strong>${{ number_format($bundle->bundle_price, 2) }}</strong>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        @if($bundle->discount_percentage)
-                                            <span class="badge bg-success">{{ $bundle->discount_percentage }}%</span>
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.bundles.updateStatus', $bundle) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="1" {{ $bundle->status ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ !$bundle->status ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('admin.bundles.show', $bundle) }}"
-                                               class="action-btn action-btn--view" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('admin.bundles.edit', $bundle) }}"
-                                               class="action-btn action-btn--edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form method="POST"
-                                                  action="{{ route('admin.bundles.destroy', $bundle) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this bundle?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
+            <div id="bundles-results-container">
+                @include('admin.bundle.partials.table', ['bundles' => $bundles])
+            </div>
+            <div id="bundles-pagination-container">
                 @if($bundles->hasPages())
                     <div class="pagination-wrapper">
                         {{ $bundles->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-boxes"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Bundles Found</h3>
-                    <p class="empty-state__text">Start by creating your first bundle</p>
-                    <a href="{{ route('admin.bundles.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add Bundle
-                    </a>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Admin Search
+    AdminSearch.init({
+        searchInput: '#search-input',
+        searchForm: '#search-form',
+        searchButton: '#search-button',
+        clearButton: '#clear-search',
+        resultsContainer: '#bundles-results-container',
+        paginationContainer: '#bundles-pagination-container',
+        loadingIndicator: '#search-loading',
+        searchUrl: '{{ route('admin.bundles.index') }}',
+        debounceDelay: 300
+    });
+
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
+
+    // Handle status change with AJAX (prevent page freeze)
+    // Use event delegation to handle dynamically added elements
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const bundleId = select.getAttribute('data-bundle-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            // Disable select during request
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            // Send AJAX request
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                // Show success message if available
+                if (data && data.message) {
+                    // You can add a toast notification here if needed
+                    console.log('Status updated:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                // Revert to original value on error
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                alert('Error updating status. Please try again.');
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection
 

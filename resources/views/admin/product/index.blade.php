@@ -19,17 +19,18 @@
                     <span>Add Product</span>
                 </a>
                 @endcan
+                @can('products.view')
+                <a href="{{ route('admin.products.trash') }}" class="btn btn-warning btn-icon" style="background-color: #ffc107; color: #000; border-color: #ffc107;">
+                    <i class="fas fa-trash-restore"></i>
+                    <span>Trash</span>
+                </a>
+                @endcan
+                @if(auth()->user()->hasRole('SuperAdmin'))
                 <button type="button" id="importProductsBtn" class="btn btn-primary btn-icon">
                     <i class="fas fa-download"></i>
                     <span>Import from EposNow</span>
                 </button>
-                <a href="{{ route('admin.products.importAllImages') }}"
-                   class="btn btn-success btn-icon"
-                   id="eposnowImageImportBtn"
-                   onclick="showEposNowLoader(event)">
-                    <i class="fas fa-images"></i>
-                    <span>Import Images for All Products</span>
-                </a>
+                @endif
             </div>
         </div>
     </div>
@@ -45,309 +46,63 @@
                 <p class="modern-card__subtitle">{{ $products->total() }} total products</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
-                    <div class="search-form__wrapper" style="flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-                        <select name="category_id" class="form-select-modern" onchange="this.form.submit()" style="width: 180px;">
-                            <option value="">All Categories</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <select name="brand_id" class="form-select-modern" onchange="this.form.submit()" style="width: 150px;">
-                            <option value="">All Brands</option>
-                            @foreach($brands as $brand)
-                                <option value="{{ $brand->id }}" {{ $brandId == $brand->id ? 'selected' : '' }}>
-                                    {{ $brand->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="search-form__input-wrapper" style="position: relative; display: flex; align-items: center;">
-                            <i class="fas fa-search search-form__icon" style="position: absolute; left: 12px; z-index: 1; color: var(--text-secondary);"></i>
-                            <input type="text" name="search" class="search-form__input"
-                                   placeholder="Search products..." value="{{ $search }}" style="width: 200px; padding-left: 40px;">
-                        </div>
-                        @if($search || $categoryId || $brandId)
-                            <a href="{{ route('admin.products.index') }}" class="search-form__clear">
+                <form method="GET" class="search-form" id="search-form">
+                    <div class="search-form__wrapper">
+                        @include('components.select-category', [
+                            'id' => 'category-filter',
+                            'name' => 'category_id',
+                            'label' => '',
+                            'required' => false,
+                            'selected' => $categoryUuid,
+                            'categories' => $categories,
+                            'useUuid' => true,
+                            'placeholder' => 'All Categories',
+                            'class' => 'form-select-modern',
+                            'useSelect2' => true,
+                            'showLabel' => false,
+                            'wrapperClass' => '',
+                            'style' => 'width: 200px; margin-right: 0.5rem;',
+                            'select2Width' => '200px'
+                        ])
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search products..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($products->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">
-                                    <span>Image</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Name</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Category</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Price</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Status</span>
-                                </th>
-                                <th class="modern-table__th modern-table__th--actions">
-                                    <span>Actions</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($products as $product)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <div class="category-image">
-                                            <img src="{{ $product->main_image }}"
-                                                 alt="{{ $product->name }}"
-                                                 class="category-image__img"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="category-name">
-                                            <strong>{{ $product->name }}</strong>
-                                            @if($product->short_description)
-                                                <br>
-                                                <small class="text-muted">{{ Str::limit($product->short_description, 50) }}</small>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div>
-                                            <span class="badge badge--info">
-                                                <i class="fas fa-tag"></i>
-                                                {{ $product->category->name }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div>
-                                            @if($product->discount_price)
-                                                <div class="price-with-discount">
-                                                    <div class="price-original">
-                                                        <strong class="text-muted" style="text-decoration: line-through; font-size: 0.875rem;">
-                                                            ${{ number_format($product->total_price, 2) }}
-                                                        </strong>
-                                                    </div>
-                                                    <div class="price-discounted">
-                                                        <strong class="text-success" style="font-size: 1rem;">
-                                                            ${{ number_format($product->discount_price, 2) }}
-                                                        </strong>
-                                                        <span class="discount-badge">
-                                                            @php
-                                                                $discountPercent = $product->total_price > 0 ? round((($product->total_price - $product->discount_price) / $product->total_price) * 100, 0) : 0;
-                                                                $discountPriceWithoutTax = round($product->discount_price / 1.15, 2);
-                                                            @endphp
-                                                            -{{ $discountPercent }}%
-                                                        </span>
-                                                    </div>
-                                                    <small class="text-muted">Ex. Tax: ${{ number_format($discountPriceWithoutTax, 2) }}</small>
-                                                </div>
-                                            @else
-                                                <strong class="text-success">${{ number_format($product->total_price, 2) }}</strong>
-                                                <br>
-                                                <small class="text-muted">Ex. Tax: ${{ number_format($product->price_without_tax, 2) }}</small>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.products.updateStatus', $product) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="active" {{ $product->status === 'active' ? 'selected' : '' }}>Active</option>
-                                                <option value="inactive" {{ $product->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            @can('products.view')
-                                            <a href="{{ route('admin.products.show', $product) }}"
-                                               class="action-btn action-btn--view"
-                                               title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            @endcan
-                                            @can('products.edit')
-                                            <a href="{{ route('admin.products.edit', $product) }}"
-                                               class="action-btn action-btn--edit"
-                                               title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            @endcan
-                                            @can('products.delete')
-                                            <form method="POST"
-                                                  action="{{ route('admin.products.destroy', $product) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this product?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
+            <div id="products-results-container">
+                @include('admin.product.partials.table', ['products' => $products])
+            </div>
+            <div id="products-pagination-container">
                 @if($products->hasPages())
                     <div class="pagination-wrapper">
                         {{ $products->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-box-open"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Products Found</h3>
-                    @if($search)
-                        <p class="empty-state__text">No products found matching "{{ $search }}"</p>
-                        <a href="{{ route('admin.products.index') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left"></i>
-                            View All Products
-                        </a>
-                    @elseif($categoryId || $brandId)
-                        <p class="empty-state__text">No products found with selected filters</p>
-                        <a href="{{ route('admin.products.index') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left"></i>
-                            View All Products
-                        </a>
-                    @else
-                        <p class="empty-state__text">Start by creating your first product</p>
-                        <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
-                            Add Product
-                        </a>
-                    @endif
-                </div>
-            @endif
+            </div>
         </div>
-    </div>
-</div>
-
-<!-- EposNow Import Loader Overlay -->
-<div id="eposnowLoader" class="eposnow-loader-overlay" style="display: none;">
-    <div class="eposnow-loader-content">
-        <div class="eposnow-loader-spinner">
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-        </div>
-        <h3 class="eposnow-loader-title">Importing Products from EposNow</h3>
-        <p class="eposnow-loader-text">Please wait while we fetch and import products...</p>
-        <p class="eposnow-loader-subtext">This may take a few moments</p>
     </div>
 </div>
 
 <style>
-.eposnow-loader-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(55, 78, 148, 0.95);
-    backdrop-filter: blur(5px);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.eposnow-loader-content {
-    text-align: center;
-    color: white;
-    padding: 2rem;
-}
-
-.eposnow-loader-spinner {
-    position: relative;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 2rem;
-}
-
-.spinner-ring {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 4px solid transparent;
-    border-top-color: var(--teal);
-    border-radius: 50%;
-    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-}
-
-.spinner-ring:nth-child(1) {
-    animation-delay: -0.45s;
-    border-top-color: var(--teal);
-}
-
-.spinner-ring:nth-child(2) {
-    animation-delay: -0.3s;
-    border-top-color: var(--sky-blue);
-    width: 70px;
-    height: 70px;
-    top: 5px;
-    left: 5px;
-}
-
-.spinner-ring:nth-child(3) {
-    animation-delay: -0.15s;
-    border-top-color: var(--lavender);
-    width: 60px;
-    height: 60px;
-    top: 10px;
-    left: 10px;
-}
-
-.spinner-ring:nth-child(4) {
-    border-top-color: var(--light-green);
-    width: 50px;
-    height: 50px;
-    top: 15px;
-    left: 15px;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
 /* Discount Badge Styles */
 .price-with-discount {
     display: flex;
@@ -385,25 +140,6 @@
     50% {
         opacity: 0.8;
     }
-}
-
-.eposnow-loader-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: white;
-}
-
-.eposnow-loader-text {
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.eposnow-loader-subtext {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    margin-top: 0.5rem;
 }
 </style>
 
@@ -819,4 +555,150 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+@endpush
+
+@push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Admin Search
+    AdminSearch.init({
+        searchInput: '#search-input',
+        searchForm: '#search-form',
+        searchButton: '#search-button',
+        clearButton: '#clear-search',
+        resultsContainer: '#products-results-container',
+        paginationContainer: '#products-pagination-container',
+        loadingIndicator: '#search-loading',
+        searchUrl: '{{ route('admin.products.index') }}',
+        debounceDelay: 300,
+        additionalParams: function() {
+            const categoryId = document.getElementById('category-filter')?.value || '';
+            return categoryId ? { category_id: categoryId } : {};
+        }
+    });
+
+    // Handle category filter change - Support both Select2 and native select
+    function setupCategoryFilter() {
+        if (typeof jQuery === 'undefined') {
+            // jQuery not loaded yet, retry
+            setTimeout(setupCategoryFilter, 100);
+            return;
+        }
+
+        const $categoryFilter = jQuery('#category-filter');
+        if ($categoryFilter.length === 0) return;
+
+        // Check if Select2 is initialized
+        if ($categoryFilter.data('select2')) {
+            // Use jQuery/Select2 change event
+            $categoryFilter.off('change.categoryFilter').on('change.categoryFilter', function() {
+                AdminSearch.performSearch();
+            });
+        } else {
+            // Use native change event as fallback
+            const categoryFilter = document.getElementById('category-filter');
+            if (categoryFilter) {
+                categoryFilter.removeEventListener('change', handleCategoryChange);
+                categoryFilter.addEventListener('change', handleCategoryChange);
+            }
+        }
+    }
+
+    function handleCategoryChange() {
+        AdminSearch.performSearch();
+    }
+
+    // Setup filter when Select2 is initialized
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).on('select2:initialized', '#category-filter', function() {
+            setupCategoryFilter();
+        });
+    }
+
+    // Setup filter after a short delay to ensure Select2 is initialized
+    setTimeout(setupCategoryFilter, 500);
+
+    // Also setup immediately in case Select2 loads quickly
+    setupCategoryFilter();
+
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
+
+    // Handle status change with AJAX (prevent page freeze)
+    // Use event delegation to handle dynamically added elements
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const productId = select.getAttribute('data-product-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            // Disable select during request
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            // Send AJAX request
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                // Show success message if available
+                if (data && data.message) {
+                    // You can add a toast notification here if needed
+                    console.log('Status updated:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                // Revert to original value on error
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                alert('Error updating status. Please try again.');
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection

@@ -22,7 +22,9 @@ class QuestionController extends Controller
         ]);
 
         try {
-            $product = Product::where('slug', $productSlug)->firstOrFail();
+            $product = Product::where('slug', $productSlug)
+                ->active()
+                ->firstOrFail();
 
             $question = ProductQuestion::create([
                 'product_id' => $product->id,

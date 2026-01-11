@@ -33,6 +33,8 @@ use App\Http\Controllers\Admin\AboutSection\AboutSectionController;
 use App\Http\Controllers\Admin\ApiSettings\ApiSettingsController;
 use App\Http\Controllers\Admin\Role\RoleController;
 use App\Http\Controllers\Admin\Permission\PermissionController;
+use App\Http\Controllers\Admin\AdminUser\AdminUserController;
+use App\Http\Controllers\Admin\ActivityLog\ActivityLogController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
@@ -55,11 +57,14 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
             Route::get('import-status', [CategoryController::class, 'checkImportStatus'])->name('importStatus');
         });
         Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
-        Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
     });
     Route::middleware('permission:categories.create')->group(function () {
         Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
         Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    });
+    Route::middleware('permission:categories.view')->group(function () {
+        Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+        Route::get('categories/{category}/products', [CategoryController::class, 'products'])->name('categories.products');
     });
     Route::middleware('permission:categories.edit')->group(function () {
         Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
@@ -78,20 +83,21 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('brands', BrandController::class);
 
     // Products - requires products permissions
+    // IMPORTANT: products/create must come before products/{product} to avoid route conflicts
+    Route::middleware('permission:products.create')->group(function () {
+        Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
+        Route::post('products', [ProductController::class, 'store'])->name('products.store');
+        Route::post('products/retry-failed-products', [ProductController::class, 'retryFailedProducts'])->name('products.retryFailedProducts');
+    });
     Route::middleware('permission:products.view')->group(function () {
         Route::prefix('products')->name('products.')->group(function () {
             Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
             Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
         });
         Route::get('products', [ProductController::class, 'index'])->name('products.index');
-        Route::get('products/{product}', [ProductController::class, 'show'])->name('products.show');
+        Route::get('products/trash', [ProductController::class, 'trash'])->name('products.trash');
         Route::get('products/subcategories/get', [ProductController::class, 'getSubCategories'])->name('products.getSubCategories');
-    });
-    Route::middleware('permission:products.create')->group(function () {
-        Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
-        Route::post('products', [ProductController::class, 'store'])->name('products.store');
-        Route::get('products/import-all-images', [ProductController::class, 'importAllProductImages'])->name('products.importAllImages');
-        Route::post('products/retry-failed-products', [ProductController::class, 'retryFailedProducts'])->name('products.retryFailedProducts');
+        Route::get('products/{product}', [ProductController::class, 'show'])->name('products.show');
     });
     Route::middleware('permission:products.edit')->group(function () {
         Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
@@ -100,17 +106,22 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
     Route::middleware('permission:products.delete')->group(function () {
         Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+        Route::post('products/{product}/restore', [ProductController::class, 'restore'])->name('products.restore');
+        Route::delete('products/{product}/force-delete', [ProductController::class, 'forceDelete'])->name('products.forceDelete');
     });
 
     // Sliders - requires sliders permissions
+    // IMPORTANT: sliders/create and sliders store must come before sliders/{slider} to avoid route conflicts
+    Route::middleware('permission:sliders.create')->group(function () {
+        Route::get('sliders/create', [SliderController::class, 'create'])->name('sliders.create');
+        Route::post('sliders', [SliderController::class, 'store'])->name('sliders.store');
+        Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
+    });
     Route::middleware('permission:sliders.view')->group(function () {
         Route::get('sliders', [SliderController::class, 'index'])->name('sliders.index');
         Route::get('sliders/{slider}', [SliderController::class, 'show'])->name('sliders.show');
     });
     Route::middleware('permission:sliders.create')->group(function () {
-        Route::get('sliders/create', [SliderController::class, 'create'])->name('sliders.create');
-        Route::post('sliders', [SliderController::class, 'store'])->name('sliders.store');
-        Route::post('sliders/update-order', [SliderController::class, 'updateOrder'])->name('sliders.updateOrder');
         Route::post('sliders/{slider}/duplicate', [SliderController::class, 'duplicate'])->name('sliders.duplicate');
     });
     Route::middleware('permission:sliders.edit')->group(function () {
@@ -142,22 +153,10 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
     });
 
-    // About Sections - requires about-sections permissions
-    Route::middleware('permission:about-sections.view')->group(function () {
-        Route::get('about-sections', [AboutSectionController::class, 'index'])->name('about-sections.index');
-        Route::get('about-sections/{about_section}', [AboutSectionController::class, 'show'])->name('about-sections.show');
-    });
-    Route::middleware('permission:about-sections.create')->group(function () {
-        Route::get('about-sections/create', [AboutSectionController::class, 'create'])->name('about-sections.create');
-        Route::post('about-sections', [AboutSectionController::class, 'store'])->name('about-sections.store');
-    });
+    // About Section - requires about-sections permissions (single entry, edit only)
     Route::middleware('permission:about-sections.edit')->group(function () {
-        Route::get('about-sections/{about_section}/edit', [AboutSectionController::class, 'edit'])->name('about-sections.edit');
-        Route::put('about-sections/{about_section}', [AboutSectionController::class, 'update'])->name('about-sections.update');
-        Route::patch('about-sections/{about_section}/status', [AboutSectionController::class, 'updateStatus'])->name('about-sections.updateStatus');
-    });
-    Route::middleware('permission:about-sections.delete')->group(function () {
-        Route::delete('about-sections/{about_section}', [AboutSectionController::class, 'destroy'])->name('about-sections.destroy');
+        Route::get('about-section', [AboutSectionController::class, 'edit'])->name('about-sections.edit');
+        Route::put('about-section', [AboutSectionController::class, 'update'])->name('about-sections.update');
     });
 
     // Contacts - no permissions in seeder, accessible to all admin roles
@@ -256,8 +255,11 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     // Bundles - no permissions in seeder, accessible to all admin roles
     Route::prefix('bundles')->name('bundles.')->group(function () {
         Route::get('search-products', [BundleController::class, 'searchProducts'])->name('searchProducts');
+        Route::get('trash', [BundleController::class, 'trash'])->name('trash');
     });
     Route::resource('bundles', BundleController::class);
+    Route::post('bundles/{bundle}/restore', [BundleController::class, 'restore'])->name('bundles.restore');
+    Route::delete('bundles/{bundle}/force-delete', [BundleController::class, 'forceDelete'])->name('bundles.forceDelete');
     Route::patch('bundles/{bundle}/status', [BundleController::class, 'updateStatus'])->name('bundles.updateStatus');
 
     // Analytics - requires analytics.view permission
@@ -287,6 +289,19 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::middleware('role:SuperAdmin')->group(function () {
         Route::resource('roles', RoleController::class);
         Route::resource('permissions', PermissionController::class);
+
+        // Admin Users Management - Only SuperAdmin can access
+        Route::get('admin-users', [AdminUserController::class, 'index'])->name('admin-users.index');
+        Route::get('admin-users/create', [AdminUserController::class, 'create'])->name('admin-users.create');
+        Route::post('admin-users', [AdminUserController::class, 'store'])->name('admin-users.store');
+        Route::get('admin-users/{user}', [AdminUserController::class, 'show'])->name('admin-users.show');
+        Route::get('admin-users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin-users.edit');
+        Route::put('admin-users/{user}', [AdminUserController::class, 'update'])->name('admin-users.update');
+        Route::patch('admin-users/{user}/status', [AdminUserController::class, 'updateStatus'])->name('admin-users.updateStatus');
+        Route::delete('admin-users/{user}', [AdminUserController::class, 'destroy'])->name('admin-users.destroy');
+
+        // Activity Log - Only SuperAdmin can access
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     });
 
     // Users - requires users permissions

@@ -15,22 +15,17 @@ use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-    // Display a listing of users
+    // Display a listing of users (only User role customers)
     public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $status = $request->get('status');
-        $roleFilter = $request->get('role');
 
         $query = User::withCount(['wishlists', 'addresses', 'orders'])
-            ->with('roles.permissions');
-
-        // Filter by role if specified
-        if ($roleFilter) {
-            $query->whereHas('roles', function($q) use ($roleFilter) {
-                $q->where('name', $roleFilter);
+            ->with('roles.permissions')
+            ->whereHas('roles', function($q) {
+                $q->where('name', 'User');
             });
-        }
 
         if ($search) {
             $searchTerm = trim($search);
@@ -49,9 +44,6 @@ class UserController extends Controller
 
         $users = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        // Get all roles for filter
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
-
         // Return JSON for AJAX requests
         if ($request->ajax()) {
             return response()->json([
@@ -60,7 +52,7 @@ class UserController extends Controller
             ]);
         }
 
-        return view('admin.user.index', compact('users', 'search', 'status', 'roleFilter', 'roles'));
+        return view('admin.user.index', compact('users', 'search', 'status'));
     }
 
     // Show the form for creating a new user

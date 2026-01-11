@@ -4,6 +4,9 @@
     $hasAvatar = $user && $user->avatar && Storage::disk('public')->exists($user->avatar);
     $avatarUrl = $hasAvatar ? asset('storage/' . $user->avatar) : null;
     $firstLetter = strtoupper(substr($user->first_name ?? 'A', 0, 1));
+    $userRole = $user ? $user->roles->first() : null;
+    $roleName = $userRole ? $userRole->name : 'User';
+    $roleDisplayName = role_display_name($roleName);
 @endphp
 <!-- New Admin Topbar -->
 <header class="topbar">
@@ -14,7 +17,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="topbar-brand">
-                <h2>{{ $title ?? 'Paper Wings' }}</h2>
+                <h2>Paper Wings</h2>
             </div>
         </div>
 
@@ -75,6 +78,7 @@
                         <div class="dropdown-info">
                             <span class="dropdown-name">{{ $user->name ?? 'Admin User' }}</span>
                             <span class="dropdown-email">{{ $user->email ?? 'admin@paperwings.com' }}</span>
+                            <span class="dropdown-role">Login as {{ $roleDisplayName }}</span>
                         </div>
                     </div>
                     <div class="dropdown-divider"></div>

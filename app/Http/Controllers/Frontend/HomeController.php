@@ -49,7 +49,7 @@ class HomeController extends Controller
             ->get();
 
         if ($newArrivals->isEmpty()) {
-            $newArrivals = Product::where('status', 1)
+            $newArrivals = Product::active()
                 ->withFirstImage()
                 ->selectMinimal()
                 ->orderBy('id', 'desc')
@@ -85,7 +85,7 @@ class HomeController extends Controller
         }
 
         if ($recentlyViewed->isEmpty()) {
-            $recentlyViewed = Product::where('status', 1)
+            $recentlyViewed = Product::active()
                 ->withFirstImage()
                 ->selectMinimal()
                 ->orderBy('id', 'desc')
@@ -140,7 +140,7 @@ class HomeController extends Controller
                 ->get();
 
             if ($randomCategories->isNotEmpty()) {
-                $allCategoryProducts = Product::where('status', 1)
+                $allCategoryProducts = Product::active()
                     ->whereIn('category_id', $randomCategories->pluck('id'))
                     ->withFirstImage()
                     ->selectMinimal()
@@ -226,7 +226,7 @@ class HomeController extends Controller
         }
 
         if ($youMayAlsoLike->isEmpty()) {
-            $youMayAlsoLike = Product::where('status', 1)
+            $youMayAlsoLike = Product::active()
                 ->withFirstImage()
                 ->selectMinimal()
                 ->orderBy('id', 'desc')

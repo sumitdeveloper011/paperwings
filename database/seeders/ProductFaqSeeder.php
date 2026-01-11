@@ -8,8 +8,22 @@ use App\Models\ProductFaq;
 
 class ProductFaqSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates sample FAQs for products.
+     * Will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  ProductFaqSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding product FAQs...');
+
         $products = Product::active()->take(10)->get();
 
         if ($products->isEmpty()) {
@@ -75,6 +89,7 @@ class ProductFaqSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('Product FAQs seeded successfully!');
+        $this->command->info("✅ Product FAQs seeded successfully!");
+        $this->command->info("  • Processed: {$products->count()} products");
     }
 }

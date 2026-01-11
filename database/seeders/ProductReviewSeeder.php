@@ -9,8 +9,22 @@ use App\Models\User;
 
 class ProductReviewSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates sample product reviews.
+     * Will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  ProductReviewSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding product reviews...');
+
         $products = Product::active()->take(15)->get();
         $users = User::take(10)->get();
 
@@ -79,6 +93,13 @@ class ProductReviewSeeder extends Seeder
             }
         }
 
-        $this->command->info('Product Reviews seeded successfully!');
+        $totalReviews = 0;
+        foreach ($products as $product) {
+            $totalReviews += ProductReview::where('product_id', $product->id)->count();
+        }
+
+        $this->command->info("✅ Product Reviews seeded successfully!");
+        $this->command->info("  • Products processed: {$products->count()}");
+        $this->command->info("  • Total reviews created: {$totalReviews}");
     }
 }

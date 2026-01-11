@@ -20,13 +20,11 @@
         </div>
     </div>
 
-    <div class="content-body">
-        <form method="POST" action="{{ route('admin.bundles.store') }}" enctype="multipart/form-data" id="bundleForm">
-            @csrf
-
-            <div class="row">
-                <!-- Left Column - Main Bundle Information -->
-                <div class="col-lg-8">
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <form method="POST" action="{{ route('admin.bundles.store') }}" enctype="multipart/form-data" id="bundleForm" class="modern-form">
+                @csrf
                     <!-- Basic Information -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -61,25 +59,19 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-
-                            <div class="mb-3">
-                                <label for="image" class="form-label">Bundle Image</label>
-                                <input type="file"
-                                       class="form-control @error('image') is-invalid @enderror"
-                                       id="image"
-                                       name="image"
-                                       accept="image/*"
-                                       onchange="previewImage(this, 'imagePreview')">
-                                <small class="form-text text-muted">Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB.</small>
-                                <div id="imagePreview" class="mt-2" style="display: none;">
-                                    <img src="" alt="Preview" style="max-width: 200px; border-radius: 5px;">
-                                </div>
-                                @error('image')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
                         </div>
                     </div>
+
+                    <!-- Bundle Images -->
+                    @include('components.multiple-image-upload', [
+                        'name' => 'images',
+                        'id' => 'images',
+                        'label' => 'Upload Images',
+                        'existingImages' => null,
+                        'entityName' => 'Bundle',
+                        'showKeepExisting' => false,
+                        'maxImages' => 10
+                    ])
 
                     <!-- Product Selection -->
                     <div class="modern-card mb-4">
@@ -91,20 +83,54 @@
                         </div>
                         <div class="modern-card__body">
                             <div class="mb-3">
-                                <label for="category_filter" class="form-label">Filter by Category (Optional)</label>
-                                <select class="form-select" id="category_filter">
-                                    <option value="">All Categories</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                    @endforeach
-                                </select>
+                                @include('components.select-category', [
+                                    'id' => 'category_filter',
+                                    'name' => 'category_filter',
+                                    'label' => 'Filter by Category (Optional)',
+                                    'required' => false,
+                                    'selected' => old('category_filter'),
+                                    'categories' => $categories,
+                                    'useUuid' => false,
+                                    'placeholder' => 'All Categories',
+                                    'class' => 'form-select',
+                                    'useSelect2' => true,
+                                    'showLabel' => true,
+                                    'wrapperClass' => '',
+                                    'select2Width' => '100%'
+                                ])
                                 <small class="form-text text-muted">Select a category to filter products</small>
                             </div>
 
                             <div class="mb-3">
                                 <label for="product_ids" class="form-label">Select Products <span class="text-danger">*</span></label>
-                                <select class="form-select" id="product_ids" name="product_ids[]" multiple required>
-                                    <!-- Products will be loaded via AJAX -->
+                                <select class="form-select" id="product_ids" name="product_ids_select" multiple>
+                                    @php
+                                        // Load old products if validation failed
+                                        $oldProductIds = old('product_ids', []);
+                                        $oldQuantities = old('quantities', []);
+                                        $oldProducts = collect();
+                                        if (!empty($oldProductIds)) {
+                                            $productsById = \App\Models\Product::whereIn('id', $oldProductIds)->get()->keyBy('id');
+                                            $oldProducts = collect($oldProductIds)->map(function($productId, $index) use ($productsById, $oldQuantities) {
+                                                if (!$productsById->has($productId)) return null;
+                                                $product = $productsById->get($productId);
+                                                $quantity = isset($oldQuantities[$index]) ? $oldQuantities[$index] : 1;
+                                                $product->setRelation('pivot', (object)['quantity' => $quantity]);
+                                                return $product;
+                                            })->filter();
+                                        }
+                                    @endphp
+                                    @if(!empty($oldProductIds) && $oldProducts->count() > 0)
+                                        @foreach($oldProducts as $product)
+                                            @php
+                                                $productIndex = array_search($product->id, $oldProductIds);
+                                                $quantity = ($productIndex !== false && isset($oldQuantities[$productIndex])) ? $oldQuantities[$productIndex] : 1;
+                                            @endphp
+                                            <option value="{{ $product->id }}" selected data-price="{{ $product->total_price }}" data-name="{{ $product->name }}" data-quantity="{{ $quantity }}">
+                                                {{ $product->name }} - ${{ number_format($product->total_price, 2) }}
+                                            </option>
+                                        @endforeach
+                                    @endif
                                 </select>
                                 <small class="form-text text-muted">Search and select at least 2 products. Type to search products.</small>
                                 @error('product_ids')
@@ -236,81 +262,120 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i>
+                            Create Bundle
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="resetForm()" style="background-color: #f8f9fa;">
+                            <i class="fas fa-undo"></i>
+                            Reset Form
+                        </button>
+                        <a href="{{ route('admin.bundles.index') }}" class="btn btn-outline-secondary btn-lg" style="background-color: #f8f9fa;">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Tips Section - At Top -->
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-lightbulb"></i>
+                            Tips
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        <ul class="tips-list">
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Product Selection</strong>
+                                    <p>Select at least 2 products to create a bundle</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Category Filter</strong>
+                                    <p>Use category filter to narrow down products</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Search Products</strong>
+                                    <p>Type product name to search quickly</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Bundle Pricing</strong>
+                                    <p>Set bundle price lower than total for discount</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
 
-                <!-- Right Column - Summary & Actions -->
-                <div class="col-lg-4">
-                    <!-- Bundle Summary -->
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-info-circle"></i>
-                                Bundle Summary
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="bundle-summary-item">
-                                <strong>Selected Products:</strong>
-                                <span id="summaryProductCount" class="badge bg-primary">0</span>
-                            </div>
-                            <div class="bundle-summary-item">
-                                <strong>Total Products Price:</strong>
-                                <span id="summaryTotalPrice">$0.00</span>
-                            </div>
-                            <div class="bundle-summary-item">
-                                <strong>Bundle Price:</strong>
-                                <span id="summaryBundlePrice">$0.00</span>
-                            </div>
-                            <div class="bundle-summary-item">
-                                <strong>Savings:</strong>
-                                <span id="summarySavings" class="text-success">$0.00</span>
-                            </div>
-                        </div>
+                <!-- Bundle Summary -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-info-circle"></i>
+                            Bundle Summary
+                        </h3>
                     </div>
-
-                    <!-- Quick Actions -->
-                    <div class="modern-card">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-save"></i>
-                                Actions
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Create Bundle
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                                    <i class="fas fa-undo me-2"></i>Reset Form
-                                </button>
-                                <a href="{{ route('admin.bundles.index') }}" class="btn btn-outline-danger">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
+                    <div class="modern-card__body">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-item__label">
+                                    <i class="fas fa-box"></i>
+                                    Selected Products
+                                </div>
+                                <div class="detail-item__value">
+                                    <span id="summaryProductCount" class="badge badge--info">0</span>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Help Tips -->
-                    <div class="modern-card">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-lightbulb"></i>
-                                Tips
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <ul class="tips-list">
-                                <li>Select at least 2 products to create a bundle</li>
-                                <li>Use category filter to narrow down products</li>
-                                <li>Type product name to search quickly</li>
-                                <li>Set bundle price lower than total for discount</li>
-                            </ul>
+                            <div class="detail-item">
+                                <div class="detail-item__label">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    Total Products Price
+                                </div>
+                                <div class="detail-item__value">
+                                    <span id="summaryTotalPrice" class="text-primary">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item__label">
+                                    <i class="fas fa-tag"></i>
+                                    Bundle Price
+                                </div>
+                                <div class="detail-item__value">
+                                    <span id="summaryBundlePrice" class="text-success">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item__label">
+                                    <i class="fas fa-percent"></i>
+                                    Savings
+                                </div>
+                                <div class="detail-item__value">
+                                    <span id="summarySavings" class="text-success">$0.00</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -355,6 +420,23 @@
         let selectedProducts = [];
         let productQuantities = {};
 
+        // Initialize selected products from old input if validation failed
+        @if(!empty($oldProductIds) && $oldProducts->count() > 0)
+            @foreach($oldProducts as $product)
+                @php
+                    $productIndex = array_search($product->id, $oldProductIds);
+                    $quantity = ($productIndex !== false && isset($oldQuantities[$productIndex])) ? $oldQuantities[$productIndex] : 1;
+                @endphp
+                selectedProducts.push({
+                    id: {{ $product->id }},
+                    name: '{{ addslashes($product->name) }}',
+                    price: {{ $product->total_price }},
+                    quantity: {{ $quantity }}
+                });
+                productQuantities[{{ $product->id }}] = {{ $quantity }};
+            @endforeach
+        @endif
+
         // Format product display in dropdown (must be defined before Select2 initialization)
         function formatProduct(product) {
             if (product.loading) {
@@ -392,54 +474,133 @@
                 },
                 processResults: function (data, params) {
                     params.page = params.page || 1;
+                    // Ensure all custom properties are preserved
+                    const results = (data.results || []).map(function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text,
+                            name: item.name,
+                            price: item.price,
+                            image: item.image
+                        };
+                    });
                     return {
-                        results: data.results || [],
+                        results: results,
                         pagination: {
                             more: (data.pagination && data.pagination.more) || false
                         }
                     };
                 },
-                cache: true,
-                error: function(xhr, status, error) {
-                    console.error('Select2 AJAX error:', error);
-                }
+                cache: true
             },
             minimumInputLength: 0,
             templateResult: formatProduct,
-            templateSelection: formatProductSelection,
-            escapeMarkup: function(markup) {
-                return markup;
+            templateSelection: formatProductSelection
+        });
+
+        // After Select2 initialization, ensure selected products are synced
+        setTimeout(function() {
+            if (selectedProducts.length > 0) {
+                const selectedIds = selectedProducts.map(p => p.id);
+
+                // Create options for already selected products and add to Select2
+                selectedProducts.forEach(function(product) {
+                    // Check if option already exists
+                    if ($('#product_ids option[value="' + product.id + '"]').length === 0) {
+                        const option = new Option(
+                            product.name + ' - $' + product.price.toFixed(2),
+                            product.id,
+                            true,
+                            true
+                        );
+                        option.setAttribute('data-price', product.price);
+                        option.setAttribute('data-name', product.name);
+                        $('#product_ids').append(option);
+                    }
+                });
+
+                // Set values and trigger change
+                $('#product_ids').val(selectedIds).trigger('change');
             }
+            updateSelectedProductsList();
+        }, 500);
+
+        // After Select2 initialization, ensure selected products are synced
+        setTimeout(function() {
+            if (selectedProducts.length > 0) {
+                const selectedIds = selectedProducts.map(p => p.id);
+
+                // Create options for already selected products and add to Select2
+                selectedProducts.forEach(function(product) {
+                    // Check if option already exists
+                    if ($('#product_ids option[value="' + product.id + '"]').length === 0) {
+                        const option = new Option(
+                            product.name + ' - $' + product.price.toFixed(2),
+                            product.id,
+                            true,
+                            true
+                        );
+                        option.setAttribute('data-price', product.price);
+                        option.setAttribute('data-name', product.name);
+                        $('#product_ids').append(option);
+                    }
+                });
+
+                // Set values and trigger change
+                $('#product_ids').val(selectedIds).trigger('change');
+            }
+            updateSelectedProductsList();
+        }, 500);
+
+        // Category filter change - reload products when category changes
+        $(document).on('change', '#category_filter', function() {
+            // Keep currently selected products
+            const currentSelected = selectedProducts.map(p => p.id);
+            // The Select2 AJAX will automatically filter by category_id
+            // No need to clear, just let Select2 reload
         });
 
-        // Category filter change
-        $('#category_filter').on('change', function() {
-            $('#product_ids').val(null).trigger('change');
-            selectedProducts = [];
-            productQuantities = {};
-            updateSummary();
-        });
-
-            // Product selection change
+        // Product selection change
         $('#product_ids').on('select2:select', function (e) {
             const data = e.params.data;
-            // Check if product already exists (prevent duplicates)
-            if (!selectedProducts.find(p => p.id == data.id)) {
-                selectedProducts.push({
-                    id: data.id,
-                    name: data.name,
-                    price: parseFloat(data.price) || 0,
-                    quantity: 1
-                });
-                productQuantities[data.id] = 1;
-            } else {
-                // If duplicate, show message and remove from select2
-                alert('This product is already added to the bundle.');
-                const currentValues = $('#product_ids').val() || [];
-                const newValues = currentValues.filter(id => id != data.id);
-                $('#product_ids').val(newValues).trigger('change');
+            const productId = parseInt(data.id);
+
+            // Check if product already exists
+            if (selectedProducts.find(p => p.id == productId)) {
                 return;
             }
+
+            // Extract product name and price from the text or data
+            let productName = data.text || data.name || '';
+            let productPrice = 0;
+
+            // Try to extract price from text if available
+            const priceMatch = productName.match(/\$([\d.]+)/);
+            if (priceMatch) {
+                productPrice = parseFloat(priceMatch[1]) || 0;
+                // Remove price from name
+                productName = productName.replace(/\s*-\s*\$[\d.]+/, '').trim();
+            }
+
+            // If price is in data object, use it
+            if (data.price) {
+                productPrice = parseFloat(data.price) || 0;
+            }
+
+            // If name is in data object, use it
+            if (data.name) {
+                productName = data.name;
+            }
+
+            // Add to selected products
+            selectedProducts.push({
+                id: productId,
+                name: productName,
+                price: productPrice,
+                quantity: 1
+            });
+            productQuantities[productId] = 1;
+
             updateSelectedProductsList();
             updateSummary();
         });
@@ -549,18 +710,28 @@
 
             // Update discount percentage (both visible and hidden)
             $('#discount_percentage').val(discountPercentage.toFixed(2) + '%');
+            // Store clean numeric value without % for form submission
             $('#discount_percentage_hidden').val(discountPercentage.toFixed(2));
         }
 
-        // Bundle price change
-        $('#bundle_price').on('input', updateSummary);
+        // Bundle price change handler
+        $('#bundle_price').on('input change', function() {
+            updateSummary();
+        });
 
-        // Initial summary update on page load (if bundle_price has old value)
-        setTimeout(function() {
-            if ($('#bundle_price').val()) {
+        // Update bundle price from old input if validation failed
+        @if(old('bundle_price'))
+            $(document).ready(function() {
+                $('#bundle_price').val({{ old('bundle_price') }});
                 updateSummary();
-            }
-        }, 500);
+            });
+        @endif
+
+        // Initial summary update on page load - ensure it runs after everything is initialized
+        setTimeout(function() {
+            updateSummary();
+            updateSelectedProductsList();
+        }, 800);
 
         // Form submission - prepare product_ids and quantities arrays
         $('#bundleForm').on('submit', function(e) {
@@ -568,6 +739,20 @@
                 e.preventDefault();
                 alert('Please select at least 2 products');
                 return false;
+            }
+
+            // Remove existing hidden inputs if any
+            $('input[name="product_ids[]"]').not('#product_ids').remove();
+            $('input[name="quantities[]"]').remove();
+
+            // Clear the Select2 select to avoid conflicts
+            $('#product_ids').val(null).trigger('change');
+
+            // Clean discount percentage - remove % sign if present
+            const discountValue = $('#discount_percentage_hidden').val();
+            if (discountValue) {
+                const cleanDiscount = discountValue.toString().replace('%', '').trim();
+                $('#discount_percentage_hidden').val(cleanDiscount);
             }
 
             // Remove any duplicate product IDs before submission
@@ -597,18 +782,6 @@
             });
         });
 
-        // Image preview
-        function previewImage(input, previewId) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#' + previewId + ' img').attr('src', e.target.result);
-                $('#' + previewId).show();
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
         // Reset form
         function resetForm() {
         if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
@@ -618,17 +791,17 @@
             productQuantities = {};
             updateSelectedProductsList();
             updateSummary();
-            $('#imagePreview').hide();
+            $('#imagesPreviewContainer').html('');
         }
     }
 
         // Make functions available globally
         window.resetForm = resetForm;
-        window.previewImage = previewImage;
     }
 
     // Start initialization
     initSelect2();
+
 })();
 </script>
 @endpush
@@ -651,25 +824,40 @@
     font-weight: 500;
 }
 
-.bundle-summary-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #eee;
+.tips-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.bundle-summary-item:last-child {
+.tips-list__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tips-list__item:last-child {
     border-bottom: none;
 }
 
-.tips-list {
-    margin: 0;
-    padding-left: 1.5rem;
+.tips-list__item i {
+    color: var(--success-color);
+    margin-top: 0.25rem;
+    flex-shrink: 0;
 }
 
-.tips-list li {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+.tips-list__item strong {
+    display: block;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.tips-list__item p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 </style>
 @endsection

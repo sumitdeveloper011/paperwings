@@ -59,12 +59,27 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Display product detail page
+     * Alias method for productDetail() to maintain backward compatibility
+     */
+    public function productDetail($slug)
+    {
+        return $this->show($slug);
+    }
+
+    /**
+     * Display product detail page
+     */
     public function show($slug)
     {
         try {
             $title = 'Product Details';
             $product = Product::where('slug', $slug)
-                ->with(['images', 'category', 'brand', 'tags', 'approvedReviews', 'activeFaqs'])
+                ->active()
+                ->with(['images' => function($query) {
+                    $query->orderBy('id', 'asc');
+                }, 'category', 'brand', 'tags', 'approvedReviews', 'activeFaqs', 'accordions'])
                 ->firstOrFail();
 
             // Track product view
@@ -87,15 +102,19 @@ class ProductController extends Controller
             }
 
             // Get related products (same category, exclude current product)
-            $relatedProducts = Product::where('category_id', $product->category_id)
-                ->where('id', '!=', $product->id)
-                ->active()
-                ->with(['images' => function($q) {
-                    $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
-                }])
-                ->limit(8)
-            ->shuffle()
-            ->take(8);
+            $relatedProducts = collect();
+            if ($product->category_id) {
+                $relatedProducts = Product::where('category_id', $product->category_id)
+                    ->where('id', '!=', $product->id)
+                    ->active()
+                    ->with(['images' => function($q) {
+                        $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+                    }])
+                    ->limit(8)
+                    ->get()
+                    ->shuffle()
+                    ->take(8);
+            }
 
             return view($this->viewPath . 'product-detail', compact('title', 'product', 'relatedProducts'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -106,6 +125,18 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Display products by category
+     * Alias method for showCategory() to maintain backward compatibility
+     */
+    public function showCategory($slug, Request $request)
+    {
+        return $this->productByCategory($slug, $request);
+    }
+
+    /**
+     * Display products by category
+     */
     public function productByCategory($slug, Request $request){
         try {
             if (!$slug) {
@@ -114,7 +145,9 @@ class ProductController extends Controller
                     'message' => 'Category not found. The category you are looking for does not exist.'
                 ]);
             }
-            $category = Category::where('slug', $slug)->first();
+            $category = Category::where('slug', $slug)
+                ->where('status', 1)
+                ->first();
             if (!$category) {
                 return view('frontend.errors.404', [
                     'title' => 'Category Not Found',
@@ -133,9 +166,9 @@ class ProductController extends Controller
             $maxPrice = $request->get('max_price');
 
             // Optimized: Use cached database aggregation for price range
-            $cacheKey = 'price_range_category_' . $category->eposnow_category_id;
+            $cacheKey = 'price_range_category_' . $category->id;
             $priceRange = Cache::remember($cacheKey, 3600, function () use ($category) {
-                return Product::where('eposnow_category_id', $category->eposnow_category_id)
+                return Product::where('category_id', $category->id)
                     ->active()
                     ->selectRaw('
                         MIN(COALESCE(discount_price, total_price)) as min_price,
@@ -147,8 +180,8 @@ class ProductController extends Controller
             $priceMin = floor($priceRange->min_price ?? 0);
             $priceMax = ceil(($priceRange->max_price ?? 0) / 10) * 10;
 
-            // Build query
-            $query = Product::where('eposnow_category_id', $category->eposnow_category_id)
+            // Build query - use category_id instead of eposnow_category_id
+            $query = Product::where('category_id', $category->id)
                 ->active();
 
             // Apply price filter if provided
@@ -185,19 +218,13 @@ class ProductController extends Controller
 
             $products = $query->paginate(12)->appends($request->query()); // 12 products per page
 
-            if ($products->isEmpty()) {
-                return view('frontend.errors.404', [
-                    'title' => 'Product Not Found',
-                    'message' => 'No products found in this category. The category you are looking for does not exist.'
-                ]);
-            }
-
-            // Optimized: Get categories with product count using whereHas instead of having
+            // Optimized: Get categories with product count using category_id
             $cacheKey = 'categories_with_count_all';
             $categories = Cache::remember($cacheKey, 3600, function () {
                 return Category::active()
-                    ->whereHas('activeProducts')
-                    ->withCount('activeProducts')
+                    ->withCount(['products' => function($query) {
+                        $query->where('status', 1);
+                    }])
                     ->ordered()
                     ->get();
             });
@@ -257,17 +284,11 @@ class ProductController extends Controller
             if ($categorySlug) {
                 $category = Category::where('slug', $categorySlug)->first();
                 if ($category) {
-                    $query->where('eposnow_category_id', $category->eposnow_category_id);
+                    $query->where('category_id', $category->id);
                 }
             } elseif (!empty($categoriesFilter) && is_array($categoriesFilter)) {
-                // Multiple categories filter
-                $categoryIds = Category::whereIn('id', $categoriesFilter)
-                    ->pluck('eposnow_category_id')
-                    ->filter()
-                    ->toArray();
-                if (!empty($categoryIds)) {
-                    $query->whereIn('eposnow_category_id', $categoryIds);
-                }
+                // Multiple categories filter - use category_id directly
+                $query->whereIn('category_id', $categoriesFilter);
             }
 
             // Apply brand filter (multiple brands)
@@ -336,14 +357,13 @@ class ProductController extends Controller
             Cache::forget($cacheKey);
             $categories = Cache::remember($cacheKey, 3600, function () {
                 $categories = Category::where('categories.status', 1)
-                    ->select('categories.id', 'categories.name', 'categories.slug', 'categories.eposnow_category_id')
+                    ->select('categories.id', 'categories.name', 'categories.slug')
                     ->leftJoin('products', function($join) {
-                        $join->on('products.eposnow_category_id', '=', 'categories.eposnow_category_id')
+                        $join->on('products.category_id', '=', 'categories.id')
                              ->where('products.status', '=', 1);
                     })
-                    ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.eposnow_category_id')
+                    ->groupBy('categories.id', 'categories.name', 'categories.slug')
                     ->selectRaw('COUNT(products.id) as active_products_count')
-                    ->havingRaw('active_products_count > 0')
                     ->orderBy('categories.name', 'asc')
                     ->get();
 

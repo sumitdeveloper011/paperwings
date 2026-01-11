@@ -37,9 +37,9 @@ class AboutSection extends Model
                 $aboutSection->uuid = Str::uuid();
             }
             
+            // Set default sort_order to 0 for single entry
             if (is_null($aboutSection->sort_order)) {
-                $maxOrder = static::max('sort_order') ?? 0;
-                $aboutSection->sort_order = $maxOrder + 1;
+                $aboutSection->sort_order = 0;
             }
         });
     }

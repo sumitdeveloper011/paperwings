@@ -34,18 +34,18 @@
                 <div class="modern-card__body">
                     <form method="POST" action="{{ route('admin.categories.store') }}" enctype="multipart/form-data" class="modern-form">
                         @csrf
-                        
+
                         <div class="form-group-modern">
                             <label for="name" class="form-label-modern">
                                 Category Name <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-tag input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('name') is-invalid @enderror" 
-                                       id="name" 
-                                       name="name" 
-                                       value="{{ old('name') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('name') is-invalid @enderror"
+                                       id="name"
+                                       name="name"
+                                       value="{{ old('name') }}"
                                        placeholder="Enter category name"
                                        required>
                             </div>
@@ -63,16 +63,17 @@
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-link input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('slug') is-invalid @enderror" 
-                                       id="slug" 
-                                       name="slug" 
-                                       value="{{ old('slug') }}" 
-                                       placeholder="category-slug (auto-generated if empty)">
+                                <input type="text"
+                                       class="form-input-modern @error('slug') is-invalid @enderror"
+                                       id="slug"
+                                       name="slug"
+                                       value="{{ old('slug') }}"
+                                       placeholder="category-slug (auto-generated from name)"
+                                       readonly>
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
-                                If left empty, slug will be auto-generated from category name
+                                Slug is auto-generated from category name and cannot be edited
                             </div>
                             @error('slug')
                                 <div class="form-error">
@@ -86,10 +87,11 @@
                             <label for="description" class="form-label-modern">
                                 Description
                             </label>
-                            <textarea class="form-input-modern @error('description') is-invalid @enderror" 
-                                      id="description" 
-                                      name="description" 
+                            <textarea class="form-input-modern @error('description') is-invalid @enderror"
+                                      id="description"
+                                      name="description"
                                       rows="25"
+                                      style="resize: vertical;"
                                       placeholder="Enter category description">{{ old('description') }}</textarea>
                             @error('description')
                                 <div class="form-error">
@@ -105,9 +107,9 @@
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-toggle-on input-icon"></i>
-                                <select class="form-input-modern @error('status') is-invalid @enderror" 
-                                        id="status" 
-                                        name="status" 
+                                <select class="form-input-modern @error('status') is-invalid @enderror"
+                                        id="status"
+                                        name="status"
                                         required>
                                     <option value="">Select Status</option>
                                     <option value="1" {{ old('status') === '1' ? 'selected' : '' }}>Active</option>
@@ -127,10 +129,10 @@
                                 Category Image
                             </label>
                             <div class="file-upload-wrapper">
-                                <input type="file" 
-                                       class="file-upload-input @error('image') is-invalid @enderror" 
-                                       id="image" 
-                                       name="image" 
+                                <input type="file"
+                                       class="file-upload-input @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
                                        accept="image/*">
                                 <label for="image" class="file-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
@@ -226,7 +228,7 @@ document.getElementById('image').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
-    
+
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -244,94 +246,28 @@ function removeImagePreview() {
     document.getElementById('imagePreview').style.display = 'none';
 }
 
-// Auto-generate slug from name
+// Auto-generate slug from name (slug is readonly, always auto-generated)
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');
-    if (!slugField.value || slugField.dataset.autoGenerated === 'true') {
-        const slug = e.target.value
-            .toLowerCase()
-            .replace(/[^a-z0-9 -]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim('-');
-        slugField.value = slug;
-        slugField.dataset.autoGenerated = 'true';
-    }
-});
-
-// Mark slug as manually edited
-document.getElementById('slug').addEventListener('input', function() {
-    this.dataset.autoGenerated = 'false';
+    const slug = e.target.value
+        .toLowerCase()
+        .replace(/[^a-z0-9 -]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim('-');
+    slugField.value = slug;
 });
 </script>
 
-<!-- CKEditor 5 with Image Upload Plugin -->
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/translations/en.js"></script>
+@push('scripts')
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
 
-<script>
-// Initialize CKEditor with Image Upload
-ClassicEditor
-    .create(document.querySelector('#description'), {
-        height: 600,
-        toolbar: {
-            items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'outdent', 'indent', '|',
-                'imageUpload', 'blockQuote', 'insertTable', '|',
-                'undo', 'redo'
-            ]
-        },
-        language: 'en',
-        heading: {
-            options: [
-                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-            ]
-        },
-        simpleUpload: {
-            uploadUrl: '{{ route("admin.pages.uploadImage") }}',
-            withCredentials: true,
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        },
-        image: {
-            toolbar: [
-                'imageTextAlternative',
-                'imageStyle:inline',
-                'imageStyle:block',
-                'imageStyle:side'
-            ]
-        }
-    })
-    .then(editor => {
-        window.descriptionEditor = editor;
-    })
-    .catch(error => {
-        console.error('CKEditor initialization error:', error);
-        // Fallback: If imageUpload doesn't work, remove it and show a message
-        if (error.message && error.message.includes('imageUpload')) {
-            console.warn('Image upload plugin not available. Using basic editor.');
-            ClassicEditor
-                .create(document.querySelector('#description'), {
-                    toolbar: {
-                        items: [
-                            'heading', '|',
-                            'bold', 'italic', 'link', '|',
-                            'bulletedList', 'numberedList', '|',
-                            'outdent', 'indent', '|',
-                            'blockQuote', 'insertTable', '|',
-                            'undo', 'redo'
-                        ]
-                    }
-                })
-                .catch(err => console.error(err));
-        }
-    });
-</script>
+<!-- CKEditor Component -->
+@include('components.ckeditor', [
+    'id' => 'description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
+@endpush
 @endsection

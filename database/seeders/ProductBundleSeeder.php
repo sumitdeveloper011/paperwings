@@ -8,8 +8,22 @@ use App\Models\ProductBundle;
 
 class ProductBundleSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates sample product bundles.
+     * Will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  ProductBundleSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding product bundles...');
+
         $products = Product::active()->get();
 
         if ($products->count() < 6) {
@@ -77,6 +91,7 @@ class ProductBundleSeeder extends Seeder
             $bundle->update(['discount_percentage' => $discountPercentage]);
         }
 
-        $this->command->info('Product Bundles seeded successfully!');
+        $this->command->info("✅ Product Bundles seeded successfully!");
+        $this->command->info("  • Processed: " . count($bundles) . " bundles");
     }
 }

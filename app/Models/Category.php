@@ -78,10 +78,10 @@ class Category extends Model
         return $this->hasMany(Product::class, 'category_id', 'id');
     }
 
-    // Get active products relationship
+    // Get active products relationship - use category_id instead of eposnow_category_id
     public function activeProducts(): HasMany
     {
-        return $this->hasMany(Product::class, 'eposnow_category_id', 'eposnow_category_id')
+        return $this->hasMany(Product::class, 'category_id', 'id')
                     ->where('status', 1);
     }
 

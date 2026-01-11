@@ -13,7 +13,7 @@
                 <p class="page-header__subtitle">Update product: {{ $product->name }}</p>
             </div>
             <div class="page-header__actions">
-                <a href="{{ route('admin.products.show', $product) }}" class="btn btn-outline-info btn-icon">
+                <a href="{{ route('admin.products.show', $product) }}" class="btn btn-view btn-icon">
                     <i class="fas fa-eye"></i>
                     <span>View</span>
                 </a>
@@ -79,7 +79,7 @@
                             <div class="mb-3">
                                 <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('short_description') is-invalid @enderror"
-                                          id="short_description" name="short_description" rows="3" maxlength="500" required>{{ old('short_description', $product->short_description) }}</textarea>
+                                          id="short_description" name="short_description" rows="3" maxlength="500" data-required="true">{{ old('short_description', $product->short_description) }}</textarea>
                                 <small class="form-text text-muted">Maximum 500 characters</small>
                                 @error('short_description')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -89,7 +89,7 @@
                             <div class="mb-3">
                                 <label for="description" class="form-label">Full Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('description') is-invalid @enderror"
-                                          id="description" name="description" rows="6" required>{{ old('description', $product->description) }}</textarea>
+                                          id="description" name="description" rows="6" data-required="true">{{ old('description', $product->description) }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -106,6 +106,7 @@
                             </h3>
                         </div>
                         <div class="modern-card__body">
+                            <!-- Row 1: Total Price, Discount Type, Discount Field -->
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="mb-3">
@@ -123,36 +124,66 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="mb-3">
-                                        <label for="discount_price" class="form-label">Discount Price</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">$</span>
-                                            <input type="number" class="form-control @error('discount_price') is-invalid @enderror"
-                                                   id="discount_price" name="discount_price" value="{{ old('discount_price', $product->discount_price) }}"
-                                                   step="0.01" min="0">
-                                        </div>
-                                        <small class="form-text text-muted">Optional: Set a discounted price</small>
-                                        @error('discount_price')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                        <label for="discount_type" class="form-label">Discount Type</label>
+                                        @php
+                                            $hasDiscount = old('discount_price', $product->discount_price) ? true : false;
+                                            $totalPrice = old('total_price', $product->total_price);
+                                            $discountPrice = old('discount_price', $product->discount_price);
+                                            $discountType = 'none';
+                                            $discountPercentage = '';
+
+                                            if ($hasDiscount && $totalPrice > 0) {
+                                                // Check if discount price matches a percentage calculation
+                                                $calculatedPercentage = (($totalPrice - $discountPrice) / $totalPrice) * 100;
+                                                $roundedPercentage = round($calculatedPercentage, 2);
+
+                                                // If it's a clean percentage (within 0.01% tolerance), use percentage mode
+                                                if (abs($calculatedPercentage - $roundedPercentage) < 0.01) {
+                                                    $discountType = 'percentage';
+                                                    $discountPercentage = $roundedPercentage;
+                                                } else {
+                                                    $discountType = 'direct';
+                                                }
+                                            }
+                                            $discountType = old('discount_type', $discountType);
+                                            $discountPercentage = old('discount_percentage', $discountPercentage);
+                                        @endphp
+                                        <select class="form-select" id="discount_type" name="discount_type">
+                                            <option value="none" {{ $discountType == 'none' ? 'selected' : '' }}>No Discount</option>
+                                            <option value="direct" {{ $discountType == 'direct' ? 'selected' : '' }}>Direct Price</option>
+                                            <option value="percentage" {{ $discountType == 'percentage' ? 'selected' : '' }}>Percentage</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="mb-3">
-                                        <label for="product_type" class="form-label">Product Type</label>
-                                        <select class="form-select @error('product_type') is-invalid @enderror"
-                                                id="product_type" name="product_type">
-                                            <option value="">Select Product Type</option>
-                                            <option value="1" {{ old('product_type', $product->product_type) == 1 ? 'selected' : '' }}>Featured</option>
-                                            <option value="2" {{ old('product_type', $product->product_type) == 2 ? 'selected' : '' }}>On Sale</option>
-                                            <option value="3" {{ old('product_type', $product->product_type) == 3 ? 'selected' : '' }}>Top Rated</option>
-                                        </select>
-                                        <small class="form-text text-muted">Optional: Categorize your product</small>
-                                        @error('product_type')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                        <label class="form-label">Discount</label>
+                                        <div id="discount_field_wrapper">
+                                            <div class="input-group" id="discount_direct_wrapper" style="display: {{ $discountType == 'direct' ? 'flex' : 'none' }};">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control @error('discount_price') is-invalid @enderror"
+                                                       id="discount_price" name="discount_price" value="{{ old('discount_price', $product->discount_price) }}"
+                                                       step="0.01" min="0" placeholder="0.00" {{ $discountType != 'direct' ? 'disabled' : '' }}>
+                                            </div>
+                                            <div class="input-group" id="discount_percentage_wrapper" style="display: {{ $discountType == 'percentage' ? 'flex' : 'none' }};">
+                                                <input type="number" class="form-control @error('discount_percentage') is-invalid @enderror"
+                                                       id="discount_percentage" name="discount_percentage" value="{{ $discountPercentage }}"
+                                                       step="0.01" min="0" max="100" placeholder="0" {{ $discountType != 'percentage' ? 'disabled' : '' }}>
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            <small class="form-text text-muted" id="calculated_discount_price"></small>
+                                            @error('discount_price')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            @error('discount_percentage')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <small class="form-text text-muted">Optional: Set a discount using direct price or percentage</small>
                                     </div>
                                 </div>
                             </div>
+                            <!-- Row 2: Price Without Tax, Tax Amount, Product Type -->
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="mb-3">
@@ -172,6 +203,22 @@
                                             <input type="text" class="form-control bg-light" id="tax_amount" readonly>
                                         </div>
                                         <small class="form-text text-muted">Automatically calculated</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="product_type" class="form-label">Product Type</label>
+                                        <select class="form-select @error('product_type') is-invalid @enderror"
+                                                id="product_type" name="product_type">
+                                            <option value="">Select Product Type</option>
+                                            <option value="1" {{ old('product_type', $product->product_type) == 1 ? 'selected' : '' }}>Featured</option>
+                                            <option value="2" {{ old('product_type', $product->product_type) == 2 ? 'selected' : '' }}>On Sale</option>
+                                            <option value="3" {{ old('product_type', $product->product_type) == 3 ? 'selected' : '' }}>Top Rated</option>
+                                        </select>
+                                        <small class="form-text text-muted">Optional: Categorize your product</small>
+                                        @error('product_type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
                                     </div>
                                 </div>
                             </div>
@@ -217,7 +264,7 @@
                                                        placeholder="Section heading..." value="{{ $item['heading'] ?? '' }}">
                                             </div>
                                             <div>
-                                                <textarea class="form-control" name="accordion_data[{{ $index }}][content]"
+                                                <textarea class="form-control accordion-content-editor" id="accordion_content_edit_{{ $index }}" name="accordion_data[{{ $index }}][content]"
                                                           rows="3" placeholder="Section content...">{{ $item['content'] ?? '' }}</textarea>
                                             </div>
                                         </div>
@@ -243,7 +290,7 @@
                                 <i class="fas fa-info-circle"></i>
                                 <small>These fields are optional. They help improve search engine visibility. If left empty, they will be auto-generated from product information.</small>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="meta_title" class="form-label">Meta Title</label>
                                 <input type="text" class="form-control @error('meta_title') is-invalid @enderror"
@@ -280,70 +327,68 @@
                     </div>
 
                     <!-- Current Images -->
-                    @if($product->images && $product->images->count() > 0)
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-images"></i>
-                                Current Images
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="row g-3">
-                                @foreach($product->images as $index => $image)
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="position-relative">
-                                            <img src="{{ $image->image_url }}" alt="{{ $product->name }} - Image {{ $index + 1 }}"
-                                                 class="img-fluid rounded shadow-sm" style="width: 100%; height: 150px; object-fit: cover;">
-                                            @if($index === 0)
-                                                <span class="position-absolute top-0 start-0 badge bg-primary m-2">Main</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <div class="mt-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="keep_existing_images" value="1" id="keepExistingImages" checked>
-                                    <label class="form-check-label" for="keepExistingImages">
-                                        Keep existing images when uploading new ones
-                                    </label>
-                                    <small class="form-text text-muted d-block">Uncheck to replace all images with new uploads</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Product Images -->
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <h3 class="modern-card__title">
-                                <i class="fas fa-camera"></i>
-                                {{ $product->images && $product->images->count() > 0 ? 'Add More Images' : 'Upload Images' }}
-                            </h3>
-                        </div>
-                        <div class="modern-card__body">
-                            <div class="mb-3">
-                                <label for="images" class="form-label">Upload Images</label>
-                                <input type="file" class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror"
-                                       id="images" name="images[]" multiple accept="image/*">
-                                <small class="form-text text-muted">You can select multiple images (max 10). Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB per image.</small>
-                                @error('images')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                @error('images.*')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div id="imagePreviewContainer" class="row g-3"></div>
-                        </div>
-                    </div>
+                    @include('components.multiple-image-upload', [
+                        'name' => 'images',
+                        'id' => 'images',
+                        'label' => 'Upload Images',
+                        'existingImages' => $product->images,
+                        'entityName' => $product->name,
+                        'showKeepExisting' => true,
+                        'maxImages' => 10
+                    ])
                 </div>
 
                 <!-- Right Column - Categories & Relationships -->
                 <div class="col-lg-4">
+                    <!-- Tips -->
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-lightbulb"></i>
+                                Tips
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <ul class="tips-list">
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Product Updates</strong>
+                                        <p>Changes take effect immediately after saving</p>
+                                    </div>
+                                </li>
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Image Management</strong>
+                                        <p>Check "Keep existing images" to add new images without removing old ones</p>
+                                    </div>
+                                </li>
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Pricing</strong>
+                                        <p>Update prices carefully. Use percentage or direct discount price</p>
+                                    </div>
+                                </li>
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>SEO Fields</strong>
+                                        <p>Meta fields are optional and auto-generated if left empty</p>
+                                    </div>
+                                </li>
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Status Changes</strong>
+                                        <p>Status changes take effect immediately</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <!-- Category & Brand Selection -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -353,55 +398,58 @@
                             </h3>
                         </div>
                         <div class="modern-card__body">
-                            <div class="mb-3">
-                                <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
-                                <select class="form-select @error('category_id') is-invalid @enderror"
-                                        id="category_id" name="category_id" required>
-                                    <option value="">Select Category</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('category_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            {{-- Category Select Component (Select2 Enabled) --}}
+                            @include('components.select-category', [
+                                'id' => 'category_id',
+                                'name' => 'category_id',
+                                'label' => 'Category',
+                                'required' => true,
+                                'selected' => old('category_id', $product->category_id),
+                                'categories' => $categories,
+                                'useUuid' => false,
+                                'placeholder' => 'Select Category',
+                                'useSelect2' => true
+                            ])
 
-                            <div class="mb-3">
-                                <label for="brand_id" class="form-label">Brand</label>
-                                <select class="form-select @error('brand_id') is-invalid @enderror"
-                                        id="brand_id" name="brand_id">
-                                    <option value="">Select Brand</option>
-                                    @foreach($brands as $brand)
-                                        <option value="{{ $brand->id }}" {{ old('brand_id', $product->brand_id) == $brand->id ? 'selected' : '' }}>
-                                            {{ $brand->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('brand_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            {{-- Brand Select Component (Hidden for future use, Select2 ready) --}}
+                            @include('components.select-brand', [
+                                'id' => 'brand_id',
+                                'name' => 'brand_id',
+                                'label' => 'Brand',
+                                'required' => false,
+                                'selected' => old('brand_id', $product->brand_id),
+                                'brands' => $brands,
+                                'placeholder' => 'Select Brand',
+                                'useSelect2' => true,
+                                'hidden' => true
+                            ])
 
-                            <div class="mb-3">
-                                <label for="tag_ids" class="form-label">Tags</label>
-                                <select class="form-select select2-tags @error('tag_ids') is-invalid @enderror"
-                                        id="tag_ids" 
-                                        name="tag_ids[]" 
-                                        multiple>
-                                    @foreach($tags ?? [] as $tag)
-                                        <option value="{{ $tag->id }}" {{ in_array($tag->id, old('tag_ids', $product->tags->pluck('id')->toArray())) ? 'selected' : '' }}>
-                                            {{ $tag->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="form-text text-muted">Select multiple tags for this product</small>
-                                @error('tag_ids')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            {{-- Subcategory Select Component (Hidden for future use, Select2 ready) --}}
+                            @include('components.select-subcategory', [
+                                'id' => 'subcategory_id',
+                                'name' => 'subcategory_id',
+                                'label' => 'Sub Category',
+                                'required' => false,
+                                'selected' => old('subcategory_id', $product->subcategory_id),
+                                'subcategories' => [],
+                                'categoryId' => 'category_id',
+                                'loadUrl' => route('admin.products.getSubCategories'),
+                                'placeholder' => 'Select Sub Category',
+                                'useSelect2' => true,
+                                'hidden' => true
+                            ])
+
+                            {{-- Tags Select Component --}}
+                            @include('components.select-tags', [
+                                'id' => 'tag_ids',
+                                'name' => 'tag_ids[]',
+                                'label' => 'Tags',
+                                'required' => false,
+                                'selected' => old('tag_ids', $product->tags->pluck('id')->toArray()),
+                                'tags' => $tags ?? [],
+                                'placeholder' => 'Select tags...',
+                                'helpText' => 'Select multiple tags for this product'
+                            ])
                         </div>
                     </div>
 
@@ -456,53 +504,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Price calculations
-    const totalPriceInput = document.getElementById('total_price');
-    const priceWithoutTaxInput = document.getElementById('price_without_tax');
-    const taxAmountInput = document.getElementById('tax_amount');
+    // Price calculations - Now handled by product-pricing.js
 
-    function calculatePrices() {
-        const totalPrice = parseFloat(totalPriceInput.value) || 0;
-        const priceWithoutTax = totalPrice / 1.15;
-        const taxAmount = totalPrice - priceWithoutTax;
-
-        priceWithoutTaxInput.value = priceWithoutTax.toFixed(2);
-        taxAmountInput.value = taxAmount.toFixed(2);
-    }
-
-    totalPriceInput.addEventListener('input', calculatePrices);
-
-    // Initial calculation
-    calculatePrices();
-
-    // Dynamic subcategory loading
-    const categorySelect = document.getElementById('category_id');
-    const subcategorySelect = document.getElementById('subcategory_id');
-
-    categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
-        const currentSubcategoryId = '{{ old("subcategory_id", $product->subcategory_id) }}';
-
-        // Clear subcategory options
-        subcategorySelect.innerHTML = '<option value="">Select Sub Category</option>';
-
-        if (categoryId) {
-            fetch(`{{ route('admin.products.getSubCategories') }}?category_id=${categoryId}`)
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(subCategory => {
-                        const option = document.createElement('option');
-                        option.value = subCategory.id;
-                        option.textContent = subCategory.name;
-                        if (subCategory.id == currentSubcategoryId) {
-                            option.selected = true;
-                        }
-                        subcategorySelect.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Error loading subcategories:', error));
-        }
-    });
+    // Dynamic subcategory loading - Now handled by select-subcategory component
 
     // Accordion management
     const addAccordionBtn = document.getElementById('addAccordionItem');
@@ -519,6 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createAccordionItem(index) {
         const div = document.createElement('div');
         div.className = 'accordion-item-wrapper mb-3 border rounded p-3';
+        const textareaId = `accordion_content_${index}`;
         div.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">Section ${index + 1}</h6>
@@ -531,19 +536,86 @@ document.addEventListener('DOMContentLoaded', function() {
                        placeholder="Section heading...">
             </div>
             <div>
-                <textarea class="form-control" name="accordion_data[${index}][content]"
+                <textarea class="form-control accordion-content-editor" id="${textareaId}" name="accordion_data[${index}][content]"
                           rows="3" placeholder="Section content..."></textarea>
             </div>
         `;
 
         // Add remove functionality
         div.querySelector('.remove-accordion-item').addEventListener('click', function() {
+            // Destroy CKEditor instance if exists
+            const textarea = div.querySelector('textarea');
+            if (textarea && window[textareaId + 'Editor']) {
+                window[textareaId + 'Editor'].destroy()
+                    .then(() => {
+                        delete window[textareaId + 'Editor'];
+                    })
+                    .catch(err => console.error('Error destroying editor:', err));
+            }
             div.remove();
             updateAccordionVisibility();
             reindexAccordionItems();
         });
 
+        // Initialize CKEditor for the textarea after adding to DOM
+        setTimeout(() => {
+            initializeAccordionEditor(textareaId);
+        }, 100);
+
         return div;
+    }
+
+    function initializeAccordionEditor(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea || typeof ClassicEditor === 'undefined') {
+            return;
+        }
+
+        ClassicEditor
+            .create(textarea, {
+                toolbar: {
+                    items: [
+                        'heading', '|',
+                        'bold', 'italic', 'link', '|',
+                        'bulletedList', 'numberedList', '|',
+                        'sourceEditing', '|',
+                        'undo', 'redo'
+                    ]
+                },
+                language: 'en',
+                heading: {
+                    options: [
+                        { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                        { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                        { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                    ]
+                },
+                htmlSupport: {
+                    allow: [
+                        {
+                            name: /.*/,
+                            attributes: true,
+                            classes: true,
+                            styles: true
+                        }
+                    ]
+                }
+            })
+            .then(editor => {
+                window[textareaId + 'Editor'] = editor;
+
+                // Sync editor content to textarea before form submission
+                const form = textarea.closest('form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        textarea.value = editor.getData();
+                    }, { once: false });
+                }
+            })
+            .catch(error => {
+                console.error('CKEditor initialization error for #' + textareaId + ':', error);
+            });
     }
 
     function updateAccordionVisibility() {
@@ -560,6 +632,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (name) {
                     input.setAttribute('name', name.replace(/\[\d+\]/, `[${index}]`));
                 }
+
+                // Reindex textarea IDs and recreate CKEditor if needed
+                if (input.tagName === 'TEXTAREA' && input.classList.contains('accordion-content-editor')) {
+                    const oldId = input.id;
+                    const newId = `accordion_content_${index}`;
+
+                    // Destroy old editor if exists
+                    if (oldId && window[oldId + 'Editor']) {
+                        window[oldId + 'Editor'].destroy()
+                            .then(() => {
+                                delete window[oldId + 'Editor'];
+                                input.id = newId;
+                                // Reinitialize editor with new ID
+                                setTimeout(() => {
+                                    initializeAccordionEditor(newId);
+                                }, 100);
+                            })
+                            .catch(err => console.error('Error reindexing editor:', err));
+                    } else {
+                        input.id = newId;
+                        // Initialize editor if not already initialized
+                        setTimeout(() => {
+                            if (!window[newId + 'Editor']) {
+                                initializeAccordionEditor(newId);
+                            }
+                        }, 100);
+                    }
+                }
             });
         });
         accordionCounter = accordionContainer.children.length;
@@ -568,68 +668,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add remove functionality to existing accordion items
     document.querySelectorAll('.remove-accordion-item').forEach(button => {
         button.addEventListener('click', function() {
-            this.closest('.accordion-item-wrapper').remove();
+            const wrapper = this.closest('.accordion-item-wrapper');
+            const textarea = wrapper.querySelector('textarea');
+            if (textarea && textarea.id) {
+                const editorId = textarea.id + 'Editor';
+                if (window[editorId]) {
+                    window[editorId].destroy()
+                        .then(() => {
+                            delete window[editorId];
+                        })
+                        .catch(err => console.error('Error destroying editor:', err));
+                }
+            }
+            wrapper.remove();
             updateAccordionVisibility();
             reindexAccordionItems();
         });
     });
 
-    // Image preview functionality
-    const imageInput = document.getElementById('images');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-
-    imageInput.addEventListener('change', function() {
-        imagePreviewContainer.innerHTML = '';
-
-        if (this.files.length > 0) {
-            Array.from(this.files).forEach((file, index) => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const imageItem = createImagePreview(e.target.result, index);
-                        imagePreviewContainer.appendChild(imageItem);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
+    // Initialize CKEditor for existing accordion items (from database or old input)
+    document.querySelectorAll('.accordion-content-editor').forEach((textarea, index) => {
+        if (textarea.id) {
+            initializeAccordionEditor(textarea.id);
         }
     });
 
-    function createImagePreview(src, index) {
-        const div = document.createElement('div');
-        div.className = 'col-md-4 col-sm-6';
-        div.innerHTML = `
-            <div class="image-preview-item">
-                <img src="${src}" alt="Preview ${index + 1}">
-                <button type="button" class="image-remove-btn" data-index="${index}">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-
-        // Add remove functionality
-        div.querySelector('.image-remove-btn').addEventListener('click', function() {
-            const indexToRemove = parseInt(this.getAttribute('data-index'));
-            removeImageFromInput(indexToRemove);
-        });
-
-        return div;
-    }
-
-    function removeImageFromInput(indexToRemove) {
-        const dt = new DataTransfer();
-        const files = imageInput.files;
-
-        for (let i = 0; i < files.length; i++) {
-            if (i !== indexToRemove) {
-                dt.items.add(files[i]);
-            }
-        }
-
-        imageInput.files = dt.files;
-        // Trigger change event to refresh preview
-        imageInput.dispatchEvent(new Event('change'));
-    }
 
     // Initial accordion visibility check
     updateAccordionVisibility();
@@ -661,6 +724,35 @@ function resetForm() {
         location.reload();
     }
 }
+
+// Form submission handler - Sync CKEditor content before submit
+const productForm = document.getElementById('productForm');
+if (productForm) {
+    productForm.addEventListener('submit', function(e) {
+        // Sync CKEditor content to textareas
+        if (window.short_descriptionEditor) {
+            const shortDescTextarea = document.getElementById('short_description');
+            if (shortDescTextarea) {
+                shortDescTextarea.value = window.short_descriptionEditor.getData();
+            }
+        }
+
+        if (window.descriptionEditor) {
+            const descTextarea = document.getElementById('description');
+            if (descTextarea) {
+                descTextarea.value = window.descriptionEditor.getData();
+            }
+        }
+
+        // Sync all accordion CKEditor instances
+        document.querySelectorAll('.accordion-content-editor').forEach(textarea => {
+            const editorId = textarea.id + 'Editor';
+            if (window[editorId]) {
+                textarea.value = window[editorId].getData();
+            }
+        });
+    });
+}
 </script>
 
 @push('styles')
@@ -672,5 +764,25 @@ function resetForm() {
 @push('scripts')
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Product Pricing JS (Reusable) -->
+<script src="{{ asset('assets/js/product-pricing.js') }}"></script>
+
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+
+<!-- CKEditor Component for Short Description -->
+@include('components.ckeditor', [
+    'id' => 'short_description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'basic'
+])
+
+<!-- CKEditor Component for Full Description -->
+@include('components.ckeditor', [
+    'id' => 'description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
 @endpush
 @endsection

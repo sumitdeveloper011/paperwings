@@ -6,15 +6,10 @@
         <div class="page-header__content">
             <div class="page-header__title-section">
                 <h1 class="page-header__title">
-                    <i class="fas fa-edit"></i>
-                    Edit About Section
+                    <i class="fas fa-info-circle"></i>
+                    About Section
                 </h1>
-            </div>
-            <div class="page-header__actions">
-                <a href="{{ route('admin.about-sections.index') }}" class="btn btn-outline-secondary btn-icon">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back</span>
-                </a>
+                <p class="page-header__subtitle">Manage homepage about section widget</p>
             </div>
         </div>
     </div>
@@ -26,7 +21,7 @@
                     <h3 class="modern-card__title">About Section Information</h3>
                 </div>
                 <div class="modern-card__body">
-                    <form method="POST" action="{{ route('admin.about-sections.update', $aboutSection) }}" class="modern-form" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('admin.about-sections.update') }}" class="modern-form" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         
@@ -131,40 +126,20 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group-modern">
-                                    <label for="sort_order" class="form-label-modern">Sort Order</label>
-                                    <div class="input-wrapper">
-                                        <i class="fas fa-sort input-icon"></i>
-                                        <input type="number" 
-                                               class="form-input-modern @error('sort_order') is-invalid @enderror" 
-                                               id="sort_order" 
-                                               name="sort_order" 
-                                               value="{{ old('sort_order', $aboutSection->sort_order) }}" 
-                                               min="0">
-                                    </div>
-                                    @error('sort_order')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                        <div class="form-group-modern">
+                            <label for="status" class="form-label-modern">Status <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-toggle-on input-icon"></i>
+                                <select class="form-input-modern @error('status') is-invalid @enderror" 
+                                        id="status" name="status" required>
+                                    <option value="1" {{ old('status', $aboutSection->status) == 1 ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ old('status', $aboutSection->status) == 0 ? 'selected' : '' }}>Inactive</option>
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group-modern">
-                                    <label for="status" class="form-label-modern">Status <span class="required">*</span></label>
-                                    <div class="input-wrapper">
-                                        <i class="fas fa-toggle-on input-icon"></i>
-                                        <select class="form-input-modern @error('status') is-invalid @enderror" 
-                                                id="status" name="status" required>
-                                            <option value="1" {{ old('status', $aboutSection->status) == 1 ? 'selected' : '' }}>Active</option>
-                                            <option value="0" {{ old('status', $aboutSection->status) == 0 ? 'selected' : '' }}>Inactive</option>
-                                        </select>
-                                    </div>
-                                    @error('status')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
+                            <small class="form-text text-muted">When active, this section will be displayed on the homepage.</small>
+                            @error('status')
+                                <div class="form-error">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         <div class="form-actions">
@@ -172,10 +147,11 @@
                                 <i class="fas fa-save"></i>
                                 Update About Section
                             </button>
-                            <a href="{{ route('admin.about-sections.index') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times"></i>
-                                Cancel
-                            </a>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Note:</strong> This section appears on the homepage. For detailed company information, use the <a href="{{ route('admin.pages.index') }}" target="_blank">About Us page</a> in the Pages section.
                         </div>
                     </form>
                 </div>

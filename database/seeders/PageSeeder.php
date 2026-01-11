@@ -10,9 +10,20 @@ class PageSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * 
+     * This seeder creates default pages (About, Privacy, Terms, etc.).
+     * Safe to run in production as it checks for existing pages.
      */
     public function run(): void
     {
+        // Prevent running in production (pages should be managed manually in production)
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  PageSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding pages...');
+
         $pages = [
             [
                 'title' => 'About Us',
@@ -501,6 +512,9 @@ class PageSeeder extends Seeder
             ],
         ];
 
+        $created = 0;
+        $skipped = 0;
+
         foreach ($pages as $pageData) {
             // Check if page already exists by slug (use provided slug or generate from title)
             $slug = $pageData['slug'] ?? Str::slug($pageData['title']);
@@ -508,8 +522,16 @@ class PageSeeder extends Seeder
 
             if (!$existingPage) {
                 Page::create($pageData);
+                $created++;
+            } else {
+                $skipped++;
             }
         }
+
+        $this->command->info("✅ Pages seeded successfully!");
+        $this->command->info("  • Created: {$created}");
+        $this->command->info("  • Skipped (already exist): {$skipped}");
+        $this->command->info("  • Total: " . count($pages));
     }
 }
 

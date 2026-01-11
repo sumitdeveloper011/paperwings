@@ -67,4 +67,13 @@ interface ProductRepositoryInterface
 
     // Get featured products
     public function getFeatured(): Collection;
+
+    // Get only trashed (soft deleted) products
+    public function getTrashed(int $perPage = 10): LengthAwarePaginator;
+
+    // Restore soft deleted product
+    public function restore(Product $product): bool;
+
+    // Force delete (permanently delete) product
+    public function forceDelete(Product $product): bool;
 }

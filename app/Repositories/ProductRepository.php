@@ -187,4 +187,25 @@ class ProductRepository implements ProductRepositoryInterface
                           ->limit(8)
                           ->get();
     }
+
+    // Get only trashed (soft deleted) products
+    public function getTrashed(int $perPage = 10): LengthAwarePaginator
+    {
+        return $this->model->onlyTrashed()
+                          ->with(['category', 'brand'])
+                          ->orderBy('deleted_at', 'desc')
+                          ->paginate($perPage);
+    }
+
+    // Restore soft deleted product
+    public function restore(Product $product): bool
+    {
+        return $product->restore();
+    }
+
+    // Force delete (permanently delete) product
+    public function forceDelete(Product $product): bool
+    {
+        return $product->forceDelete();
+    }
 }

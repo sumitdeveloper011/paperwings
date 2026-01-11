@@ -29,9 +29,9 @@
             <div class="modern-card__header-content">
                 <h3 class="modern-card__title">
                     <i class="fas fa-list"></i>
-                    All Users
+                    Customers
                 </h3>
-                <p class="modern-card__subtitle">{{ $users->total() }} total users</p>
+                <p class="modern-card__subtitle">{{ $users->total() }} total customers</p>
             </div>
             <div class="modern-card__header-actions">
                 <form method="GET" class="filter-form" id="search-form">
@@ -48,12 +48,6 @@
                             <i class="fas fa-spinner fa-spin"></i>
                         </div>
                     </div>
-                    <select name="role" id="role-filter" class="filter-select">
-                        <option value="">All Roles</option>
-                        @foreach($roles as $role)
-                            <option value="{{ $role->name }}" {{ $roleFilter === $role->name ? 'selected' : '' }}>{{ $role->name }}</option>
-                        @endforeach
-                    </select>
                     <select name="status" id="status-filter" class="filter-select">
                         <option value="">All Status</option>
                         <option value="1" {{ $status === '1' ? 'selected' : '' }}>Active</option>
@@ -217,7 +211,6 @@
 
         const searchTerm = searchInput.value.trim();
         const status = statusSelect ? statusSelect.value : '';
-        const role = roleSelect ? roleSelect.value : '';
 
         // Show loading indicator
         if (searchLoading) searchLoading.style.display = 'block';
@@ -227,7 +220,6 @@
         const url = new URL('{{ route("admin.users.index") }}', window.location.origin);
         if (searchTerm) url.searchParams.set('search', searchTerm);
         if (status) url.searchParams.set('status', status);
-        if (role) url.searchParams.set('role', role);
         url.searchParams.set('ajax', '1');
 
         fetch(url, {
@@ -269,22 +261,12 @@
         });
     }
 
-    // Handle role filter change
-    const roleSelect = document.getElementById('role-filter');
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-    }
-
     // Clear search
     if (clearSearch) {
         clearSearch.addEventListener('click', function(e) {
         e.preventDefault();
         searchInput.value = '';
         if (statusSelect) statusSelect.value = '';
-        if (roleSelect) roleSelect.value = '';
         clearTimeout(searchTimeout);
         performSearch();
     });

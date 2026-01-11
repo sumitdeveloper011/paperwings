@@ -92,45 +92,52 @@
                 <!-- Product Images -->
                 <div class="col-lg-6">
                     <div class="product-images">
-                        @if($product->images && $product->images->count() > 0)
+                        @php
+                            // Ensure images relationship is loaded
+                            if (!$product->relationLoaded('images')) {
+                                $product->load('images');
+                            }
+                            // Get unique images by image path to prevent duplicates
+                            $productImages = $product->images->unique('image');
+                            $hasImages = $productImages && $productImages->count() > 0;
+                            $mainImageUrl = $hasImages ? $productImages->first()->image_url : ($product->main_image ?? asset('assets/images/placeholder.jpg'));
+                        @endphp
+                        
+                        @if($hasImages)
                             <div class="product-main-image">
-                                <a href="{{ $product->images->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
-                                    <img src="{{ $product->images->first()->image_url }}"
+                                <a href="{{ $productImages->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                    <img src="{{ $productImages->first()->image_url }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
-                                         id="mainImage">
+                                         id="mainImage"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Image failed to load: {{ $productImages->first()->image_url }}');">
                                 </a>
                             </div>
+                            @if($productImages->count() > 1)
                             <div class="product-thumbnails">
-                                @foreach($product->images as $index => $image)
+                                @foreach($productImages as $index => $image)
                                     <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
                                          data-image="{{ $image->image_url }}">
                                         <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $index + 1 }}">
                                             <img src="{{ $image->image_url }}"
                                                  alt="{{ $product->name }} - Image {{ $index + 1 }}"
-                                                 loading="lazy">
+                                                 loading="lazy"
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Thumbnail failed to load: {{ $image->image_url }}');">
                                         </a>
                                     </div>
                                 @endforeach
                             </div>
+                            @endif
                         @else
                             <!-- Fallback if no images -->
                             <div class="product-main-image">
-                                <a href="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}" data-lightbox="product-images" data-title="{{ $product->name }}">
-                                    <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
+                                <a href="{{ $mainImageUrl }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                    <img src="{{ $mainImageUrl }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
-                                         id="mainImage">
+                                         id="mainImage"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Fallback image failed to load: {{ $mainImageUrl }}');">
                                 </a>
-                            </div>
-                            <div class="product-thumbnails">
-                                <div class="thumbnail-item active" data-image="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}">
-                                    <a href="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}" data-lightbox="product-images" data-title="{{ $product->name }}">
-                                        <img src="{{ $product->main_image ?? asset('assets/images/placeholder.jpg') }}"
-                                             alt="{{ $product->name }}"
-                                             loading="lazy">
-                                    </a>
-                                </div>
                             </div>
                         @endif
                     </div>
@@ -161,18 +168,20 @@
                         </div>
 
                         <div class="product-price">
-
                             @if($product->discount_price)
-                                <span class="current-price">${{ $product->discount_price }}</span>
+                                <span class="old-price" style="text-decoration: line-through; color: #999; margin-right: 10px;">${{ number_format($product->total_price, 2) }}</span>
+                                <span class="current-price">${{ number_format($product->discount_price, 2) }}</span>
                                 <span class="discount">Save {{ round(($product->total_price - $product->discount_price) / $product->total_price * 100) }}%</span>
                             @else
-                                <span class="current-price">${{ $product->total_price }}</span>
+                                <span class="current-price">${{ number_format($product->total_price, 2) }}</span>
                             @endif
                         </div>
 
-                        <div class="product-description">
+                        @if($product->short_description)
+                        <div class="product-description mt-3">
                             <p>{!! $product->short_description !!}</p>
                         </div>
+                        @endif
 
                         <div class="product-options">
                             <div class="option-group">
@@ -201,10 +210,12 @@
                                 <span class="meta-label">SKU:</span>
                                 <span class="meta-value">{{ $product->barcode ?? 'N/A' }}</span>
                             </div>
+                            @if($product->category)
                             <div class="meta-item">
                                 <span class="meta-label">Category:</span>
                                 <span class="meta-value">{{ $product->category->name }}</span>
                             </div>
+                            @endif
                             @if($product->brand)
                             <div class="meta-item">
                                 <span class="meta-label">Brand:</span>
@@ -256,8 +267,13 @@
                                     <button class="nav-link {{ $product->accordions->count() == 0 ? 'active' : '' }}" id="faqs-tab" data-bs-toggle="tab" data-bs-target="#faqs" type="button" role="tab">FAQs</button>
                                 </li>
                             @endif
+                            @if($product->description)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'active' : '' }}" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">Product Description</button>
+                                </li>
+                            @endif
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
+                                <button class="nav-link {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description) ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
                             </li>
                             @if($product->approvedQuestions->count() > 0)
                                 <li class="nav-item" role="presentation">
@@ -320,7 +336,15 @@
                                 </div>
                             @endif
 
-                            <div class="tab-pane fade {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'show active' : '' }}" id="reviews" role="tabpanel">
+                            @if($product->description)
+                                <div class="tab-pane fade {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'show active' : '' }}" id="description" role="tabpanel">
+                                    <div class="tab-content-body">
+                                        <div>{!! $product->description !!}</div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="tab-pane fade {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description) ? 'show active' : '' }}" id="reviews" role="tabpanel">
                                 <div class="tab-content-body">
                                     <h3>Customer Reviews</h3>
 
@@ -543,8 +567,21 @@
     </section>
 
 @push('scripts')
-{{-- Lightbox2 for Product Zoom --}}
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js" defer></script>
+{{-- Lightbox2 for Product Zoom - Load before other scripts --}}
+<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+<script>
+    // Initialize Lightbox after it's loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lightbox !== 'undefined') {
+            lightbox.option({
+                'resizeDuration': 200,
+                'wrapAround': true,
+                'fadeDuration': 300,
+                'imageFadeDuration': 300
+            });
+        }
+    });
+</script>
 
 {{-- Product Page JavaScript Modules --}}
 <script src="{{ asset('assets/frontend/js/product/gallery.js') }}" defer></script>

@@ -149,6 +149,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationList = document.getElementById('notificationList');
     const markAllReadBtn = document.getElementById('markAllReadBtn');
     
+    // Exit early if notification elements don't exist (e.g., on login page)
+    if (!notificationBtn || !notificationDropdown || !notificationBadge || !notificationList) {
+        return;
+    }
+    
     let notificationPollInterval;
     let isDropdownOpen = false;
 
@@ -162,9 +167,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json',
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Handle 401 Unauthorized (user not logged in)
+            if (response.status === 401) {
+                return null; // Stop processing if not authenticated
+            }
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
+            if (data && data.success) {
                 updateNotificationBadge(data.unread_count);
                 if (isDropdownOpen) {
                     // Use Laravel rendered HTML (already escaped and safe)
@@ -173,7 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error fetching notifications:', error);
+            // Silently fail on login page (401 errors are expected)
+            if (error.message !== 'Network response was not ok') {
+                console.error('Error fetching notifications:', error);
+            }
         });
     }
 
@@ -336,6 +353,12 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const targetId = this.getAttribute('href');
+            
+            // Skip if href is just '#' or empty
+            if (!targetId || targetId === '#' || targetId.trim() === '') {
+                return;
+            }
+            
             const targetElement = document.querySelector(targetId);
             
             if (targetElement) {

@@ -114,7 +114,7 @@
                                     <label class="register-checkbox-label" for="agreeTerms">
                                         <input type="checkbox" id="agreeTerms" name="agreeTerms" value="1" {{ old('agreeTerms') ? 'checked' : '' }} required>
                                         <span>
-                                            I agree to the <a href="{{ route('page.show', 'terms-and-conditions') }}" target="_blank">Terms & Conditions</a> and <a href="{{ route('page.show', 'privacy-policy') }}" target="_blank">Privacy Policy</a>
+                                            I agree to the <a href="{{ route('terms') }}" target="_blank">Terms & Conditions</a> and <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a>
                                         </span>
                                     </label>
                                     @error('agreeTerms')

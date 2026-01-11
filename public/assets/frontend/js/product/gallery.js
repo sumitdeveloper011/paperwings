@@ -14,7 +14,16 @@
         }
 
         thumbnailItems.forEach(function(thumbnail) {
-            thumbnail.addEventListener('click', function() {
+            thumbnail.addEventListener('click', function(e) {
+                // Don't prevent default if clicking on the link (let lightbox handle it)
+                const link = this.querySelector('a');
+                if (link && e.target.closest('a')) {
+                    // Let lightbox handle the click
+                    return;
+                }
+
+                // Only update main image if clicking on thumbnail container (not the link)
+                e.preventDefault();
                 const imageUrl = this.getAttribute('data-image');
 
                 if (imageUrl && mainImage) {

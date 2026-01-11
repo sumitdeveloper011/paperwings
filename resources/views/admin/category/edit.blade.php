@@ -13,7 +13,7 @@
                 <p class="page-header__subtitle">Update category information</p>
             </div>
             <div class="page-header__actions">
-                <a href="{{ route('admin.categories.show', $category) }}" class="btn btn-outline-info btn-icon">
+                <a href="{{ route('admin.categories.show', $category) }}" class="btn btn-view btn-icon">
                     <i class="fas fa-eye"></i>
                     <span>View</span>
                 </a>
@@ -115,8 +115,8 @@
                                         name="status" 
                                         required>
                                     <option value="">Select Status</option>
-                                    <option value="1" {{ old('status', $category->status) == 1 ? 'selected' : '' }}>Active</option>
-                                    <option value="0" {{ old('status', $category->status) == 0 ? 'selected' : '' }}>Inactive</option>
+                                    <option value="1" {{ (int)old('status', $category->status) === 1 ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ (int)old('status', $category->status) === 0 ? 'selected' : '' }}>Inactive</option>
                                 </select>
                             </div>
                             @error('status')
@@ -180,10 +180,6 @@
                                 <i class="fas fa-save"></i>
                                 Update Category
                             </button>
-                            <a href="{{ route('admin.categories.show', $category) }}" class="btn btn-outline-info btn-lg">
-                                <i class="fas fa-eye"></i>
-                                View
-                            </a>
                             <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-times"></i>
                                 Cancel
@@ -320,73 +316,15 @@ document.getElementById('slug').addEventListener('input', function() {
 });
 </script>
 
-<!-- CKEditor 5 with Image Upload Plugin -->
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/translations/en.js"></script>
+@push('scripts')
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
 
-<script>
-// Initialize CKEditor with Image Upload
-ClassicEditor
-    .create(document.querySelector('#description'), {
-        height: 600,
-        toolbar: {
-            items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'outdent', 'indent', '|',
-                'imageUpload', 'blockQuote', 'insertTable', '|',
-                'undo', 'redo'
-            ]
-        },
-        language: 'en',
-        heading: {
-            options: [
-                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-            ]
-        },
-        simpleUpload: {
-            uploadUrl: '{{ route("admin.pages.uploadImage") }}',
-            withCredentials: true,
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        },
-        image: {
-            toolbar: [
-                'imageTextAlternative',
-                'imageStyle:inline',
-                'imageStyle:block',
-                'imageStyle:side'
-            ]
-        }
-    })
-    .then(editor => {
-        window.descriptionEditor = editor;
-    })
-    .catch(error => {
-        console.error('CKEditor initialization error:', error);
-        // Fallback: If imageUpload doesn't work, remove it and show a message
-        if (error.message && error.message.includes('imageUpload')) {
-            console.warn('Image upload plugin not available. Using basic editor.');
-            ClassicEditor
-                .create(document.querySelector('#description'), {
-                    toolbar: {
-                        items: [
-                            'heading', '|',
-                            'bold', 'italic', 'link', '|',
-                            'bulletedList', 'numberedList', '|',
-                            'outdent', 'indent', '|',
-                            'blockQuote', 'insertTable', '|',
-                            'undo', 'redo'
-                        ]
-                    }
-                })
-                .catch(err => console.error(err));
-        }
-    });
-</script>
+<!-- CKEditor Component -->
+@include('components.ckeditor', [
+    'id' => 'description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
+@endpush
 @endsection

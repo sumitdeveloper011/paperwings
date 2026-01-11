@@ -10,8 +10,22 @@ use App\Models\User;
 
 class ProductQuestionSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates sample product questions and answers.
+     * Will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  ProductQuestionSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding product questions and answers...');
+
         $products = Product::active()->take(10)->get();
         $users = User::take(5)->get();
 
@@ -81,6 +95,12 @@ class ProductQuestionSeeder extends Seeder
             }
         }
 
-        $this->command->info('Product Questions & Answers seeded successfully!');
+        $totalQuestions = \App\Models\ProductQuestion::count();
+        $totalAnswers = \App\Models\ProductAnswer::count();
+
+        $this->command->info("✅ Product Questions & Answers seeded successfully!");
+        $this->command->info("  • Products processed: {$products->count()}");
+        $this->command->info("  • Total questions: {$totalQuestions}");
+        $this->command->info("  • Total answers: {$totalAnswers}");
     }
 }

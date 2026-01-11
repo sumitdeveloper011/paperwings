@@ -6,18 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class ProductBundle extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'uuid',
         'name',
         'slug',
         'description',
-        'image',
         'bundle_price',
         'discount_percentage',
         'status',
@@ -40,7 +40,7 @@ class ProductBundle extends Model
             if (empty($bundle->uuid)) {
                 $bundle->uuid = Str::uuid();
             }
-            
+
             if (empty($bundle->slug)) {
                 $bundle->slug = static::makeUniqueSlug($bundle->name);
             } else {
@@ -103,6 +103,12 @@ class ProductBundle extends Model
         return $this->belongsToMany(Product::class, 'product_bundle_items', 'bundle_id', 'product_id')
             ->withPivot('quantity')
             ->withTimestamps();
+    }
+
+    // Get images relationship
+    public function images(): HasMany
+    {
+        return $this->hasMany(BundleImage::class, 'bundle_id')->orderBy('id', 'asc');
     }
 
     // Scope to filter active bundles

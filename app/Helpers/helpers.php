@@ -37,3 +37,19 @@ if (!function_exists('site_name')) {
     }
 }
 
+if (!function_exists('role_display_name')) {
+    // Get role display name with better formatting
+    function role_display_name(string $roleName): string
+    {
+        $roleMap = [
+            'SuperAdmin' => 'Chief Administrator',
+            'Admin' => 'Site Administrator',
+            'Manager' => 'Store Manager',
+            'Editor' => 'Editorial Staff',
+            'User' => 'Customer',
+        ];
+
+        return $roleMap[$roleName] ?? ucwords(str_replace('_', ' ', $roleName));
+    }
+}
+

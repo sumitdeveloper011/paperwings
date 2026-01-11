@@ -32,9 +32,9 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-    // Get the product relationship
+    // Get the product relationship (including soft deleted products for order history)
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 }

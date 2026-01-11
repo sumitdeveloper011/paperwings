@@ -31,7 +31,7 @@
                                         <li class="sidebar-category {{ $index >= 10 ? 'category-item-hidden' : '' }}"
                                             data-category-name="{{ strtolower($catItem->name) }}"
                                             data-category-index="{{ $index }}">
-                                            <a href="{{ route('product.by.category', $catItem->slug) }}"
+                                            <a href="{{ route('category.show', $catItem->slug) }}"
                                                class="sidebar-category__link {{ isset($category) && $category->slug == $catItem->slug ? 'active' : '' }}">
                                                 <span class="sidebar-category__icon-wrapper">
                                                     <i class="fas fa-folder sidebar-category__icon"></i>

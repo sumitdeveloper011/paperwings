@@ -71,7 +71,7 @@
                                 Status
                             </div>
                             <div class="detail-item__value">
-                                @if($category->status === '1')
+                                @if((int)$category->status === 1)
                                     <span class="badge badge--success">
                                         <i class="fas fa-check-circle"></i>
                                         Active
@@ -152,6 +152,24 @@
                 </div>
             </div>
 
+            <!-- Status Card -->
+            <div class="modern-card">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-toggle-on"></i>
+                        Status
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="action-list">
+                        <div class="action-list__item action-list__item--{{ (int)$category->status === 1 ? 'success' : 'secondary' }}" style="cursor: default;">
+                            <i class="fas fa-{{ (int)$category->status === 1 ? 'check-circle' : 'times-circle' }}"></i>
+                            <span>{{ (int)$category->status === 1 ? 'Active' : 'Inactive' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Actions Card -->
             <div class="modern-card">
                 <div class="modern-card__header">
@@ -167,17 +185,6 @@
                             <span>Edit Category</span>
                             <i class="fas fa-chevron-right"></i>
                         </a>
-                        
-                        <form method="POST" action="{{ route('admin.categories.updateStatus', $category) }}" class="action-list__form">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="status" value="{{ $category->status === '1' ? '0' : '1' }}">
-                            <button type="submit" class="action-list__item action-list__item--{{ $category->status === '1' ? 'warning' : 'success' }}">
-                                <i class="fas fa-{{ $category->status === '1' ? 'pause' : 'play' }}"></i>
-                                <span>{{ $category->status === '1' ? 'Deactivate' : 'Activate' }}</span>
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </form>
                         
                         <form method="POST" 
                               action="{{ route('admin.categories.destroy', $category) }}" 

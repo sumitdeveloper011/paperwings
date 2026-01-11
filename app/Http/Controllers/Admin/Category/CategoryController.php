@@ -10,6 +10,7 @@ use App\Jobs\ImportEposNowCategoriesJob;
 use App\Models\Category;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Services\EposNowService;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,13 +22,14 @@ use Illuminate\View\View;
 class CategoryController extends Controller
 {
     protected CategoryRepositoryInterface $categoryRepository;
-
     protected $eposNow;
+    protected ImageService $imageService;
 
-    public function __construct(CategoryRepositoryInterface $categoryRepository, EposNowService $eposNow)
+    public function __construct(CategoryRepositoryInterface $categoryRepository, EposNowService $eposNow, ImageService $imageService)
     {
         $this->categoryRepository = $categoryRepository;
         $this->eposNow = $eposNow;
+        $this->imageService = $imageService;
     }
 
     // Dispatch job to import categories from EposNow
@@ -36,10 +38,10 @@ class CategoryController extends Controller
         try {
             // Pre-check API limit before starting import
             $apiCheck = $this->eposNow->checkApiLimit();
-            
+
             if (!$apiCheck['available']) {
                 $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
-                
+
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json([
                         'success' => false,
@@ -48,11 +50,11 @@ class CategoryController extends Controller
                         'can_retry_after' => now()->addMinutes(30)->toDateTimeString()
                     ], 429);
                 }
-                
+
                 return redirect()->route('admin.categories.index')
                     ->with('error', $message);
             }
-            
+
             // Continue with import if API is available
             $jobId = time() . '_' . uniqid();
 
@@ -103,14 +105,14 @@ class CategoryController extends Controller
             'method' => $request->method(),
             'all_input' => $request->all()
         ]);
-        
+
         try {
             if (ob_get_level()) {
                 ob_clean();
             }
 
             $jobId = $request->input('jobId');
-            
+
             if (!$jobId) {
                 return response()->json([
                     'success' => false,
@@ -120,18 +122,18 @@ class CategoryController extends Controller
                     'Content-Type' => 'application/json',
                 ]);
             }
-            
+
             $jobId = urldecode($jobId);
-            
+
             $cacheKey = "category_import_{$jobId}";
             \Log::info('Import status check', [
                 'jobId' => $jobId,
                 'cache_key' => $cacheKey,
                 'request_url' => $request->fullUrl(),
             ]);
-            
+
             $progressData = Cache::get($cacheKey);
-            
+
             \Log::info('Cache check result', [
                 'cache_key' => $cacheKey,
                 'has_data' => !is_null($progressData),
@@ -175,20 +177,61 @@ class CategoryController extends Controller
         }
     }
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
 
-        if ($search) {
-            $categories = $this->categoryRepository->search($search);
+        if ($search !== '') {
+            $searchResults = $this->categoryRepository->search($search);
+            $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+            $perPage = 10;
+            $total = $searchResults->count();
+            $items = $searchResults->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
             $categories = new \Illuminate\Pagination\LengthAwarePaginator(
-                $categories,
-                $categories->count(),
-                10,
-                ['path' => request()->url(), 'query' => request()->query()]
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query()
+                ]
             );
         } else {
             $categories = $this->categoryRepository->paginate(10);
+        }
+
+        // Load product counts for each category
+        $categoryIds = $categories->pluck('id')->toArray();
+        $productCounts = \App\Models\Product::whereIn('category_id', $categoryIds)
+            ->selectRaw('category_id, COUNT(*) as count')
+            ->groupBy('category_id')
+            ->pluck('count', 'category_id')
+            ->toArray();
+
+        // Add product count to each category
+        foreach ($categories as $category) {
+            $category->products_count = $productCounts[$category->id] ?? 0;
+        }
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            // Check if categories is a paginator instance
+            if ($categories instanceof \Illuminate\Pagination\LengthAwarePaginator && $categories->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $categories
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.category.partials.table', compact('categories'))->render(),
+                'pagination' => $paginationHtml,
+            ]);
         }
 
         return view('admin.category.index', compact('categories', 'search'));
@@ -205,17 +248,23 @@ class CategoryController extends Controller
     {
         $validated = $request->validated();
 
+        // Generate UUID first (will be used for folder name)
+        $categoryUuid = Str::uuid()->toString();
+        $validated['uuid'] = $categoryUuid;
+
+        // Upload image with category UUID if provided
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('categories', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage($request->file('image'), 'categories', $categoryUuid);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         // Generate slug if not provided
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
+
         $this->categoryRepository->create($validated);
 
         return redirect()->route('admin.categories.index')
@@ -239,15 +288,12 @@ class CategoryController extends Controller
     {
         $validated = $request->validated();
 
+        // Use existing category UUID for folder name
         if ($request->hasFile('image')) {
-            if ($category->image && Storage::disk('public')->exists($category->image)) {
-                Storage::disk('public')->delete($category->image);
+            $imagePath = $this->imageService->updateImage($request->file('image'), 'categories', $category->uuid, $category->image);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('categories', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         // Generate slug if not provided
@@ -261,12 +307,27 @@ class CategoryController extends Controller
             ->with('success', 'Category updated successfully!');
     }
 
+    // Show products linked to a category
+    public function products(Category $category, Request $request): View
+    {
+        $products = $category->products()->paginate(15);
+
+        return view('admin.category.products', compact('category', 'products'));
+    }
+
     // Remove the specified resource from storage
     public function destroy(Category $category): RedirectResponse
     {
-        if ($category->image && Storage::disk('public')->exists($category->image)) {
-            Storage::disk('public')->delete($category->image);
+        // Check if category has products
+        $productsCount = $category->products()->count();
+
+        if ($productsCount > 0) {
+            return redirect()->route('admin.categories.index')
+                ->with('error', "Cannot delete category. This category has {$productsCount} product(s) associated with it. Please remove or reassign products before deleting the category.");
         }
+
+        // Delete image and its folder
+        $this->imageService->deleteImage($category->image);
 
         $this->categoryRepository->delete($category);
 
@@ -275,11 +336,20 @@ class CategoryController extends Controller
     }
 
     // Update category status
-    public function updateStatus(UpdateCategoryStatusRequest $request, Category $category): RedirectResponse
+    public function updateStatus(UpdateCategoryStatusRequest $request, Category $category)
     {
         $validated = $request->validated();
 
         $this->categoryRepository->updateStatus($category, $validated['status']);
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Category status updated successfully!',
+                'status' => $validated['status']
+            ]);
+        }
 
         return redirect()->back()
             ->with('success', 'Category status updated successfully!');

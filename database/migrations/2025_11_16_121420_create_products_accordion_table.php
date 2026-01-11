@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('eposnow_product_id');
+            $table->unsignedBigInteger('eposnow_product_id')->nullable();
             $table->string('heading');
             $table->text('content');
             $table->timestamps();

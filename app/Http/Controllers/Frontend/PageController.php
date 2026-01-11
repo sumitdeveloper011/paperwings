@@ -8,8 +8,11 @@ use Illuminate\View\View;
 
 class PageController extends Controller
 {
-    // Display a page by slug
-    public function show(string $slug): View
+    /**
+     * Display a page by slug (supports both direct slug and /page/{slug} format)
+     * This method handles both new direct URLs and old /page/{slug} URLs
+     */
+    public function showBySlug(string $slug): View
     {
         try {
             $page = Page::where('slug', $slug)->first();
@@ -30,6 +33,15 @@ class PageController extends Controller
                 'message' => $e->getMessage()
             ]);
         }
+    }
+    
+    /**
+     * Legacy method for backward compatibility
+     * @deprecated Use showBySlug instead
+     */
+    public function show(string $slug): View
+    {
+        return $this->showBySlug($slug);
     }
 }
 

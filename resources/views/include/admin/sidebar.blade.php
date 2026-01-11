@@ -1,11 +1,7 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-brand">
-            <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="sidebar-logo" onerror="this.src='{{ asset('assets/images/logo.svg') }}'">
-            <div class="sidebar-brand-text">
-                <h3>{{ $siteName }}</h3>
-                <span>Admin Panel</span>
-            </div>
+            <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="sidebar-logo" onerror="this.src='{{ asset('assets/frontend/images/logo.png') }}'">
         </div>
         <button class="sidebar-close" id="sidebarClose">
             <i class="fas fa-times"></i>
@@ -77,9 +73,9 @@
                         </a>
                     </li>
                     @endcan
-                    @can('about-sections.view')
+                    @can('about-sections.edit')
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.about-sections.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.about-sections.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.about-sections.edit') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.about-sections.*') ? 'active' : '' }}">
                             <i class="fas fa-info-circle"></i>
                             <span>About Section</span>
                         </a>
@@ -290,13 +286,19 @@
             @endcan
 
             @role('SuperAdmin')
-            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*') ? 'active' : '' }}">
-                <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Roles & Permissions">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Roles & Permissions</span>
+            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*') || request()->routeIs('admin.admin-users.*') || request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+                <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Staff Management">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Staff Management</span>
                     <i class="fas fa-chevron-down sidebar-submenu-toggle"></i>
                 </a>
                 <ul class="sidebar-submenu">
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.admin-users.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.admin-users.*') ? 'active' : '' }}">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Admin Users</span>
+                        </a>
+                    </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.roles.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}">
                             <i class="fas fa-user-tag"></i>
@@ -307,6 +309,12 @@
                         <a href="{{ route('admin.permissions.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.permissions.*') ? 'active' : '' }}">
                             <i class="fas fa-key"></i>
                             <span>Permissions</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.activity-logs.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+                            <i class="fas fa-history"></i>
+                            <span>Activity Log</span>
                         </a>
                     </li>
                 </ul>

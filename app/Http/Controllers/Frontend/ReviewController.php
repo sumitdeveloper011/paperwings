@@ -17,7 +17,9 @@ class ReviewController extends Controller
     public function store(StoreReviewRequest $request, $productSlug): JsonResponse
     {
         try {
-            $product = Product::where('slug', $productSlug)->firstOrFail();
+            $product = Product::where('slug', $productSlug)
+                ->active()
+                ->firstOrFail();
 
             if (Auth::check()) {
                 $existingReview = ProductReview::where('product_id', $product->id)

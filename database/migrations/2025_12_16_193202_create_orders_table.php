@@ -61,6 +61,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled'])->default('pending');
 
             $table->text('notes')->nullable();
+            $table->string('tracking_id')->nullable();
+            $table->text('tracking_url')->nullable();
             $table->timestamp('admin_viewed_at')->nullable();
             $table->timestamps();
 

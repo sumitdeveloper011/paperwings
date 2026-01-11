@@ -59,7 +59,7 @@
                                 @if(isset($footerPages) && $footerPages->count() > 0)
                                     @foreach($footerPages as $page)
                                         <li>
-                                            <a href="{{ route('page.show', $page->slug) }}" class="footer__link">
+                                            <a href="{{ url('/' . $page->slug) }}" class="footer__link">
                                                 {{ $page->title }}
                                             </a>
                                         </li>
@@ -78,7 +78,7 @@
                                 @if(isset($footerCategories) && $footerCategories->count() > 0)
                                     @foreach($footerCategories as $category)
                                         <li>
-                                            <a href="{{ route('product.by.category', $category->slug) }}" class="footer__link">
+                                            <a href="{{ route('category.show', $category->slug) }}" class="footer__link">
                                                 {{ $category->name }}
                                             </a>
                                         </li>

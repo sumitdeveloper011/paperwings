@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('tracking_id')->nullable()->after('status');
-            $table->text('tracking_url')->nullable()->after('tracking_id');
+        Schema::table('products', function (Blueprint $table) {
+            $table->softDeletes();
         });
     }
 
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn(['tracking_id', 'tracking_url']);
+        Schema::table('products', function (Blueprint $table) {
+            $table->dropSoftDeletes();
         });
     }
 };

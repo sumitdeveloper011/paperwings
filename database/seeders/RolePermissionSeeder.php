@@ -9,12 +9,46 @@ use App\Models\User;
 
 class RolePermissionSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * 
+     * This seeder creates all roles and permissions.
+     * It will NOT run in production environment for safety.
+     */
     public function run(): void
     {
+        // Prevent running in production
+        if (app()->environment('production')) {
+            $this->command->warn('⚠️  RolePermissionSeeder skipped: Cannot run in production environment!');
+            return;
+        }
+
+        $this->command->info('🌱 Seeding roles and permissions...');
+
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create Permissions
+        $this->createPermissions();
+
+        // Create Roles
+        $this->createRoles();
+
+        // Assign Permissions to Roles
+        $this->assignPermissionsToRoles();
+
+        $this->command->info('✅ Roles and Permissions seeded successfully!');
+        $this->command->info('  • Created ' . Permission::count() . ' permissions');
+        $this->command->info('  • Created ' . Role::count() . ' roles');
+    }
+
+    /**
+     * Create all permissions
+     */
+    private function createPermissions(): void
+    {
+        $this->command->info('Creating permissions...');
+
         $permissions = [
             // Dashboard
             'dashboard.view',
@@ -92,52 +126,92 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        // Create Roles
-        $superAdminRole = Role::firstOrCreate(['name' => 'SuperAdmin', 'guard_name' => 'web']);
-        $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        $managerRole = Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web']);
-        $editorRole = Role::firstOrCreate(['name' => 'Editor', 'guard_name' => 'web']);
+        $this->command->info('  ✓ Created ' . count($permissions) . ' permissions');
+    }
 
-        // Assign all permissions to SuperAdmin
-        $superAdminRole->syncPermissions(Permission::all());
+    /**
+     * Create all roles
+     */
+    private function createRoles(): void
+    {
+        $this->command->info('Creating roles...');
 
-        // Assign permissions to Admin (all except roles & permissions management)
-        $adminPermissions = Permission::whereNotIn('name', [
-            'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
-            'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
-        ])->get();
-        $adminRole->syncPermissions($adminPermissions);
+        $roles = [
+            ['name' => 'SuperAdmin', 'guard_name' => 'web'],
+            ['name' => 'Admin', 'guard_name' => 'web'],
+            ['name' => 'Manager', 'guard_name' => 'web'],
+            ['name' => 'Editor', 'guard_name' => 'web'],
+            ['name' => 'User', 'guard_name' => 'web'],
+        ];
 
-        // Assign permissions to Manager (view and edit, no delete)
-        $managerPermissions = Permission::where(function($query) {
-            $query->where('name', 'LIKE', '%.view')
-                  ->orWhere('name', 'LIKE', '%.edit')
-                  ->orWhere('name', 'LIKE', 'dashboard.%');
-        })->get();
-        $managerRole->syncPermissions($managerPermissions);
-
-        // Assign permissions to Editor (view only, limited edit)
-        $editorPermissions = Permission::where(function($query) {
-            $query->where('name', 'LIKE', '%.view')
-                  ->orWhere('name', 'LIKE', 'dashboard.%')
-                  ->orWhereIn('name', [
-                      'products.edit',
-                      'categories.edit',
-                      'pages.edit',
-                      'sliders.edit'
-                  ]);
-        })->get();
-        $editorRole->syncPermissions($editorPermissions);
-
-        // Assign SuperAdmin role to first user if exists
-        $firstUser = User::first();
-        if ($firstUser && !$firstUser->hasRole('SuperAdmin')) {
-            $firstUser->assignRole('SuperAdmin');
+        foreach ($roles as $role) {
+            Role::firstOrCreate($role);
         }
 
-        $this->command->info('Roles and Permissions seeded successfully!');
-        $this->command->info('Created ' . Permission::count() . ' permissions');
-        $this->command->info('Created ' . Role::count() . ' roles');
+        $this->command->info('  ✓ Created ' . count($roles) . ' roles');
+    }
+
+    /**
+     * Assign permissions to roles
+     */
+    private function assignPermissionsToRoles(): void
+    {
+        $this->command->info('Assigning permissions to roles...');
+
+        // Get roles
+        $superAdminRole = Role::where('name', 'SuperAdmin')->first();
+        $adminRole = Role::where('name', 'Admin')->first();
+        $managerRole = Role::where('name', 'Manager')->first();
+        $editorRole = Role::where('name', 'Editor')->first();
+        $userRole = Role::where('name', 'User')->first();
+
+        // Assign all permissions to SuperAdmin
+        if ($superAdminRole) {
+            $superAdminRole->syncPermissions(Permission::all());
+            $this->command->info('  ✓ SuperAdmin: All permissions');
+        }
+
+        // Assign permissions to Admin (all except roles & permissions management)
+        if ($adminRole) {
+            $adminPermissions = Permission::whereNotIn('name', [
+                'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
+                'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete'
+            ])->get();
+            $adminRole->syncPermissions($adminPermissions);
+            $this->command->info('  ✓ Admin: ' . $adminPermissions->count() . ' permissions');
+        }
+
+        // Assign permissions to Manager (view and edit, no delete)
+        if ($managerRole) {
+            $managerPermissions = Permission::where(function($query) {
+                $query->where('name', 'LIKE', '%.view')
+                      ->orWhere('name', 'LIKE', '%.edit')
+                      ->orWhere('name', 'LIKE', 'dashboard.%');
+            })->get();
+            $managerRole->syncPermissions($managerPermissions);
+            $this->command->info('  ✓ Manager: ' . $managerPermissions->count() . ' permissions');
+        }
+
+        // Assign permissions to Editor (view only, limited edit)
+        if ($editorRole) {
+            $editorPermissions = Permission::where(function($query) {
+                $query->where('name', 'LIKE', '%.view')
+                      ->orWhere('name', 'LIKE', 'dashboard.%')
+                      ->orWhereIn('name', [
+                          'products.edit',
+                          'categories.edit',
+                          'pages.edit',
+                          'sliders.edit'
+                      ]);
+            })->get();
+            $editorRole->syncPermissions($editorPermissions);
+            $this->command->info('  ✓ Editor: ' . $editorPermissions->count() . ' permissions');
+        }
+
+        // User role has no permissions (regular customer)
+        if ($userRole) {
+            $userRole->syncPermissions([]);
+            $this->command->info('  ✓ User: No admin permissions (customer role)');
+        }
     }
 }
-

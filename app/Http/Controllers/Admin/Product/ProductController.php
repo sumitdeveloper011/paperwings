@@ -16,10 +16,12 @@ use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Jobs\ImportEposNowProductsJob;
 use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
 use App\Services\EposNowService;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -36,6 +38,7 @@ class ProductController extends Controller
     protected BrandRepositoryInterface $brandRepository;
 
     protected $eposNow;
+    protected ImageService $imageService;
 
     public function __construct(
         ProductRepositoryInterface $productRepository,
@@ -43,12 +46,14 @@ class ProductController extends Controller
         SubCategoryRepositoryInterface $subCategoryRepository,
         BrandRepositoryInterface $brandRepository,
         EposNowService $eposNow,
+        ImageService $imageService
     ) {
         $this->productRepository = $productRepository;
         $this->categoryRepository = $categoryRepository;
         $this->subCategoryRepository = $subCategoryRepository;
         $this->brandRepository = $brandRepository;
         $this->eposNow = $eposNow;
+        $this->imageService = $imageService;
     }
 
     // Dispatch job to import products from EposNow
@@ -57,10 +62,10 @@ class ProductController extends Controller
         try {
             // Pre-check API limit before starting import
             $apiCheck = $this->eposNow->checkApiLimit();
-            
+
             if (!$apiCheck['available']) {
                 $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
-                
+
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json([
                         'success' => false,
@@ -69,11 +74,11 @@ class ProductController extends Controller
                         'can_retry_after' => now()->addMinutes(30)->toDateTimeString()
                     ], 429);
                 }
-                
+
                 return redirect()->route('admin.products.index')
                     ->with('error', $message);
             }
-            
+
             // Continue with import if API is available
             $jobId = time() . '_' . uniqid();
 
@@ -118,7 +123,7 @@ class ProductController extends Controller
     {
         try {
             $jobId = $request->input('jobId');
-            
+
             if (!$jobId) {
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json([
@@ -168,10 +173,10 @@ class ProductController extends Controller
 
             // Pre-check API limit
             $apiCheck = $this->eposNow->checkApiLimit();
-            
+
             if (!$apiCheck['available']) {
                 $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
-                
+
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json([
                         'success' => false,
@@ -179,7 +184,7 @@ class ProductController extends Controller
                         'status' => 'rate_limited'
                     ], 429);
                 }
-                
+
                 return redirect()->route('admin.products.index')
                     ->with('error', $message);
             }
@@ -228,19 +233,13 @@ class ProductController extends Controller
     // Check import job status
     public function checkImportStatus(Request $request): JsonResponse
     {
-        \Log::info('checkImportStatus method called (products)', [
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'all_input' => $request->all()
-        ]);
-        
         try {
             if (ob_get_level()) {
                 ob_clean();
             }
 
             $jobId = $request->input('jobId');
-            
+
             if (!$jobId) {
                 return response()->json([
                     'success' => false,
@@ -250,23 +249,11 @@ class ProductController extends Controller
                     'Content-Type' => 'application/json',
                 ]);
             }
-            
+
             $jobId = urldecode($jobId);
-            
+
             $cacheKey = "product_import_{$jobId}";
-            \Log::info('Product import status check', [
-                'jobId' => $jobId,
-                'cache_key' => $cacheKey,
-                'request_url' => $request->fullUrl(),
-            ]);
-            
             $progressData = Cache::get($cacheKey);
-            
-            \Log::info('Product cache check result', [
-                'cache_key' => $cacheKey,
-                'has_data' => !is_null($progressData),
-                'data' => $progressData
-            ]);
 
             if (!$progressData) {
                 return response()->json([
@@ -306,45 +293,65 @@ class ProductController extends Controller
     }
 
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        $search = $request->get('search');
-        $categoryId = $request->get('category_id');
-        $brandId = $request->get('brand_id');
+        $search = trim($request->get('search', ''));
+        $categoryUuid = $request->get('category_id'); // Now accepts UUID
 
-        if ($search) {
-            $products = $this->productRepository->search($search);
-            $products = new \Illuminate\Pagination\LengthAwarePaginator(
-                $products,
-                $products->count(),
-                10,
-                ['path' => request()->url(), 'query' => request()->query()]
-            );
-        } elseif ($categoryId) {
-            $products = $this->productRepository->getByCategory($categoryId);
-            $products = new \Illuminate\Pagination\LengthAwarePaginator(
-                $products,
-                $products->count(),
-                10,
-                ['path' => request()->url(), 'query' => request()->query()]
-            );
-        } elseif ($brandId) {
-            $products = $this->productRepository->getByBrand($brandId);
-            $products = new \Illuminate\Pagination\LengthAwarePaginator(
-                $products,
-                $products->count(),
-                10,
-                ['path' => request()->url(), 'query' => request()->query()]
-            );
-        } else {
-            $products = $this->productRepository->paginate(10);
+        // Build query - start fresh to avoid any default ordering
+        $query = Product::query()->with(['category', 'images']);
+
+        // Apply search filter
+        if ($search !== '') {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('slug', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%")
+                  ->orWhere('short_description', 'LIKE', "%{$search}%");
+            });
         }
 
+        // Apply category filter by UUID
+        if ($categoryUuid && $categoryUuid !== '') {
+            $category = \App\Models\Category::where('uuid', $categoryUuid)->first();
+            if ($category) {
+                $query->where('category_id', $category->id);
+            }
+        }
+
+        // Get paginated results with query parameters preserved
+        // IMPORTANT: Order by created_at DESC (latest first), then by id DESC as secondary sort
+        // This ensures newest products appear at the top of the list
+        $products = $query->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withPath($request->url())
+            ->appends($request->except('page'));
+
+        // Get categories for filter dropdown
         $categories = $this->categoryRepository->getActive();
-        $brands = $this->brandRepository->all();
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            // Always render pagination, even if no pages (to show "Showing X to Y of Z results")
+            if ($products instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $products
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.product.partials.table', compact('products'))->render(),
+                'pagination' => $paginationHtml,
+            ]);
+        }
+
         return view('admin.product.index', compact(
-            'products', 'search', 'categories', 'brands',
-            'categoryId', 'brandId'
+            'products', 'search', 'categories', 'categoryUuid'
         ));
     }
 
@@ -363,15 +370,6 @@ class ProductController extends Controller
     {
         $validated = $request->validated();
 
-        $imagePaths = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
-                $imagePath = $image->storeAs('products', $imageName, 'public');
-                $imagePaths[] = $imagePath;
-            }
-        }
-
         unset($validated['images']);
         $accordionData = $validated['accordion_data'] ?? null;
         unset($validated['accordion_data']);
@@ -380,19 +378,50 @@ class ProductController extends Controller
             $validated['slug'] = Str::slug($validated['name']);
         }
 
+        // Generate UUID for product if not provided
+        if (empty($validated['uuid'])) {
+            $validated['uuid'] = Str::uuid()->toString();
+        }
+        $productUuid = $validated['uuid'];
+
+        // Handle discount percentage conversion to discount price
+        $discountType = $request->input('discount_type', 'none');
+        if ($discountType === 'percentage' && $request->has('discount_percentage')) {
+            $percentage = (float) $request->input('discount_percentage', 0);
+            if ($percentage > 0 && isset($validated['total_price'])) {
+                $discountAmount = $validated['total_price'] * ($percentage / 100);
+                $validated['discount_price'] = round($validated['total_price'] - $discountAmount, 2);
+            }
+        } elseif ($discountType === 'none') {
+            // Clear discount price if no discount
+            $validated['discount_price'] = null;
+        }
+        // If discount_type is 'direct', discount_price is already in validated array
+
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated);
 
         $product = $this->productRepository->create($validated);
 
-        if (! empty($imagePaths)) {
-            foreach ($imagePaths as $imagePath) {
-                ProductImage::create([
-                    'uuid' => Str::uuid(),
-                    'product_id' => $product->id,
-                    'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
-                    'image' => $imagePath,
-                ]);
+        // Upload images using ImageService
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $imagePath = $this->imageService->uploadImage($image, 'products', $productUuid);
+                if ($imagePath) {
+                    // Check if image already exists for this product to prevent duplicates
+                    $existingImage = ProductImage::where('product_id', $product->id)
+                        ->where('image', $imagePath)
+                        ->first();
+
+                    if (!$existingImage) {
+                        ProductImage::create([
+                            'uuid' => Str::uuid(),
+                            'product_id' => $product->id,
+                            'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                            'image' => $imagePath,
+                        ]);
+                    }
+                }
             }
         }
 
@@ -442,15 +471,6 @@ class ProductController extends Controller
     {
         $validated = $request->validated();
 
-        $newImagePaths = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
-                $imagePath = $image->storeAs('products', $imageName, 'public');
-                $newImagePaths[] = $imagePath;
-            }
-        }
-
         unset($validated['images']);
         $accordionData = $validated['accordion_data'] ?? null;
         unset($validated['accordion_data']);
@@ -459,29 +479,53 @@ class ProductController extends Controller
             $validated['slug'] = Str::slug($validated['name']);
         }
 
+        // Handle discount percentage conversion to discount price
+        $discountType = $request->input('discount_type', 'none');
+        if ($discountType === 'percentage' && $request->has('discount_percentage')) {
+            $percentage = (float) $request->input('discount_percentage', 0);
+            if ($percentage > 0 && isset($validated['total_price'])) {
+                $discountAmount = $validated['total_price'] * ($percentage / 100);
+                $validated['discount_price'] = round($validated['total_price'] - $discountAmount, 2);
+            }
+        } elseif ($discountType === 'none') {
+            // Clear discount price if no discount
+            $validated['discount_price'] = null;
+        }
+        // If discount_type is 'direct', discount_price is already in validated array
+
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated, $product);
 
         $this->productRepository->update($product, $validated);
 
+        // Delete old images if not keeping existing
         if (! $request->boolean('keep_existing_images')) {
             $oldImages = $product->images;
             foreach ($oldImages as $oldImage) {
-                if (Storage::disk('public')->exists($oldImage->image)) {
-                    Storage::disk('public')->delete($oldImage->image);
-                }
+                $this->imageService->deleteImage($oldImage->image);
                 $oldImage->delete();
             }
         }
 
-        if (! empty($newImagePaths)) {
-            foreach ($newImagePaths as $imagePath) {
-                ProductImage::create([
-                    'uuid' => Str::uuid(),
-                    'product_id' => $product->id,
-                    'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
-                    'image' => $imagePath,
-                ]);
+        // Upload new images using ImageService
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $imagePath = $this->imageService->uploadImage($image, 'products', $product->uuid);
+                if ($imagePath) {
+                    // Check if image already exists for this product to prevent duplicates
+                    $existingImage = ProductImage::where('product_id', $product->id)
+                        ->where('image', $imagePath)
+                        ->first();
+
+                    if (!$existingImage) {
+                        ProductImage::create([
+                            'uuid' => Str::uuid(),
+                            'product_id' => $product->id,
+                            'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                            'image' => $imagePath,
+                        ]);
+                    }
+                }
             }
         }
 
@@ -512,31 +556,131 @@ class ProductController extends Controller
             ->with('success', 'Product updated successfully!');
     }
 
-    // Remove the specified resource from storage
+    // Remove the specified resource from storage (Soft Delete)
     public function destroy(Product $product): RedirectResponse
     {
-        $images = $product->images;
-        foreach ($images as $image) {
-            if (Storage::disk('public')->exists($image->image)) {
-                Storage::disk('public')->delete($image->image);
-            }
-            $image->delete();
-        }
-
-        $product->accordions()->delete();
-
+        // Soft delete the product (images and accordions remain intact for restore)
+        // Images and accordions will only be deleted on forceDelete (permanent delete)
         $this->productRepository->delete($product);
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product deleted successfully!');
     }
 
+    // Show trashed (soft deleted) products
+    public function trash(Request $request): View|JsonResponse
+    {
+        $search = trim($request->get('search', ''));
+
+        // Build query for trashed products
+        $query = Product::onlyTrashed()->with(['category', 'images']);
+
+        // Apply search filter
+        if ($search !== '') {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('slug', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%")
+                  ->orWhere('short_description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Get paginated results
+        $products = $query->orderBy('deleted_at', 'desc')
+            ->paginate(15)
+            ->withPath($request->url())
+            ->appends($request->except('page'));
+
+        // Get categories for filter dropdown
+        $categories = $this->categoryRepository->getActive();
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($products instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $products
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.product.partials.table', compact('products'))->render(),
+                'pagination' => $paginationHtml,
+            ]);
+        }
+
+        return view('admin.product.trash', compact('products', 'search', 'categories'));
+    }
+
+    // Restore soft deleted product
+    public function restore($product): RedirectResponse
+    {
+        // Find product including soft deleted ones
+        $product = Product::withTrashed()->where('uuid', $product)->firstOrFail();
+
+        if (!$product->trashed()) {
+            return redirect()->route('admin.products.trash')
+                ->with('error', 'Product is not deleted!');
+        }
+
+        $this->productRepository->restore($product);
+
+        return redirect()->route('admin.products.trash')
+            ->with('success', 'Product restored successfully!');
+    }
+
+    // Force delete (permanently delete) product
+    public function forceDelete($product): RedirectResponse
+    {
+        // Find product including soft deleted ones using UUID
+        $productModel = Product::withTrashed()->where('uuid', $product)->firstOrFail();
+
+        if (!$productModel->trashed()) {
+            return redirect()->route('admin.products.trash')
+                ->with('error', 'Product is not deleted!');
+        }
+
+        // Check if product is in any orders
+        $orderItemsCount = \App\Models\OrderItem::where('product_id', $productModel->id)->count();
+
+        if ($orderItemsCount > 0) {
+            return redirect()->route('admin.products.trash')
+                ->with('error', "Cannot permanently delete this product! It is associated with {$orderItemsCount} order(s). Products in orders must be kept for order history.");
+        }
+
+        // Delete all product images using ImageService
+        $images = $productModel->images;
+        foreach ($images as $image) {
+            $this->imageService->deleteImage($image->image);
+            $image->delete();
+        }
+
+        $productModel->accordions()->delete();
+
+        $this->productRepository->forceDelete($productModel);
+
+        return redirect()->route('admin.products.trash')
+            ->with('success', 'Product permanently deleted!');
+    }
+
     // Update product status
-    public function updateStatus(UpdateProductStatusRequest $request, Product $product): RedirectResponse
+    public function updateStatus(UpdateProductStatusRequest $request, Product $product)
     {
         $validated = $request->validated();
 
         $this->productRepository->updateStatus($product, $validated['status']);
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Product status updated successfully!',
+                'status' => $validated['status']
+            ]);
+        }
 
         return redirect()->back()
             ->with('success', 'Product status updated successfully!');
@@ -595,17 +739,17 @@ class ProductController extends Controller
         if (empty($description)) {
             return null;
         }
-        
+
         // Remove HTML tags
         $description = strip_tags($description);
-        
+
         // Trim whitespace
         $description = trim($description);
-        
+
         if (strlen($description) <= $maxLength) {
             return $description;
         }
-        
+
         // Truncate and add ellipsis
         return substr($description, 0, $maxLength - 3) . '...';
     }
@@ -616,13 +760,13 @@ class ProductController extends Controller
     protected function generateMetaKeywords(string $productName, ?int $categoryId): ?string
     {
         $keywords = [];
-        
+
         // Add product name words
         $nameWords = explode(' ', strtolower($productName));
         $keywords = array_merge($keywords, array_filter($nameWords, function($word) {
             return strlen($word) > 3; // Only words longer than 3 characters
         }));
-        
+
         // Add category name if available
         if ($categoryId) {
             try {
@@ -637,105 +781,14 @@ class ProductController extends Controller
                 // Category not found, skip
             }
         }
-        
+
         // Remove duplicates and limit to 10 keywords
         $keywords = array_unique($keywords);
         $keywords = array_slice($keywords, 0, 10);
-        
+
         return !empty($keywords) ? implode(', ', $keywords) : null;
     }
 
-    protected function importProductImages(string $eposnowProductId, int $productId): void
-    {
-        try {
-            $images = $this->eposNow->getProductImages($eposnowProductId);
-
-            if (empty($images)) {
-                return;
-            }
-
-            foreach ($images as $imageData) {
-                if (empty($imageData['ImageUrl']) || !is_string($imageData['ImageUrl'])) {
-                    continue;
-                }
-
-                $imageUrl = $imageData['ImageUrl'];
-
-                if ($imageUrl === 'string' || !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                    continue;
-                }
-
-                $isMainImage = $imageData['MainImage'] ?? false;
-
-                $savedImagePath = $this->eposNow->downloadAndSaveImage($imageUrl, $eposnowProductId, $isMainImage);
-
-                if ($savedImagePath) {
-                    ProductImage::create([
-                        'uuid' => Str::uuid(),
-                        'product_id' => $productId,
-                        'eposnow_product_id' => $eposnowProductId,
-                        'image' => $savedImagePath,
-                    ]);
-                }
-
-                usleep(100000);
-            }
-        } catch (\Throwable $e) {
-        }
-    }
-
-    // Import images for all products from EposNow
-    public function importAllProductImages(): RedirectResponse
-    {
-        try {
-            $products = Product::whereNotNull('eposnow_product_id')
-                ->whereDoesntHave('images')
-                ->get();
-
-            if ($products->isEmpty()) {
-                return redirect()
-                    ->route('admin.products.index')
-                    ->with('info', 'All products already have images or no products found without images.');
-            }
-
-            $totalProcessed = 0;
-            $totalImagesDownloaded = 0;
-            $failed = 0;
-
-            foreach ($products as $product) {
-                try {
-                    $beforeCount = $product->images()->count();
-                    $this->importProductImages((string) $product->eposnow_product_id, $product->id);
-                    $afterCount = $product->fresh()->images()->count();
-                    $downloaded = $afterCount - $beforeCount;
-
-                    if ($downloaded > 0) {
-                        $totalImagesDownloaded += $downloaded;
-                    }
-
-                    $totalProcessed++;
-                    usleep(200000);
-                } catch (\Throwable $e) {
-                    $failed++;
-                    continue;
-                }
-            }
-
-            $message = "Image import completed! Processed: {$totalProcessed} products, Downloaded: {$totalImagesDownloaded} images";
-            if ($failed > 0) {
-                $message .= ", Failed: {$failed}";
-            }
-
-            return redirect()
-                ->route('admin.products.index')
-                ->with('success', $message);
-
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('admin.products.index')
-                ->with('error', 'Failed to import product images: ' . $e->getMessage());
-        }
-    }
 }
 
 

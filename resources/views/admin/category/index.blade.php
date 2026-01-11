@@ -10,7 +10,7 @@
                     <i class="fas fa-tags"></i>
                     Categories
                 </h1>
-                <p class="page-header__subtitle">Manage and organize your product categories</p>
+                <p class="page-header__subtitle">Organize your product categories</p>
             </div>
             <div class="page-header__actions">
                 @can('categories.create')
@@ -19,13 +19,29 @@
                     <span>Add Category</span>
                 </a>
                 @endcan
+                @if(auth()->user()->hasRole('SuperAdmin'))
                 <button type="button" id="importCategoriesBtn" class="btn btn-primary btn-icon">
                     <i class="fas fa-download"></i>
                     <span>Import from EposNow</span>
                 </button>
+                @endif
             </div>
         </div>
     </div>
+
+    @if(session('success'))
+        <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-check-circle"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ session('error') }}
+        </div>
+    @endif
 
     <!-- Main Content Card -->
     <div class="modern-card">
@@ -38,148 +54,42 @@
                 <p class="modern-card__subtitle">{{ $categories->total() }} total categories</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search categories..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.categories.index') }}" class="search-form__clear">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search categories..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($categories->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">
-                                    <span>Image</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Name</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Slug</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Status</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Created</span>
-                                </th>
-                                <th class="modern-table__th modern-table__th--actions">
-                                    <span>Actions</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($categories as $category)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <div class="category-image">
-                                            <img src="{{ $category->image_url }}"
-                                                 alt="{{ $category->name }}"
-                                                 class="category-image__img"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="category-name">
-                                            <strong>{{ $category->name }}</strong>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <code class="category-slug">{{ $category->slug }}</code>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.categories.updateStatus', $category) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                @php
-                                                    $status = (int) $category->status;
-                                                @endphp
-                                                <option value="1" {{ $status == 1 ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ $status == 0 ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="category-date">
-                                            <i class="fas fa-calendar-alt"></i>
-                                            {{ $category->created_at->format('M d, Y') }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            @can('categories.view')
-                                            <a href="{{ route('admin.categories.show', $category) }}"
-                                               class="action-btn action-btn--view"
-                                               title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            @endcan
-                                            @can('categories.edit')
-                                            <a href="{{ route('admin.categories.edit', $category) }}"
-                                               class="action-btn action-btn--edit"
-                                               title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            @endcan
-                                            @can('categories.delete')
-                                            <form method="POST"
-                                                  action="{{ route('admin.categories.destroy', $category) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this category?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
+            <div id="categories-results-container">
+                @include('admin.category.partials.table', ['categories' => $categories])
+            </div>
+            <div id="categories-pagination-container">
                 @if($categories->hasPages())
                     <div class="pagination-wrapper">
                         {{ $categories->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-folder-open"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Categories Found</h3>
-                    @if($search)
-                        <p class="empty-state__text">No categories found matching "{{ $search }}"</p>
-                        <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left"></i>
-                            View All Categories
-                        </a>
-                    @else
-                        <p class="empty-state__text">Start by creating your first category</p>
-                        <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
-                            Add Category
-                        </a>
-                    @endif
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
@@ -488,4 +398,94 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Admin Search
+    AdminSearch.init({
+        searchInput: '#search-input',
+        searchForm: '#search-form',
+        searchButton: '#search-button',
+        clearButton: '#clear-search',
+        resultsContainer: '#categories-results-container',
+        paginationContainer: '#categories-pagination-container',
+        loadingIndicator: '#search-loading',
+        searchUrl: '{{ route('admin.categories.index') }}',
+        debounceDelay: 300
+    });
+
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
+
+    // Handle status change with AJAX (prevent page freeze)
+    // Use event delegation to handle dynamically added elements
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const categoryId = select.getAttribute('data-category-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            // Disable select during request
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            // Send AJAX request
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                // Show success message if available
+                if (data && data.message) {
+                    // You can add a toast notification here if needed
+                    console.log('Status updated:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                // Revert to original value on error
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                alert('Error updating status. Please try again.');
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection

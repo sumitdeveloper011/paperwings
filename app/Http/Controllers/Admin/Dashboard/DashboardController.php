@@ -28,13 +28,8 @@ class DashboardController extends Controller
                 'active_products' => Product::where('status', 1)->count(),
                 'total_orders' => Order::count(),
                 'pending_orders' => Order::where('status', 'pending')->count(),
-                'total_users' => User::whereDoesntHave('roles', function($q) {
-                    $q->whereIn('name', ['SuperAdmin', 'Admin']);
-                })->count(),
-                'active_users' => User::where('status', 1)
-                    ->whereDoesntHave('roles', function($q) {
-                        $q->whereIn('name', ['SuperAdmin', 'Admin']);
-                    })->count(),
+                'total_users' => User::role('User')->count(),
+                'active_users' => User::role('User')->where('status', 1)->count(),
                 'total_revenue' => Order::where('payment_status', 'paid')->sum('total'),
                 'total_subscriptions' => Subscription::where('status', 1)->count(),
             ];
@@ -66,6 +61,9 @@ class DashboardController extends Controller
 
         $data = [
             'title' => 'Dashboard',
+            'pageTitle' => 'Dashboard',
+            'pageSubtitle' => '',
+            'pageIcon' => 'fas fa-chart-line',
             'stats' => $stats,
             'growthData' => $growthData,
             'recentOrders' => $recentOrders,
@@ -96,9 +94,7 @@ class DashboardController extends Controller
             
             $orders = Order::whereBetween('created_at', [$monthStart, $monthEnd])->count();
             
-            $users = User::whereDoesntHave('roles', function($q) {
-                $q->whereIn('name', ['SuperAdmin', 'Admin']);
-                    })->whereBetween('created_at', [$monthStart, $monthEnd])->count();
+            $users = User::role('User')->whereBetween('created_at', [$monthStart, $monthEnd])->count();
             
             $revenue = Order::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$monthStart, $monthEnd])

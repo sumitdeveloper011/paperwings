@@ -79,12 +79,12 @@
                     <div class="col-lg-2 col-md-4 col-sm-6">
                         <div class="category-item">
                             <div class="category__image">
-                                <a href="{{ route('product.by.category', $category->slug) }}">
+                                <a href="{{ route('category.show', $category->slug) }}">
                                     <img src="{{ asset('storage/' . $category->image) ?? asset('assets/frontend/images/office-supplies.jpg') }}" alt="{{ $category->name }}" class="category__img">
                                 </a>
                             </div>
                             <h3 class="category__name">
-                                <a href="{{ route('product.by.category', $category->slug) }}">{{ $category->name }}</a>
+                                <a href="{{ route('category.show', $category->slug) }}">{{ $category->name }}</a>
                             </h3>
                         </div>
                     </div>

@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'uuid',
@@ -70,19 +71,19 @@ class Product extends Model
             }
 
             // Clear price range cache when price or status changes
-            if ($product->isDirty(['total_price', 'discount_price', 'status', 'eposnow_category_id'])) {
+            if ($product->isDirty(['total_price', 'discount_price', 'status', 'category_id'])) {
                 Cache::forget('price_range_all_products');
-                if ($product->eposnow_category_id) {
-                    Cache::forget('price_range_category_' . $product->eposnow_category_id);
+                if ($product->category_id) {
+                    Cache::forget('price_range_category_' . $product->category_id);
                 }
                 // Also clear for old category if category changed
-                if ($product->isDirty('eposnow_category_id') && $product->getOriginal('eposnow_category_id')) {
-                    Cache::forget('price_range_category_' . $product->getOriginal('eposnow_category_id'));
+                if ($product->isDirty('category_id') && $product->getOriginal('category_id')) {
+                    Cache::forget('price_range_category_' . $product->getOriginal('category_id'));
                 }
             }
 
             // Clear categories cache when product status or category changes
-            if ($product->isDirty(['status', 'category_id', 'eposnow_category_id'])) {
+            if ($product->isDirty(['status', 'category_id'])) {
                 Cache::forget('categories_with_count_all');
                 Cache::forget('categories_with_count_sidebar');
                 Cache::forget('header_categories');
@@ -97,8 +98,8 @@ class Product extends Model
         static::created(function ($product) {
             // Clear price range cache when new product is created
             Cache::forget('price_range_all_products');
-            if ($product->eposnow_category_id) {
-                Cache::forget('price_range_category_' . $product->eposnow_category_id);
+            if ($product->category_id) {
+                Cache::forget('price_range_category_' . $product->category_id);
             }
             // Clear categories cache
             Cache::forget('categories_with_count_all');
@@ -109,8 +110,8 @@ class Product extends Model
         static::deleted(function ($product) {
             // Clear price range cache when product is deleted
             Cache::forget('price_range_all_products');
-            if ($product->eposnow_category_id) {
-                Cache::forget('price_range_category_' . $product->eposnow_category_id);
+            if ($product->category_id) {
+                Cache::forget('price_range_category_' . $product->category_id);
             }
             // Clear categories cache
             Cache::forget('categories_with_count_all');
@@ -134,7 +135,7 @@ class Product extends Model
     // Get images relationship
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class)->orderBy('id', 'asc');
     }
 
     // Get accordions relationship
@@ -342,8 +343,7 @@ class Product extends Model
     // Get category path attribute
     public function getCategoryPathAttribute()
     {
-        $path = $this->category->name;
-        return $path;
+        return $this->category ? $this->category->name : 'Uncategorized';
     }
 
     // Get average rating attribute

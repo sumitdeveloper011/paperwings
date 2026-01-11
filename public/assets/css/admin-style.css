@@ -7,7 +7,7 @@
     --coral-red: #e95c67;
     --golden-orange: #f69532;
     --light-green: #BAE369;
-    --dark-blue: #374E94;
+    --dark-blue: #2850a3;
 
     /* Primary Color Scheme */
     --primary-color: var(--dark-blue);      /* Dark Blue as primary */
@@ -541,6 +541,7 @@ html.login-page-html {
 }
 
 .sidebar.collapsed .sidebar-brand-text,
+.sidebar.collapsed .sidebar-login-as,
 .sidebar.collapsed .sidebar-link span,
 .sidebar.collapsed .sidebar-user-info,
 .sidebar.collapsed .sidebar-close {
@@ -550,11 +551,13 @@ html.login-page-html {
 .sidebar.collapsed .sidebar-brand {
     justify-content: center;
     gap: 0;
+    flex-direction: row;
 }
 
 .sidebar.collapsed .sidebar-logo {
     width: 40px;
     height: 40px;
+    max-width: 40px;
 }
 
 .sidebar.collapsed .sidebar-link {
@@ -635,16 +638,37 @@ html.login-page-html {
 
 .sidebar-brand {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem;
 }
 
 .sidebar-logo {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    background: var(--accent-color);
-    padding: 8px;
+    width: 100%;
+    max-width: 120px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    padding: 0;
+    background: transparent;
+}
+
+.sidebar-login-as {
+    width: 100%;
+    text-align: center;
+}
+
+.sidebar-login-as span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--background-color);
+    opacity: 0.9;
+    display: block;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
 }
 
 .sidebar-brand-text h3 {
@@ -923,6 +947,52 @@ html.login-page-html {
     background: #f3f4f6;
 }
 
+/* Topbar Page Header */
+.topbar-page-header {
+    flex: 1;
+    min-width: 0;
+}
+
+.topbar-page-header__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.topbar-page-header__title-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.topbar-page-header__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    line-height: 1.3;
+}
+
+.topbar-page-header__title i {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.topbar-page-header__subtitle {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0 0;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Legacy brand styles (kept for backward compatibility) */
 .topbar-brand h2 {
     margin: 0;
     font-size: 1.5rem;
@@ -1339,8 +1409,15 @@ html.login-page-html {
     color: #6b7280;
 }
 
+.dropdown-role {
+    font-size: 0.75rem;
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-top: 0.25rem;
+    opacity: 0.9;
+}
+
 .dropdown-divider {
-    height: 1px;
     background: #f3f4f6;
     margin: 0.5rem 0;
 }
@@ -1546,6 +1623,15 @@ html.login-page-html {
         font-size: 1.2rem;
     }
 
+    .topbar-page-header__title {
+        font-size: 1.1rem;
+    }
+
+    .topbar-page-header__subtitle {
+        font-size: 0.8rem;
+        display: none; /* Hide subtitle on small screens to save space */
+    }
+
     .admin-footer__left {
         flex-direction: column;
         gap: 0.5rem;
@@ -1680,8 +1766,16 @@ html.login-page-html {
 
 .modern-card__header-actions {
     display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.modern-card__header-buttons {
+    display: flex;
     gap: 0.5rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .modern-card__body {
@@ -1706,6 +1800,7 @@ html.login-page-html {
     position: relative;
     display: flex;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .search-form__icon {
@@ -1716,7 +1811,7 @@ html.login-page-html {
 }
 
 .search-form__input {
-    padding: 0.625rem 1rem 0.625rem 2.75rem;
+    padding: 0.625rem 3.5rem 0.625rem 1rem;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 0.875rem;
@@ -1730,22 +1825,93 @@ html.login-page-html {
     box-shadow: 0 0 0 3px rgba(62, 47, 47, 0.1);
 }
 
+.search-form__input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    height: 100%;
+}
+
+.search-form__input {
+    padding-right: 4rem;
+}
+
+.search-form__button {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 2;
+    height: 32px;
+    width: 32px;
+}
+
+.search-form__button:hover {
+    background: var(--primary-color-dark, #1a3d7a);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.search-form__button:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.search-form__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: translateY(-50%);
+}
+
 .search-form__clear {
     position: absolute;
-    right: 0.75rem;
+    right: 2.75rem;
+    top: 50%;
+    transform: translateY(-50%);
     color: #9ca3af;
     text-decoration: none;
-    padding: 0.25rem;
-    display: flex;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 4px;
     transition: all 0.3s ease;
+    width: 20px;
+    height: 20px;
+    z-index: 3;
+    background: white;
+    line-height: 1;
+    vertical-align: middle;
 }
 
 .search-form__clear:hover {
     color: #ef4444;
     background: #fef2f2;
+}
+
+.search-form__loading {
+    position: absolute;
+    right: 2.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: white;
 }
 
 /* Filter Form */
@@ -1860,6 +2026,39 @@ html.login-page-html {
     font-family: 'Courier New', monospace;
 }
 
+.category-product-count {
+    display: flex;
+    width: 100%;
+}
+
+.btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.btn-link--primary {
+    color: var(--primary-color);
+}
+
+.btn-link--primary:hover {
+    color: var(--primary-hover);
+    background: rgba(40, 80, 163, 0.1);
+}
+
+.btn-link i {
+    font-size: 0.875rem;
+}
+
 /* Status Select */
 .status-form {
     display: inline-block;
@@ -1918,12 +2117,12 @@ html.login-page-html {
 }
 
 .action-btn--view {
-    background: #dbeafe;
-    color: #1e40af;
+    background: rgba(158, 189, 213, 0.2);
+    color: #2d5a7a;
 }
 
 .action-btn--view:hover {
-    background: #bfdbfe;
+    background: rgba(158, 189, 213, 0.3);
     transform: translateY(-2px);
 }
 
@@ -2331,8 +2530,16 @@ html.login-page-html {
 }
 
 .form-input-modern[readonly] {
-    background-color: #fff;
-    cursor: pointer;
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+    color: #6b7280;
+    border-color: #e5e7eb;
+}
+
+.form-input-modern[readonly]:focus {
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 .form-input-modern.date-input {
@@ -2347,6 +2554,25 @@ html.login-page-html {
     font-size: 0.875rem;
     transition: all 0.3s ease;
     background: white;
+}
+
+.form-input-modern textarea,
+textarea.form-input-modern {
+    resize: vertical;
+    min-height: 120px;
+    padding-left: 1rem;
+}
+
+.form-input-modern select {
+    padding-right: 2.5rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px;
+    cursor: pointer;
 }
 
 .form-input-modern:focus {
@@ -2533,6 +2759,14 @@ html.login-page-html {
 .btn-outline-secondary:hover {
     background: #f9fafb;
     border-color: #9ca3af;
+    color: #374151;
+}
+
+.btn-outline-secondary:hover span {
+    display: inline-block;
+    opacity: 1;
+    visibility: visible;
+    color: #374151;
 }
 
 .btn-outline-primary {
@@ -2557,8 +2791,31 @@ html.login-page-html {
     color: white;
 }
 
+.btn-view {
+    background: #1e3a5f;
+    color: white;
+    border: 1px solid #1e3a5f;
+}
+
+.btn-view:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 .btn-icon {
     padding: 0.625rem 1rem;
+}
+
+.btn-icon span {
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.btn-icon:hover span {
+    display: inline-block;
+    opacity: 1;
+    visibility: visible;
 }
 
 .btn-lg {
@@ -2638,6 +2895,11 @@ html.login-page-html {
     font-weight: 600;
 }
 
+.badge--primary {
+    background: rgba(55, 78, 148, 0.2);
+    color: #374f94;
+}
+
 .badge--success {
     background: rgba(186, 227, 105, 0.2);
     color: #5a7a2a;
@@ -2655,6 +2917,76 @@ html.login-page-html {
 
 .badge--info {
     background: rgba(158, 189, 213, 0.2);
+    color: #2d5a7a;
+}
+
+.badge--large {
+    font-size: 0.9375rem;
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+}
+
+.status-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.alert i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.alert-success {
+    background: rgba(186, 227, 105, 0.15);
+    color: #5a7a2a;
+    border: 1px solid rgba(186, 227, 105, 0.3);
+}
+
+.alert-success i {
+    color: #5a7a2a;
+}
+
+.alert-danger {
+    background: rgba(233, 92, 103, 0.15);
+    color: #b83d4a;
+    border: 1px solid rgba(233, 92, 103, 0.3);
+}
+
+.alert-danger i {
+    color: #b83d4a;
+}
+
+.alert-warning {
+    background: rgba(246, 149, 50, 0.15);
+    color: #b86a1f;
+    border: 1px solid rgba(246, 149, 50, 0.3);
+}
+
+.alert-warning i {
+    color: #b86a1f;
+}
+
+.alert-info {
+    background: rgba(158, 189, 213, 0.15);
+    color: #2d5a7a;
+    border: 1px solid rgba(158, 189, 213, 0.3);
+}
+
+.alert-info i {
     color: #2d5a7a;
 }
 
@@ -4868,4 +5200,122 @@ html.login-page-html {
 .modal-header .close span {
     display: block;
     line-height: 1;
+}
+
+/* Admin Error Pages Styles */
+.admin-content .admin-error-page-content {
+    padding: 4rem 2rem;
+}
+
+.admin-content .admin-error-icon-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.admin-content .admin-error-icon-circle {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, var(--info-color) 0%, #3b82f6 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+}
+
+.admin-content .admin-error-icon-circle i {
+    font-size: 4rem;
+    color: white;
+}
+
+.admin-content .admin-error-code {
+    font-size: 5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.admin-content .admin-error-title {
+    color: var(--text-primary);
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+}
+
+.admin-content .admin-error-message {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.admin-content .admin-error-details {
+    border-top: 1px solid var(--border-color);
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+}
+
+.admin-content .admin-error-details-summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.admin-content .admin-error-details-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    margin-top: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.admin-content .admin-error-details-content pre {
+    margin: 0;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+/* CKEditor Styles - Fix dropdown visibility */
+/* Fix parent containers that clip dropdowns - only where CKEditor exists */
+.content-body {
+    overflow: visible !important;
+}
+
+/* Allow overflow for cards/body containing CKEditor */
+.modern-card:has(.ck-editor),
+.modern-card__body:has(.ck-editor) {
+    overflow: visible !important;
+}
+
+/* CKEditor dropdown panels - use CKEditor's native positioning, just fix z-index */
+.ck.ck-dropdown__panel {
+    z-index: 10000 !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+}
+
+.ck.ck-balloon-panel {
+    z-index: 10001 !important;
+}
+
+/* Heading dropdown - ensure all options visible with scroll */
+.ck-heading-dropdown .ck-list,
+.ck-heading .ck-list {
+    max-height: 500px !important;
+    overflow-y: auto !important;
+}
+
+/* CKEditor Editable - Simple CSS solution for all editors */
+.ck-editor__editable {
+    min-height: 120px;
+    overflow-y: auto;
+}
+
+/* Source editing mode styles */
+.ck-source-editing-area {
+    min-height: 120px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
 }

@@ -20,7 +20,7 @@
         $metaKeywords = $metaKeywords ?? $settings['meta_keywords'] ?? '';
         $metaAuthor = $metaAuthor ?? $settings['meta_author'] ?? '';
         $siteLogo = !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png');
-        $siteFavicon = !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/images/favicon.ico');
+        $siteFavicon = !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png');
     @endphp
     
     <!-- Favicon -->

@@ -33,7 +33,11 @@ class ContactController extends Controller
 
         $messages = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        return view('admin.contact.index', compact('messages', 'search', 'status'));
+        $pageTitle = 'Contact Messages';
+        $pageSubtitle = 'Manage customer inquiries and messages';
+        $pageIcon = 'fas fa-envelope';
+
+        return view('admin.contact.index', compact('messages', 'search', 'status', 'pageTitle', 'pageSubtitle', 'pageIcon'));
     }
 
     // Display the specified contact message

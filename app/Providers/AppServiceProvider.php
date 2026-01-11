@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Repositories\BrandRepository;
+use App\Repositories\BundleRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\Interfaces\BrandRepositoryInterface;
+use App\Repositories\Interfaces\BundleRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BrandRepositoryInterface::class, BrandRepository::class);
         $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
         $this->app->bind(SliderRepositoryInterface::class, SliderRepository::class);
+        $this->app->bind(BundleRepositoryInterface::class, BundleRepository::class);
     }
 
     // Bootstrap any application services
@@ -101,8 +104,9 @@ class AppServiceProvider extends ServiceProvider
                 $categories = \Illuminate\Support\Facades\Cache::remember('header_categories', 1800, function() {
                     try {
                         return \App\Models\Category::active()
-                            ->whereHas('activeProducts')
-                            ->withCount('activeProducts')
+                            ->withCount(['products' => function($query) {
+                                $query->where('status', 1);
+                            }])
                             ->select('id', 'name', 'slug')
                             ->ordered()
                             ->get();
@@ -225,17 +229,6 @@ class AppServiceProvider extends ServiceProvider
                     }
                 });
 
-                $aboutSection = \Illuminate\Support\Facades\Cache::remember('footer_about_section', 1800, function() {
-                    try {
-                        return \App\Models\AboutSection::active()
-                            ->ordered()
-                            ->first();
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to fetch footer about section: ' . $e->getMessage());
-                        return null;
-                    }
-                });
-
                 $footerCategories = \Illuminate\Support\Facades\Cache::remember('footer_categories', 1800, function() {
                     try {
                         return \App\Models\Category::active()
@@ -287,7 +280,6 @@ class AppServiceProvider extends ServiceProvider
                     'footerWorkingHours' => $workingHours,
                     'footerAddress' => $address,
                     'footerCopyright' => $copyrightText,
-                    'footerAboutSection' => $aboutSection,
                 ]);
             } catch (\Exception $e) {
                 Log::error('Footer view composer error: ' . $e->getMessage(), [
@@ -307,7 +299,6 @@ class AppServiceProvider extends ServiceProvider
                     'footerWorkingHours' => 'Monday - Friday: 9:00-20:00<br>Saturday: 11:00 - 15:00',
                     'footerAddress' => null,
                     'footerCopyright' => 'Copyright © ' . date('Y') . ' Paper Wings. All rights reserved.',
-                    'footerAboutSection' => null,
                 ]);
             }
         });
@@ -325,8 +316,8 @@ class AppServiceProvider extends ServiceProvider
 
                 $view->with([
                     'settings' => $settings,
-                    'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/images/logo.svg'),
-                    'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/images/favicon.ico'),
+                    'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png'),
+                    'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png'),
                     'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
                 ]);
             } catch (\Exception $e) {
@@ -338,8 +329,8 @@ class AppServiceProvider extends ServiceProvider
                 // Provide default values to prevent view errors
                 $view->with([
                     'settings' => [],
-                    'siteLogo' => asset('assets/images/logo.svg'),
-                    'siteFavicon' => asset('assets/images/favicon.ico'),
+                    'siteLogo' => asset('assets/frontend/images/logo.png'),
+                    'siteFavicon' => asset('assets/frontend/images/icon.png'),
                     'siteName' => 'PAPERWINGS',
                 ]);
             }
@@ -358,8 +349,8 @@ class AppServiceProvider extends ServiceProvider
 
                 $view->with([
                     'settings' => $settings,
-                    'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/images/logo.svg'),
-                    'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/images/favicon.ico'),
+                    'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png'),
+                    'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png'),
                     'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
                 ]);
             } catch (\Exception $e) {
@@ -371,8 +362,8 @@ class AppServiceProvider extends ServiceProvider
                 // Provide default values to prevent view errors
                 $view->with([
                     'settings' => [],
-                    'siteLogo' => asset('assets/images/logo.svg'),
-                    'siteFavicon' => asset('assets/images/favicon.ico'),
+                    'siteLogo' => asset('assets/frontend/images/logo.png'),
+                    'siteFavicon' => asset('assets/frontend/images/icon.png'),
                     'siteName' => 'PAPERWINGS',
                 ]);
             }
