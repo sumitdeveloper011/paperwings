@@ -10,6 +10,7 @@
                     <i class="fas fa-question-circle"></i>
                     FAQs
                 </h1>
+                <p class="page-header__subtitle">Manage frequently asked questions</p>
             </div>
             <div class="page-header__actions">
                 <a href="{{ route('admin.faqs.create') }}" class="btn btn-primary btn-icon">
@@ -20,15 +21,8 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            {{ session('success') }}
-        </div>
-    @endif
-
     <!-- Main Content Card -->
-    <div class="modern-card modern-card--compact">
+    <div class="modern-card">
         <div class="modern-card__header">
             <div class="modern-card__header-content">
                 <h3 class="modern-card__title">
@@ -38,122 +32,177 @@
                 <p class="modern-card__subtitle">{{ $faqs->total() }} total FAQs</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="d-flex gap-2 align-items-center">
-                    @if(count($categories) > 0)
-                    <select name="category" class="form-control form-control-sm" style="width: 150px;" onchange="this.form.submit()">
-                        <option value="">All Categories</option>
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat }}" {{ $category == $cat ? 'selected' : '' }}>
-                                {{ ucfirst(str_replace('_', ' ', $cat)) }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @endif
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search FAQs..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.faqs.index') }}" class="search-form__clear">
+                        @if(count($categories) > 0)
+                        <select name="category" id="category-filter" class="form-control form-control-sm" style="width: 150px; margin-right: 10px;" onchange="document.getElementById('search-form').submit()">
+                            <option value="">All Categories</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat }}" {{ $category == $cat ? 'selected' : '' }}>
+                                    {{ ucfirst(str_replace('_', ' ', $cat)) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @endif
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search FAQs..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($faqs->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">Question</th>
-                                <th class="modern-table__th">Answer</th>
-                                <th class="modern-table__th">Category</th>
-                                <th class="modern-table__th">Status</th>
-                                <th class="modern-table__th">Sort Order</th>
-                                <th class="modern-table__th modern-table__th--actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($faqs as $faq)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <strong>{{ Str::limit($faq->question, 60) }}</strong>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="text-truncate" style="max-width: 300px;" title="{{ $faq->answer }}">
-                                            {{ Str::limit(strip_tags($faq->answer), 50) }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        @if($faq->category)
-                                            <span class="badge bg-info">{{ ucfirst(str_replace('_', ' ', $faq->category)) }}</span>
-                                        @else
-                                            <span class="text-muted">General</span>
-                                        @endif
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.faqs.updateStatus', $faq) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="1" {{ $faq->status ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ !$faq->status ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td">{{ $faq->sort_order ?? 0 }}</td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('admin.faqs.show', $faq) }}"
-                                               class="action-btn action-btn--view" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('admin.faqs.edit', $faq) }}"
-                                               class="action-btn action-btn--edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form method="POST"
-                                                  action="{{ route('admin.faqs.destroy', $faq) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this FAQ?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div id="results-container">
+                @include('admin.faq.partials.table', ['faqs' => $faqs])
+            </div>
 
-                @if($faqs->hasPages())
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                @if($faqs->total() > 0 && $faqs->hasPages())
                     <div class="pagination-wrapper">
                         {{ $faqs->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-question-circle"></i>
-                    </div>
-                    <h3 class="empty-state__title">No FAQs Found</h3>
-                    <p class="empty-state__text">Start by creating your first FAQ</p>
-                    <a href="{{ route('admin.faqs.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add FAQ
-                    </a>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
-@endsection
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.faqs.index') }}',
+            debounceDelay: 300
+        });
+    }
+
+    // Handle category filter change with AJAX
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            const form = document.getElementById('search-form');
+            const formData = new FormData(form);
+            formData.append('ajax', '1');
+
+            const searchInput = document.getElementById('search-input');
+            const searchLoading = document.getElementById('search-loading');
+            const resultsContainer = document.getElementById('results-container');
+            const paginationContainer = document.getElementById('pagination-container');
+
+            if (searchLoading) searchLoading.style.display = 'flex';
+
+            fetch('{{ route('admin.faqs.index') }}?' + new URLSearchParams(formData), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                if (data.success && data.html) {
+                    resultsContainer.innerHTML = data.html;
+                    paginationContainer.innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                console.error('Error:', error);
+            });
+        });
+    }
+
+    // AJAX status update
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('status-select') && e.target.hasAttribute('data-faq-id')) {
+            e.preventDefault();
+            const select = e.target;
+            const form = select.closest('form');
+            const faqId = select.getAttribute('data-faq-id');
+            const status = select.value;
+            const originalValue = select.getAttribute('data-original-value') || (select.querySelector('option[selected]')?.value || select.value);
+
+            // Store original value
+            if (!select.hasAttribute('data-original-value')) {
+                select.setAttribute('data-original-value', originalValue);
+            }
+
+            // Disable select during request
+            select.disabled = true;
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('status', status);
+            formData.append('_token', form.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+            formData.append('_method', 'PATCH');
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.setAttribute('data-original-value', status);
+
+                // Show success message if available
+                if (typeof showToast === 'function') {
+                    showToast('Success', data.message || 'FAQ status updated successfully', 'success', 3000);
+                }
+            })
+            .catch(error => {
+                // Revert select value on error
+                select.value = originalValue;
+                select.disabled = false;
+
+                console.error('Error updating status:', error);
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update FAQ status', 'error', 5000);
+                } else {
+                    alert('Failed to update FAQ status. Please try again.');
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush
+@endsection

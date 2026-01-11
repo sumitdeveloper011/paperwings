@@ -14,116 +14,134 @@
             <div class="page-header__actions">
                 <a href="{{ route('admin.product-faqs.index') }}" class="btn btn-outline-secondary btn-icon">
                     <i class="fas fa-arrow-left"></i>
-                    <span>Back</span>
+                    <span>Back to FAQs</span>
                 </a>
             </div>
         </div>
     </div>
 
     <div class="row">
+        <!-- Main Form -->
         <div class="col-lg-8">
-            <div class="modern-card">
-                <div class="modern-card__header">
-                    <h3 class="modern-card__title">FAQ Information</h3>
-                </div>
-                <div class="modern-card__body">
-                    <form method="POST" action="{{ route('admin.product-faqs.update', $productFaq) }}" class="modern-form" id="faqForm">
-                        @csrf
-                        @method('PUT')
-                        
-                        <div class="form-group-modern">
-                            <label for="category_id" class="form-label-modern">Category</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-filter input-icon"></i>
-                                <select class="form-input-modern @error('category_id') is-invalid @enderror" 
-                                        id="category_id" name="category_id">
-                                    <option value="">Select Category (Optional)</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_id', $productFaq->category_id ?? $productFaq->product->category_id ?? '') == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <small class="form-text text-muted">Select category for this FAQ entry</small>
-                            @error('category_id')
-                                <div class="form-error">{{ $message }}</div>
-                            @enderror
+            <form method="POST" action="{{ route('admin.product-faqs.update', $productFaq) }}" class="modern-form" id="faqForm" novalidate>
+                @csrf
+                @method('PUT')
+
+                <!-- Basic Information -->
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-info-circle"></i>
+                            Basic Information
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        @include('components.select-category', [
+                            'id' => 'category_id',
+                            'name' => 'category_id',
+                            'label' => 'Category',
+                            'required' => false,
+                            'selected' => old('category_id', $productFaq->category_id ?? $productFaq->product->category_id ?? ''),
+                            'categories' => $categories,
+                            'useUuid' => false,
+                            'placeholder' => 'Select Category (Optional)',
+                            'class' => 'form-control',
+                            'useSelect2' => true,
+                            'showLabel' => true,
+                            'wrapperClass' => 'mb-3',
+                        ])
+
+                        <div class="mb-3">
+                            <label for="category_filter" class="form-label">Filter Products by Category (Optional)</label>
+                            @include('components.select-category', [
+                                'id' => 'category_filter',
+                                'name' => 'category_filter',
+                                'label' => '',
+                                'required' => false,
+                                'selected' => old('category_filter', $productFaq->product->category_id ?? ''),
+                                'categories' => $categories,
+                                'useUuid' => false,
+                                'placeholder' => 'All Categories',
+                                'class' => 'form-control',
+                                'useSelect2' => true,
+                                'showLabel' => false,
+                                'wrapperClass' => '',
+                            ])
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Select a category to filter products
+                            </small>
                         </div>
 
-                        <div class="form-group-modern">
-                            <label for="category_filter" class="form-label-modern">Filter Products by Category (Optional)</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-filter input-icon"></i>
-                                <select class="form-input-modern" id="category_filter">
-                                    <option value="">All Categories</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_filter', $productFaq->product->category_id ?? '') == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <small class="form-text text-muted">Select a category to filter products</small>
-                        </div>
-
-                        <div class="form-group-modern">
-                            <label for="product_id" class="form-label-modern">Product <span class="required">*</span></label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-box input-icon"></i>
-                                <select class="form-input-modern @error('product_id') is-invalid @enderror" 
-                                        id="product_id" name="product_id" required>
-                                    <option value="">Select Product</option>
-                                    @if($productFaq->product)
-                                        <option value="{{ $productFaq->product->id }}" selected data-price="{{ $productFaq->product->total_price }}" data-name="{{ $productFaq->product->name }}">
-                                            {{ $productFaq->product->name }} - ${{ number_format($productFaq->product->total_price, 2) }}
-                                        </option>
-                                    @endif
-                                </select>
-                            </div>
-                            <small class="form-text text-muted">Search and select a product. Type to search products.</small>
+                        <div class="mb-3">
+                            <label for="product_id" class="form-label">Product <span class="text-danger">*</span></label>
+                            <select class="form-control @error('product_id') is-invalid @enderror"
+                                    id="product_id"
+                                    name="product_id"
+                                    required>
+                                <option value="">Select Product</option>
+                                @if($productFaq->product)
+                                    <option value="{{ $productFaq->product->id }}" selected data-price="{{ $productFaq->product->total_price }}" data-name="{{ $productFaq->product->name }}">
+                                        {{ $productFaq->product->name }} - ${{ number_format($productFaq->product->total_price, 2) }}
+                                    </option>
+                                @endif
+                            </select>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Search and select a product. Type to search products.
+                            </small>
                             @error('product_id')
-                                <div class="form-error">{{ $message }}</div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-
-                        <div class="faqs-repeater-wrapper">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h4 class="mb-0">
-                                    <i class="fas fa-question-circle"></i>
-                                    FAQs
-                                </h4>
-                                <button type="button" class="btn btn-success btn-sm" id="addFaqBtn">
-                                    <i class="fas fa-plus"></i>
-                                    Add FAQ
-                                </button>
-                            </div>
-
-                            <div id="faqsContainer">
-                                <!-- FAQ items will be populated here -->
-                            </div>
-
-                            @error('faqs')
-                                <div class="form-error">{{ $message }}</div>
-                            @enderror
-                            @error('faqs.*')
-                                <div class="form-error">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save"></i>
-                                Update FAQs
-                            </button>
-                            <a href="{{ route('admin.product-faqs.index') }}" class="btn btn-outline-secondary btn-lg">
-                                <i class="fas fa-times"></i>
-                                Cancel
-                            </a>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <!-- FAQs Section -->
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <h3 class="modern-card__title mb-0">
+                                <i class="fas fa-question-circle"></i>
+                                FAQs
+                            </h3>
+                            <button type="button" class="btn btn-success btn-sm" id="addFaqBtn">
+                                <i class="fas fa-plus"></i>
+                                Add FAQ
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modern-card__body">
+                        <div id="faqsContainer">
+                            <!-- FAQ items will be populated here -->
+                        </div>
+
+                        @error('faqs')
+                            <div class="alert alert-danger">{{ $message }}</div>
+                        @enderror
+                        @error('faqs.*')
+                            <div class="alert alert-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i>
+                        Update FAQs
+                    </button>
+                    <a href="{{ route('admin.product-faqs.index') }}" class="btn btn-outline-secondary btn-lg" style="background-color: #f8f9fa;">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            @include('admin.product-faq.partials.tips')
         </div>
     </div>
 </div>
@@ -160,18 +178,15 @@
     }
 
     function initForm() {
-        // Check if element exists
         if ($('#product_id').length === 0) {
             console.error('Product select element not found');
             return;
         }
 
-        // Destroy existing Select2 instance if any
         if ($('#product_id').data('select2')) {
             $('#product_id').select2('destroy');
         }
 
-        // Initialize Select2 for product
         $('#product_id').select2({
             theme: 'bootstrap-5',
             placeholder: 'Click to search and select a product...',
@@ -199,6 +214,9 @@
                 cache: true,
                 error: function(xhr, status, error) {
                     console.error('Select2 AJAX error:', error);
+                    if (typeof showToast === 'function') {
+                        showToast('Error', 'Failed to load products. Please try again.', 'error', 5000);
+                    }
                 }
             },
             minimumInputLength: 0,
@@ -207,11 +225,9 @@
             }
         });
 
-        // Category filter change - reload products
         $('#category_filter').on('change', function() {
             const currentProductId = $('#product_id').val();
             $('#product_id').val(null).trigger('change');
-            // If there was a selected product, try to maintain it if it's still in the filtered list
             if (currentProductId) {
                 setTimeout(function() {
                     $('#product_id').val(currentProductId).trigger('change');
@@ -219,14 +235,12 @@
             }
         });
 
-        // Initialize FAQ repeater
         initFaqRepeater();
     }
 
     function initFaqRepeater() {
         let faqIndex = 0;
 
-        // Template for FAQ row
         function getFaqRowTemplate(index, faqData = null) {
             const question = faqData ? faqData.question : '';
             const answer = faqData ? faqData.answer : '';
@@ -246,51 +260,42 @@
                         </button>
                     </div>
 
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Question <span class="required">*</span></label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-question input-icon"></i>
-                            <input type="text" 
-                                   class="form-input-modern" 
-                                   name="faqs[${index}][question]" 
-                                   value="${question}"
-                                   placeholder="Enter question"
-                                   required>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Question <span class="text-danger">*</span></label>
+                        <input type="text"
+                               class="form-control"
+                               name="faqs[${index}][question]"
+                               value="${question.replace(/"/g, '&quot;')}"
+                               placeholder="Enter question"
+                               required>
                     </div>
 
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Answer <span class="required">*</span></label>
-                        <textarea class="form-input-modern" 
-                                  name="faqs[${index}][answer]" 
+                    <div class="mb-3">
+                        <label class="form-label">Answer <span class="text-danger">*</span></label>
+                        <textarea class="form-control"
+                                  name="faqs[${index}][answer]"
                                   rows="4"
-                                  placeholder="Enter answer" required>${answer}</textarea>
+                                  placeholder="Enter answer" required>${answer.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group-modern">
-                                <label class="form-label-modern">Sort Order</label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-sort input-icon"></i>
-                                    <input type="number" 
-                                           class="form-input-modern" 
-                                           name="faqs[${index}][sort_order]" 
-                                           value="${sortOrder}"
-                                           min="0">
-                                </div>
+                            <div class="mb-3">
+                                <label class="form-label">Sort Order</label>
+                                <input type="number"
+                                       class="form-control"
+                                       name="faqs[${index}][sort_order]"
+                                       value="${sortOrder}"
+                                       min="0">
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group-modern">
-                                <label class="form-label-modern">Status</label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-toggle-on input-icon"></i>
-                                    <select class="form-input-modern" name="faqs[${index}][status]">
-                                        <option value="1" ${status === '1' ? 'selected' : ''}>Active</option>
-                                        <option value="0" ${status === '0' ? 'selected' : ''}>Inactive</option>
-                                    </select>
-                                </div>
+                            <div class="mb-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="faqs[${index}][status]">
+                                    <option value="1" ${status === '1' ? 'selected' : ''}>Active</option>
+                                    <option value="0" ${status === '0' ? 'selected' : ''}>Inactive</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -298,44 +303,46 @@
             `;
         }
 
-        // Load existing FAQs from JSON
         function loadExistingFaqs() {
             const existingFaqs = @json($productFaq->faqs ?? []);
 
             if (existingFaqs && existingFaqs.length > 0) {
-                existingFaqs.forEach(function(faq) {
-                    $('#faqsContainer').append(getFaqRowTemplate(faqIndex, faq));
+                // Reverse the array to show latest first, then prepend each
+                const reversedFaqs = existingFaqs.slice().reverse();
+                reversedFaqs.forEach(function(faq) {
+                    $('#faqsContainer').prepend(getFaqRowTemplate(faqIndex, faq));
                     faqIndex++;
                 });
             } else {
-                // Add first empty FAQ if no existing FAQs
-                $('#faqsContainer').append(getFaqRowTemplate(faqIndex));
+                $('#faqsContainer').prepend(getFaqRowTemplate(faqIndex));
                 faqIndex++;
             }
+            // After loading, update numbers to reflect correct order
+            updateFaqNumbers();
             updateRemoveButtons();
         }
 
-        // Add FAQ button click
+        // Add FAQ button click - prepend instead of append to show latest first
         $('#addFaqBtn').on('click', function() {
-            $('#faqsContainer').append(getFaqRowTemplate(faqIndex));
-            faqIndex++;
+            const currentCount = $('#faqsContainer .faq-item').length;
+            const newFaqHtml = getFaqRowTemplate(currentCount);
+            // Prepend to show latest first
+            $('#faqsContainer').prepend(newFaqHtml);
+            faqIndex = currentCount + 1;
             updateRemoveButtons();
             updateFaqNumbers();
         });
 
-        // Remove FAQ button click (delegated)
         $(document).on('click', '.remove-faq-btn', function() {
             $(this).closest('.faq-item').remove();
             updateFaqNumbers();
             updateRemoveButtons();
         });
 
-        // Update FAQ numbers
         function updateFaqNumbers() {
             $('#faqsContainer .faq-item').each(function(index) {
                 $(this).find('.faq-number').text(index + 1);
                 $(this).attr('data-index', index);
-                // Update input names
                 $(this).find('input, textarea, select').each(function() {
                     const name = $(this).attr('name');
                     if (name) {
@@ -346,7 +353,6 @@
             });
         }
 
-        // Update remove buttons visibility
         function updateRemoveButtons() {
             const faqCount = $('#faqsContainer .faq-item').length;
             if (faqCount <= 1) {
@@ -356,21 +362,22 @@
             }
         }
 
-        // Form validation
         $('#faqForm').on('submit', function(e) {
             const faqCount = $('#faqsContainer .faq-item').length;
             if (faqCount === 0) {
                 e.preventDefault();
-                alert('Please add at least one FAQ.');
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Please add at least one FAQ.', 'error', 5000);
+                } else {
+                    alert('Please add at least one FAQ.');
+                }
                 return false;
             }
         });
 
-        // Initialize with existing FAQs
         loadExistingFaqs();
     }
 
-    // Start initialization
     initSelect2();
 })();
 </script>
@@ -385,7 +392,7 @@
     background-color: #e9ecef;
 }
 
-.faq-item .form-group-modern {
+.faq-item .mb-3 {
     margin-bottom: 1rem;
 }
 
@@ -395,4 +402,3 @@
 </style>
 @endpush
 @endsection
-

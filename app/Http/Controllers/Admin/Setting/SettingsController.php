@@ -73,12 +73,6 @@ class SettingsController extends Controller
             'private_key_1' => 'nullable|string|max:500',
             'private_key_2' => 'nullable|string|max:500',
             'private_key_3' => 'nullable|string|max:500',
-            'google_client_id' => 'nullable|string|max:255',
-            'google_client_secret' => 'nullable|string|max:255',
-            'google_login_enabled' => 'nullable|in:0,1',
-            'facebook_client_id' => 'nullable|string|max:255',
-            'facebook_client_secret' => 'nullable|string|max:255',
-            'facebook_login_enabled' => 'nullable|in:0,1',
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
@@ -185,7 +179,7 @@ class SettingsController extends Controller
         // Update footer settings
         $this->updateSetting('footer_tagline', $validated['footer_tagline'] ?? '');
         $this->updateSetting('working_hours', $validated['working_hours'] ?? '');
-        
+
         // Process copyright text - replace {YEAR} with current year
         $copyrightText = $validated['copyright_text'] ?? '';
         if (!empty($copyrightText)) {
@@ -202,17 +196,6 @@ class SettingsController extends Controller
         $this->updateSetting('private_key_1', $validated['private_key_1'] ?? '');
         $this->updateSetting('private_key_2', $validated['private_key_2'] ?? '');
         $this->updateSetting('private_key_3', $validated['private_key_3'] ?? '');
-
-        // Update Social Login Settings
-        $this->updateSetting('google_client_id', $validated['google_client_id'] ?? '');
-        $this->updateSetting('google_client_secret', $validated['google_client_secret'] ?? '');
-        $this->updateSetting('google_login_enabled', $validated['google_login_enabled'] ?? '0');
-        $this->updateSetting('facebook_client_id', $validated['facebook_client_id'] ?? '');
-        $this->updateSetting('facebook_client_secret', $validated['facebook_client_secret'] ?? '');
-        $this->updateSetting('facebook_login_enabled', $validated['facebook_login_enabled'] ?? '0');
-
-        // Update config/services.php if credentials are provided (optional - can be done via .env)
-        // For now, we'll just store in settings and read from there in SocialAuthController
 
         // Clear settings cache after update
         \Illuminate\Support\Facades\Cache::forget('admin_settings');

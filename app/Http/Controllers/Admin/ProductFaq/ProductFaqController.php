@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin\ProductFaq;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ProductFaq\StoreProductFaqRequest;
+use App\Http\Requests\Admin\ProductFaq\UpdateProductFaqRequest;
 use App\Models\ProductFaq;
 use App\Models\Product;
 use App\Models\Category;
@@ -13,7 +15,7 @@ use Illuminate\View\View;
 
 class ProductFaqController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $productId = $request->get('product_id');
@@ -23,11 +25,13 @@ class ProductFaqController extends Controller
 
         if ($search) {
             $query->where(function($q) use ($search) {
-                // Search in JSON FAQs array
-                $q->whereJsonContains('faqs', [['question' => ['$like' => "%{$search}%"]], ['answer' => ['$like' => "%{$search}%"]]])
-                  ->orWhereHas('product', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
+                // Search in product name
+                $q->whereHas('product', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })
+                // Search in JSON FAQs array - using JSON_SEARCH for MySQL
+                ->orWhereRaw("JSON_SEARCH(faqs, 'one', ?, NULL, '$[*].question') IS NOT NULL", ["%{$search}%"])
+                ->orWhereRaw("JSON_SEARCH(faqs, 'one', ?, NULL, '$[*].answer') IS NOT NULL", ["%{$search}%"]);
             });
         }
 
@@ -42,6 +46,17 @@ class ProductFaqController extends Controller
         $faqs = $query->orderBy('created_at', 'desc')->paginate(15);
         $products = Product::active()->orderBy('name')->get();
         $categories = Category::active()->ordered()->get();
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.product-faq.partials.table', compact('faqs'))->render(),
+                'pagination' => $faqs->total() > 0 && $faqs->hasPages()
+                    ? view('components.pagination', ['paginator' => $faqs])->render()
+                    : ''
+            ]);
+        }
 
         return view('admin.product-faq.index', compact('faqs', 'search', 'productId', 'categoryId', 'products', 'categories'));
     }
@@ -119,17 +134,9 @@ class ProductFaqController extends Controller
         return view('admin.product-faq.edit', compact('productFaq', 'categories'));
     }
 
-    public function update(Request $request, ProductFaq $productFaq): RedirectResponse
+    public function update(UpdateProductFaqRequest $request, ProductFaq $productFaq): RedirectResponse
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'faqs' => 'required|array|min:1',
-            'faqs.*.question' => 'required|string|max:500',
-            'faqs.*.answer' => 'required|string',
-            'faqs.*.sort_order' => 'nullable|integer|min:0',
-            'faqs.*.status' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Get category_id from product if not provided
         if (empty($validated['category_id'])) {

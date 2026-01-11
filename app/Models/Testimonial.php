@@ -36,7 +36,7 @@ class Testimonial extends Model
             if (empty($testimonial->uuid)) {
                 $testimonial->uuid = Str::uuid();
             }
-            
+
             if (is_null($testimonial->sort_order)) {
                 $maxOrder = static::max('sort_order') ?? 0;
                 $testimonial->sort_order = $maxOrder + 1;

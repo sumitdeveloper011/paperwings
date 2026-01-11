@@ -13,6 +13,7 @@ class Region extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'name',
         'slug',
         'status',
@@ -28,6 +29,9 @@ class Region extends Model
         parent::boot();
 
         static::creating(function ($region) {
+            if (empty($region->uuid)) {
+                $region->uuid = Str::uuid();
+            }
             if (empty($region->slug)) {
                 $region->slug = Str::slug($region->name);
             }
@@ -56,5 +60,11 @@ class Region extends Model
     public function shippingPrice(): HasOne
     {
         return $this->hasOne(ShippingPrice::class);
+    }
+
+    // Get route key name
+    public function getRouteKeyName()
+    {
+        return 'uuid';
     }
 }

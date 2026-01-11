@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Page;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Services\ImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,12 +75,16 @@ class PageController extends Controller
             'status' => 'nullable|boolean',
         ]);
 
-        // Handle image upload
+        // Generate UUID first (will be used for folder name)
+        $pageUuid = Str::uuid()->toString();
+        $validated['uuid'] = $pageUuid;
+
+        // Upload image with page UUID using ImageService
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('pages', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage($request->file('image'), 'pages', $pageUuid);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         // Generate slug if not provided
@@ -149,9 +154,9 @@ class PageController extends Controller
     // Remove the specified resource from storage
     public function destroy(Page $page): RedirectResponse
     {
-        // Delete image if exists
-        if ($page->image && Storage::disk('public')->exists($page->image)) {
-            Storage::disk('public')->delete($page->image);
+        // Delete image using ImageService
+        if ($page->image) {
+            $this->imageService->deleteImage($page->image);
         }
 
         $page->delete();

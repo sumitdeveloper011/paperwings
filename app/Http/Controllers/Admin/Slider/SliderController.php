@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Slider;
 use App\Http\Controllers\Controller;
 use App\Models\Slider;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -15,10 +16,12 @@ use Illuminate\Support\Str;
 class SliderController extends Controller
 {
     protected SliderRepositoryInterface $sliderRepository;
+    protected ImageService $imageService;
 
-    public function __construct(SliderRepositoryInterface $sliderRepository)
+    public function __construct(SliderRepositoryInterface $sliderRepository, ImageService $imageService)
     {
         $this->sliderRepository = $sliderRepository;
+        $this->imageService = $imageService;
     }
 
     // Display a listing of the resource
@@ -123,15 +126,17 @@ class SliderController extends Controller
         $button1Url = $request->input('button_1_url') ?: '';
         $button2Url = $request->input('button_2_url') ?: '';
 
+        // Update image using ImageService
         if ($request->hasFile('image')) {
-            if ($slider->image && Storage::disk('public')->exists($slider->image)) {
-                Storage::disk('public')->delete($slider->image);
+            $imagePath = $this->imageService->updateImage(
+                $request->file('image'),
+                'sliders',
+                $slider->uuid,
+                $slider->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('sliders', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         // Handle buttons - use final URL values from smart link selector
@@ -161,8 +166,9 @@ class SliderController extends Controller
     // Remove the specified resource from storage
     public function destroy(Slider $slider): RedirectResponse
     {
-        if ($slider->image && Storage::disk('public')->exists($slider->image)) {
-            Storage::disk('public')->delete($slider->image);
+        // Delete image using ImageService
+        if ($slider->image) {
+            $this->imageService->deleteImage($slider->image);
         }
 
         $this->sliderRepository->delete($slider);

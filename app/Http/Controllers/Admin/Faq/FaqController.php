@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Http\Requests\Admin\Faq\StoreFaqRequest;
 use App\Http\Requests\Admin\Faq\UpdateFaqRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FaqController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $category = $request->get('category');
@@ -38,6 +39,25 @@ class FaqController extends Controller
             ->distinct()
             ->pluck('category')
             ->toArray();
+
+        // If AJAX request, return JSON response
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            // Only show pagination if there are FAQs and multiple pages
+            if ($faqs->total() > 0 && $faqs->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $faqs
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.faq.partials.table', compact('faqs'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         return view('admin.faq.index', compact('faqs', 'search', 'category', 'categories'));
     }
@@ -85,15 +105,27 @@ class FaqController extends Controller
             ->with('success', 'FAQ deleted successfully!');
     }
 
-    public function updateStatus(Request $request, Faq $faq): RedirectResponse
+    public function updateStatus(Request $request, Faq $faq): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:1,0'
+            'status' => 'required|in:0,1'
         ]);
 
-        $faq->update(['status' => $validated['status']]);
+        // Cast status to integer
+        $status = (int) $validated['status'];
+        $faq->update(['status' => $status]);
+
+        $statusText = $status == 1 ? 'activated' : 'deactivated';
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "FAQ {$statusText} successfully!"
+            ]);
+        }
 
         return redirect()->back()
-            ->with('success', 'FAQ status updated successfully!');
+            ->with('success', "FAQ {$statusText} successfully!");
     }
 }

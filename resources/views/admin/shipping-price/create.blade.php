@@ -47,82 +47,68 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        
-                        <div class="form-group-modern">
-                            <label for="region_id" class="form-label-modern">
-                                Region <span class="required">*</span>
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-map-marker-alt input-icon"></i>
-                                <select class="form-input-modern @error('region_id') is-invalid @enderror" 
-                                        id="region_id" 
-                                        name="region_id" 
-                                        required>
-                                    <option value="">Select Region</option>
-                                    @foreach($regions as $region)
-                                        <option value="{{ $region->id }}" {{ old('region_id', $selectedRegionId ?? null) == $region->id ? 'selected' : '' }}>
-                                            {{ $region->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+
+                        <div class="mb-3">
+                            <label for="region_id" class="form-label">Region <span class="text-danger">*</span></label>
+                            <select class="form-select @error('region_id') is-invalid @enderror"
+                                    id="region_id"
+                                    name="region_id"
+                                    required>
+                                <option value="">Select Region</option>
+                                @foreach($regions as $region)
+                                    <option value="{{ $region->id }}" {{ old('region_id', $selectedRegionId ?? null) == $region->id ? 'selected' : '' }}>
+                                        {{ $region->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Select the region for which you want to set shipping prices.
+                            </small>
                             @error('region_id')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="form-group-modern">
-                            <label for="shipping_price" class="form-label-modern">
-                                Shipping Price ($) <span class="required">*</span>
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-dollar-sign input-icon"></i>
-                                <input type="number" 
-                                       step="0.01"
-                                       min="0"
-                                       max="999999.99"
-                                       class="form-input-modern @error('shipping_price') is-invalid @enderror" 
-                                       id="shipping_price" 
-                                       name="shipping_price" 
-                                       value="{{ old('shipping_price') }}" 
-                                       placeholder="0.00"
-                                       required>
-                            </div>
+                        <div class="mb-3">
+                            <label for="shipping_price" class="form-label">Shipping Price ($) <span class="text-danger">*</span></label>
+                            <input type="number"
+                                   step="0.01"
+                                   min="0"
+                                   max="999999.99"
+                                   class="form-control @error('shipping_price') is-invalid @enderror"
+                                   id="shipping_price"
+                                   name="shipping_price"
+                                   value="{{ old('shipping_price') }}"
+                                   placeholder="0.00"
+                                   required>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Enter the base shipping cost for orders shipped to this region.
+                            </small>
                             @error('shipping_price')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="form-text">Enter the shipping price for this region</small>
                         </div>
 
-                        <div class="form-group-modern">
-                            <label for="free_shipping_minimum" class="form-label-modern">
-                                Free Shipping Minimum ($)
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-gift input-icon"></i>
-                                <input type="number" 
-                                       step="0.01"
-                                       min="0"
-                                       max="999999.99"
-                                       class="form-input-modern @error('free_shipping_minimum') is-invalid @enderror" 
-                                       id="free_shipping_minimum" 
-                                       name="free_shipping_minimum" 
-                                       value="{{ old('free_shipping_minimum') }}" 
-                                       placeholder="0.00">
-                            </div>
+                        <div class="mb-3">
+                            <label for="free_shipping_minimum" class="form-label">Free Shipping Minimum ($)</label>
+                            <input type="number"
+                                   step="0.01"
+                                   min="0"
+                                   max="999999.99"
+                                   class="form-control @error('free_shipping_minimum') is-invalid @enderror"
+                                   id="free_shipping_minimum"
+                                   name="free_shipping_minimum"
+                                   value="{{ old('free_shipping_minimum') }}"
+                                   placeholder="0.00">
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Minimum order amount for free shipping. Leave empty if not applicable.
+                            </small>
                             @error('free_shipping_minimum')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="form-text">Minimum order amount for free shipping (leave empty if not applicable)</small>
                         </div>
 
                     </div>
@@ -131,7 +117,9 @@
 
             <!-- Sidebar -->
             <div class="col-lg-4">
-                <div class="modern-card">
+                @include('admin.shipping-price.partials.tips')
+
+                <div class="modern-card mb-4">
                     <div class="modern-card__header">
                         <h3 class="modern-card__title">
                             <i class="fas fa-cog"></i>
@@ -139,19 +127,22 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        <div class="form-group-modern">
-                            <div class="checkbox-modern">
-                                <input type="checkbox" 
-                                       id="status" 
-                                       name="status" 
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="status"
+                                       name="status"
                                        value="1"
                                        {{ old('status', 1) ? 'checked' : '' }}>
-                                <label for="status" class="checkbox-modern__label">
-                                    <span class="checkbox-modern__check"></span>
-                                    <span class="checkbox-modern__text">Active</span>
+                                <label class="form-check-label" for="status">
+                                    Active
                                 </label>
                             </div>
-                            <small class="form-text">Enable or disable this shipping price</small>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Enable or disable this shipping price for the selected region.
+                            </small>
                         </div>
                     </div>
                 </div>

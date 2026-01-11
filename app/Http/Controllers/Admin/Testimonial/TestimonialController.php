@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Testimonial;
 use App\Http\Requests\Admin\Testimonial\StoreTestimonialRequest;
 use App\Http\Requests\Admin\Testimonial\UpdateTestimonialRequest;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,12 @@ use Illuminate\View\View;
 
 class TestimonialController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
@@ -64,12 +71,16 @@ class TestimonialController extends Controller
     {
         $validated = $request->validated();
 
-        // Handle image upload
+        // Generate UUID first (will be used for folder name)
+        $testimonialUuid = Str::uuid()->toString();
+        $validated['uuid'] = $testimonialUuid;
+
+        // Upload image with testimonial UUID using ImageService
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('testimonials', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage($request->file('image'), 'testimonials', $testimonialUuid);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         Testimonial::create($validated);
@@ -94,24 +105,24 @@ class TestimonialController extends Controller
 
         // Handle image removal
         if ($request->has('remove_image') && $request->remove_image == '1') {
-            // Delete old image
-            if ($testimonial->image && Storage::disk('public')->exists($testimonial->image)) {
-                Storage::disk('public')->delete($testimonial->image);
+            // Delete old image using ImageService
+            if ($testimonial->image) {
+                $this->imageService->deleteImage($testimonial->image);
             }
             $validated['image'] = null;
         }
 
-        // Handle image upload
+        // Update image using ImageService
         if ($request->hasFile('image')) {
-            // Delete old image
-            if ($testimonial->image && Storage::disk('public')->exists($testimonial->image)) {
-                Storage::disk('public')->delete($testimonial->image);
+            $imagePath = $this->imageService->updateImage(
+                $request->file('image'),
+                'testimonials',
+                $testimonial->uuid,
+                $testimonial->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('testimonials', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         $testimonial->update($validated);
@@ -122,9 +133,9 @@ class TestimonialController extends Controller
 
     public function destroy(Testimonial $testimonial): RedirectResponse
     {
-        // Delete image if exists
-        if ($testimonial->image && Storage::disk('public')->exists($testimonial->image)) {
-            Storage::disk('public')->delete($testimonial->image);
+        // Delete image using ImageService
+        if ($testimonial->image) {
+            $this->imageService->deleteImage($testimonial->image);
         }
 
         $testimonial->delete();

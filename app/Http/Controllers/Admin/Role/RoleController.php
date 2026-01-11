@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -14,16 +15,34 @@ use Illuminate\Support\Str;
 class RoleController extends Controller
 {
     // Display a listing of roles
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
         $query = Role::query();
 
-        if ($search) {
+        if ($search !== '') {
             $query->where('name', 'like', "%{$search}%");
         }
 
         $roles = $query->withCount('permissions', 'users')->orderBy('name')->paginate(15);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($roles->total() > 0 && $roles->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $roles
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.role.partials.table', compact('roles'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         return view('admin.role.index', compact('roles', 'search'));
     }

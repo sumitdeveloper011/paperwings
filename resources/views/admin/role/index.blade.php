@@ -150,5 +150,27 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.roles.index') }}',
+            debounceDelay: 300
+        });
+    }
+});
+</script>
+@endpush
 @endsection
 

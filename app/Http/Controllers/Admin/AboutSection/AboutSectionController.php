@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\AboutSection;
 
 use App\Http\Controllers\Controller;
 use App\Models\AboutSection;
+use App\Services\ImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,12 @@ use Illuminate\View\View;
 
 class AboutSectionController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     /**
      * Show the form for editing the About Section.
      * Auto-creates a single record if it doesn't exist.
@@ -78,17 +85,17 @@ class AboutSectionController extends Controller
             $validated['button_link'] = $buttonLink;
         }
 
-        // Handle image upload
+        // Update image using ImageService
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($aboutSection->image && Storage::disk('public')->exists($aboutSection->image)) {
-                Storage::disk('public')->delete($aboutSection->image);
+            $imagePath = $this->imageService->updateImage(
+                $request->file('image'),
+                'about-sections',
+                $aboutSection->uuid,
+                $aboutSection->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('about-sections', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         $aboutSection->update($validated);

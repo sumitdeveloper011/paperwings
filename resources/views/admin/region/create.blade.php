@@ -35,49 +35,40 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        
-                        <div class="form-group-modern">
-                            <label for="name" class="form-label-modern">
-                                Region Name <span class="required">*</span>
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-map-marker-alt input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('name') is-invalid @enderror" 
-                                       id="name" 
-                                       name="name" 
-                                       value="{{ old('name') }}" 
-                                       placeholder="e.g., New York"
-                                       required>
-                            </div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Region Name <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control @error('name') is-invalid @enderror"
+                                   id="name"
+                                   name="name"
+                                   value="{{ old('name') }}"
+                                   placeholder="e.g., New York"
+                                   required>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Enter a clear, descriptive region name.
+                            </small>
                             @error('name')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="form-group-modern">
-                            <label for="slug" class="form-label-modern">
-                                Slug
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-link input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('slug') is-invalid @enderror" 
-                                       id="slug" 
-                                       name="slug" 
-                                       value="{{ old('slug') }}" 
-                                       placeholder="e.g., new-york">
-                            </div>
+                        <div class="mb-3">
+                            <label for="slug" class="form-label">Slug</label>
+                            <input type="text"
+                                   class="form-control @error('slug') is-invalid @enderror"
+                                   id="slug"
+                                   name="slug"
+                                   value="{{ old('slug') }}"
+                                   placeholder="e.g., new-york">
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Leave empty to auto-generate from name. Slug is URL-friendly.
+                            </small>
                             @error('slug')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="form-text">Leave empty to auto-generate from name</small>
                         </div>
 
                     </div>
@@ -86,7 +77,9 @@
 
             <!-- Sidebar -->
             <div class="col-lg-4">
-                <div class="modern-card">
+                @include('admin.region.partials.tips')
+
+                <div class="modern-card mb-4">
                     <div class="modern-card__header">
                         <h3 class="modern-card__title">
                             <i class="fas fa-cog"></i>
@@ -94,19 +87,22 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        <div class="form-group-modern">
-                            <div class="checkbox-modern">
-                                <input type="checkbox" 
-                                       id="status" 
-                                       name="status" 
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="status"
+                                       name="status"
                                        value="1"
                                        {{ old('status', 1) ? 'checked' : '' }}>
-                                <label for="status" class="checkbox-modern__label">
-                                    <span class="checkbox-modern__check"></span>
-                                    <span class="checkbox-modern__text">Active</span>
+                                <label class="form-check-label" for="status">
+                                    Active
                                 </label>
                             </div>
-                            <small class="form-text">Enable or disable this region</small>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Enable or disable this region for shipping calculations.
+                            </small>
                         </div>
                     </div>
                 </div>

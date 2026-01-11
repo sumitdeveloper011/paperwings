@@ -45,7 +45,7 @@ class ActivityLogController extends Controller
         // Get all admin users for filter
         $adminUsers = User::whereHas('roles', function($q) {
             $q->whereIn('name', ['SuperAdmin', 'Admin', 'Manager', 'Editor']);
-        })->orderBy('name')->get();
+        })->orderBy('first_name')->orderBy('last_name')->get();
 
         // Get unique action types
         $actionTypes = Activity::distinct()->pluck('description')->sort()->values();

@@ -26,21 +26,11 @@ class ApiSettingsController extends Controller
             'eposnow_api_key' => 'nullable|string|max:500',
             'eposnow_api_secret' => 'nullable|string|max:500',
             'eposnow_api_base' => 'nullable|string|max:500',
-            
+
             // Stripe Keys
             'stripe_key' => 'nullable|string|max:500',
             'stripe_secret' => 'nullable|string|max:500',
             'stripe_webhook_secret' => 'nullable|string|max:500',
-            
-            // Google OAuth
-            'google_client_id' => 'nullable|string|max:255',
-            'google_client_secret' => 'nullable|string|max:255',
-            'google_login_enabled' => 'nullable|in:0,1',
-            
-            // Facebook OAuth
-            'facebook_client_id' => 'nullable|string|max:255',
-            'facebook_client_secret' => 'nullable|string|max:255',
-            'facebook_login_enabled' => 'nullable|in:0,1',
         ]);
 
         // Update EPOSNOW Keys

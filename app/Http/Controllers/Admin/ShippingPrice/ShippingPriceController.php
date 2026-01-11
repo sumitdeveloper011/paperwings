@@ -9,20 +9,21 @@ use App\Models\ShippingPrice;
 use App\Models\Region;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ShippingPriceController extends Controller
 {
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
         $status = $request->get('status');
 
         $query = ShippingPrice::with('region');
 
-        if ($search) {
+        if ($search !== '') {
             $query->whereHas('region', function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
             });
@@ -33,6 +34,24 @@ class ShippingPriceController extends Controller
         }
 
         $shippingPrices = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($shippingPrices->total() > 0 && $shippingPrices->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $shippingPrices
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.shipping-price.partials.table', compact('shippingPrices'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         return view('admin.shipping-price.index', compact('shippingPrices', 'search', 'status'));
     }
@@ -49,7 +68,7 @@ class ShippingPriceController extends Controller
     public function store(StoreShippingPriceRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        
+
         $validated['uuid'] = Str::uuid();
         $validated['status'] = $request->has('status') ? 1 : 0;
 
@@ -77,7 +96,7 @@ class ShippingPriceController extends Controller
     public function update(UpdateShippingPriceRequest $request, ShippingPrice $shippingPrice): RedirectResponse
     {
         $validated = $request->validated();
-        
+
         $validated['status'] = $request->has('status') ? 1 : 0;
 
         $shippingPrice->update($validated);
@@ -96,15 +115,25 @@ class ShippingPriceController extends Controller
     }
 
     // Update shipping price status
-    public function updateStatus(Request $request, ShippingPrice $shippingPrice): RedirectResponse
+    public function updateStatus(Request $request, ShippingPrice $shippingPrice): RedirectResponse|JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:0,1',
         ]);
 
-        $shippingPrice->update(['status' => $request->status]);
+        // Cast status to integer
+        $status = (int) $validated['status'];
+        $shippingPrice->update(['status' => $status]);
 
-        $statusText = $request->status == 1 ? 'activated' : 'deactivated';
+        $statusText = $status == 1 ? 'activated' : 'deactivated';
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Shipping price {$statusText} successfully!"
+            ]);
+        }
 
         return redirect()->route('admin.shipping-prices.index')
             ->with('success', "Shipping price {$statusText} successfully!");

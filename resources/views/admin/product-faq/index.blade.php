@@ -21,13 +21,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            {{ session('success') }}
-        </div>
-    @endif
-
     <!-- Main Content Card -->
     <div class="modern-card">
         <div class="modern-card__header">
@@ -39,116 +32,198 @@
                 <p class="modern-card__subtitle">{{ $faqs->total() }} total FAQs</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="filter-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search FAQs..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.product-faqs.index') }}" class="search-form__clear">
+                        @if(count($categories) > 0)
+                        <div style="margin-right: 10px;">
+                            @include('components.select-category', [
+                                'id' => 'category_id',
+                                'name' => 'category_id',
+                                'label' => '',
+                                'required' => false,
+                                'selected' => $categoryId,
+                                'categories' => $categories,
+                                'useUuid' => false,
+                                'placeholder' => 'All Categories',
+                                'class' => 'form-control form-control-sm',
+                                'useSelect2' => true,
+                                'showLabel' => false,
+                                'wrapperClass' => '',
+                                'select2Width' => '150px',
+                            ])
+                        </div>
+                        @endif
+                        @if(count($products) > 0)
+                        <div style="margin-right: 10px;">
+                            <select name="product_id" id="product_id" class="form-control form-control-sm select2-product" style="width: 200px;">
+                                <option value="">All Products</option>
+                                @foreach($products as $product)
+                                    <option value="{{ $product->id }}" {{ isset($productId) && $productId == $product->id ? 'selected' : '' }}>
+                                        {{ \Illuminate\Support\Str::limit($product->name, 40) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search FAQs..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
-                    @if(isset($categories))
-                        <select name="category_id" class="filter-select" onchange="this.form.submit()">
-                            <option value="">All Categories</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ isset($categoryId) && $categoryId == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @endif
-                    @if(isset($products))
-                        <select name="product_id" class="filter-select" onchange="this.form.submit()">
-                            <option value="">All Products</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}" {{ isset($productId) && $productId == $product->id ? 'selected' : '' }}>
-                                    {{ $product->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @endif
-                    <button type="submit" class="btn btn-primary">Filter</button>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($faqs->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">Product</th>
-                                <th class="modern-table__th">Category</th>
-                                <th class="modern-table__th">FAQs Count</th>
-                                <th class="modern-table__th">Created</th>
-                                <th class="modern-table__th modern-table__th--actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($faqs as $faq)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <strong>{{ $faq->product->name ?? 'N/A' }}</strong>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        {{ $faq->category->name ?? 'N/A' }}
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <span class="badge bg-primary">{{ count($faq->faqs ?? []) }} FAQ(s)</span>
-                                    </td>
-                                    <td class="modern-table__td">{{ $faq->created_at->format('M d, Y') }}</td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('admin.product-faqs.show', $faq) }}"
-                                               class="action-btn action-btn--view" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('admin.product-faqs.edit', $faq) }}"
-                                               class="action-btn action-btn--edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form method="POST"
-                                                  action="{{ route('admin.product-faqs.destroy', $faq) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this FAQ?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div id="results-container">
+                @include('admin.product-faq.partials.table', ['faqs' => $faqs])
+            </div>
 
-                @if($faqs->hasPages())
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                @if($faqs->total() > 0 && $faqs->hasPages())
                     <div class="pagination-wrapper">
                         {{ $faqs->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-question-circle"></i>
-                    </div>
-                    <h3 class="empty-state__title">No FAQs Found</h3>
-                    <p class="empty-state__text">Start by creating your first product FAQ</p>
-                    <a href="{{ route('admin.product-faqs.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add FAQ
-                    </a>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
-@endsection
 
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+@endpush
+
+@push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for product dropdown
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+        $('#product_id').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'All Products',
+            allowClear: true,
+            width: '200px'
+        });
+    } else {
+        setTimeout(function() {
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                $('#product_id').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'All Products',
+                    allowClear: true,
+                    width: '200px'
+                });
+            }
+        }, 500);
+    }
+
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.product-faqs.index') }}',
+            debounceDelay: 300
+        });
+    }
+
+    // Handle category filter change with AJAX
+    const categoryFilter = document.getElementById('category_id');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            const form = document.getElementById('search-form');
+            const formData = new FormData(form);
+            formData.append('ajax', '1');
+
+            const searchLoading = document.getElementById('search-loading');
+            const resultsContainer = document.getElementById('results-container');
+            const paginationContainer = document.getElementById('pagination-container');
+
+            if (searchLoading) searchLoading.style.display = 'flex';
+
+            fetch('{{ route('admin.product-faqs.index') }}?' + new URLSearchParams(formData), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                if (data.success && data.html) {
+                    resultsContainer.innerHTML = data.html;
+                    paginationContainer.innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                console.error('Error:', error);
+            });
+        });
+    }
+
+    // Handle product filter change with AJAX (using jQuery for Select2)
+    if (typeof jQuery !== 'undefined') {
+        $(document).on('change', '#product_id', function() {
+            const form = document.getElementById('search-form');
+            const formData = new FormData(form);
+            formData.append('ajax', '1');
+
+            const searchLoading = document.getElementById('search-loading');
+            const resultsContainer = document.getElementById('results-container');
+            const paginationContainer = document.getElementById('pagination-container');
+
+            if (searchLoading) searchLoading.style.display = 'flex';
+
+            fetch('{{ route('admin.product-faqs.index') }}?' + new URLSearchParams(formData), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                if (data.success && data.html) {
+                    resultsContainer.innerHTML = data.html;
+                    paginationContainer.innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                if (searchLoading) searchLoading.style.display = 'none';
+                console.error('Error:', error);
+            });
+        });
+    }
+});
+</script>
+@endpush
+@endsection

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\AdminUser;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +20,7 @@ class AdminUserController extends Controller
     // Display a listing of admin users (SuperAdmin, Admin, Manager, Editor)
     public function index(Request $request): View|JsonResponse
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
         $status = $request->get('status');
         $roleFilter = $request->get('role');
 
@@ -36,17 +37,17 @@ class AdminUserController extends Controller
             });
         }
 
-        if ($search) {
+        if ($search !== '') {
             $searchTerm = trim($search);
             $query->where(function($q) use ($searchTerm) {
-                $q->where('first_name', 'like', "{$searchTerm}%")
-                  ->orWhere('last_name', 'like', "{$searchTerm}%")
-                  ->orWhere('email', 'like', "{$searchTerm}%")
+                $q->where('first_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%")
                   ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$searchTerm}%"]);
             });
         }
 
-        if ($status !== null) {
+        if ($status !== null && $status !== '') {
             $query->where('status', $status);
         }
 
@@ -58,10 +59,20 @@ class AdminUserController extends Controller
             ->get();
 
         // Return JSON for AJAX requests
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($users->total() > 0 && $users->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $users
+                    ])->render() .
+                    '</div>';
+            }
+
             return response()->json([
+                'success' => true,
                 'html' => view('admin.admin-user.partials.table', compact('users'))->render(),
-                'pagination' => view('admin.admin-user.partials.pagination', compact('users'))->render()
+                'pagination' => $paginationHtml
             ]);
         }
 
@@ -95,13 +106,18 @@ class AdminUserController extends Controller
                     ->symbols()
             ],
             'phone' => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'required|in:0,1',
             'roles' => 'required|array|min:1',
             'roles.*' => 'exists:roles,id',
         ]);
 
         try {
-            $user = User::create([
+            // Generate UUID first (will be used for folder name)
+            $userUuid = \Illuminate\Support\Str::uuid()->toString();
+
+            $userData = [
+                'uuid' => $userUuid,
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
@@ -109,7 +125,17 @@ class AdminUserController extends Controller
                 'phone' => $validated['phone'] ?? null,
                 'status' => $validated['status'],
                 'email_verified_at' => now(),
-            ]);
+            ];
+
+            // Upload avatar using ImageService
+            if ($request->hasFile('avatar')) {
+                $avatarPath = (new ImageService())->uploadImage($request->file('avatar'), 'users', $userUuid);
+                if ($avatarPath) {
+                    $userData['avatar'] = $avatarPath;
+                }
+            }
+
+            $user = User::create($userData);
 
             // Assign roles
             if (!empty($validated['roles'])) {
@@ -310,7 +336,7 @@ class AdminUserController extends Controller
     }
 
     // Update admin user status
-    public function updateStatus(Request $request, User $user): RedirectResponse
+    public function updateStatus(Request $request, User $user): RedirectResponse|JsonResponse
     {
         // Ensure user is an admin user
         if (!$user->hasAnyRole(['SuperAdmin', 'Admin', 'Manager', 'Editor'])) {
@@ -319,16 +345,25 @@ class AdminUserController extends Controller
 
         // Prevent updating SuperAdmin status
         if ($user->hasRole('SuperAdmin')) {
+            $message = 'Cannot update SuperAdmin user status.';
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
+                ], 403);
+            }
             return redirect()->route('admin.admin-users.index')
-                ->with('error', 'Cannot update SuperAdmin user status.');
+                ->with('error', $message);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:0,1'
         ]);
 
+        // Cast status to integer
+        $status = (int) $validated['status'];
         $oldStatus = $user->status;
-        $user->update(['status' => $request->status]);
+        $user->update(['status' => $status]);
 
         // Log activity
         activity()
@@ -336,18 +371,29 @@ class AdminUserController extends Controller
             ->performedOn($user)
             ->withProperties([
                 'old_status' => $oldStatus,
-                'new_status' => $request->status,
+                'new_status' => $status,
             ])
             ->log('updated admin user status');
 
         Log::info('Admin user status updated', [
             'user_id' => $user->id,
-            'status' => $request->status,
+            'status' => $status,
             'updated_by' => Auth::id()
         ]);
 
+        $statusText = $status == 1 ? 'activated' : 'deactivated';
+        $message = "Admin user {$statusText} successfully.";
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+        }
+
         return redirect()->route('admin.admin-users.index')
-            ->with('success', 'Admin user status updated successfully.');
+            ->with('success', $message);
     }
 
     // Delete admin user

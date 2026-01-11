@@ -31,128 +31,183 @@
                 <p class="modern-card__subtitle">{{ $reviews->total() }} total reviews</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="filter-form">
+                <form method="GET" class="filter-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search reviews..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.reviews.index') }}" class="search-form__clear">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search reviews..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
-                    <select name="status" class="filter-select">
+                    <select name="status" id="status-filter" class="filter-select">
                         <option value="">All Status</option>
                         <option value="0" {{ $status === '0' ? 'selected' : '' }}>Pending</option>
                         <option value="1" {{ $status === '1' ? 'selected' : '' }}>Approved</option>
                         <option value="2" {{ $status === '2' ? 'selected' : '' }}>Rejected</option>
                     </select>
-                    <button type="submit" class="btn btn-primary">Filter</button>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($reviews->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">Product</th>
-                                <th class="modern-table__th">Reviewer</th>
-                                <th class="modern-table__th">Rating</th>
-                                <th class="modern-table__th">Review</th>
-                                <th class="modern-table__th">Status</th>
-                                <th class="modern-table__th">Date</th>
-                                <th class="modern-table__th modern-table__th--actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($reviews as $review)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <strong>{{ $review->product->name ?? 'N/A' }}</strong>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div>
-                                            <strong>{{ $review->reviewer_name ?? $review->name }}</strong>
-                                            @if($review->verified_purchase)
-                                                <span class="badge bg-success ms-1" title="Verified Purchase">
-                                                    <i class="fas fa-check-circle"></i>
-                                                </span>
-                                            @endif
-                                        </div>
-                                        @if($review->email)
-                                            <small class="text-muted">{{ $review->email }}</small>
-                                        @endif
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="rating-display">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                <i class="fas fa-star {{ $i <= $review->rating ? 'text-warning' : 'text-muted' }}"></i>
-                                            @endfor
-                                            <span class="ms-1">({{ $review->rating }}/5)</span>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="text-truncate" style="max-width: 300px;" title="{{ $review->review }}">
-                                            {{ Str::limit($review->review, 60) }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.reviews.updateStatus', $review) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="0" {{ $review->status == 0 ? 'selected' : '' }}>Pending</option>
-                                                <option value="1" {{ $review->status == 1 ? 'selected' : '' }}>Approved</option>
-                                                <option value="2" {{ $review->status == 2 ? 'selected' : '' }}>Rejected</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        {{ $review->created_at->format('M d, Y') }}
-                                    </td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('admin.reviews.show', $review) }}"
-                                               class="action-btn action-btn--view" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <form method="POST"
-                                                  action="{{ route('admin.reviews.destroy', $review) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this review?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div id="results-container">
+                @include('admin.review.partials.table', ['reviews' => $reviews])
+            </div>
 
-                @if($reviews->hasPages())
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                @if($reviews->total() > 0 && $reviews->hasPages())
                     <div class="pagination-wrapper">
                         {{ $reviews->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Reviews Found</h3>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.reviews.index') }}',
+            debounceDelay: 300,
+            additionalParams: function() {
+                return {
+                    status: document.getElementById('status-filter').value
+                };
+            }
+        });
+    }
+
+    // AJAX status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            if (typeof AdminSearch !== 'undefined' && AdminSearch.currentRequest) {
+                AdminSearch.currentRequest.abort();
+            }
+            
+            const searchValue = document.getElementById('search-input').value;
+            const statusValue = this.value;
+            
+            const url = new URL('{{ route('admin.reviews.index') }}');
+            if (searchValue) url.searchParams.append('search', searchValue);
+            if (statusValue) url.searchParams.append('status', statusValue);
+            url.searchParams.append('ajax', '1');
+            
+            document.getElementById('search-loading').style.display = 'flex';
+            
+            fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('results-container').innerHTML = data.html;
+                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                document.getElementById('search-loading').style.display = 'none';
+            });
+        });
+    }
+
+    // AJAX status update
+    $(document).on('change', '.ajax-status-form .status-select', function() {
+        const form = $(this).closest('form');
+        const formData = new FormData(form[0]);
+        const uuid = form.data('review-uuid');
+        
+        fetch(form.attr('action'), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('success', data.message);
+                } else {
+                    alert(data.message);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof window.showToast === 'function') {
+                window.showToast('error', 'Failed to update status');
+            } else {
+                alert('Failed to update status');
+            }
+        });
+    });
+});
+</script>
+@endpush
+
+<style>
+.filter-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    min-width: 150px;
+    height: 38px;
+}
+
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .filter-form .search-form__wrapper,
+    .filter-form .filter-select {
+        width: 100%;
+    }
+}
+</style>
 @endsection

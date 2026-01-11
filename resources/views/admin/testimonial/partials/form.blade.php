@@ -127,8 +127,8 @@
                 <label class="form-label">Current Image</label>
                 <div class="image-preview-wrapper">
                     <div class="image-preview" id="currentImagePreview">
-                        <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}" 
-                             alt="{{ $testimonial->name }}" 
+                        <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}"
+                             alt="{{ $testimonial->name }}"
                              class="image-preview__img"
                              onerror="this.src='{{ asset('assets/images/profile.png') }}'">
                         @if($testimonial->image)

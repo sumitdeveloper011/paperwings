@@ -34,16 +34,23 @@
             <div class="modern-card__header-actions">
                 <form method="GET" class="filter-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" id="search-input" class="search-form__input"
-                               placeholder="Search admin users..." value="{{ $search }}" autocomplete="off">
-                        @if($search)
-                            <a href="{{ route('admin.admin-users.index') }}" class="search-form__clear" id="clear-search">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search admin users..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
-                        <div id="search-loading" class="search-loading" style="display: none;">
-                            <i class="fas fa-spinner fa-spin"></i>
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
                         </div>
                     </div>
                     <select name="role" id="role-filter" class="filter-select">
@@ -194,108 +201,155 @@
 }
 </style>
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
 <script>
-(function() {
-    const searchInput = document.getElementById('search-input');
-    const searchForm = document.getElementById('search-form');
-    const statusSelect = document.getElementById('status-filter');
-    const roleSelect = document.getElementById('role-filter');
-    const tableContainer = document.getElementById('users-table-container');
-    const paginationContainer = document.getElementById('users-pagination-container');
-    const searchLoading = document.getElementById('search-loading');
-    const clearSearch = document.getElementById('clear-search');
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.admin-users.index') }}',
+            debounceDelay: 300,
+            additionalParams: function() {
+                return {
+                    role: document.getElementById('role-filter').value,
+                    status: document.getElementById('status-filter').value
+                };
+            }
+        });
+    }
 
-    if (!searchInput || !tableContainer) return;
+    // AJAX role filter
+    const roleFilter = document.getElementById('role-filter');
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            if (typeof AdminSearch !== 'undefined' && AdminSearch.currentRequest) {
+                AdminSearch.currentRequest.abort();
+            }
+            const searchValue = document.getElementById('search-input').value;
+            const roleValue = this.value;
+            const statusValue = document.getElementById('status-filter').value;
 
-    let searchTimeout;
-    let isSearching = false;
+            const url = new URL('{{ route('admin.admin-users.index') }}');
+            if (searchValue) url.searchParams.append('search', searchValue);
+            if (roleValue) url.searchParams.append('role', roleValue);
+            if (statusValue) url.searchParams.append('status', statusValue);
+            url.searchParams.append('ajax', '1');
 
-    // Debounced search function
-    function performSearch() {
-        if (isSearching) return;
+            document.getElementById('search-loading').style.display = 'flex';
 
-        const searchTerm = searchInput.value.trim();
-        const status = statusSelect ? statusSelect.value : '';
-        const role = roleSelect ? roleSelect.value : '';
+            fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('results-container').innerHTML = data.html;
+                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                document.getElementById('search-loading').style.display = 'none';
+            });
+        });
+    }
 
-        // Show loading indicator
-        if (searchLoading) searchLoading.style.display = 'block';
-        isSearching = true;
+    // AJAX status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            if (typeof AdminSearch !== 'undefined' && AdminSearch.currentRequest) {
+                AdminSearch.currentRequest.abort();
+            }
+            const searchValue = document.getElementById('search-input').value;
+            const statusValue = this.value;
+            const roleValue = document.getElementById('role-filter').value;
 
-        // Build URL with current parameters
-        const url = new URL('{{ route("admin.admin-users.index") }}', window.location.origin);
-        if (searchTerm) url.searchParams.set('search', searchTerm);
-        if (status) url.searchParams.set('status', status);
-        if (role) url.searchParams.set('role', role);
-        url.searchParams.set('ajax', '1');
+            const url = new URL('{{ route('admin.admin-users.index') }}');
+            if (searchValue) url.searchParams.append('search', searchValue);
+            if (roleValue) url.searchParams.append('role', roleValue);
+            if (statusValue) url.searchParams.append('status', statusValue);
+            url.searchParams.append('ajax', '1');
 
-        fetch(url, {
-            method: 'GET',
+            document.getElementById('search-loading').style.display = 'flex';
+
+            fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('results-container').innerHTML = data.html;
+                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                document.getElementById('search-loading').style.display = 'none';
+            });
+        });
+    }
+
+    // AJAX status update
+    $(document).on('change', '.ajax-status-form .status-select', function() {
+        const form = $(this).closest('form');
+        const formData = new FormData(form[0]);
+        const uuid = form.data('user-uuid');
+
+        fetch(form.attr('action'), {
+            method: 'POST',
+            body: formData,
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
+                'Accept': 'application/json'
             }
         })
         .then(response => response.json())
         .then(data => {
-            tableContainer.innerHTML = data.html;
-            paginationContainer.innerHTML = data.pagination;
-            if (searchLoading) searchLoading.style.display = 'none';
-            isSearching = false;
-
-            // Update URL without page reload
-            const newUrl = url.toString().replace('&ajax=1', '').replace('?ajax=1', '');
-            window.history.pushState({}, '', newUrl);
+            if (data.success) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('success', data.message);
+                } else {
+                    alert(data.message);
+                }
+            } else if (data.message) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('error', data.message);
+                } else {
+                    alert(data.message);
+                }
+            }
         })
         .catch(error => {
-            console.error('Search error:', error);
-            if (searchLoading) searchLoading.style.display = 'none';
-            isSearching = false;
+            console.error('Error:', error);
+            if (typeof window.showToast === 'function') {
+                window.showToast('error', 'Failed to update status');
+            } else {
+                alert('Failed to update status');
+            }
         });
-    }
-
-    // Debounce search input
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(performSearch, 300); // 300ms debounce
     });
-
-    // Handle status filter change
-    if (statusSelect) {
-        statusSelect.addEventListener('change', function() {
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-    }
-
-    // Handle role filter change
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-    }
-
-    // Clear search
-    if (clearSearch) {
-        clearSearch.addEventListener('click', function(e) {
-        e.preventDefault();
-        searchInput.value = '';
-        if (statusSelect) statusSelect.value = '';
-        if (roleSelect) roleSelect.value = '';
-        clearTimeout(searchTimeout);
-        performSearch();
-    });
-    }
-
-    // Prevent form submission on Enter (use AJAX instead)
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-    }
-})();
+});
 </script>
+@endpush
 @endsection

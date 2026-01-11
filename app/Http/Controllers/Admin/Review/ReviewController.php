@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProductReview;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 class ReviewController extends Controller
@@ -47,19 +48,29 @@ class ReviewController extends Controller
         return view('admin.review.show', compact('review'));
     }
 
-    public function updateStatus(Request $request, ProductReview $review): RedirectResponse
+    public function updateStatus(Request $request, ProductReview $review): RedirectResponse|JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:0,1,2'
         ]);
 
-        $review->update(['status' => $request->status]);
+        // Cast status to integer
+        $status = (int) $validated['status'];
+        $review->update(['status' => $status]);
 
-        $statusText = match($request->status) {
+        $statusText = match($status) {
             0 => 'pending',
             1 => 'approved',
             2 => 'rejected',
         };
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Review {$statusText} successfully."
+            ]);
+        }
 
         return redirect()->route('admin.reviews.index')
             ->with('success', "Review {$statusText} successfully.");

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\Region\UpdateRegionRequest;
 use App\Models\Region;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -47,12 +48,12 @@ class RegionController extends Controller
     public function store(StoreRegionRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        
+
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
-        
+
         $validated['status'] = $request->has('status') ? 1 : 0;
 
         Region::create($validated);
@@ -78,12 +79,12 @@ class RegionController extends Controller
     public function update(UpdateRegionRequest $request, Region $region): RedirectResponse
     {
         $validated = $request->validated();
-        
+
         // Auto-generate slug if name changed and slug not provided
         if ($region->isDirty('name') && empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
-        
+
         $validated['status'] = $request->has('status') ? 1 : 0;
 
         $region->update($validated);
@@ -122,15 +123,25 @@ class RegionController extends Controller
     }
 
     // Update region status
-    public function updateStatus(Request $request, Region $region): RedirectResponse
+    public function updateStatus(Request $request, Region $region): RedirectResponse|JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:0,1',
         ]);
 
-        $region->update(['status' => $request->status]);
+        // Cast status to integer
+        $status = (int) $validated['status'];
+        $region->update(['status' => $status]);
 
-        $statusText = $request->status == 1 ? 'activated' : 'deactivated';
+        $statusText = $status == 1 ? 'activated' : 'deactivated';
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Region {$statusText} successfully!"
+            ]);
+        }
 
         return redirect()->route('admin.regions.index')
             ->with('success', "Region {$statusText} successfully!");

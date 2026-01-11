@@ -14,7 +14,7 @@
             </div>
             <div class="page-header__actions">
                 @if(!$user->hasRole('SuperAdmin') || Auth::user()->hasRole('SuperAdmin'))
-                <a href="{{ route('admin.admin-users.edit', $user) }}" class="btn btn-primary btn-icon">
+                <a href="{{ route('admin.admin-users.edit', $user->uuid) }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-edit"></i>
                     <span>Edit User</span>
                 </a>
@@ -40,13 +40,9 @@
                 <div class="modern-card__body">
                     <div class="user-profile-header">
                         <div class="user-profile-avatar">
-                            @if($user->avatar)
-                                <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="user-profile-avatar__img">
-                            @else
-                                <div class="user-profile-avatar__placeholder">
-                                    {{ strtoupper(substr($user->first_name ?? '', 0, 1)) }}{{ strtoupper(substr($user->last_name ?? '', 0, 1)) }}
-                                </div>
-                            @endif
+                            <img src="{{ $user->avatar_url }}"
+                                 alt="{{ $user->name }}"
+                                 onerror="this.src='{{ asset('assets/images/profile.png') }}'">
                         </div>
                         <h3 class="user-profile-name">{{ $user->name }}</h3>
                         <p class="user-profile-email">
@@ -54,21 +50,21 @@
                             {{ $user->email }}
                         </p>
                         <div class="user-profile-status">
-                            <span class="badge badge-{{ $user->status == 1 ? 'success' : 'danger' }}">
+                            <span class="badge bg-{{ $user->status == 1 ? 'success' : 'danger' }}">
                                 {{ $user->status == 1 ? 'Active' : 'Inactive' }}
                             </span>
                             @if($user->hasVerifiedEmail())
-                                <span class="badge badge-success">
+                                <span class="badge bg-success">
                                     <i class="fas fa-check-circle"></i> Verified
                                 </span>
                             @endif
                         </div>
                         @if($user->roles && $user->roles->count() > 0)
-                        <div class="user-profile-roles" style="margin-top: 1rem;">
-                            <strong style="display: block; margin-bottom: 0.5rem; color: #2c3e50;">Roles:</strong>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
+                        <div class="user-profile-roles">
+                            <strong>Roles:</strong>
+                            <div>
                                 @foreach($user->roles as $role)
-                                    <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                    <span class="badge bg-primary">
                                         <i class="fas fa-user-tag"></i> {{ $role->name }}
                                     </span>
                                 @endforeach
@@ -78,18 +74,33 @@
                     </div>
 
                     <!-- User Info -->
-                    <div class="user-info-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e9ecef;">
-                        <div class="user-info-item" style="margin-bottom: 1rem;">
-                            <strong style="color: #666; display: block; margin-bottom: 0.25rem;">Phone:</strong>
-                            <span>{{ $user->phone ?? 'N/A' }}</span>
-                        </div>
-                        <div class="user-info-item" style="margin-bottom: 1rem;">
-                            <strong style="color: #666; display: block; margin-bottom: 0.25rem;">Created:</strong>
-                            <span>{{ $user->created_at->format('M d, Y') }}</span>
+                    <div class="user-info-section">
+                        <div class="user-info-item">
+                            <div>
+                                <i class="fas fa-phone"></i>
+                                <div>
+                                    <strong>Phone</strong>
+                                    <span>{{ $user->phone ?? 'N/A' }}</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="user-info-item">
-                            <strong style="color: #666; display: block; margin-bottom: 0.25rem;">Last Updated:</strong>
-                            <span>{{ $user->updated_at->format('M d, Y') }}</span>
+                            <div>
+                                <i class="fas fa-calendar-plus"></i>
+                                <div>
+                                    <strong>Created</strong>
+                                    <span>{{ $user->created_at->format('M d, Y') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="user-info-item">
+                            <div>
+                                <i class="fas fa-calendar-edit"></i>
+                                <div>
+                                    <strong>Last Updated</strong>
+                                    <span>{{ $user->updated_at->format('M d, Y') }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -138,7 +149,7 @@
                                             <li>
                                                 <strong>{{ ucfirst(str_replace('_', ' ', $field)) }}:</strong>
                                                 {{ is_array($change['old'] ?? null) ? implode(', ', $change['old']) : ($change['old'] ?? 'N/A') }}
-                                                → 
+                                                →
                                                 {{ is_array($change['new'] ?? null) ? implode(', ', $change['new']) : ($change['new'] ?? 'N/A') }}
                                             </li>
                                             @endforeach

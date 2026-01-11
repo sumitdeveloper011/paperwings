@@ -5319,3 +5319,194 @@ textarea.form-input-modern {
     font-family: 'Courier New', monospace;
     font-size: 14px;
 }
+
+/* ============================================
+   Admin User Profile Styles
+   ============================================ */
+
+/* User Profile Header */
+.user-profile-header {
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.user-profile-avatar {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #dee2e6;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.user-profile-avatar:hover {
+    transform: scale(1.05);
+}
+
+.user-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.user-profile-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.user-profile-email {
+    color: #6c757d;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.user-profile-email i {
+    margin-right: 0.5rem;
+    color: #667eea;
+}
+
+.user-profile-status {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.user-profile-roles {
+    margin-top: 1rem;
+}
+
+.user-profile-roles strong {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.user-profile-roles > div {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* User Info Section */
+.user-info-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e9ecef;
+}
+
+.user-info-item {
+    margin-bottom: 1.25rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.user-info-item:hover {
+    background: #e9ecef;
+}
+
+.user-info-item:last-child {
+    margin-bottom: 0;
+}
+
+.user-info-item > div {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-info-item i {
+    color: #667eea;
+    font-size: 1rem;
+    width: 20px;
+    flex-shrink: 0;
+}
+
+.user-info-item > div > div {
+    flex: 1;
+}
+
+.user-info-item strong {
+    color: #495057;
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.user-info-item span {
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+/* Activity Log Styles */
+.activity-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    gap: 1rem;
+    transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+    background: #f8f9fa;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-description {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #2c3e50;
+}
+
+.activity-causer {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.activity-changes {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.activity-changes ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.activity-changes li {
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    color: #999;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+}

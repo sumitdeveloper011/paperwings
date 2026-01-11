@@ -231,196 +231,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Google OAuth Section -->
-                <div class="modern-card">
-                    <div class="modern-card__header">
-                        <h3 class="modern-card__title">
-                            <i class="fab fa-google"></i>
-                            Google OAuth Configuration
-                        </h3>
-                        <p class="modern-card__subtitle">Configure Google social login</p>
-                    </div>
-                    <div class="modern-card__body">
-                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4285F4;">
-                            <strong><i class="fas fa-info-circle"></i> Setup Instructions:</strong>
-                            <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-                                <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
-                                <li>Create OAuth 2.0 credentials</li>
-                                <li>Add redirect URI: <code>{{ env('APP_URL') }}/auth/google/callback</code></li>
-                                <li>Copy Client ID and Secret below</li>
-                            </ol>
-                        </div>
-
-                        <!-- Enable Google Login -->
-                        <div class="form-group-modern">
-                            <div class="form-check-modern">
-                                <input type="checkbox"
-                                       class="form-check-input-modern"
-                                       id="google_login_enabled"
-                                       name="google_login_enabled"
-                                       value="1"
-                                       {{ old('google_login_enabled', $settings['google_login_enabled'] ?? '0') == '1' ? 'checked' : '' }}
-                                       onchange="toggleProviderFields('google')">
-                                <label class="form-check-label-modern" for="google_login_enabled">
-                                    <i class="fas fa-toggle-on"></i>
-                                    Enable Google Login
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="googleFields">
-                            <!-- Google Client ID -->
-                            <div class="form-group-modern">
-                                <label for="google_client_id" class="form-label-modern">
-                                    <i class="fas fa-id-card"></i>
-                                    Google Client ID
-                                </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-id-card input-icon"></i>
-                                    <input type="text"
-                                           class="form-input-modern @error('google_client_id') is-invalid @enderror"
-                                           id="google_client_id"
-                                           name="google_client_id"
-                                           value="{{ old('google_client_id', $settings['google_client_id'] ?? env('GOOGLE_CLIENT_ID', '')) }}"
-                                           placeholder="Enter Google Client ID">
-                                </div>
-                                @error('google_client_id')
-                                    <div class="form-error">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <!-- Google Client Secret -->
-                            <div class="form-group-modern">
-                                <label for="google_client_secret" class="form-label-modern">
-                                    <i class="fas fa-lock"></i>
-                                    Google Client Secret
-                                </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-lock input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('google_client_secret') is-invalid @enderror"
-                                           id="google_client_secret"
-                                           name="google_client_secret"
-                                           value="{{ old('google_client_secret', $settings['google_client_secret'] ?? env('GOOGLE_CLIENT_SECRET', '')) }}"
-                                           placeholder="Enter Google Client Secret">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('google_client_secret')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_google_client_secret"></i>
-                                    </button>
-                                </div>
-                                @error('google_client_secret')
-                                    <div class="form-error">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <!-- Redirect URI Info -->
-                            <div class="form-hint" style="background: #e7f3ff; padding: 0.75rem; border-radius: 4px;">
-                                <strong>Redirect URI:</strong> <code>{{ env('APP_URL') }}/auth/google/callback</code>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Facebook OAuth Section -->
-                <div class="modern-card">
-                    <div class="modern-card__header">
-                        <h3 class="modern-card__title">
-                            <i class="fab fa-facebook-f"></i>
-                            Facebook OAuth Configuration
-                        </h3>
-                        <p class="modern-card__subtitle">Configure Facebook social login</p>
-                    </div>
-                    <div class="modern-card__body">
-                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #1877F2;">
-                            <strong><i class="fas fa-info-circle"></i> Setup Instructions:</strong>
-                            <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-                                <li>Go to <a href="https://developers.facebook.com/" target="_blank">Facebook Developers</a></li>
-                                <li>Create a new app and add Facebook Login product</li>
-                                <li>Add redirect URI: <code>{{ env('APP_URL') }}/auth/facebook/callback</code></li>
-                                <li>Copy App ID and App Secret below</li>
-                            </ol>
-                        </div>
-
-                        <!-- Enable Facebook Login -->
-                        <div class="form-group-modern">
-                            <div class="form-check-modern">
-                                <input type="checkbox"
-                                       class="form-check-input-modern"
-                                       id="facebook_login_enabled"
-                                       name="facebook_login_enabled"
-                                       value="1"
-                                       {{ old('facebook_login_enabled', $settings['facebook_login_enabled'] ?? '0') == '1' ? 'checked' : '' }}
-                                       onchange="toggleProviderFields('facebook')">
-                                <label class="form-check-label-modern" for="facebook_login_enabled">
-                                    <i class="fas fa-toggle-on"></i>
-                                    Enable Facebook Login
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="facebookFields">
-                            <!-- Facebook App ID -->
-                            <div class="form-group-modern">
-                                <label for="facebook_client_id" class="form-label-modern">
-                                    <i class="fas fa-id-card"></i>
-                                    Facebook App ID
-                                </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-id-card input-icon"></i>
-                                    <input type="text"
-                                           class="form-input-modern @error('facebook_client_id') is-invalid @enderror"
-                                           id="facebook_client_id"
-                                           name="facebook_client_id"
-                                           value="{{ old('facebook_client_id', $settings['facebook_client_id'] ?? env('FACEBOOK_CLIENT_ID', '')) }}"
-                                           placeholder="Enter Facebook App ID">
-                                </div>
-                                @error('facebook_client_id')
-                                    <div class="form-error">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <!-- Facebook App Secret -->
-                            <div class="form-group-modern">
-                                <label for="facebook_client_secret" class="form-label-modern">
-                                    <i class="fas fa-lock"></i>
-                                    Facebook App Secret
-                                </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-lock input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('facebook_client_secret') is-invalid @enderror"
-                                           id="facebook_client_secret"
-                                           name="facebook_client_secret"
-                                           value="{{ old('facebook_client_secret', $settings['facebook_client_secret'] ?? env('FACEBOOK_CLIENT_SECRET', '')) }}"
-                                           placeholder="Enter Facebook App Secret">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('facebook_client_secret')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_facebook_client_secret"></i>
-                                    </button>
-                                </div>
-                                @error('facebook_client_secret')
-                                    <div class="form-error">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <!-- Redirect URI Info -->
-                            <div class="form-hint" style="background: #e7f3ff; padding: 0.75rem; border-radius: 4px;">
-                                <strong>Redirect URI:</strong> <code>{{ env('APP_URL') }}/auth/facebook/callback</code>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Right Column - Actions -->
@@ -508,28 +318,21 @@ function togglePassword(inputId) {
     }
 }
 
-// Toggle provider fields based on enable/disable checkbox
+// Toggle provider fields visibility
 function toggleProviderFields(provider) {
+    const fields = document.getElementById(provider + 'Fields');
     const checkbox = document.getElementById(provider + '_login_enabled');
-    const fieldsDiv = document.getElementById(provider + 'Fields');
-    const inputs = fieldsDiv.querySelectorAll('input[type="text"], input[type="password"]');
-    
-    if (checkbox && fieldsDiv) {
-        if (checkbox.checked) {
-            fieldsDiv.style.opacity = '1';
-            inputs.forEach(input => {
-                input.disabled = false;
-            });
+
+    if (fields) {
+        if (checkbox && checkbox.checked) {
+            fields.style.display = 'block';
         } else {
-            fieldsDiv.style.opacity = '0.6';
-            inputs.forEach(input => {
-                input.disabled = true;
-            });
+            fields.style.display = 'none';
         }
     }
 }
 
-// Initialize provider fields on page load
+// Initialize provider fields visibility on page load
 document.addEventListener('DOMContentLoaded', function() {
     toggleProviderFields('google');
     toggleProviderFields('facebook');

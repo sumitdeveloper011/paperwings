@@ -6,19 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 class ContactController extends Controller
 {
     // Display a listing of contact messages
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
         $status = $request->get('status');
 
         $query = ContactMessage::query();
 
-        if ($search) {
+        if ($search !== '') {
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
@@ -32,6 +33,24 @@ class ContactController extends Controller
         }
 
         $messages = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($messages->total() > 0 && $messages->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $messages
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.contact.partials.table', compact('messages'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         $pageTitle = 'Contact Messages';
         $pageSubtitle = 'Manage customer inquiries and messages';

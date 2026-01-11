@@ -212,13 +212,14 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
 
     // Special Offers - requires special-offers permissions
-    Route::middleware('permission:special-offers.view')->group(function () {
-        Route::get('special-offers-banners', [SpecialOffersBannerController::class, 'index'])->name('special-offers-banners.index');
-        Route::get('special-offers-banners/{special_offers_banner}', [SpecialOffersBannerController::class, 'show'])->name('special-offers-banners.show');
-    });
+    // IMPORTANT: Specific routes (create) must come before parameterized routes ({special_offers_banner})
     Route::middleware('permission:special-offers.create')->group(function () {
         Route::get('special-offers-banners/create', [SpecialOffersBannerController::class, 'create'])->name('special-offers-banners.create');
         Route::post('special-offers-banners', [SpecialOffersBannerController::class, 'store'])->name('special-offers-banners.store');
+    });
+    Route::middleware('permission:special-offers.view')->group(function () {
+        Route::get('special-offers-banners', [SpecialOffersBannerController::class, 'index'])->name('special-offers-banners.index');
+        Route::get('special-offers-banners/{special_offers_banner}', [SpecialOffersBannerController::class, 'show'])->name('special-offers-banners.show');
     });
     Route::middleware('permission:special-offers.edit')->group(function () {
         Route::get('special-offers-banners/{special_offers_banner}/edit', [SpecialOffersBannerController::class, 'edit'])->name('special-offers-banners.edit');

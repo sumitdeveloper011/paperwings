@@ -54,4 +54,10 @@ class ShippingPrice extends Model
     {
         return $query->where('status', 0);
     }
+
+    // Get route key name
+    public function getRouteKeyName()
+    {
+        return 'uuid';
+    }
 }
