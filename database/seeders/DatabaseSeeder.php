@@ -8,7 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
-     * 
+     *
      * IMPORTANT: This seeder will NOT run in production environment for safety.
      * Some seeders are safe to run in production (like RegionSeeder), but most
      * are development-only to prevent accidental data overwrites.
@@ -50,6 +50,7 @@ class DatabaseSeeder extends Seeder
             PageSeeder::class,              // Default pages
             AboutSectionSeeder::class,      // About sections
             SpecialOffersBannerSeeder::class, // Special offers
+            TestimonialSeeder::class,       // Testimonials
         ]);
 
         // Product-related seeders (development only)
@@ -60,6 +61,13 @@ class DatabaseSeeder extends Seeder
             ProductBundleSeeder::class,     // Product bundles
             ProductReviewSeeder::class,      // Product reviews
             ProductQuestionSeeder::class,    // Product questions
+        ]);
+
+        // Marketing seeders
+        $this->command->newLine();
+        $this->command->info('🎫 Running marketing seeders...');
+        $this->call([
+            CouponSeeder::class,            // Coupons (all cases)
         ]);
 
         $this->command->newLine();

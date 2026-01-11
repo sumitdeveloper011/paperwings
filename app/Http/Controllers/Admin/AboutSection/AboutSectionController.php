@@ -20,7 +20,7 @@ class AboutSectionController extends Controller
     {
         // Get or create the single About Section record
         $aboutSection = AboutSection::first();
-        
+
         if (!$aboutSection) {
             // Auto-create if doesn't exist
             $aboutSection = AboutSection::create([
@@ -34,7 +34,11 @@ class AboutSectionController extends Controller
             ]);
         }
 
-        return view('admin.about-section.edit', compact('aboutSection'));
+        $categories = \App\Models\Category::active()->ordered()->get();
+        $products = \App\Models\Product::active()->orderBy('name')->get();
+        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+
+        return view('admin.about-section.edit', compact('aboutSection', 'categories', 'products', 'bundles'));
     }
 
     /**
@@ -44,7 +48,7 @@ class AboutSectionController extends Controller
     {
         // Get the single About Section record
         $aboutSection = AboutSection::first();
-        
+
         if (!$aboutSection) {
             // Auto-create if doesn't exist
             $aboutSection = AboutSection::create([
@@ -67,6 +71,12 @@ class AboutSectionController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'status' => 'required|integer|in:0,1',
         ]);
+
+        // Use final URL from smart link selector
+        $buttonLink = $request->input('button_link') ?: '';
+        if ($buttonLink) {
+            $validated['button_link'] = $buttonLink;
+        }
 
         // Handle image upload
         if ($request->hasFile('image')) {

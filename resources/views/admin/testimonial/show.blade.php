@@ -35,8 +35,10 @@
                             <strong>Image:</strong>
                         </div>
                         <div class="col-md-8">
-                            <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->name }}" 
-                                 style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;">
+                            <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}" 
+                                 alt="{{ $testimonial->name }}" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;"
+                                 onerror="this.src='{{ asset('assets/images/profile.png') }}'">
                         </div>
                     </div>
 

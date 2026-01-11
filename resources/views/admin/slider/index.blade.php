@@ -111,20 +111,10 @@
                                         <form method="POST" action="{{ route('admin.sliders.updateStatus', $slider) }}" class="status-form">
                                             @csrf
                                             @method('PATCH')
-                                            <div class="status-toggle-wrapper">
-                                                <label class="status-toggle">
-                                                    <input type="hidden" name="status" value="{{ $slider->status == 1 ? '0' : '1' }}">
-                                                    <input type="checkbox"
-                                                           {{ $slider->status == 1 ? 'checked' : '' }}
-                                                           onchange="this.previousElementSibling.value = this.checked ? '1' : '0'; this.form.submit();">
-                                                    <span class="status-toggle__slider">
-                                                        <span class="status-toggle__indicator"></span>
-                                                    </span>
-                                                    <span class="status-toggle__label">
-                                                        {{ $slider->status == 1 ? 'Active' : 'Inactive' }}
-                                                    </span>
-                                                </label>
-                                            </div>
+                                            <select name="status" class="status-select" data-slider-id="{{ $slider->id }}">
+                                                <option value="1" {{ (int)$slider->status === 1 ? 'selected' : '' }}>Active</option>
+                                                <option value="0" {{ (int)$slider->status === 0 ? 'selected' : '' }}>Inactive</option>
+                                            </select>
                                         </form>
                                     </td>
                                     <td class="modern-table__td">
@@ -208,4 +198,82 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle status change with AJAX (prevent page freeze)
+    // Use event delegation to handle dynamically added elements
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const sliderId = select.getAttribute('data-slider-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            // Disable select during request
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            // Send AJAX request
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                // Show success message if available
+                if (data && data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                // Revert to original value on error
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update slider status', 'error', 5000);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection

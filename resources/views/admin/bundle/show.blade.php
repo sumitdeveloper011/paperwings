@@ -96,15 +96,63 @@
                         </div>
                     </div>
 
+                    @if($bundle->short_description)
+                    <!-- Short Description Section -->
+                    <div style="margin-bottom: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                        <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; font-weight: 600;">
+                            <i class="fas fa-align-left"></i>
+                            Short Description
+                        </h4>
+                        <div class="description-content" style="line-height: 1.6; color: var(--text-secondary);">
+                            {!! nl2br(e($bundle->short_description)) !!}
+                        </div>
+                    </div>
+                    @endif
+
                     @if($bundle->description)
-                    <!-- Description Section -->
+                    <!-- Full Description Section -->
                     <div style="margin-bottom: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
                         <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; font-weight: 600;">
                             <i class="fas fa-file-alt"></i>
-                            Description
+                            Full Description
                         </h4>
                         <div class="description-content" style="line-height: 1.6; color: var(--text-secondary);">
                             {!! nl2br(e($bundle->description)) !!}
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Additional Information (Accordion) -->
+                    @if($bundle->accordions && $bundle->accordions->count() > 0)
+                    <div style="margin-bottom: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                        <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; font-weight: 600;">
+                            <i class="fas fa-list"></i>
+                            Additional Information
+                        </h4>
+                        <div class="accordion-modern" id="bundleAccordion">
+                            @foreach($bundle->accordions as $index => $accordion)
+                                <div class="accordion-modern__item">
+                                    <div class="accordion-modern__header" id="heading{{ $index }}">
+                                        <button class="accordion-modern__button {{ $index > 0 ? 'collapsed' : '' }}"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#collapse{{ $index }}"
+                                                aria-expanded="{{ $index === 0 ? 'true' : 'false' }}"
+                                                aria-controls="collapse{{ $index }}">
+                                            <i class="fas fa-chevron-down accordion-modern__icon"></i>
+                                            <span>{{ $accordion->heading }}</span>
+                                        </button>
+                                    </div>
+                                    <div id="collapse{{ $index }}"
+                                         class="accordion-modern__collapse collapse {{ $index === 0 ? 'show' : '' }}"
+                                         aria-labelledby="heading{{ $index }}"
+                                         data-bs-parent="#bundleAccordion">
+                                        <div class="accordion-modern__body">
+                                            {!! $accordion->content !!}
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                     @endif

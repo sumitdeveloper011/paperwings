@@ -10,6 +10,7 @@
                     <i class="fas fa-star"></i>
                     Testimonials
                 </h1>
+                <p class="page-header__subtitle">Manage customer testimonials and reviews</p>
             </div>
             <div class="page-header__actions">
                 @can('testimonials.create')
@@ -22,15 +23,8 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            {{ session('success') }}
-        </div>
-    @endif
-
     <!-- Main Content Card -->
-    <div class="modern-card modern-card--compact">
+    <div class="modern-card">
         <div class="modern-card__header">
             <div class="modern-card__header-content">
                 <h3 class="modern-card__title">
@@ -40,130 +34,130 @@
                 <p class="modern-card__subtitle">{{ $testimonials->total() }} total testimonials</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search testimonials..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.testimonials.index') }}" class="search-form__clear">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search testimonials..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($testimonials->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">Image</th>
-                                <th class="modern-table__th">Name</th>
-                                <th class="modern-table__th">Email</th>
-                                <th class="modern-table__th">Review</th>
-                                <th class="modern-table__th">Rating</th>
-                                <th class="modern-table__th">Status</th>
-                                <th class="modern-table__th">Sort Order</th>
-                                <th class="modern-table__th modern-table__th--actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($testimonials as $testimonial)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->name }}"
-                                             class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;">
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <strong>{{ $testimonial->name }}</strong>
-                                        @if($testimonial->designation)
-                                            <br><small class="text-muted">{{ $testimonial->designation }}</small>
-                                        @endif
-                                    </td>
-                                    <td class="modern-table__td">{{ $testimonial->email }}</td>
-                                    <td class="modern-table__td">
-                                        <div class="text-truncate" style="max-width: 250px;" title="{{ $testimonial->review }}">
-                                            {{ Str::limit($testimonial->review, 50) }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="star-rating">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                <i class="fas fa-star {{ $i <= $testimonial->rating ? 'text-warning' : 'text-muted' }}"></i>
-                                            @endfor
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.testimonials.updateStatus', $testimonial) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                <option value="1" {{ $testimonial->status ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ !$testimonial->status ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td">{{ $testimonial->sort_order ?? 0 }}</td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            @can('testimonials.view')
-                                            <a href="{{ route('admin.testimonials.show', $testimonial) }}"
-                                               class="action-btn action-btn--view" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            @endcan
-                                            @can('testimonials.edit')
-                                            <a href="{{ route('admin.testimonials.edit', $testimonial) }}"
-                                               class="action-btn action-btn--edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            @endcan
-                                            @can('testimonials.delete')
-                                            <form method="POST"
-                                                  action="{{ route('admin.testimonials.destroy', $testimonial) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this testimonial?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div id="results-container">
+                @include('admin.testimonial.partials.table', ['testimonials' => $testimonials])
+            </div>
 
-                @if($testimonials->hasPages())
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                @if($testimonials->total() > 0 && $testimonials->hasPages())
                     <div class="pagination-wrapper">
                         {{ $testimonials->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Testimonials Found</h3>
-                    <p class="empty-state__text">Start by creating your first testimonial</p>
-                    @can('testimonials.create')
-                    <a href="{{ route('admin.testimonials.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add Testimonial
-                    </a>
-                    @endcan
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
-@endsection
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.testimonials.index') }}',
+            debounceDelay: 300
+        });
+    }
+
+    // AJAX status update
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('status-select') && e.target.hasAttribute('data-testimonial-id')) {
+            e.preventDefault();
+            const select = e.target;
+            const form = select.closest('form');
+            const testimonialId = select.getAttribute('data-testimonial-id');
+            const status = select.value;
+            const originalValue = select.getAttribute('data-original-value') || (select.querySelector('option[selected]')?.value || select.value);
+
+            // Store original value
+            if (!select.hasAttribute('data-original-value')) {
+                select.setAttribute('data-original-value', originalValue);
+            }
+
+            // Disable select during request
+            select.disabled = true;
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('status', status);
+            formData.append('_token', form.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+            formData.append('_method', 'PATCH');
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.setAttribute('data-original-value', status);
+
+                // Show success message if available
+                if (typeof showToast === 'function') {
+                    showToast('Success', data.message || 'Testimonial status updated successfully', 'success', 3000);
+                }
+            })
+            .catch(error => {
+                // Revert select value on error
+                select.value = originalValue;
+                select.disabled = false;
+
+                console.error('Error updating status:', error);
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update testimonial status', 'error', 5000);
+                } else {
+                    alert('Failed to update testimonial status. Please try again.');
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush
+@endsection

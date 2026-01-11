@@ -471,8 +471,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Show success message if available
                 if (data && data.message) {
-                    // You can add a toast notification here if needed
-                    console.log('Status updated:', data.message);
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
                 }
             })
             .catch(error => {
@@ -481,7 +482,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 select.value = originalValue;
                 select.disabled = false;
                 select.options[select.selectedIndex].textContent = originalText;
-                alert('Error updating status. Please try again.');
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update category status', 'error', 5000);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
             });
         }
     });

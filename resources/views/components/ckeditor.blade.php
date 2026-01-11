@@ -119,6 +119,12 @@
             const textarea = document.querySelector('#' + editorId);
             const isRequired = textarea.hasAttribute('data-required') || textarea.hasAttribute('required');
 
+            // Ensure old() values are loaded into editor after initialization
+            // This handles cases where textarea has content from validation errors
+            if (textarea.value && textarea.value.trim()) {
+                editor.setData(textarea.value);
+            }
+
             // Sync editor content to textarea before form submission
             const form = textarea.closest('form');
             if (form) {

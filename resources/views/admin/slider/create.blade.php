@@ -34,18 +34,18 @@
                 <div class="modern-card__body">
                     <form method="POST" action="{{ route('admin.sliders.store') }}" enctype="multipart/form-data" class="modern-form" id="sliderForm">
                         @csrf
-                        
+
                         <div class="form-group-modern">
                             <label for="heading" class="form-label-modern">
                                 Heading <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-heading input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('heading') is-invalid @enderror" 
-                                       id="heading" 
-                                       name="heading" 
-                                       value="{{ old('heading') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('heading') is-invalid @enderror"
+                                       id="heading"
+                                       name="heading"
+                                       value="{{ old('heading') }}"
                                        placeholder="Enter slider heading"
                                        required>
                             </div>
@@ -63,11 +63,11 @@
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-text-height input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('sub_heading') is-invalid @enderror" 
-                                       id="sub_heading" 
-                                       name="sub_heading" 
-                                       value="{{ old('sub_heading') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('sub_heading') is-invalid @enderror"
+                                       id="sub_heading"
+                                       name="sub_heading"
+                                       value="{{ old('sub_heading') }}"
                                        placeholder="Enter sub heading (optional)">
                             </div>
                             @error('sub_heading')
@@ -86,9 +86,9 @@
                                     </label>
                                     <div class="input-wrapper">
                                         <i class="fas fa-toggle-on input-icon"></i>
-                                        <select class="form-input-modern @error('status') is-invalid @enderror" 
-                                                id="status" 
-                                                name="status" 
+                                        <select class="form-input-modern @error('status') is-invalid @enderror"
+                                                id="status"
+                                                name="status"
                                                 required>
                                             <option value="">Select Status</option>
                                             <option value="1" {{ old('status') == 1 ? 'selected' : '' }}>Active</option>
@@ -110,11 +110,11 @@
                                     </label>
                                     <div class="input-wrapper">
                                         <i class="fas fa-sort-numeric-down input-icon"></i>
-                                        <input type="number" 
-                                               class="form-input-modern @error('sort_order') is-invalid @enderror" 
-                                               id="sort_order" 
-                                               name="sort_order" 
-                                               value="{{ old('sort_order') }}" 
+                                        <input type="number"
+                                               class="form-input-modern @error('sort_order') is-invalid @enderror"
+                                               id="sort_order"
+                                               name="sort_order"
+                                               value="{{ old('sort_order') }}"
                                                min="1"
                                                placeholder="Auto-assigned if empty">
                                     </div>
@@ -137,10 +137,10 @@
                                 Slider Image <span class="required">*</span>
                             </label>
                             <div class="file-upload-wrapper">
-                                <input type="file" 
-                                       class="file-upload-input @error('image') is-invalid @enderror" 
-                                       id="image" 
-                                       name="image" 
+                                <input type="file"
+                                       class="file-upload-input @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
                                        accept="image/*"
                                        required>
                                 <label for="image" class="file-upload-label">
@@ -176,7 +176,7 @@
                                 <i class="fas fa-mouse-pointer"></i>
                                 Button Configuration (Max 2 Buttons)
                             </label>
-                            
+
                             <!-- Button 1 -->
                             <div class="modern-card" style="margin-bottom: 1rem; padding: 1rem;">
                                 <h6 style="margin-bottom: 1rem; color: var(--text-primary);">
@@ -188,10 +188,10 @@
                                             <label for="button_1_name" class="form-label-modern">Button Name</label>
                                             <div class="input-wrapper">
                                                 <i class="fas fa-tag input-icon"></i>
-                                                <input type="text" 
-                                                       class="form-input-modern @error('button_1_name') is-invalid @enderror" 
-                                                       id="button_1_name" 
-                                                       name="button_1_name" 
+                                                <input type="text"
+                                                       class="form-input-modern @error('button_1_name') is-invalid @enderror"
+                                                       id="button_1_name"
+                                                       name="button_1_name"
                                                        value="{{ old('button_1_name') }}"
                                                        placeholder="e.g., Shop Now, Learn More">
                                             </div>
@@ -204,24 +204,23 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group-modern">
-                                            <label for="button_1_url" class="form-label-modern">Button URL</label>
-                                            <div class="input-wrapper">
-                                                <i class="fas fa-link input-icon"></i>
-                                                <input type="url" 
-                                                       class="form-input-modern @error('button_1_url') is-invalid @enderror" 
-                                                       id="button_1_url" 
-                                                       name="button_1_url" 
-                                                       value="{{ old('button_1_url') }}"
-                                                       placeholder="https://example.com">
+                                        @include('components.smart-link-selector', [
+                                            'name' => 'button_1_url',
+                                            'id' => 'button_1_url',
+                                            'label' => 'Button URL',
+                                            'value' => old('button_1_url'),
+                                            'required' => false,
+                                            'categories' => $categories ?? [],
+                                            'products' => $products ?? [],
+                                            'bundles' => $bundles ?? [],
+                                            'pages' => []
+                                        ])
+                                        @error('button_1_url')
+                                            <div class="form-error">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ $message }}
                                             </div>
-                                            @error('button_1_url')
-                                                <div class="form-error">
-                                                    <i class="fas fa-exclamation-circle"></i>
-                                                    {{ $message }}
-                                                </div>
-                                            @enderror
-                                        </div>
+                                        @enderror
                                     </div>
                                 </div>
                             </div>
@@ -237,10 +236,10 @@
                                             <label for="button_2_name" class="form-label-modern">Button Name</label>
                                             <div class="input-wrapper">
                                                 <i class="fas fa-tag input-icon"></i>
-                                                <input type="text" 
-                                                       class="form-input-modern @error('button_2_name') is-invalid @enderror" 
-                                                       id="button_2_name" 
-                                                       name="button_2_name" 
+                                                <input type="text"
+                                                       class="form-input-modern @error('button_2_name') is-invalid @enderror"
+                                                       id="button_2_name"
+                                                       name="button_2_name"
                                                        value="{{ old('button_2_name') }}"
                                                        placeholder="e.g., Contact Us, View Details">
                                             </div>
@@ -253,24 +252,23 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group-modern">
-                                            <label for="button_2_url" class="form-label-modern">Button URL</label>
-                                            <div class="input-wrapper">
-                                                <i class="fas fa-link input-icon"></i>
-                                                <input type="url" 
-                                                       class="form-input-modern @error('button_2_url') is-invalid @enderror" 
-                                                       id="button_2_url" 
-                                                       name="button_2_url" 
-                                                       value="{{ old('button_2_url') }}"
-                                                       placeholder="https://example.com">
+                                        @include('components.smart-link-selector', [
+                                            'name' => 'button_2_url',
+                                            'id' => 'button_2_url',
+                                            'label' => 'Button URL',
+                                            'value' => old('button_2_url'),
+                                            'required' => false,
+                                            'categories' => $categories ?? [],
+                                            'products' => $products ?? [],
+                                            'bundles' => $bundles ?? [],
+                                            'pages' => []
+                                        ])
+                                        @error('button_2_url')
+                                            <div class="form-error">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ $message }}
                                             </div>
-                                            @error('button_2_url')
-                                                <div class="form-error">
-                                                    <i class="fas fa-exclamation-circle"></i>
-                                                    {{ $message }}
-                                                </div>
-                                            @enderror
-                                        </div>
+                                        @enderror
                                     </div>
                                 </div>
                             </div>
@@ -311,7 +309,7 @@
                             <i class="fas fa-image fa-3x" style="color: var(--text-secondary); margin-bottom: 1rem;"></i>
                             <p style="color: var(--text-secondary);">Upload an image to see preview</p>
                         </div>
-                        
+
                         <!-- Preview Content (will be populated by JavaScript) -->
                         <div id="previewContent" class="position-absolute top-50 start-50 translate-middle text-center w-100" style="display: none;">
                             <h3 id="previewHeading" class="text-white mb-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);"></h3>
@@ -412,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const removeImageBtn = document.getElementById('removeImage');
     const sliderPreview = document.getElementById('sliderPreview');
     const previewContent = document.getElementById('previewContent');
-    
+
     // Form inputs for live preview
     const headingInput = document.getElementById('heading');
     const subHeadingInput = document.getElementById('sub_heading');
@@ -428,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.onload = function(e) {
                 previewImg.src = e.target.result;
                 imagePreview.style.display = 'block';
-                
+
                 // Update slider preview background
                 sliderPreview.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${e.target.result})`;
                 updatePreview();
@@ -457,21 +455,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (heading || subHeading || (button1Name && button1Url) || (button2Name && button2Url)) {
             previewContent.style.display = 'block';
-            
+
             // Update heading
             const previewHeading = document.getElementById('previewHeading');
             previewHeading.textContent = heading || 'Your Heading Here';
             previewHeading.style.display = heading ? 'block' : 'none';
-            
+
             // Update sub heading
             const previewSubHeading = document.getElementById('previewSubHeading');
             previewSubHeading.textContent = subHeading || 'Your sub heading here';
             previewSubHeading.style.display = subHeading ? 'block' : 'none';
-            
+
             // Update buttons
             const previewButtons = document.getElementById('previewButtons');
             previewButtons.innerHTML = '';
-            
+
             if (button1Name && button1Url) {
                 const btn1 = document.createElement('a');
                 btn1.href = '#';
@@ -479,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn1.textContent = button1Name;
                 previewButtons.appendChild(btn1);
             }
-            
+
             if (button2Name && button2Url) {
                 const btn2 = document.createElement('a');
                 btn2.href = '#';
@@ -545,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission validation
     document.getElementById('sliderForm').addEventListener('submit', function(e) {
         validateButtons();
-        
+
         // Check if form is valid
         if (!this.checkValidity()) {
             e.preventDefault();
@@ -553,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('was-validated');
             return false;
         }
-        
+
         // Form is valid, allow submission
         this.classList.add('was-validated');
     });

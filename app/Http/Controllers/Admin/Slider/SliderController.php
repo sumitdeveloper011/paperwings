@@ -7,6 +7,7 @@ use App\Models\Slider;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,14 +25,18 @@ class SliderController extends Controller
     public function index(): View
     {
         $sliders = $this->sliderRepository->getOrdered();
-        
+
         return view('admin.slider.index', compact('sliders'));
     }
 
     // Show the form for creating a new resource
     public function create(): View
     {
-        return view('admin.slider.create');
+        $categories = \App\Models\Category::active()->ordered()->get();
+        $products = \App\Models\Product::active()->orderBy('name')->get();
+        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+
+        return view('admin.slider.create', compact('categories', 'products', 'bundles'));
     }
 
     // Store a newly created resource in storage
@@ -56,18 +61,21 @@ class SliderController extends Controller
             $validated['image'] = $imagePath;
         }
 
-        // Handle buttons
+        // Handle buttons - use final URL values from smart link selector
         $buttons = [];
-        if ($validated['button_1_name'] && $validated['button_1_url']) {
+        $button1Url = $request->input('button_1_url') ?: '';
+        $button2Url = $request->input('button_2_url') ?: '';
+
+        if ($validated['button_1_name'] && $button1Url) {
             $buttons[] = [
                 'name' => $validated['button_1_name'],
-                'url' => $validated['button_1_url']
+                'url' => $button1Url
             ];
         }
-        if ($validated['button_2_name'] && $validated['button_2_url']) {
+        if ($validated['button_2_name'] && $button2Url) {
             $buttons[] = [
                 'name' => $validated['button_2_name'],
-                'url' => $validated['button_2_url']
+                'url' => $button2Url
             ];
         }
         $validated['buttons'] = !empty($buttons) ? $buttons : null;
@@ -89,7 +97,11 @@ class SliderController extends Controller
     // Show the form for editing the specified resource
     public function edit(Slider $slider): View
     {
-        return view('admin.slider.edit', compact('slider'));
+        $categories = \App\Models\Category::active()->ordered()->get();
+        $products = \App\Models\Product::active()->orderBy('name')->get();
+        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+
+        return view('admin.slider.edit', compact('slider', 'categories', 'products', 'bundles'));
     }
 
     // Update the specified resource in storage
@@ -100,12 +112,16 @@ class SliderController extends Controller
             'heading' => 'required|string|max:255',
             'sub_heading' => 'nullable|string|max:255',
             'button_1_name' => 'nullable|string|max:100',
-            'button_1_url' => 'nullable|url|max:255',
+            'button_1_url' => 'nullable|string|max:500',
             'button_2_name' => 'nullable|string|max:100',
-            'button_2_url' => 'nullable|url|max:255',
+            'button_2_url' => 'nullable|string|max:500',
             'sort_order' => 'nullable|integer|min:1',
             'status' => 'required|in:1,0'
         ]);
+
+        // Use final URL values from smart link selector
+        $button1Url = $request->input('button_1_url') ?: '';
+        $button2Url = $request->input('button_2_url') ?: '';
 
         if ($request->hasFile('image')) {
             if ($slider->image && Storage::disk('public')->exists($slider->image)) {
@@ -118,18 +134,18 @@ class SliderController extends Controller
             $validated['image'] = $imagePath;
         }
 
-        // Handle buttons
+        // Handle buttons - use final URL values from smart link selector
         $buttons = [];
-        if ($validated['button_1_name'] && $validated['button_1_url']) {
+        if ($validated['button_1_name'] && $button1Url) {
             $buttons[] = [
                 'name' => $validated['button_1_name'],
-                'url' => $validated['button_1_url']
+                'url' => $button1Url
             ];
         }
-        if ($validated['button_2_name'] && $validated['button_2_url']) {
+        if ($validated['button_2_name'] && $button2Url) {
             $buttons[] = [
                 'name' => $validated['button_2_name'],
-                'url' => $validated['button_2_url']
+                'url' => $button2Url
             ];
         }
         $validated['buttons'] = !empty($buttons) ? $buttons : null;
@@ -156,13 +172,21 @@ class SliderController extends Controller
     }
 
     // Update slider status
-    public function updateStatus(Request $request, Slider $slider): RedirectResponse
+    public function updateStatus(Request $request, Slider $slider): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:1,0'
         ]);
 
         $this->sliderRepository->updateStatus($slider, $validated['status']);
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Slider status updated successfully!'
+            ]);
+        }
 
         return redirect()->back()
                         ->with('success', 'Slider status updated successfully!');
@@ -207,19 +231,19 @@ class SliderController extends Controller
     public function duplicate(Slider $slider): RedirectResponse
     {
         $sliderData = $slider->toArray();
-        
+
         unset($sliderData['id'], $sliderData['uuid'], $sliderData['created_at'], $sliderData['updated_at']);
-        
+
         $sliderData['heading'] = $sliderData['heading'] . ' (Copy)';
-        
+
         $sliderData['sort_order'] = $this->sliderRepository->getNextSortOrder();
-        
+
         if ($slider->image && Storage::disk('public')->exists($slider->image)) {
             $originalPath = $slider->image;
             $extension = pathinfo($originalPath, PATHINFO_EXTENSION);
             $newImageName = Str::uuid() . '.' . $extension;
             $newImagePath = 'sliders/' . $newImageName;
-            
+
             Storage::disk('public')->copy($originalPath, $newImagePath);
             $sliderData['image'] = $newImagePath;
         }

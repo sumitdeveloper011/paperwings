@@ -34,18 +34,18 @@
                 <div class="modern-card__body">
                     <form method="POST" action="{{ route('admin.pages.store') }}" enctype="multipart/form-data" class="modern-form">
                         @csrf
-                        
+
                         <div class="form-group-modern">
                             <label for="title" class="form-label-modern">
                                 Title <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-heading input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('title') is-invalid @enderror" 
-                                       id="title" 
-                                       name="title" 
-                                       value="{{ old('title') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('title') is-invalid @enderror"
+                                       id="title"
+                                       name="title"
+                                       value="{{ old('title') }}"
                                        placeholder="Enter page title"
                                        required>
                             </div>
@@ -63,11 +63,11 @@
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-link input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('slug') is-invalid @enderror" 
-                                       id="slug" 
-                                       name="slug" 
-                                       value="{{ old('slug') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('slug') is-invalid @enderror"
+                                       id="slug"
+                                       name="slug"
+                                       value="{{ old('slug') }}"
                                        placeholder="page-slug (auto-generated if empty)">
                             </div>
                             <div class="form-hint">
@@ -88,11 +88,11 @@
                             </label>
                             <div class="input-wrapper">
                                 <i class="fas fa-text-height input-icon"></i>
-                                <input type="text" 
-                                       class="form-input-modern @error('sub_title') is-invalid @enderror" 
-                                       id="sub_title" 
-                                       name="sub_title" 
-                                       value="{{ old('sub_title') }}" 
+                                <input type="text"
+                                       class="form-input-modern @error('sub_title') is-invalid @enderror"
+                                       id="sub_title"
+                                       name="sub_title"
+                                       value="{{ old('sub_title') }}"
                                        placeholder="Enter sub title (optional)">
                             </div>
                             @error('sub_title')
@@ -107,10 +107,11 @@
                             <label for="content" class="form-label-modern">
                                 Content
                             </label>
-                            <textarea class="form-input-modern @error('content') is-invalid @enderror" 
-                                      id="content" 
-                                      name="content" 
+                            <textarea class="form-input-modern @error('content') is-invalid @enderror"
+                                      id="content"
+                                      name="content"
                                       rows="25"
+                                      data-required="false"
                                       placeholder="Enter page content">{{ old('content') }}</textarea>
                             @error('content')
                                 <div class="form-error">
@@ -125,10 +126,10 @@
                                 Banner Image
                             </label>
                             <div class="file-upload-wrapper">
-                                <input type="file" 
-                                       class="file-upload-input @error('image') is-invalid @enderror" 
-                                       id="image" 
-                                       name="image" 
+                                <input type="file"
+                                       class="file-upload-input @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
                                        accept="image/*">
                                 <label for="image" class="file-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
@@ -218,81 +219,23 @@
     </div>
 </div>
 
-<!-- CKEditor 5 with Image Upload Plugin -->
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/translations/en.js"></script>
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+
+<!-- CKEditor Component for Content -->
+@include('components.ckeditor', [
+    'id' => 'content',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
 
 <script>
-// Initialize CKEditor with Image Upload
-ClassicEditor
-    .create(document.querySelector('#content'), {
-        height: 600,
-        toolbar: {
-            items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'outdent', 'indent', '|',
-                'imageUpload', 'blockQuote', 'insertTable', '|',
-                'undo', 'redo'
-            ]
-        },
-        language: 'en',
-        heading: {
-            options: [
-                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-            ]
-        },
-        simpleUpload: {
-            uploadUrl: '{{ route("admin.pages.uploadImage") }}',
-            withCredentials: true,
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        },
-        image: {
-            toolbar: [
-                'imageTextAlternative',
-                'imageStyle:inline',
-                'imageStyle:block',
-                'imageStyle:side'
-            ]
-        }
-    })
-    .then(editor => {
-        window.editor = editor;
-    })
-    .catch(error => {
-        console.error('CKEditor initialization error:', error);
-        // Fallback: If imageUpload doesn't work, remove it and show a message
-        if (error.message && error.message.includes('imageUpload')) {
-            console.warn('Image upload plugin not available. Using basic editor.');
-            ClassicEditor
-                .create(document.querySelector('#content'), {
-                    toolbar: {
-                        items: [
-                            'heading', '|',
-                            'bold', 'italic', 'link', '|',
-                            'bulletedList', 'numberedList', '|',
-                            'outdent', 'indent', '|',
-                            'blockQuote', 'insertTable', '|',
-                            'undo', 'redo'
-                        ]
-                    }
-                })
-                .catch(err => console.error(err));
-        }
-    });
-
 // Image Preview
 document.getElementById('image').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
-    
+
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {

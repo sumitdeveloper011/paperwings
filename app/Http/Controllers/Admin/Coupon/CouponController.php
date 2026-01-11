@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Coupon\StoreCouponRequest;
 use App\Http\Requests\Admin\Coupon\UpdateCouponRequest;
 use App\Models\Coupon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,7 +15,7 @@ use Illuminate\View\View;
 class CouponController extends Controller
 {
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $status = $request->get('status');
@@ -34,6 +35,25 @@ class CouponController extends Controller
 
         $coupons = $query->orderBy('created_at', 'desc')->paginate(15);
 
+        // If AJAX request, return JSON response
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            // Only show pagination if there are coupons and multiple pages
+            if ($coupons->total() > 0 && $coupons->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $coupons
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.coupon.partials.table', compact('coupons'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
+
         return view('admin.coupon.index', compact('coupons', 'search', 'status'));
     }
 
@@ -47,10 +67,15 @@ class CouponController extends Controller
     public function store(StoreCouponRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        
+
+        // UUID is auto-generated in model boot method, but we can set it explicitly
         $validated['uuid'] = Str::uuid();
-        $validated['code'] = strtoupper($validated['code']);
-        $validated['status'] = $request->has('status') ? 1 : 0;
+
+        // Code is already uppercase from prepareForValidation, but ensure it
+        $validated['code'] = strtoupper(trim($validated['code']));
+
+        // Status is already validated as integer 0 or 1
+        $validated['status'] = (int) $validated['status'];
 
         Coupon::create($validated);
 
@@ -74,9 +99,12 @@ class CouponController extends Controller
     public function update(UpdateCouponRequest $request, Coupon $coupon): RedirectResponse
     {
         $validated = $request->validated();
-        
-        $validated['code'] = strtoupper($validated['code']);
-        $validated['status'] = $request->has('status') ? 1 : 0;
+
+        // Code is already uppercase from prepareForValidation, but ensure it
+        $validated['code'] = strtoupper(trim($validated['code']));
+
+        // Status is already validated as integer 0 or 1
+        $validated['status'] = (int) $validated['status'];
 
         $coupon->update($validated);
 
@@ -94,7 +122,7 @@ class CouponController extends Controller
     }
 
     // Update coupon status
-    public function updateStatus(Request $request, Coupon $coupon): RedirectResponse
+    public function updateStatus(Request $request, Coupon $coupon): RedirectResponse|JsonResponse
     {
         $request->validate([
             'status' => 'required|in:0,1',
@@ -103,6 +131,14 @@ class CouponController extends Controller
         $coupon->update(['status' => $request->status]);
 
         $statusText = $request->status == 1 ? 'activated' : 'deactivated';
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Coupon {$statusText} successfully!"
+            ]);
+        }
 
         return redirect()->route('admin.coupons.index')
             ->with('success', "Coupon {$statusText} successfully!");

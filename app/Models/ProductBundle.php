@@ -18,6 +18,7 @@ class ProductBundle extends Model
         'name',
         'slug',
         'description',
+        'short_description',
         'bundle_price',
         'discount_percentage',
         'status',
@@ -109,6 +110,12 @@ class ProductBundle extends Model
     public function images(): HasMany
     {
         return $this->hasMany(BundleImage::class, 'bundle_id')->orderBy('id', 'asc');
+    }
+
+    // Get accordions relationship
+    public function accordions(): HasMany
+    {
+        return $this->hasMany(BundleAccordion::class, 'bundle_id')->orderBy('id', 'asc');
     }
 
     // Scope to filter active bundles

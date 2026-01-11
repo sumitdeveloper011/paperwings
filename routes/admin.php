@@ -148,6 +148,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::middleware('permission:pages.edit')->group(function () {
         Route::get('pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
         Route::put('pages/{page}', [PageController::class, 'update'])->name('pages.update');
+        Route::patch('pages/{page}/status', [PageController::class, 'updateStatus'])->name('pages.updateStatus');
     });
     Route::middleware('permission:pages.delete')->group(function () {
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
@@ -163,13 +164,14 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('contacts', ContactController::class)->except(['create', 'store']);
 
     // Coupons - requires coupons permissions
-    Route::middleware('permission:coupons.view')->group(function () {
-        Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
-        Route::get('coupons/{coupon}', [CouponController::class, 'show'])->name('coupons.show');
-    });
+    // Note: Specific routes (create, edit) must come before parameterized routes ({coupon})
     Route::middleware('permission:coupons.create')->group(function () {
         Route::get('coupons/create', [CouponController::class, 'create'])->name('coupons.create');
         Route::post('coupons', [CouponController::class, 'store'])->name('coupons.store');
+    });
+    Route::middleware('permission:coupons.view')->group(function () {
+        Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
+        Route::get('coupons/{coupon}', [CouponController::class, 'show'])->name('coupons.show');
     });
     Route::middleware('permission:coupons.edit')->group(function () {
         Route::get('coupons/{coupon}/edit', [CouponController::class, 'edit'])->name('coupons.edit');
@@ -191,13 +193,14 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
 
     // Testimonials - requires testimonials permissions
-    Route::middleware('permission:testimonials.view')->group(function () {
-        Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
-        Route::get('testimonials/{testimonial}', [TestimonialController::class, 'show'])->name('testimonials.show');
-    });
+    // IMPORTANT: Specific routes (create) must come before parameterized routes ({testimonial})
     Route::middleware('permission:testimonials.create')->group(function () {
         Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
         Route::post('testimonials', [TestimonialController::class, 'store'])->name('testimonials.store');
+    });
+    Route::middleware('permission:testimonials.view')->group(function () {
+        Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
+        Route::get('testimonials/{testimonial}', [TestimonialController::class, 'show'])->name('testimonials.show');
     });
     Route::middleware('permission:testimonials.edit')->group(function () {
         Route::get('testimonials/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('testimonials.edit');

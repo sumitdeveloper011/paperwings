@@ -21,6 +21,7 @@
     </div>
     @include('include.admin.footer')
     @include('common.common-scripts')
+    <x-toast />
     @stack('scripts')
 </body>
 </html>

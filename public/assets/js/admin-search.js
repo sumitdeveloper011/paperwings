@@ -220,20 +220,28 @@
             if (this.config.resultsContainer && data.html) {
                 const container = document.querySelector(this.config.resultsContainer);
                 if (container) {
+                    // Clear container first
+                    container.innerHTML = '';
                     container.innerHTML = data.html;
                 }
             }
 
             // Update pagination container if provided
-            if (this.config.paginationContainer && data.pagination) {
+            if (this.config.paginationContainer) {
                 const container = document.querySelector(this.config.paginationContainer);
                 if (container) {
-                    container.innerHTML = data.pagination;
-                    // Intercept pagination links immediately after updating HTML
-                    // Use setTimeout to ensure DOM is updated
-                    setTimeout(() => {
-                        this.interceptPaginationLinks();
-                    }, 0);
+                    // Clear pagination if empty or set the pagination HTML
+                    if (data.pagination && data.pagination.trim() !== '') {
+                        container.innerHTML = data.pagination;
+                        // Intercept pagination links immediately after updating HTML
+                        // Use setTimeout to ensure DOM is updated
+                        setTimeout(() => {
+                            this.interceptPaginationLinks();
+                        }, 0);
+                    } else {
+                        // Clear pagination container if no pagination HTML
+                        container.innerHTML = '';
+                    }
                 }
             }
 

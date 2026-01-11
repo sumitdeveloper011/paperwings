@@ -19,6 +19,7 @@ class UpdateTestimonialRequest extends FormRequest
             'review' => 'required|string',
             'rating' => 'required|integer|min:1|max:5',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'remove_image' => 'nullable|boolean',
             'designation' => 'nullable|string|max:255',
             'status' => 'required|integer|in:0,1',
             'sort_order' => 'nullable|integer|min:0',

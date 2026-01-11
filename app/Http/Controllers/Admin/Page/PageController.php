@@ -5,33 +5,59 @@ namespace App\Http\Controllers\Admin\Page;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 
 class PageController extends Controller
 {
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request): \Illuminate\Contracts\View\View|JsonResponse
     {
-        $search = $request->get('search');
+        $search = $request->get('search', '');
 
-        if ($search) {
-            $pages = Page::where('title', 'like', "%{$search}%")
-                ->orWhere('sub_title', 'like', "%{$search}%")
-                ->orWhere('slug', 'like', "%{$search}%")
-                ->orderBy('created_at', 'desc')
-                ->paginate(10);
-        } else {
-            $pages = Page::orderBy('created_at', 'desc')->paginate(10);
+        // Build query
+        $query = Page::query();
+
+        // Apply search filter
+        if ($search !== '') {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%")
+                  ->orWhere('sub_title', 'LIKE', "%{$search}%")
+                  ->orWhere('slug', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Get paginated results
+        $pages = $query->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withPath($request->url())
+            ->appends($request->except('page'));
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($pages instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $pages
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.page.partials.table', compact('pages'))->render(),
+                'pagination' => $paginationHtml,
+            ]);
         }
 
         return view('admin.page.index', compact('pages', 'search'));
     }
 
     // Show the form for creating a new resource
-    public function create(): View
+    public function create(): \Illuminate\Contracts\View\View
     {
         return view('admin.page.create');
     }
@@ -45,6 +71,7 @@ class PageController extends Controller
             'sub_title' => 'nullable|string|max:255',
             'content' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'status' => 'nullable|boolean',
         ]);
 
         // Handle image upload
@@ -60,6 +87,11 @@ class PageController extends Controller
             $validated['slug'] = Str::slug($validated['title']);
         }
 
+        // Set default status if not provided
+        if (!isset($validated['status'])) {
+            $validated['status'] = 1;
+        }
+
         Page::create($validated);
 
         return redirect()->route('admin.pages.index')
@@ -67,13 +99,13 @@ class PageController extends Controller
     }
 
     // Display the specified resource
-    public function show(Page $page): View
+    public function show(Page $page): \Illuminate\Contracts\View\View
     {
         return view('admin.page.show', compact('page'));
     }
 
     // Show the form for editing the specified resource
-    public function edit(Page $page): View
+    public function edit(Page $page): \Illuminate\Contracts\View\View
     {
         return view('admin.page.edit', compact('page'));
     }
@@ -87,6 +119,7 @@ class PageController extends Controller
             'sub_title' => 'nullable|string|max:255',
             'content' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'status' => 'nullable|boolean',
         ]);
 
         // Handle image upload
@@ -146,5 +179,26 @@ class PageController extends Controller
         }
 
         return response()->json(['error' => ['message' => 'Image upload failed']], 400);
+    }
+
+    // Update page status
+    public function updateStatus(Request $request, Page $page): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:1,0'
+        ]);
+
+        $page->update(['status' => $validated['status']]);
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Page status updated successfully!'
+            ]);
+        }
+
+        return redirect()->back()
+                        ->with('success', 'Page status updated successfully!');
     }
 }

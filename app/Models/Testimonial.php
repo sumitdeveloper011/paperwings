@@ -65,7 +65,7 @@ class Testimonial extends Model
     // Get image URL attribute
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/frontend/images/default-avatar.jpg');
+        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/profile.png');
     }
 
     // Get route key name

@@ -27,7 +27,7 @@
     <div class="row">
         <!-- Main Form -->
         <div class="col-lg-8">
-            <form method="POST" action="{{ route('admin.bundles.update', $bundle) }}" enctype="multipart/form-data" id="bundleForm" class="modern-form">
+            <form method="POST" action="{{ route('admin.bundles.update', $bundle) }}" enctype="multipart/form-data" id="bundleForm" class="modern-form" novalidate>
                 @csrf
                 @method('PUT')
                     <!-- Basic Information -->
@@ -54,12 +54,26 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
+                                <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control @error('short_description') is-invalid @enderror"
+                                          id="short_description"
+                                          name="short_description"
+                                          rows="3"
+                                          maxlength="500"
+                                          data-required="true">{{ old('short_description', $bundle->short_description) }}</textarea>
+                                <small class="form-text text-muted">Maximum 500 characters</small>
+                                @error('short_description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Full Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('description') is-invalid @enderror"
                                           id="description"
                                           name="description"
-                                          rows="4"
-                                          placeholder="Enter bundle description">{{ old('description', $bundle->description) }}</textarea>
+                                          rows="6"
+                                          data-required="true">{{ old('description', $bundle->description) }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -218,6 +232,13 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Accordion Data -->
+                    @include('components.accordion-editor', [
+                        'name' => 'accordion_data',
+                        'existingAccordions' => $bundle->accordions,
+                        'oldAccordionData' => old('accordion_data')
+                    ])
 
                     <!-- Additional Settings -->
                     <div class="modern-card mb-4">
@@ -770,11 +791,29 @@
         // Don't call update here - it will be called in the setTimeout above
     }
 
+
     // Start initialization
     initSelect2();
 })();
 </script>
 @endpush
+
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+
+<!-- CKEditor Component for Short Description -->
+@include('components.ckeditor', [
+    'id' => 'short_description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'basic'
+])
+
+<!-- CKEditor Component for Full Description -->
+@include('components.ckeditor', [
+    'id' => 'description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
 
 <style>
 .selected-products-list {
@@ -829,6 +868,6 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.875rem;
-}
+    }
 </style>
 @endsection

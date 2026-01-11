@@ -18,6 +18,7 @@ class StoreBundleRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'short_description' => 'required|string|max:500',
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'bundle_price' => 'required|numeric|min:0',
@@ -28,6 +29,9 @@ class StoreBundleRequest extends FormRequest
             'quantities.*' => 'integer|min:1',
             'status' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'accordion_data' => 'nullable|array',
+            'accordion_data.*.heading' => 'required_with:accordion_data|string|max:255',
+            'accordion_data.*.content' => 'required_with:accordion_data|string',
         ];
     }
 
@@ -38,6 +42,12 @@ class StoreBundleRequest extends FormRequest
             'name.required' => 'Bundle name is required.',
             'name.max' => 'Bundle name cannot exceed 255 characters.',
             'description.string' => 'Description must be a valid string.',
+            'short_description.required' => 'Short description is required.',
+            'short_description.max' => 'Short description cannot exceed 500 characters.',
+            'accordion_data.array' => 'Accordion data must be an array.',
+            'accordion_data.*.heading.required_with' => 'Accordion heading is required.',
+            'accordion_data.*.heading.max' => 'Accordion heading cannot exceed 255 characters.',
+            'accordion_data.*.content.required_with' => 'Accordion content is required.',
             'images.array' => 'Images must be an array.',
             'images.max' => 'You can upload a maximum of 10 images.',
             'images.*.image' => 'Each uploaded file must be an image.',

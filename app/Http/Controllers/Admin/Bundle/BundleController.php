@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Bundle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Bundle\StoreBundleRequest;
 use App\Http\Requests\Admin\Bundle\UpdateBundleRequest;
+use App\Models\BundleAccordion;
 use App\Models\BundleImage;
 use App\Models\ProductBundle;
 use App\Models\Product;
@@ -115,6 +116,7 @@ class BundleController extends Controller
             'uuid' => $bundleUuid,
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'short_description' => $validated['short_description'],
             'bundle_price' => $validated['bundle_price'],
             'discount_percentage' => $validated['discount_percentage'] ?? null,
             'status' => $validated['status'] ?? true,
@@ -178,6 +180,20 @@ class BundleController extends Controller
             'discount_percentage' => round($discountPercentage, 2)
         ]);
 
+        // Handle accordion data
+        if ($request->has('accordion_data') && is_array($request->accordion_data)) {
+            foreach ($request->accordion_data as $item) {
+                if (!empty($item['heading']) && !empty($item['content'])) {
+                    BundleAccordion::create([
+                        'uuid' => Str::uuid(),
+                        'bundle_id' => $bundle->id,
+                        'heading' => $item['heading'],
+                        'content' => $item['content'],
+                    ]);
+                }
+            }
+        }
+
         return redirect()->route('admin.bundles.index')
             ->with('success', 'Bundle created successfully!');
     }
@@ -191,7 +207,7 @@ class BundleController extends Controller
             abort(404);
         }
 
-        $bundle->load(['products.images', 'images']);
+        $bundle->load(['products.images', 'images', 'accordions']);
         return view('admin.bundle.show', compact('bundle'));
     }
 
@@ -206,7 +222,7 @@ class BundleController extends Controller
                 ->with('error', 'Cannot edit a deleted bundle. Please restore it first.');
         }
 
-        $bundle->load(['products', 'images']);
+        $bundle->load(['products', 'images', 'accordions']);
         $categories = \App\Models\Category::active()->ordered()->get();
 
         // If validation failed, load products from old input
@@ -299,6 +315,7 @@ class BundleController extends Controller
         $this->bundleRepository->update($bundle, [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'short_description' => $validated['short_description'],
             'bundle_price' => $validated['bundle_price'],
             // Discount percentage will be calculated after products are synced
             'status' => $validated['status'] ?? $bundle->status,
@@ -370,6 +387,22 @@ class BundleController extends Controller
         $bundle->update([
             'discount_percentage' => round($discountPercentage, 2)
         ]);
+
+        // Handle accordion data - delete old and create new
+        $bundle->accordions()->delete();
+
+        if ($request->has('accordion_data') && is_array($request->accordion_data)) {
+            foreach ($request->accordion_data as $item) {
+                if (!empty($item['heading']) && !empty($item['content'])) {
+                    BundleAccordion::create([
+                        'uuid' => Str::uuid(),
+                        'bundle_id' => $bundle->id,
+                        'heading' => $item['heading'],
+                        'content' => $item['content'],
+                    ]);
+                }
+            }
+        }
 
         // Refresh bundle to get updated data
         $bundle->refresh();

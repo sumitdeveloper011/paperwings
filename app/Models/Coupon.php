@@ -51,7 +51,7 @@ class Coupon extends Model
         });
     }
 
-    // Get the route key name
+    // Get the route key name - use uuid for admin routes
     public function getRouteKeyName()
     {
         return 'uuid';
@@ -72,7 +72,7 @@ class Coupon extends Model
     // Check if coupon is valid (active and not expired)
     public function isValid()
     {
-        return $this->isActive() && !$this->isExpired() && 
+        return $this->isActive() && !$this->isExpired() &&
                ($this->usage_limit === null || $this->usage_count < $this->usage_limit);
     }
 
@@ -82,11 +82,11 @@ class Coupon extends Model
         if (!$this->isActive()) {
             return '<span class="badge bg-danger">Inactive</span>';
         }
-        
+
         if ($this->isExpired()) {
             return '<span class="badge bg-warning">Expired</span>';
         }
-        
+
         return '<span class="badge bg-success">Active</span>';
     }
 

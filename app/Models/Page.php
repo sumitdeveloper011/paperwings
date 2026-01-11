@@ -17,6 +17,7 @@ class Page extends Model
         'sub_title',
         'content',
         'image',
+        'status',
     ];
 
     // Boot method to generate UUID and slug automatically

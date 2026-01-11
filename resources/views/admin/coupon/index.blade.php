@@ -34,180 +34,131 @@
                 <p class="modern-card__subtitle">{{ $coupons->total() }} total coupons</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" class="search-form__input"
-                               placeholder="Search coupons..." value="{{ $search }}">
-                        @if($search)
-                            <a href="{{ route('admin.coupons.index') }}" class="search-form__clear">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search coupons..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
         <div class="modern-card__body">
-            @if($coupons->count() > 0)
-                <div class="modern-table-wrapper">
-                    <table class="modern-table">
-                        <thead class="modern-table__head">
-                            <tr>
-                                <th class="modern-table__th">
-                                    <span>Sr. No.</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Code</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Name</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Type</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Value</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Usage</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Validity</span>
-                                </th>
-                                <th class="modern-table__th">
-                                    <span>Status</span>
-                                </th>
-                                <th class="modern-table__th modern-table__th--actions">
-                                    <span>Actions</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="modern-table__body">
-                            @foreach($coupons as $coupon)
-                                <tr class="modern-table__row">
-                                    <td class="modern-table__td">
-                                        <div class="sr-no">
-                                            {{ ($coupons->currentPage() - 1) * $coupons->perPage() + $loop->iteration }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="coupon-code">
-                                            <code class="code-badge">{{ $coupon->code }}</code>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="coupon-name">
-                                            <strong>{{ $coupon->name }}</strong>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <span class="badge {{ $coupon->type === 'percentage' ? 'bg-info' : 'bg-primary' }}">
-                                            {{ ucfirst($coupon->type) }}
-                                        </span>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="coupon-value">
-                                            @if($coupon->type === 'percentage')
-                                                {{ $coupon->value }}%
-                                            @else
-                                                ${{ number_format($coupon->value, 2) }}
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="coupon-usage">
-                                            {{ $coupon->usage_count }} / {{ $coupon->usage_limit ?? '∞' }}
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <div class="coupon-dates">
-                                            <small>{{ $coupon->start_date->format('M d, Y') }}</small>
-                                            <br>
-                                            <small>to {{ $coupon->end_date->format('M d, Y') }}</small>
-                                        </div>
-                                    </td>
-                                    <td class="modern-table__td">
-                                        <form method="POST" action="{{ route('admin.coupons.updateStatus', $coupon) }}" class="status-form">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
-                                                @php
-                                                    $status = (int) $coupon->status;
-                                                @endphp
-                                                <option value="1" {{ $status == 1 ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ $status == 0 ? 'selected' : '' }}>Inactive</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td class="modern-table__td modern-table__td--actions">
-                                        <div class="action-buttons">
-                                            @can('coupons.view')
-                                            <a href="{{ route('admin.coupons.show', $coupon) }}"
-                                               class="action-btn action-btn--view"
-                                               title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            @endcan
-                                            @can('coupons.edit')
-                                            <a href="{{ route('admin.coupons.edit', $coupon) }}"
-                                               class="action-btn action-btn--edit"
-                                               title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            @endcan
-                                            @can('coupons.delete')
-                                            <form method="POST"
-                                                  action="{{ route('admin.coupons.destroy', $coupon) }}"
-                                                  class="action-form"
-                                                  onsubmit="return confirm('Are you sure you want to delete this coupon?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div id="results-container">
+                @include('admin.coupon.partials.table', ['coupons' => $coupons])
+            </div>
 
-                <!-- Pagination -->
-                @if($coupons->hasPages())
+            <!-- Pagination Container -->
+            <div id="pagination-container">
+                @if($coupons->total() > 0 && $coupons->hasPages())
                     <div class="pagination-wrapper">
                         {{ $coupons->links('components.pagination') }}
                     </div>
                 @endif
-            @else
-                <div class="empty-state">
-                    <div class="empty-state__icon">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                    <h3 class="empty-state__title">No Coupons Found</h3>
-                    @if($search)
-                        <p class="empty-state__text">No coupons found matching "{{ $search }}"</p>
-                        <a href="{{ route('admin.coupons.index') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left"></i>
-                            View All Coupons
-                        </a>
-                    @else
-                        <p class="empty-state__text">Start by creating your first coupon</p>
-                        @can('coupons.create')
-                        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
-                            Add Coupon
-                        </a>
-                        @endcan
-                    @endif
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AJAX search
+    if (typeof AdminSearch !== 'undefined') {
+        AdminSearch.init({
+            searchInput: '#search-input',
+            searchForm: '#search-form',
+            searchButton: '#search-button',
+            clearButton: '#clear-search',
+            resultsContainer: '#results-container',
+            paginationContainer: '#pagination-container',
+            loadingIndicator: '#search-loading',
+            searchUrl: '{{ route('admin.coupons.index') }}',
+            debounceDelay: 300
+        });
+    }
+
+    // AJAX status update
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('status-select') && e.target.hasAttribute('data-coupon-id')) {
+            e.preventDefault();
+            const select = e.target;
+            const form = select.closest('form');
+            const couponId = select.getAttribute('data-coupon-id');
+            const status = select.value;
+            const originalValue = select.getAttribute('data-original-value') || (select.querySelector('option[selected]')?.value || select.value);
+
+            // Store original value
+            if (!select.hasAttribute('data-original-value')) {
+                select.setAttribute('data-original-value', originalValue);
+            }
+
+            // Disable select during request
+            select.disabled = true;
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('status', status);
+            formData.append('_token', form.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+            formData.append('_method', 'PATCH');
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.setAttribute('data-original-value', status);
+
+                // Show success message if available
+                if (typeof showToast === 'function') {
+                    showToast('Success', data.message || 'Coupon status updated successfully', 'success', 3000);
+                }
+            })
+            .catch(error => {
+                // Revert select value on error
+                select.value = originalValue;
+                select.disabled = false;
+
+                console.error('Error updating status:', error);
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update coupon status', 'error', 5000);
+                } else {
+                    alert('Failed to update coupon status. Please try again.');
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection
 

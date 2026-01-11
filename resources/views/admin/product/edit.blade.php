@@ -226,56 +226,11 @@
                     </div>
 
                     <!-- Accordion Data -->
-                    <div class="modern-card mb-4">
-                        <div class="modern-card__header">
-                            <div class="modern-card__header-content">
-                                <h3 class="modern-card__title">
-                                    <i class="fas fa-list"></i>
-                                    Additional Information (Accordion)
-                                </h3>
-                            </div>
-                            <div class="modern-card__header-actions">
-                                <button type="button" class="btn btn-sm btn-primary" id="addAccordionItem">
-                                    <i class="fas fa-plus"></i> Add Section
-                                </button>
-                            </div>
-                        </div>
-                        <div class="modern-card__body">
-                            <div id="accordionContainer">
-                                @php
-                                    $accordionData = old('accordion_data', $product->accordions->map(function($accordion) {
-                                        return [
-                                            'heading' => $accordion->heading,
-                                            'content' => $accordion->content
-                                        ];
-                                    })->toArray() ?? []);
-                                @endphp
-                                @if($accordionData && count($accordionData) > 0)
-                                    @foreach($accordionData as $index => $item)
-                                        <div class="accordion-item-wrapper mb-3 border rounded p-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <h6 class="mb-0">Section {{ $index + 1 }}</h6>
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-accordion-item">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="text" class="form-control" name="accordion_data[{{ $index }}][heading]"
-                                                       placeholder="Section heading..." value="{{ $item['heading'] ?? '' }}">
-                                            </div>
-                                            <div>
-                                                <textarea class="form-control accordion-content-editor" id="accordion_content_edit_{{ $index }}" name="accordion_data[{{ $index }}][content]"
-                                                          rows="3" placeholder="Section content...">{{ $item['content'] ?? '' }}</textarea>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @endif
-                            </div>
-                            <div class="text-muted text-center py-3" id="emptyAccordionMessage" style="{{ $accordionData && count($accordionData) > 0 ? 'display: none;' : '' }}">
-                                <i class="fas fa-info-circle"></i> No additional sections added yet. Click "Add Section" to create accordion content.
-                            </div>
-                        </div>
-                    </div>
+                    @include('components.accordion-editor', [
+                        'name' => 'accordion_data',
+                        'existingAccordions' => $product->accordions,
+                        'oldAccordionData' => old('accordion_data')
+                    ])
 
                     <!-- SEO Meta Fields -->
                     <div class="modern-card mb-4">
@@ -487,7 +442,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let accordionCounter = {{ count($accordionData ?? []) }};
 
     // Auto-generate slug from name
     const nameInput = document.getElementById('name');
@@ -507,195 +461,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Price calculations - Now handled by product-pricing.js
 
     // Dynamic subcategory loading - Now handled by select-subcategory component
-
-    // Accordion management
-    const addAccordionBtn = document.getElementById('addAccordionItem');
-    const accordionContainer = document.getElementById('accordionContainer');
-    const emptyMessage = document.getElementById('emptyAccordionMessage');
-
-    addAccordionBtn.addEventListener('click', function() {
-        const accordionItem = createAccordionItem(accordionCounter);
-        accordionContainer.appendChild(accordionItem);
-        accordionCounter++;
-        updateAccordionVisibility();
-    });
-
-    function createAccordionItem(index) {
-        const div = document.createElement('div');
-        div.className = 'accordion-item-wrapper mb-3 border rounded p-3';
-        const textareaId = `accordion_content_${index}`;
-        div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Section ${index + 1}</h6>
-                <button type="button" class="btn btn-sm btn-outline-danger remove-accordion-item">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="mb-2">
-                <input type="text" class="form-control" name="accordion_data[${index}][heading]"
-                       placeholder="Section heading...">
-            </div>
-            <div>
-                <textarea class="form-control accordion-content-editor" id="${textareaId}" name="accordion_data[${index}][content]"
-                          rows="3" placeholder="Section content..."></textarea>
-            </div>
-        `;
-
-        // Add remove functionality
-        div.querySelector('.remove-accordion-item').addEventListener('click', function() {
-            // Destroy CKEditor instance if exists
-            const textarea = div.querySelector('textarea');
-            if (textarea && window[textareaId + 'Editor']) {
-                window[textareaId + 'Editor'].destroy()
-                    .then(() => {
-                        delete window[textareaId + 'Editor'];
-                    })
-                    .catch(err => console.error('Error destroying editor:', err));
-            }
-            div.remove();
-            updateAccordionVisibility();
-            reindexAccordionItems();
-        });
-
-        // Initialize CKEditor for the textarea after adding to DOM
-        setTimeout(() => {
-            initializeAccordionEditor(textareaId);
-        }, 100);
-
-        return div;
-    }
-
-    function initializeAccordionEditor(textareaId) {
-        const textarea = document.getElementById(textareaId);
-        if (!textarea || typeof ClassicEditor === 'undefined') {
-            return;
-        }
-
-        ClassicEditor
-            .create(textarea, {
-                toolbar: {
-                    items: [
-                        'heading', '|',
-                        'bold', 'italic', 'link', '|',
-                        'bulletedList', 'numberedList', '|',
-                        'sourceEditing', '|',
-                        'undo', 'redo'
-                    ]
-                },
-                language: 'en',
-                heading: {
-                    options: [
-                        { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                        { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-                        { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-                    ]
-                },
-                htmlSupport: {
-                    allow: [
-                        {
-                            name: /.*/,
-                            attributes: true,
-                            classes: true,
-                            styles: true
-                        }
-                    ]
-                }
-            })
-            .then(editor => {
-                window[textareaId + 'Editor'] = editor;
-
-                // Sync editor content to textarea before form submission
-                const form = textarea.closest('form');
-                if (form) {
-                    form.addEventListener('submit', function(e) {
-                        textarea.value = editor.getData();
-                    }, { once: false });
-                }
-            })
-            .catch(error => {
-                console.error('CKEditor initialization error for #' + textareaId + ':', error);
-            });
-    }
-
-    function updateAccordionVisibility() {
-        const hasItems = accordionContainer.children.length > 0;
-        emptyMessage.style.display = hasItems ? 'none' : 'block';
-    }
-
-    function reindexAccordionItems() {
-        Array.from(accordionContainer.children).forEach((item, index) => {
-            item.querySelector('h6').textContent = `Section ${index + 1}`;
-            const inputs = item.querySelectorAll('input, textarea');
-            inputs.forEach(input => {
-                const name = input.getAttribute('name');
-                if (name) {
-                    input.setAttribute('name', name.replace(/\[\d+\]/, `[${index}]`));
-                }
-
-                // Reindex textarea IDs and recreate CKEditor if needed
-                if (input.tagName === 'TEXTAREA' && input.classList.contains('accordion-content-editor')) {
-                    const oldId = input.id;
-                    const newId = `accordion_content_${index}`;
-
-                    // Destroy old editor if exists
-                    if (oldId && window[oldId + 'Editor']) {
-                        window[oldId + 'Editor'].destroy()
-                            .then(() => {
-                                delete window[oldId + 'Editor'];
-                                input.id = newId;
-                                // Reinitialize editor with new ID
-                                setTimeout(() => {
-                                    initializeAccordionEditor(newId);
-                                }, 100);
-                            })
-                            .catch(err => console.error('Error reindexing editor:', err));
-                    } else {
-                        input.id = newId;
-                        // Initialize editor if not already initialized
-                        setTimeout(() => {
-                            if (!window[newId + 'Editor']) {
-                                initializeAccordionEditor(newId);
-                            }
-                        }, 100);
-                    }
-                }
-            });
-        });
-        accordionCounter = accordionContainer.children.length;
-    }
-
-    // Add remove functionality to existing accordion items
-    document.querySelectorAll('.remove-accordion-item').forEach(button => {
-        button.addEventListener('click', function() {
-            const wrapper = this.closest('.accordion-item-wrapper');
-            const textarea = wrapper.querySelector('textarea');
-            if (textarea && textarea.id) {
-                const editorId = textarea.id + 'Editor';
-                if (window[editorId]) {
-                    window[editorId].destroy()
-                        .then(() => {
-                            delete window[editorId];
-                        })
-                        .catch(err => console.error('Error destroying editor:', err));
-                }
-            }
-            wrapper.remove();
-            updateAccordionVisibility();
-            reindexAccordionItems();
-        });
-    });
-
-    // Initialize CKEditor for existing accordion items (from database or old input)
-    document.querySelectorAll('.accordion-content-editor').forEach((textarea, index) => {
-        if (textarea.id) {
-            initializeAccordionEditor(textarea.id);
-        }
-    });
-
-
-    // Initial accordion visibility check
-    updateAccordionVisibility();
 
     // Initialize Select2 for tags
     if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
@@ -744,13 +509,7 @@ if (productForm) {
             }
         }
 
-        // Sync all accordion CKEditor instances
-        document.querySelectorAll('.accordion-content-editor').forEach(textarea => {
-            const editorId = textarea.id + 'Editor';
-            if (window[editorId]) {
-                textarea.value = window[editorId].getData();
-            }
-        });
+            // Accordion CKEditor instances are synced by the accordion-editor component
     });
 }
 </script>
