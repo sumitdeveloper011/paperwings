@@ -22,7 +22,7 @@
     <div class="row">
         <!-- Main Form -->
         <div class="col-lg-8">
-            <form method="POST" action="{{ route('admin.roles.update', $role->id) }}" class="modern-form">
+            <form method="POST" action="{{ route('admin.roles.update', $role) }}" class="modern-form">
                 @csrf
                 @method('PUT')
 

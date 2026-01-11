@@ -26,12 +26,19 @@
     $selectClass = $class ?? 'form-select';
     $useSelect2 = $useSelect2 ?? true; // Default to Select2 enabled
     $showLabel = $showLabel ?? true; // Default to showing label
-    $wrapperClass = $wrapperClass ?? 'mb-3'; // Default wrapper class
+    // Handle wrapperClass: null or empty string means no wrapper, otherwise use default 'mb-3'
+    if (!isset($wrapperClass)) {
+        $wrapperClass = 'mb-3'; // Default if not passed
+    } elseif ($wrapperClass === null || $wrapperClass === '') {
+        $wrapperClass = ''; // No wrapper if explicitly null or empty
+    }
     $selectStyle = $style ?? ''; // Inline styles for select element
     $select2Width = $select2Width ?? '100%'; // Select2 width
 @endphp
 
+@if($wrapperClass && $wrapperClass !== '')
 <div class="{{ $wrapperClass }}">
+@endif
     @if($showLabel && $labelText)
     <label for="{{ $selectId }}" class="form-label">
         {{ $labelText }}
@@ -59,7 +66,9 @@
     @error($selectName)
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror
+@if($wrapperClass && $wrapperClass !== '')
 </div>
+@endif
 
 @if($useSelect2)
 @push('scripts')

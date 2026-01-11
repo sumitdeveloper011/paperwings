@@ -268,6 +268,9 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
 
     // Analytics - requires analytics.view permission
     Route::middleware('permission:analytics.view')->group(function () {
+        Route::prefix('analytics')->name('analytics.')->group(function () {
+            Route::get('search-products', [AnalyticsController::class, 'searchProducts'])->name('searchProducts');
+        });
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
         Route::get('analytics/product-views', [AnalyticsController::class, 'productViews'])->name('analytics.productViews');
         Route::get('analytics/conversion', [AnalyticsController::class, 'conversion'])->name('analytics.conversion');

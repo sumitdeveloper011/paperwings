@@ -55,7 +55,7 @@
                         </td>
                         <td class="modern-table__td">
                             <form method="POST"
-                                  action="{{ route('admin.regions.updateStatus', $region->uuid) }}"
+                                  action="{{ route('admin.regions.updateStatus', $region) }}"
                                   class="status-form ajax-status-form"
                                   data-region-uuid="{{ $region->uuid }}">
                                 @csrf

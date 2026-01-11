@@ -13,7 +13,7 @@ class ActivityLogController extends Controller
     // Display activity logs
     public function index(Request $request): View
     {
-        $query = Activity::with(['causer', 'subject'])
+        $query = Activity::with(['causer.roles', 'subject'])
             ->orderBy('created_at', 'desc');
 
         // Filter by user (who performed the action)

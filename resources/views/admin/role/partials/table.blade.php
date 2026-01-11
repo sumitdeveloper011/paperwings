@@ -29,19 +29,19 @@
                         <td class="modern-table__td">
                             {{ $role->created_at->format('M d, Y') }}
                         </td>
-                        <td class="modern-table__td modern-table__th--actions">
+                        <td class="modern-table__td modern-table__td--actions">
                             <div class="action-buttons">
-                                <a href="{{ route('admin.roles.show', $role->id) }}"
+                                <a href="{{ route('admin.roles.show', $role) }}"
                                    class="action-btn action-btn--view" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('admin.roles.edit', $role->id) }}"
+                                <a href="{{ route('admin.roles.edit', $role) }}"
                                    class="action-btn action-btn--edit" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 @if($role->name !== 'SuperAdmin')
                                     <form method="POST"
-                                          action="{{ route('admin.roles.destroy', $role->id) }}"
+                                          action="{{ route('admin.roles.destroy', $role) }}"
                                           class="action-form"
                                           onsubmit="return confirm('Are you sure you want to delete this role?')">
                                         @csrf
@@ -64,10 +64,18 @@
             <i class="fas fa-user-tag"></i>
         </div>
         <h3 class="empty-state__title">No Roles Found</h3>
-        <p class="empty-state__text">Start by creating your first role</p>
-        <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i>
-            Add Role
-        </a>
+        @if(request('search'))
+            <p class="empty-state__text">No roles found matching "{{ request('search') }}"</p>
+            <a href="{{ route('admin.roles.index') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i>
+                View All Roles
+            </a>
+        @else
+            <p class="empty-state__text">Start by creating your first role</p>
+            <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Add Role
+            </a>
+        @endif
     </div>
 @endif

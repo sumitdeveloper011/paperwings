@@ -64,7 +64,7 @@ class AdminUserController extends Controller
             if ($users->total() > 0 && $users->hasPages()) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
-                        'paginator' => $users
+                        'paginator' => $users->appends($request->query())
                     ])->render() .
                     '</div>';
             }
@@ -143,16 +143,17 @@ class AdminUserController extends Controller
                 $user->syncRoles($roles);
             }
 
-            // Log activity
+            // Manually log activity with better description (using admin_users log to distinguish from auto-log)
             activity()
                 ->causedBy(Auth::user())
                 ->performedOn($user)
+                ->useLog('admin_users')
                 ->withProperties([
                     'email' => $user->email,
                     'roles' => $user->roles->pluck('name')->toArray(),
                     'status' => $user->status,
                 ])
-                ->log('created admin user');
+                ->log('Admin user created');
 
             // Send welcome email
             try {
@@ -194,16 +195,32 @@ class AdminUserController extends Controller
         $user->load(['userDetail', 'addresses.region', 'wishlists.product', 'roles'])
             ->loadCount(['wishlists', 'addresses', 'orders']);
 
-        // Get activity logs for this user
-        $activities = Activity::where('subject_type', User::class)
+        // Get activity logs for this user (only activities performed ON this user)
+        // Filter duplicates: if "User created" and "Admin user created" exist at same time, show only "Admin user created"
+        $allActivities = Activity::with(['causer.roles'])
+            ->where('subject_type', User::class)
             ->where('subject_id', $user->id)
-            ->orWhere(function($query) use ($user) {
-                $query->where('causer_type', User::class)
-                      ->where('causer_id', $user->id);
-            })
             ->orderBy('created_at', 'desc')
-            ->limit(50)
             ->get();
+
+        // Group by time (same minute) and filter duplicates
+        $grouped = $allActivities->groupBy(function($activity) {
+            return $activity->created_at->format('Y-m-d H:i');
+        });
+
+        $activities = $grouped->map(function($group) {
+            // If multiple activities in same minute, prefer admin_users log or "Admin user" description
+            if ($group->count() > 1) {
+                $adminUserActivity = $group->first(function($act) {
+                    return $act->log_name === 'admin_users' ||
+                           stripos(strtolower($act->description), 'admin user') !== false;
+                });
+
+                return $adminUserActivity ?: $group->first();
+            }
+
+            return $group->first();
+        })->filter()->values()->take(50);
 
         return view('admin.admin-user.show', compact('user', 'activities'));
     }

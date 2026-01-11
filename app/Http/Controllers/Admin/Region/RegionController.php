@@ -15,7 +15,7 @@ use Illuminate\View\View;
 class RegionController extends Controller
 {
     // Display a listing of the resource
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $status = $request->get('status');
@@ -34,6 +34,24 @@ class RegionController extends Controller
         }
 
         $regions = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // Handle AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($regions->total() > 0 && $regions->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $regions->appends($request->query())
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.region.partials.table', compact('regions'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         return view('admin.region.index', compact('regions', 'search', 'status'));
     }

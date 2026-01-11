@@ -212,15 +212,15 @@ document.addEventListener('DOMContentLoaded', function() {
             searchForm: '#search-form',
             searchButton: '#search-button',
             clearButton: '#clear-search',
-            resultsContainer: '#results-container',
-            paginationContainer: '#pagination-container',
+            resultsContainer: '#users-table-container',
+            paginationContainer: '#users-pagination-container',
             loadingIndicator: '#search-loading',
             searchUrl: '{{ route('admin.admin-users.index') }}',
             debounceDelay: 300,
             additionalParams: function() {
                 return {
-                    role: document.getElementById('role-filter').value,
-                    status: document.getElementById('status-filter').value
+                    role: document.getElementById('role-filter')?.value || '',
+                    status: document.getElementById('status-filter')?.value || ''
                 };
             }
         });
@@ -243,7 +243,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusValue) url.searchParams.append('status', statusValue);
             url.searchParams.append('ajax', '1');
 
-            document.getElementById('search-loading').style.display = 'flex';
+            const searchLoading = document.getElementById('search-loading');
+            if (searchLoading) {
+                searchLoading.style.display = 'flex';
+            }
 
             fetch(url.toString(), {
                 method: 'GET',
@@ -255,15 +258,24 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('results-container').innerHTML = data.html;
-                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
+                    const tableContainer = document.getElementById('users-table-container');
+                    const paginationContainer = document.getElementById('users-pagination-container');
+                    if (tableContainer) {
+                        tableContainer.innerHTML = data.html;
+                    }
+                    if (paginationContainer) {
+                        paginationContainer.innerHTML = data.pagination || '';
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
             })
             .finally(() => {
-                document.getElementById('search-loading').style.display = 'none';
+                const searchLoading = document.getElementById('search-loading');
+                if (searchLoading) {
+                    searchLoading.style.display = 'none';
+                }
             });
         });
     }
@@ -275,9 +287,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof AdminSearch !== 'undefined' && AdminSearch.currentRequest) {
                 AdminSearch.currentRequest.abort();
             }
-            const searchValue = document.getElementById('search-input').value;
+            const searchInput = document.getElementById('search-input');
+            const roleFilter = document.getElementById('role-filter');
+            const searchValue = searchInput ? searchInput.value : '';
             const statusValue = this.value;
-            const roleValue = document.getElementById('role-filter').value;
+            const roleValue = roleFilter ? roleFilter.value : '';
 
             const url = new URL('{{ route('admin.admin-users.index') }}');
             if (searchValue) url.searchParams.append('search', searchValue);
@@ -285,7 +299,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusValue) url.searchParams.append('status', statusValue);
             url.searchParams.append('ajax', '1');
 
-            document.getElementById('search-loading').style.display = 'flex';
+            const searchLoading = document.getElementById('search-loading');
+            if (searchLoading) {
+                searchLoading.style.display = 'flex';
+            }
 
             fetch(url.toString(), {
                 method: 'GET',
@@ -297,15 +314,24 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('results-container').innerHTML = data.html;
-                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
+                    const tableContainer = document.getElementById('users-table-container');
+                    const paginationContainer = document.getElementById('users-pagination-container');
+                    if (tableContainer) {
+                        tableContainer.innerHTML = data.html;
+                    }
+                    if (paginationContainer) {
+                        paginationContainer.innerHTML = data.pagination || '';
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
             })
             .finally(() => {
-                document.getElementById('search-loading').style.display = 'none';
+                const searchLoading = document.getElementById('search-loading');
+                if (searchLoading) {
+                    searchLoading.style.display = 'none';
+                }
             });
         });
     }

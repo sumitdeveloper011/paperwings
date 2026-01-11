@@ -78,6 +78,62 @@
                 </div>
             </div>
         </div>
+        <div class="col-lg-4">
+            <div class="modern-card modern-card--compact">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips & Guidelines
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="info-box">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-info-circle text-info"></i>
+                            Permission Naming Convention
+                        </h4>
+                        <p class="info-box__text">
+                            Use dot notation to organize permissions by module and action:
+                        </p>
+                        <ul class="info-box__list">
+                            <li><code>module.view</code> - View/list items</li>
+                            <li><code>module.create</code> - Create new items</li>
+                            <li><code>module.edit</code> - Edit existing items</li>
+                            <li><code>module.delete</code> - Delete items</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box mt-3">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-examples text-success"></i>
+                            Examples
+                        </h4>
+                        <ul class="info-box__list">
+                            <li><code>products.view</code></li>
+                            <li><code>products.create</code></li>
+                            <li><code>users.edit</code></li>
+                            <li><code>orders.delete</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box mt-3">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-shield-alt text-warning"></i>
+                            Guard Name
+                        </h4>
+                        <p class="info-box__text">
+                            The guard name determines which authentication guard this permission applies to.
+                            For most admin panels, use <code>web</code>.
+                        </p>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Pro Tip:</strong> After creating a permission, assign it to roles to control access.
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

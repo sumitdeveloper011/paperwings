@@ -42,7 +42,7 @@
                                        placeholder="e.g., products.create, users.edit"
                                        required>
                             </div>
-                            <small class="form-text text-muted">Use dot notation: module.action</small>
+                            <small class="form-text text-muted">Use dot notation: module.action (e.g., products.create, users.edit)</small>
                             @error('name')
                                 <div class="form-error">{{ $message }}</div>
                             @enderror
@@ -59,6 +59,7 @@
                                        value="{{ old('guard_name', $permission->guard_name) }}"
                                        placeholder="web">
                             </div>
+                            <small class="form-text text-muted">Default: web</small>
                             @error('guard_name')
                                 <div class="form-error">{{ $message }}</div>
                             @enderror
@@ -75,6 +76,86 @@
                             </a>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            @if($permission->roles->count() > 0)
+                <div class="modern-card modern-card--compact mt-3">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-users"></i>
+                            Assigned Roles ({{ $permission->roles->count() }})
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($permission->roles as $role)
+                                <a href="{{ route('admin.roles.show', $role) }}" class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                    {{ $role->name }}
+                                </a>
+                            @endforeach
+                        </div>
+                        <p class="text-muted mt-2 mb-0">
+                            <small>This permission is currently assigned to {{ $permission->roles->count() }} role(s).
+                            Changing the permission name may affect access control.</small>
+                        </p>
+                    </div>
+                </div>
+            @endif
+        </div>
+        <div class="col-lg-4">
+            <div class="modern-card modern-card--compact">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-lightbulb"></i>
+                        Tips & Guidelines
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="info-box">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Important Notes
+                        </h4>
+                        <ul class="info-box__list">
+                            <li>Changing permission name may break existing access controls</li>
+                            <li>Ensure all roles are updated if you change the name</li>
+                            <li>Check middleware and route permissions after changes</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box mt-3">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-info-circle text-info"></i>
+                            Permission Naming
+                        </h4>
+                        <p class="info-box__text">
+                            Follow the dot notation pattern:
+                        </p>
+                        <ul class="info-box__list">
+                            <li><code>module.view</code></li>
+                            <li><code>module.create</code></li>
+                            <li><code>module.edit</code></li>
+                            <li><code>module.delete</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box mt-3">
+                        <h4 class="info-box__title">
+                            <i class="fas fa-shield-alt text-success"></i>
+                            Guard Name
+                        </h4>
+                        <p class="info-box__text">
+                            The guard determines which authentication system this permission applies to.
+                            Keep it as <code>web</code> unless you're using multiple guards.
+                        </p>
+                    </div>
+
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This permission is assigned to {{ $permission->roles->count() }} role(s).
+                        Make sure to review role assignments after editing.
+                    </div>
                 </div>
             </div>
         </div>

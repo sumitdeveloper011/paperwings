@@ -182,10 +182,23 @@
                 } else {
                     // If not JSON, return as text and try to parse
                     return response.text().then(text => {
+                        // Log the response for debugging
+                        console.warn('AdminSearch: Received non-JSON response. First 500 chars:', text.substring(0, 500));
+
+                        // Check if it's an HTML error page
+                        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
+                            // Try to extract error message from HTML
+                            const errorMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i) ||
+                                             text.match(/<h1[^>]*>([^<]+)<\/h1>/i) ||
+                                             text.match(/Error[:\s]+([^<\n]+)/i);
+                            const errorMsg = errorMatch ? errorMatch[1] : 'Server returned HTML instead of JSON';
+                            throw new Error(`Invalid JSON response from server: ${errorMsg}. Check if the controller handles AJAX requests properly.`);
+                        }
+
                         try {
                             return JSON.parse(text);
                         } catch (e) {
-                            throw new Error('Invalid JSON response from server');
+                            throw new Error(`Invalid JSON response from server. Response was: ${text.substring(0, 200)}`);
                         }
                     });
                 }

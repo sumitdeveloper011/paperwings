@@ -6,22 +6,40 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
-use Spatie\Permission\Models\Permission;
+use App\Models\Permission;
 use Illuminate\Support\Str;
 
 class PermissionController extends Controller
 {
     // Display a listing of permissions
-    public function index(Request $request): View
+    public function index(Request $request): View|\Illuminate\Http\JsonResponse
     {
-        $search = $request->get('search');
+        $search = trim($request->get('search', ''));
         $query = Permission::query();
 
-        if ($search) {
+        if ($search !== '') {
             $query->where('name', 'like', "%{$search}%");
         }
 
         $permissions = $query->withCount('roles')->orderBy('name')->paginate(20);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($permissions->total() > 0 && $permissions->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $permissions->appends($request->query())
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.permission.partials.table', compact('permissions'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         // Group permissions by module
         $groupedPermissions = $permissions->getCollection()->groupBy(function($permission) {
@@ -48,6 +66,7 @@ class PermissionController extends Controller
 
         try {
             Permission::create([
+                'uuid' => Str::uuid(),
                 'name' => Str::slug($validated['name'], '_'),
                 'guard_name' => $validated['guard_name'] ?? 'web',
             ]);
@@ -70,6 +89,7 @@ class PermissionController extends Controller
     // Show the form for editing the specified permission
     public function edit(Permission $permission): View
     {
+        $permission->load('roles');
         return view('admin.permission.edit', compact('permission'));
     }
 
@@ -77,7 +97,7 @@ class PermissionController extends Controller
     public function update(Request $request, Permission $permission): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:permissions,name,' . $permission->id,
+            'name' => 'required|string|max:255|unique:permissions,name,' . $permission->id . ',id',
             'guard_name' => 'nullable|string|max:255',
         ]);
 

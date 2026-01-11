@@ -3,15 +3,16 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\Role;
+use App\Models\Permission;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class RolePermissionSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     * 
+     *
      * This seeder creates all roles and permissions.
      * It will NOT run in production environment for safety.
      */
@@ -123,7 +124,10 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(
+                ['name' => $permission, 'guard_name' => 'web'],
+                ['uuid' => Str::uuid()]
+            );
         }
 
         $this->command->info('  ✓ Created ' . count($permissions) . ' permissions');
@@ -144,8 +148,11 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'User', 'guard_name' => 'web'],
         ];
 
-        foreach ($roles as $role) {
-            Role::firstOrCreate($role);
+        foreach ($roles as $roleData) {
+            Role::firstOrCreate(
+                ['name' => $roleData['name'], 'guard_name' => $roleData['guard_name']],
+                ['uuid' => Str::uuid()]
+            );
         }
 
         $this->command->info('  ✓ Created ' . count($roles) . ' roles');

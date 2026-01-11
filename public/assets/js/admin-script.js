@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 adminMain.classList.toggle('sidebar-collapsed');
                 adminFooter.classList.toggle('sidebar-collapsed');
                 topbar.classList.toggle('sidebar-collapsed');
-                
+
                 // Save state to localStorage
                 const isNowCollapsed = sidebar.classList.contains('collapsed');
                 localStorage.setItem('sidebarCollapsed', isNowCollapsed);
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle window resize
     window.addEventListener('resize', function() {
         const newIsMobile = window.innerWidth <= 1024;
-        
+
         if (newIsMobile !== isMobile) {
             // Mobile/desktop breakpoint crossed
             if (newIsMobile) {
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userDropdown.addEventListener('click', function(e) {
             e.stopPropagation();
             const isVisible = userDropdownMenu.style.opacity === '1';
-            
+
             if (isVisible) {
                 userDropdownMenu.style.opacity = '0';
                 userDropdownMenu.style.visibility = 'hidden';
@@ -148,12 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationBadge = document.getElementById('notificationBadge');
     const notificationList = document.getElementById('notificationList');
     const markAllReadBtn = document.getElementById('markAllReadBtn');
-    
+
     // Exit early if notification elements don't exist (e.g., on login page)
     if (!notificationBtn || !notificationDropdown || !notificationBadge || !notificationList) {
         return;
     }
-    
+
     let notificationPollInterval;
     let isDropdownOpen = false;
 
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notificationBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             isDropdownOpen = !isDropdownOpen;
-            
+
             if (isDropdownOpen) {
                 notificationDropdown.classList.add('show');
                 fetchNotifications();
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const currentPath = window.location.pathname;
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
-    
+
     sidebarLinks.forEach(link => {
         const href = link.getAttribute('href');
         if (href && currentPath.includes(href.replace('/admin', ''))) {
@@ -348,19 +348,19 @@ document.addEventListener('DOMContentLoaded', function() {
 // Smooth scrolling for anchor links
 document.addEventListener('DOMContentLoaded', function() {
     const anchorLinks = document.querySelectorAll('a[href^="#"]');
-    
+
     anchorLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const targetId = this.getAttribute('href');
-            
+
             // Skip if href is just '#' or empty
             if (!targetId || targetId === '#' || targetId.trim() === '') {
                 return;
             }
-            
+
             const targetElement = document.querySelector(targetId);
-            
+
             if (targetElement) {
                 targetElement.scrollIntoView({
                     behavior: 'smooth',
@@ -381,19 +381,19 @@ function showToast(message, type = 'info') {
             <button class="toast-close">&times;</button>
         </div>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Show toast
     setTimeout(() => {
         toast.classList.add('show');
     }, 100);
-    
+
     // Auto hide after 5 seconds
     setTimeout(() => {
         hideToast(toast);
     }, 5000);
-    
+
     // Close button functionality
     const closeBtn = toast.querySelector('.toast-close');
     closeBtn.addEventListener('click', () => {
@@ -414,7 +414,7 @@ function hideToast(toast) {
 function validateForm(form) {
     const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
     let isValid = true;
-    
+
     inputs.forEach(input => {
         if (!input.value.trim()) {
             input.classList.add('error');
@@ -423,7 +423,7 @@ function validateForm(form) {
             input.classList.remove('error');
         }
     });
-    
+
     return isValid;
 }
 

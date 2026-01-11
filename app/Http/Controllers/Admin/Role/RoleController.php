@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\Role;
+use App\Models\Permission;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -32,7 +32,7 @@ class RoleController extends Controller
             if ($roles->total() > 0 && $roles->hasPages()) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
-                        'paginator' => $roles
+                        'paginator' => $roles->appends($request->query())
                     ])->render() .
                     '</div>';
             }
@@ -72,6 +72,7 @@ class RoleController extends Controller
             DB::beginTransaction();
 
             $role = Role::create([
+                'uuid' => Str::uuid(),
                 'name' => Str::slug($validated['name'], '_'),
                 'guard_name' => $validated['guard_name'] ?? 'web',
             ]);

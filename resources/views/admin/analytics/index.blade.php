@@ -228,49 +228,49 @@
                     </div>
                 </div>
                 <div class="modern-card__body">
-                    <div class="row g-3">
-                        <div class="col-lg-4 col-md-6">
-                            <a href="{{ route('admin.analytics.productViews') }}" class="report-card-link" style="display: block; text-decoration: none;">
-                                <div class="modern-card modern-card--hover" style="height: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease;">
-                                    <div class="modern-card__body text-center" style="padding: 2rem;">
+                    <div class="row g-3" style="display: flex; flex-wrap: wrap;">
+                        <div class="col-lg-4 col-md-6" style="display: flex;">
+                            <a href="{{ route('admin.analytics.productViews') }}" class="report-card-link" style="display: flex; width: 100%; text-decoration: none;">
+                                <div class="modern-card modern-card--hover" style="width: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease; display: flex; flex-direction: column;">
+                                    <div class="modern-card__body text-center" style="padding: 2rem; display: flex; flex-direction: column; flex: 1;">
                                         <div style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;">
                                             <i class="fas fa-eye"></i>
                                         </div>
                                         <h4 style="color: #2c3e50; margin-bottom: 0.5rem;">Product Views Report</h4>
-                                        <p class="text-muted" style="margin-bottom: 1rem;">Detailed view analytics for all products with filtering options</p>
-                                        <span class="btn btn-outline-primary">
+                                        <p class="text-muted" style="margin-bottom: auto; flex: 1;">Detailed view analytics for all products with filtering options</p>
+                                        <span class="btn btn-outline-primary" style="margin-top: 1rem;">
                                             View Report <i class="fas fa-arrow-right ml-1"></i>
                                         </span>
                                     </div>
                                 </div>
                             </a>
                         </div>
-                        <div class="col-lg-4 col-md-6">
-                            <a href="{{ route('admin.analytics.conversion') }}" class="report-card-link" style="display: block; text-decoration: none;">
-                                <div class="modern-card modern-card--hover" style="height: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease;">
-                                    <div class="modern-card__body text-center" style="padding: 2rem;">
+                        <div class="col-lg-4 col-md-6" style="display: flex;">
+                            <a href="{{ route('admin.analytics.conversion') }}" class="report-card-link" style="display: flex; width: 100%; text-decoration: none;">
+                                <div class="modern-card modern-card--hover" style="width: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease; display: flex; flex-direction: column;">
+                                    <div class="modern-card__body text-center" style="padding: 2rem; display: flex; flex-direction: column; flex: 1;">
                                         <div style="font-size: 3rem; color: #f093fb; margin-bottom: 1rem;">
                                             <i class="fas fa-chart-bar"></i>
                                         </div>
                                         <h4 style="color: #2c3e50; margin-bottom: 0.5rem;">Conversion Analytics</h4>
-                                        <p class="text-muted" style="margin-bottom: 1rem;">Track product views to cart conversion rates and performance</p>
-                                        <span class="btn btn-outline-primary">
+                                        <p class="text-muted" style="margin-bottom: auto; flex: 1;">Track product views to cart conversion rates and performance</p>
+                                        <span class="btn btn-outline-primary" style="margin-top: 1rem;">
                                             View Report <i class="fas fa-arrow-right ml-1"></i>
                                         </span>
                                     </div>
                                 </div>
                             </a>
                         </div>
-                        <div class="col-lg-4 col-md-6">
-                            <a href="{{ route('admin.analytics.sales') }}" class="report-card-link" style="display: block; text-decoration: none;">
-                                <div class="modern-card modern-card--hover" style="height: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease;">
-                                    <div class="modern-card__body text-center" style="padding: 2rem;">
+                        <div class="col-lg-4 col-md-6" style="display: flex;">
+                            <a href="{{ route('admin.analytics.sales') }}" class="report-card-link" style="display: flex; width: 100%; text-decoration: none;">
+                                <div class="modern-card modern-card--hover" style="width: 100%; border: 2px solid #e9ecef; transition: all 0.3s ease; display: flex; flex-direction: column;">
+                                    <div class="modern-card__body text-center" style="padding: 2rem; display: flex; flex-direction: column; flex: 1;">
                                         <div style="font-size: 3rem; color: #4facfe; margin-bottom: 1rem;">
                                             <i class="fas fa-dollar-sign"></i>
                                         </div>
                                         <h4 style="color: #2c3e50; margin-bottom: 0.5rem;">Sales Report</h4>
-                                        <p class="text-muted" style="margin-bottom: 1rem;">Comprehensive sales analytics and revenue tracking</p>
-                                        <span class="btn btn-outline-primary">
+                                        <p class="text-muted" style="margin-bottom: auto; flex: 1;">Comprehensive sales analytics and revenue tracking</p>
+                                        <span class="btn btn-outline-primary" style="margin-top: 1rem;">
                                             View Report <i class="fas fa-arrow-right ml-1"></i>
                                         </span>
                                     </div>

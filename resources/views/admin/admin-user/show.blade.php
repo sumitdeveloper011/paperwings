@@ -133,12 +133,43 @@
                                     @endif
                                 </div>
                                 <div class="activity-content" style="flex: 1;">
-                                    <div class="activity-description" style="font-weight: 600; margin-bottom: 0.25rem;">
-                                        {{ ucfirst($activity->description) }} admin user
+                                    <div class="activity-description" style="font-weight: 600; margin-bottom: 0.25rem; color: #2c3e50;">
+                                        @php
+                                            $description = $activity->description;
+                                            // Clean up and standardize description for better display
+                                            $descLower = strtolower($description);
+                                            if (str_contains($descLower, 'admin user created') ||
+                                                (str_contains($descLower, 'user created') && $activity->log_name === 'admin_users')) {
+                                                $description = 'Admin user created';
+                                            } elseif (str_contains($descLower, 'user created')) {
+                                                $description = 'Admin user created'; // Normalize all created events
+                                            } elseif (str_contains($descLower, 'user updated')) {
+                                                $description = 'Admin user updated';
+                                            } elseif (str_contains($descLower, 'user deleted')) {
+                                                $description = 'Admin user deleted';
+                                            } else {
+                                                $description = ucfirst(str_replace('user ', 'admin user ', $description));
+                                            }
+                                            // Determine icon and color based on original description
+                                            $icon = 'info-circle';
+                                            $iconColor = '#667eea';
+                                            if (str_contains($descLower, 'created')) {
+                                                $icon = 'plus-circle';
+                                                $iconColor = '#28a745';
+                                            } elseif (str_contains($descLower, 'updated')) {
+                                                $icon = 'edit';
+                                                $iconColor = '#ffc107';
+                                            } elseif (str_contains($descLower, 'deleted')) {
+                                                $icon = 'trash';
+                                                $iconColor = '#dc3545';
+                                            }
+                                        @endphp
+                                        <i class="fas fa-{{ $icon }}" style="color: {{ $iconColor }}; margin-right: 0.5rem;"></i>
+                                        {{ $description }}
                                     </div>
                                     @if($activity->causer)
                                     <div class="activity-causer" style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">
-                                        By: {{ $activity->causer->name }} ({{ $activity->causer->email }})
+                                        <i class="fas fa-user"></i> By: <strong>{{ $activity->causer->name }}</strong> ({{ $activity->causer->email }})
                                     </div>
                                     @endif
                                     @if($activity->properties && isset($activity->properties['changes']))

@@ -30,38 +30,59 @@
                 <p class="modern-card__subtitle">Filter product views by product, date range, or both</p>
             </div>
         </div>
-        <div class="modern-card__body">
-            <form method="GET" class="filter-form">
+        <div class="modern-card__body" style="width: 100%;">
+            <form method="GET" class="filter-form" style="width: 100%;">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="product_id" class="form-label">
-                            <i class="fas fa-box"></i>
-                            Product
-                        </label>
-                        <select name="product_id" id="product_id" class="form-select">
-                            <option value="">All Products</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}" {{ $productId == $product->id ? 'selected' : '' }}>
-                                    {{ $product->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="col-lg-3 col-md-3">
+                        @include('components.select-category', [
+                            'id' => 'category_id',
+                            'name' => 'category_id',
+                            'label' => 'Category',
+                            'required' => false,
+                            'selected' => $categoryId ?? old('category_id'),
+                            'categories' => $categories ?? collect(),
+                            'useUuid' => false,
+                            'placeholder' => 'All Categories',
+                            'class' => 'form-select',
+                            'showLabel' => true,
+                            'wrapperClass' => null,
+                        ])
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-3 col-md-3">
+                        @include('components.select-product', [
+                            'id' => 'product_id',
+                            'name' => 'product_id',
+                            'label' => 'Product',
+                            'required' => false,
+                            'selected' => $productId ?? old('product_id'),
+                            'categoryFilterId' => 'category_id',
+                            'searchUrl' => route('admin.analytics.searchProducts'),
+                            'placeholder' => 'All Products',
+                            'class' => 'form-select',
+                            'showLabel' => true,
+                            'wrapperClass' => null,
+                            'selectedProduct' => $selectedProduct ?? null,
+                        ])
+                    </div>
+                    <div class="col-lg-2 col-md-2">
                         <label for="date_from" class="form-label">
                             <i class="fas fa-calendar-alt"></i>
                             From Date
                         </label>
                         <input type="date" name="date_from" id="date_from" class="form-control" value="{{ $dateFrom }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-2 col-md-2">
                         <label for="date_to" class="form-label">
                             <i class="fas fa-calendar-alt"></i>
                             To Date
                         </label>
                         <input type="date" name="date_to" id="date_to" class="form-control" value="{{ $dateTo }}">
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-lg-2 col-md-2">
+                        <label class="form-label" style="visibility: hidden;">
+                            <i class="fas fa-filter"></i>
+                            Filter
+                        </label>
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search"></i>
                             Filter
@@ -129,7 +150,7 @@
                 </div>
                 @if($views->hasPages())
                     <div class="pagination-wrapper mt-4">
-                        {{ $views->links('components.pagination') }}
+                        {{ $views->appends(request()->query())->links('components.pagination') }}
                     </div>
                 @endif
             @else
@@ -186,5 +207,44 @@
     </div>
     @endif
 </div>
+
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+.filter-form {
+    width: 100%;
+    max-width: 100%;
+}
+.filter-form .row {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+.filter-form .row > [class*="col-"] {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+.filter-form .form-label {
+    margin-bottom: 0.5rem;
+    display: block;
+}
+</style>
+@endpush
+
+@push('scripts')
+<!-- Select2 JS - Load after jQuery -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// Ensure Select2 is loaded before component scripts run
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'undefined') {
+        console.warn('Select2 library not loaded yet');
+    }
+});
+</script>
+@endpush
 @endsection
 
