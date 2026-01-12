@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -65,17 +65,6 @@ class Order extends Model
         'admin_viewed_at' => 'datetime',
     ];
 
-    // Boot function to generate UUID automatically
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($order) {
-            if (empty($order->uuid)) {
-                $order->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Generate unique order number
     public static function generateOrderNumber(): string

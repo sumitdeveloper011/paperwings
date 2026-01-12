@@ -6,14 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Paper Wings' }}</title>
     @php
-        $settings = \Illuminate\Support\Facades\Cache::remember('admin_settings', 3600, function() {
-            try {
-                return \App\Models\Setting::pluck('value', 'key')->toArray();
-            } catch (\Exception $e) {
-                return [];
-            }
-        });
-        $siteFavicon = !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png');
+        $settings = \App\Helpers\SettingHelper::all();
+        $siteFavicon = \App\Helpers\SettingHelper::favicon();
     @endphp
     <link rel="icon" type="image/x-icon" href="{{ $siteFavicon }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ $siteFavicon }}">

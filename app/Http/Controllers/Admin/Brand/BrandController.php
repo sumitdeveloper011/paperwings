@@ -8,6 +8,7 @@ use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
 
@@ -29,7 +30,7 @@ class BrandController extends Controller
 
         if ($search) {
             $brands = $this->brandRepository->search($search);
-            $brands = new \Illuminate\Pagination\LengthAwarePaginator(
+            $brands = new LengthAwarePaginator(
                 $brands,
                 $brands->count(),
                 10,

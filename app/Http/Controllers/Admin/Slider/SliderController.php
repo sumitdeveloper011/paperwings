@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Slider;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
 use App\Services\ImageService;
+use App\Traits\LoadsFormData;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,7 @@ use Illuminate\Support\Str;
 
 class SliderController extends Controller
 {
+    use LoadsFormData;
     protected SliderRepositoryInterface $sliderRepository;
     protected ImageService $imageService;
 
@@ -24,7 +26,6 @@ class SliderController extends Controller
         $this->imageService = $imageService;
     }
 
-    // Display a listing of the resource
     public function index(): View
     {
         $sliders = $this->sliderRepository->getOrdered();
@@ -35,15 +36,11 @@ class SliderController extends Controller
     // Show the form for creating a new resource
     public function create(): View
     {
-        $categories = \App\Models\Category::active()->ordered()->get();
-        $products = \App\Models\Product::active()->orderBy('name')->get();
-        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
-        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
+        $formData = $this->getFormData();
 
-        return view('admin.slider.create', compact('categories', 'products', 'bundles', 'pages'));
+        return view('admin.slider.create', $formData);
     }
 
-    // Store a newly created resource in storage
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -97,24 +94,18 @@ class SliderController extends Controller
                         ->with('success', 'Slider created successfully!');
     }
 
-    // Display the specified resource
     public function show(Slider $slider): View
     {
         return view('admin.slider.show', compact('slider'));
     }
 
-    // Show the form for editing the specified resource
     public function edit(Slider $slider): View
     {
-        $categories = \App\Models\Category::active()->ordered()->get();
-        $products = \App\Models\Product::active()->orderBy('name')->get();
-        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
-        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
+        $formData = $this->getFormData();
 
-        return view('admin.slider.edit', compact('slider', 'categories', 'products', 'bundles', 'pages'));
+        return view('admin.slider.edit', array_merge(['slider' => $slider], $formData));
     }
 
-    // Update the specified resource in storage
     public function update(Request $request, Slider $slider): RedirectResponse
     {
         $validated = $request->validate([
@@ -170,7 +161,6 @@ class SliderController extends Controller
                         ->with('success', 'Slider updated successfully!');
     }
 
-    // Remove the specified resource from storage
     public function destroy(Slider $slider): RedirectResponse
     {
         // Delete image using ImageService

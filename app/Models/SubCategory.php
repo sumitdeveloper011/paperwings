@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use App\Traits\HasUuid;
+use App\Traits\HasImageUrl;
+use App\Traits\HasUniqueSlug;
 
 class SubCategory extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid, HasImageUrl, HasUniqueSlug;
 
     protected $table = 'subcategories';
 
@@ -33,18 +36,9 @@ class SubCategory extends Model
     {
         parent::boot();
 
-        static::creating(function ($subCategory) {
-            if (empty($subCategory->uuid)) {
-                $subCategory->uuid = Str::uuid();
-            }
-            if (empty($subCategory->slug)) {
-                $subCategory->slug = Str::slug($subCategory->name);
-            }
-        });
-
         static::updating(function ($subCategory) {
-            if ($subCategory->isDirty('name')) {
-                $subCategory->slug = Str::slug($subCategory->name);
+            if ($subCategory->isDirty('name') && !$subCategory->isDirty('slug')) {
+                $subCategory->slug = static::makeUniqueSlug($subCategory->name, $subCategory->id);
             }
         });
     }
@@ -88,15 +82,15 @@ class SubCategory extends Model
     // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
-        return $this->status === 1 
+        return $this->status === 1
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
-    // Get image URL attribute
-    public function getImageUrlAttribute()
+    // Override fallback image for SubCategory
+    protected function getFallbackImage(): string
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
+        return 'assets/images/no-image.png';
     }
 
     // Get full name attribute

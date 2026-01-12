@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class Subscription extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -29,9 +29,6 @@ class Subscription extends Model
         parent::boot();
 
         static::creating(function ($subscription) {
-            if (empty($subscription->uuid)) {
-                $subscription->uuid = Str::uuid();
-            }
             if (empty($subscription->subscribed_at)) {
                 $subscription->subscribed_at = now();
             }

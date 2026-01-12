@@ -10,10 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use App\Traits\HasUuid;
+use App\Traits\HasUniqueSlug;
+use App\Helpers\CacheHelper;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuid, HasUniqueSlug;
 
     protected $fillable = [
         'uuid',
@@ -64,38 +67,23 @@ class Product extends Model
     {
         parent::boot();
 
-        static::creating(function ($product) {
-            if (empty($product->uuid)) {
-                $product->uuid = Str::uuid();
-            }
-            if (empty($product->slug)) {
-                $product->slug = Str::slug($product->name);
-            }
-        });
-
         static::updating(function ($product) {
-            if ($product->isDirty('name')) {
-                $product->slug = Str::slug($product->name);
+            if ($product->isDirty('name') && !$product->isDirty('slug')) {
+                $product->slug = static::makeUniqueSlug($product->name, $product->id);
             }
 
             // Clear price range cache when price or status changes
             if ($product->isDirty(['total_price', 'discount_price', 'status', 'category_id'])) {
-                Cache::forget('price_range_all_products');
-                if ($product->category_id) {
-                    Cache::forget('price_range_category_' . $product->category_id);
-                }
+                CacheHelper::clearPriceRangeCaches($product->category_id);
                 // Also clear for old category if category changed
                 if ($product->isDirty('category_id') && $product->getOriginal('category_id')) {
-                    Cache::forget('price_range_category_' . $product->getOriginal('category_id'));
+                    CacheHelper::clearPriceRangeCacheForCategory($product->getOriginal('category_id'));
                 }
             }
 
             // Clear categories cache when product status or category changes
             if ($product->isDirty(['status', 'category_id'])) {
-                Cache::forget('categories_with_count_all');
-                Cache::forget('categories_with_count_sidebar');
-                Cache::forget('header_categories');
-                Cache::forget('footer_categories');
+                CacheHelper::clearCategoryCaches();
             }
 
             // Note: Search caches have short TTL (5 minutes) and will expire naturally
@@ -105,26 +93,16 @@ class Product extends Model
 
         static::created(function ($product) {
             // Clear price range cache when new product is created
-            Cache::forget('price_range_all_products');
-            if ($product->category_id) {
-                Cache::forget('price_range_category_' . $product->category_id);
-            }
+            CacheHelper::clearPriceRangeCaches($product->category_id);
             // Clear categories cache
-            Cache::forget('categories_with_count_all');
-            Cache::forget('categories_with_count_sidebar');
-            Cache::forget('header_categories');
+            CacheHelper::clearCategoryCaches();
         });
 
         static::deleted(function ($product) {
             // Clear price range cache when product is deleted
-            Cache::forget('price_range_all_products');
-            if ($product->category_id) {
-                Cache::forget('price_range_category_' . $product->category_id);
-            }
+            CacheHelper::clearPriceRangeCaches($product->category_id);
             // Clear categories cache
-            Cache::forget('categories_with_count_all');
-            Cache::forget('categories_with_count_sidebar');
-            Cache::forget('header_categories');
+            CacheHelper::clearCategoryCaches();
         });
     }
 
@@ -452,16 +430,16 @@ class Product extends Model
     {
         // Use new discount_type system
         if ($this->discount_type === 'percentage' && $this->discount_value) {
-            return $this->discount_value;
+            return round($this->discount_value, 2);
         }
 
         if ($this->discount_type === 'direct' && $this->total_price > 0 && $this->discount_price && $this->discount_price < $this->total_price) {
-            return (($this->total_price - $this->discount_price) / $this->total_price) * 100;
+            return round((($this->total_price - $this->discount_price) / $this->total_price) * 100, 2);
         }
 
         // Backward compatibility: if discount_percentage exists but discount_type not set
         if (isset($this->attributes['discount_percentage']) && $this->attributes['discount_percentage'] && !$this->discount_type) {
-            return $this->attributes['discount_percentage'];
+            return round($this->attributes['discount_percentage'], 2);
         }
 
         return 0;

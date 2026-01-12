@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\AboutSection;
 use App\Http\Controllers\Controller;
 use App\Models\AboutSection;
 use App\Services\ImageService;
+use App\Traits\LoadsFormData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +14,7 @@ use Illuminate\View\View;
 
 class AboutSectionController extends Controller
 {
+    use LoadsFormData;
     protected ImageService $imageService;
 
     public function __construct(ImageService $imageService)
@@ -41,9 +43,10 @@ class AboutSectionController extends Controller
             ]);
         }
 
-        $categories = \App\Models\Category::active()->ordered()->get();
-        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
-        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
+        $formData = $this->getFormData();
+        $categories = $formData['categories'];
+        $bundles = $formData['bundles'];
+        $pages = $formData['pages'];
 
         return view('admin.about-section.edit', compact('aboutSection', 'categories', 'bundles', 'pages'));
     }

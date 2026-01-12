@@ -7,7 +7,7 @@
     
     @php
         try {
-            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+            $settings = \App\Helpers\SettingHelper::all();
         } catch (\Exception $e) {
             $settings = [];
         }
@@ -19,8 +19,8 @@
         $metaDescription = $metaDescription ?? $settings['meta_description'] ?? '';
         $metaKeywords = $metaKeywords ?? $settings['meta_keywords'] ?? '';
         $metaAuthor = $metaAuthor ?? $settings['meta_author'] ?? '';
-        $siteLogo = !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png');
-        $siteFavicon = !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png');
+        $siteLogo = \App\Helpers\SettingHelper::logo();
+        $siteFavicon = \App\Helpers\SettingHelper::favicon();
     @endphp
     
     <!-- Favicon -->
@@ -84,24 +84,7 @@
     @include('include.frontend.header')
     @include('include.frontend.cart-sidebar')
     @include('include.frontend.wishlist-sidebar')
-
-    @if(session('success'))
-        <div class="alert alert-success" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: #10b981; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" data-alert="success">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-error" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: #ef4444; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" data-alert="error">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    @if(session('info'))
-        <div class="alert alert-info" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: #3b82f6; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" data-alert="info">
-            {{ session('info') }}
-        </div>
-    @endif
+    <x-frontend-toast />
 
     @yield('content')
     @include('include.frontend.footer')

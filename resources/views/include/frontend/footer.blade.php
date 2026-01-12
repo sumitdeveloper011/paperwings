@@ -6,12 +6,7 @@
                     <div class="col-lg-3 col-md-6">
                         <div class="footer__column">
                             <div class="footer__logo">
-                                @if(isset($footerLogo) && $footerLogo)
-                                    <img src="{{ asset('storage/' . $footerLogo) }}" alt="Paper Wings Logo" class="footer__logo-image">
-                                @else
-                                    <div class="footer__logo-icon">P</div>
-                                    <span class="footer__logo-text">Paper Wings</span>
-                                @endif
+                                <img src="{{ \App\Helpers\SettingHelper::logo() }}" alt="Paper Wings Logo" class="footer__logo-image">
                             </div>
                             <p class="footer__tagline">{{ $footerTagline ?? 'We Promise We\'ll Get Back To You Promptly- Your Gifting Needs Are Always On Our Minds!' }}</p>
                             <div class="footer__social">

@@ -18,6 +18,10 @@ return new class extends Migration
             $table->unsignedBigInteger('eposnow_product_id')->nullable();
             $table->string('image');
             $table->timestamps();
+
+            // Indexes for performance
+            $table->index('product_id');
+            $table->index(['product_id', 'id'], 'idx_images_product_id'); // For withFirstImage scope
         });
     }
 

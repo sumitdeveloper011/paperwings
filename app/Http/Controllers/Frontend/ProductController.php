@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Category;
 use App\Models\Brand;
-use App\Models\Tag;
+use App\Models\Category;
+use App\Models\Product;
 use App\Models\ProductView;
+use App\Models\Tag;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
@@ -92,7 +93,7 @@ class ProductController extends Controller
                 $viewedProducts[] = $product->id;
                 session(['viewed_products' => $viewedProducts]);
 
-                \App\Models\ProductView::create([
+                ProductView::create([
                     'product_id' => $product->id,
                     'user_id' => Auth::id(),
                     'session_id' => session()->getId(),
@@ -117,7 +118,7 @@ class ProductController extends Controller
             }
 
             return view($this->viewPath . 'product-detail', compact('title', 'product', 'relatedProducts'));
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             abort(404);
         } catch (\Exception $e) {
             Log::error('Product detail error', ['error' => $e->getMessage(), 'slug' => $slug]);
@@ -385,14 +386,14 @@ class ProductController extends Controller
             });
 
             // Get brands with product count for filter
-            $brands = \App\Models\Brand::where('status', 1)
+            $brands = Brand::where('status', 1)
                 ->whereHas('activeProducts')
                 ->withCount(['activeProducts'])
                 ->orderBy('name')
                 ->get();
 
             // Get tags with product count for filter
-            $tags = \App\Models\Tag::whereHas('products', function($q) {
+            $tags = Tag::whereHas('products', function($q) {
                     $q->active();
                 })
                 ->withCount(['products' => function($q) {

@@ -10,9 +10,17 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use App\Services\ImageService;
 
 class ProfileController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     // Display the profile page
     public function index(): View
     {
@@ -99,16 +107,14 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $image = $request->file('avatar');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('avatars', $imageName, 'public');
-
-            // Delete old avatar if exists
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('avatar'),
+                'avatars',
+                $user->avatar
+            );
+            if ($imagePath) {
+                $user->update(['avatar' => $imagePath]);
             }
-
-            $user->update(['avatar' => $imagePath]);
         }
 
         return redirect()->route('admin.profile.index')

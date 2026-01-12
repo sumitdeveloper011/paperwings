@@ -67,16 +67,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return asset('assets/images/profile.png');
     }
 
-    // Boot function to generate UUID before creating user
+    // Boot function
     protected static function boot()
     {
         parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid();
-            }
-        });
     }
 
     // Get the route key name

@@ -1,7 +1,6 @@
 @php
-    use Illuminate\Support\Facades\Storage;
     $user = Auth::user();
-    $hasAvatar = $user && $user->avatar && Storage::disk('public')->exists($user->avatar);
+    $hasAvatar = $user && $user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar);
     $avatarUrl = $hasAvatar ? asset('storage/' . $user->avatar) : null;
     $firstLetter = strtoupper(substr($user->first_name ?? 'A', 0, 1));
     $userRole = $user ? $user->roles->first() : null;

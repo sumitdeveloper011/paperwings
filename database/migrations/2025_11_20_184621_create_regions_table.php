@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('regions', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('slug')->nullable();
             $table->integer('status')->default(1)->comment('1 = Active, 0 = Inactive');
@@ -21,6 +22,7 @@ return new class extends Migration
 
             $table->index('status');
             $table->index('slug');
+            $table->index('uuid');
         });
     }
 

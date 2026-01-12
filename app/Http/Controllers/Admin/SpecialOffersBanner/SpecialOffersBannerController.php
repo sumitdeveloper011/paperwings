@@ -7,6 +7,7 @@ use App\Models\SpecialOffersBanner;
 use App\Http\Requests\Admin\SpecialOffersBanner\StoreSpecialOffersBannerRequest;
 use App\Http\Requests\Admin\SpecialOffersBanner\UpdateSpecialOffersBannerRequest;
 use App\Services\ImageService;
+use App\Traits\LoadsFormData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\View\View;
 
 class SpecialOffersBannerController extends Controller
 {
+    use LoadsFormData;
     protected ImageService $imageService;
 
     public function __construct(ImageService $imageService)
@@ -54,7 +56,8 @@ class SpecialOffersBannerController extends Controller
             return response()->json([
                 'success' => true,
                 'html' => view('admin.special-offers-banner.partials.table', compact('banners'))->render(),
-                'pagination' => $paginationHtml
+                'pagination' => $paginationHtml,
+                'total' => $banners->total(),
             ]);
         }
 
@@ -63,12 +66,9 @@ class SpecialOffersBannerController extends Controller
 
     public function create(): View
     {
-        $categories = \App\Models\Category::active()->ordered()->get();
-        $products = \App\Models\Product::active()->orderBy('name')->get();
-        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
-        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
+        $formData = $this->getFormData();
 
-        return view('admin.special-offers-banner.create', compact('categories', 'products', 'bundles', 'pages'));
+        return view('admin.special-offers-banner.create', $formData);
     }
 
     public function store(StoreSpecialOffersBannerRequest $request): RedirectResponse
@@ -103,12 +103,9 @@ class SpecialOffersBannerController extends Controller
 
     public function edit(SpecialOffersBanner $specialOffersBanner): View
     {
-        $categories = \App\Models\Category::active()->ordered()->get();
-        $products = \App\Models\Product::active()->orderBy('name')->get();
-        $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
-        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
+        $formData = $this->getFormData();
 
-        return view('admin.special-offers-banner.edit', compact('specialOffersBanner', 'categories', 'products', 'bundles', 'pages'));
+        return view('admin.special-offers-banner.edit', array_merge(['specialOffersBanner' => $specialOffersBanner], $formData));
     }
 
     public function update(UpdateSpecialOffersBannerRequest $request, SpecialOffersBanner $specialOffersBanner): RedirectResponse

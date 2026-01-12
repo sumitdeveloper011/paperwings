@@ -6,15 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\ImageService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PageController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     // Display a listing of the resource
-    public function index(Request $request): \Illuminate\Contracts\View\View|JsonResponse
+    public function index(Request $request): ViewContract|JsonResponse
     {
         $search = $request->get('search', '');
 
@@ -39,7 +48,7 @@ class PageController extends Controller
         // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             $paginationHtml = '';
-            if ($pages instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            if ($pages instanceof LengthAwarePaginator) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
                         'paginator' => $pages
@@ -51,6 +60,7 @@ class PageController extends Controller
                 'success' => true,
                 'html' => view('admin.page.partials.table', compact('pages'))->render(),
                 'pagination' => $paginationHtml,
+                'total' => $pages->total(),
             ]);
         }
 
@@ -58,7 +68,7 @@ class PageController extends Controller
     }
 
     // Show the form for creating a new resource
-    public function create(): \Illuminate\Contracts\View\View
+    public function create(): ViewContract
     {
         return view('admin.page.create');
     }
@@ -104,13 +114,13 @@ class PageController extends Controller
     }
 
     // Display the specified resource
-    public function show(Page $page): \Illuminate\Contracts\View\View
+    public function show(Page $page): ViewContract
     {
         return view('admin.page.show', compact('page'));
     }
 
     // Show the form for editing the specified resource
-    public function edit(Page $page): \Illuminate\Contracts\View\View
+    public function edit(Page $page): ViewContract
     {
         return view('admin.page.edit', compact('page'));
     }
@@ -173,10 +183,11 @@ class PageController extends Controller
         ]);
 
         if ($request->hasFile('upload')) {
-            $image = $request->file('upload');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('pages/content', $imageName, 'public');
-            $imageUrl = asset('storage/' . $imagePath);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('upload'),
+                'pages/content'
+            );
+            $imageUrl = $imagePath ? asset('storage/' . $imagePath) : null;
 
             return response()->json([
                 'url' => $imageUrl

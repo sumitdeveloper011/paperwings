@@ -180,6 +180,39 @@ class ImageService
     }
 
     /**
+     * Simple upload without UUID folder structure (for settings, simple files)
+     *
+     * @param UploadedFile $file The uploaded image file
+     * @param string $folder Folder name (e.g., 'settings', 'avatars')
+     * @param string|null $oldImagePath Old image path to delete (optional)
+     * @return string|null The stored image path or null on failure
+     */
+    public function uploadSimple(UploadedFile $file, string $folder, ?string $oldImagePath = null): ?string
+    {
+        try {
+            // Delete old image if exists
+            if ($oldImagePath && Storage::disk('public')->exists($oldImagePath)) {
+                Storage::disk('public')->delete($oldImagePath);
+            }
+
+            // Generate unique image name
+            $imageName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+
+            // Store image directly in folder
+            $imagePath = $file->storeAs($folder, $imageName, 'public');
+
+            return $imagePath;
+        } catch (\Exception $e) {
+            Log::error('Simple image upload failed: ' . $e->getMessage(), [
+                'file' => $file->getClientOriginalName(),
+                'folder' => $folder,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Delete image and its thumbnail
      *
      * @param string $imagePath The image path to delete (original path)

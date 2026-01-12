@@ -2,8 +2,8 @@
 
 @push('head')
 @php
-    $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-    $siteLogo = !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png');
+    $settings = \App\Helpers\SettingHelper::all();
+    $siteLogo = \App\Helpers\SettingHelper::logo();
 @endphp
 
 <!-- Schema.org Organization -->
@@ -277,39 +277,7 @@
                 @if($bundles && $bundles->count() > 0)
                 <div class="owl-carousel bundles-carousel">
                     @foreach($bundles as $bundle)
-                    <div class="bundle-card-home">
-                        <div class="bundle-card-home__image">
-                            <a href="{{ route('bundle.show', $bundle->slug) }}">
-                                <img src="{{ $bundle->thumbnail_url }}"
-                                     alt="{{ $bundle->name }}"
-                                     class="bundle-card-home__img">
-                            </a>
-                            @if($bundle->discount_percentage)
-                            <span class="bundle-badge-home">{{ $bundle->discount_percentage }}% OFF</span>
-                            @endif
-                        </div>
-                        <div class="bundle-card-home__body">
-                            <h3 class="bundle-card-home__title">
-                                <a href="{{ route('bundle.show', $bundle->slug) }}">{{ $bundle->name }}</a>
-                            </h3>
-                            <div class="bundle-card-home__price">
-                                @php
-                                    $finalPrice = $bundle->final_price;
-                                    $hasDiscount = $bundle->discount_type !== 'none' && $bundle->discount_price && $bundle->discount_price < $bundle->total_price;
-                                @endphp
-                                @if($hasDiscount)
-                                    <span class="bundle-price-home-old" style="text-decoration: line-through; color: #999; font-size: 0.9em; margin-right: 0.5rem;">${{ number_format($bundle->total_price, 2) }}</span>
-                                    <span class="bundle-price-home">${{ number_format($finalPrice, 2) }}</span>
-                                @else
-                                    <span class="bundle-price-home">${{ number_format($finalPrice, 2) }}</span>
-                                @endif
-                                @if($bundle->bundleProducts->count() > 0)
-                                <span class="bundle-products-count-home">{{ $bundle->bundleProducts->count() }} Items</span>
-                                @endif
-                            </div>
-                            <a href="{{ route('bundle.show', $bundle->slug) }}" class="btn btn-sm btn-primary bundle-card-home__btn">View Bundle</a>
-                        </div>
-                    </div>
+                        @include('frontend.bundle.partials.bundle-card', ['bundle' => $bundle])
                     @endforeach
                 </div>
                 @else

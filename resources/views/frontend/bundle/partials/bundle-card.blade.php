@@ -11,7 +11,7 @@
         <div class="product-badges-wrapper">
             <!-- Sale Badge -->
             @if($bundle->discount_percentage)
-                <span class="product-badge product-badge--sale">{{ $bundle->discount_percentage }}% OFF</span>
+                <span class="product-badge product-badge--sale">{{ round($bundle->discount_percentage) }}% OFF</span>
             @endif
 
             <!-- New Badge -->

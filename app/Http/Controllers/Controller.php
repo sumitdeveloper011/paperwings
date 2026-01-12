@@ -2,20 +2,57 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
-abstract class Controller
+abstract class Controller extends BaseController
 {
+    use AuthorizesRequests, ValidatesRequests;
+
     /**
-     * Check if user has permission, redirect if not
+     * Check if request is AJAX/JSON
+     *
+     * @param Request $request
+     * @return bool
      */
-    protected function checkPermission(string $permission, string $redirectRoute = 'admin.dashboard'): ?RedirectResponse
+    protected function isAjaxRequest(Request $request): bool
     {
-        if (!Auth::user()->can($permission)) {
-            return redirect()->route($redirectRoute)
-                ->with('error', 'You do not have permission to perform this action.');
+        return $request->ajax() || $request->expectsJson() || $request->has('ajax');
+    }
+
+    /**
+     * Return paginated JSON response with HTML
+     *
+     * @param LengthAwarePaginator $paginator
+     * @param string $viewPath View path for rendering items
+     * @param string $viewKey Key name for items in view (default: 'items')
+     * @return JsonResponse
+     */
+    protected function paginatedJsonResponse(
+        LengthAwarePaginator $paginator,
+        string $viewPath,
+        string $viewKey = 'items'
+    ): JsonResponse {
+        $html = view($viewPath, [$viewKey => $paginator])->render();
+        
+        $paginationHtml = '';
+        if ($paginator->hasPages()) {
+            $paginationHtml = '<div class="pagination-wrapper">' .
+                view('components.pagination', ['paginator' => $paginator])->render() .
+                '</div>';
         }
-        return null;
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'pagination' => $paginationHtml,
+            'total' => $paginator->total(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+        ]);
     }
 }

@@ -5,12 +5,12 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use App\Helpers\CommonHelper;
 use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Log;
 class PreventAdminAccess
 {
-    // Handle an incoming request - prevents users with admin roles from accessing user/frontend routes
     public function handle(Request $request, Closure $next): Response
     {
         try {
@@ -39,7 +39,7 @@ class PreventAdminAccess
                             }
 
                             try {
-                                if (\Illuminate\Support\Facades\Route::has('admin.dashboard')) {
+                                if (Route::has('admin.dashboard')) {
                                     return redirect()->route('admin.dashboard')
                                         ->with('error', 'Admin users cannot access frontend. Please use the admin panel.');
                                 }

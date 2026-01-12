@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class Coupon extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -39,17 +39,6 @@ class Coupon extends Model
         'status' => 'integer',
     ];
 
-    // Boot function to generate UUID before creating coupon
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Get the route key name - use uuid for admin routes
     public function getRouteKeyName()

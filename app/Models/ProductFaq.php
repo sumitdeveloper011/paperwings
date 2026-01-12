@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class ProductFaq extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -22,16 +22,6 @@ class ProductFaq extends Model
         'faqs' => 'array', // Auto JSON encode/decode
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($productFaq) {
-            if (empty($productFaq->uuid)) {
-                $productFaq->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Get the product relationship
     public function product(): BelongsTo

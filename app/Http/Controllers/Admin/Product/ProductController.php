@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Product\StoreProductRequest;
 use App\Http\Requests\Admin\Product\UpdateProductRequest;
 use App\Http\Requests\Admin\Product\UpdateProductStatusRequest;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAccordion;
 use App\Models\ProductImage;
@@ -17,6 +18,7 @@ use App\Jobs\ImportEposNowProductsJob;
 use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
 use App\Services\EposNowService;
 use App\Services\ImageService;
+use App\Helpers\MetaHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,8 +26,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Http;
+use App\Models\OrderItem;
 
 class ProductController extends Controller
 {
@@ -313,7 +317,7 @@ class ProductController extends Controller
 
         // Apply category filter by UUID
         if ($categoryUuid && $categoryUuid !== '') {
-            $category = \App\Models\Category::where('uuid', $categoryUuid)->first();
+            $category = Category::where('uuid', $categoryUuid)->first();
             if ($category) {
                 $query->where('category_id', $category->id);
             }
@@ -332,21 +336,17 @@ class ProductController extends Controller
         $categories = $this->categoryRepository->getActive();
 
         // Handle AJAX requests
-        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
-            $paginationHtml = '';
-            // Always render pagination, even if no pages (to show "Showing X to Y of Z results")
-            if ($products instanceof \Illuminate\Pagination\LengthAwarePaginator) {
-                $paginationHtml = '<div class="pagination-wrapper">' .
-                    view('components.pagination', [
-                        'paginator' => $products
-                    ])->render() .
-                    '</div>';
-            }
+        if ($this->isAjaxRequest($request) && $products instanceof LengthAwarePaginator) {
+            $html = view('admin.product.partials.table', compact('products', 'categories'))->render();
+            $paginationHtml = $products->hasPages() 
+                ? '<div class="pagination-wrapper">' . view('components.pagination', ['paginator' => $products])->render() . '</div>'
+                : '';
 
             return response()->json([
                 'success' => true,
-                'html' => view('admin.product.partials.table', compact('products'))->render(),
+                'html' => $html,
                 'pagination' => $paginationHtml,
+                'total' => $products->total(),
             ]);
         }
 
@@ -387,7 +387,7 @@ class ProductController extends Controller
         // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
         $validated['discount_type'] = $discountType;
-        
+
         if ($discountType === 'percentage' && $request->has('discount_percentage')) {
             $percentage = (float) $request->input('discount_percentage', 0);
             if ($percentage > 0 && isset($validated['total_price'])) {
@@ -458,14 +458,12 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully!');
     }
 
-    // Display the specified resource
     public function show(Product $product): View
     {
         $product->load(['category', 'brand', 'images', 'accordions']);
         return view('admin.product.show', compact('product'));
     }
 
-    // Show the form for editing the specified resource
     public function edit(Product $product): View
     {
         $product->load(['category', 'brand', 'images', 'accordions', 'tags']);
@@ -492,7 +490,7 @@ class ProductController extends Controller
         // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
         $validated['discount_type'] = $discountType;
-        
+
         if ($discountType === 'percentage' && $request->has('discount_percentage')) {
             $percentage = (float) $request->input('discount_percentage', 0);
             if ($percentage > 0 && isset($validated['total_price'])) {
@@ -617,7 +615,7 @@ class ProductController extends Controller
         // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             $paginationHtml = '';
-            if ($products instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            if ($products instanceof LengthAwarePaginator) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
                         'paginator' => $products
@@ -652,7 +650,6 @@ class ProductController extends Controller
             ->with('success', 'Product restored successfully!');
     }
 
-    // Force delete (permanently delete) product
     public function forceDelete($product): RedirectResponse
     {
         // Find product including soft deleted ones using UUID
@@ -664,7 +661,7 @@ class ProductController extends Controller
         }
 
         // Check if product is in any orders
-        $orderItemsCount = \App\Models\OrderItem::where('product_id', $productModel->id)->count();
+        $orderItemsCount = OrderItem::where('product_id', $productModel->id)->count();
 
         if ($orderItemsCount > 0) {
             return redirect()->route('admin.products.trash')
@@ -726,87 +723,7 @@ class ProductController extends Controller
      */
     protected function autoFillMetaFields(array $validated, ?Product $product = null): array
     {
-        // Meta Title: Use product name if empty
-        if (empty($validated['meta_title'])) {
-            $validated['meta_title'] = $validated['name'] ?? ($product ? $product->name : null);
-        }
-
-        // Meta Description: Use short_description if empty, truncate if needed
-        if (empty($validated['meta_description'])) {
-            $description = $validated['short_description'] ?? ($product ? $product->short_description : null);
-            if ($description) {
-                $validated['meta_description'] = $this->truncateDescription($description, 160);
-            }
-        }
-
-        // Meta Keywords: Generate from product name and category if empty
-        if (empty($validated['meta_keywords'])) {
-            $productName = $validated['name'] ?? ($product ? $product->name : null);
-            $categoryId = $validated['category_id'] ?? ($product ? $product->category_id : null);
-            if ($productName) {
-                $validated['meta_keywords'] = $this->generateMetaKeywords($productName, $categoryId);
-            }
-        }
-
-        return $validated;
-    }
-
-    /**
-     * Truncate description for meta description (max 160 characters)
-     */
-    protected function truncateDescription(?string $description, int $maxLength = 160): ?string
-    {
-        if (empty($description)) {
-            return null;
-        }
-
-        // Remove HTML tags
-        $description = strip_tags($description);
-
-        // Trim whitespace
-        $description = trim($description);
-
-        if (strlen($description) <= $maxLength) {
-            return $description;
-        }
-
-        // Truncate and add ellipsis
-        return substr($description, 0, $maxLength - 3) . '...';
-    }
-
-    /**
-     * Generate meta keywords from product name and category
-     */
-    protected function generateMetaKeywords(string $productName, ?int $categoryId): ?string
-    {
-        $keywords = [];
-
-        // Add product name words
-        $nameWords = explode(' ', strtolower($productName));
-        $keywords = array_merge($keywords, array_filter($nameWords, function($word) {
-            return strlen($word) > 3; // Only words longer than 3 characters
-        }));
-
-        // Add category name if available
-        if ($categoryId) {
-            try {
-                $category = $this->categoryRepository->find($categoryId);
-                if ($category && $category->name) {
-                    $categoryWords = explode(' ', strtolower($category->name));
-                    $keywords = array_merge($keywords, array_filter($categoryWords, function($word) {
-                        return strlen($word) > 3;
-                    }));
-                }
-            } catch (\Exception $e) {
-                // Category not found, skip
-            }
-        }
-
-        // Remove duplicates and limit to 10 keywords
-        $keywords = array_unique($keywords);
-        $keywords = array_slice($keywords, 0, 10);
-
-        return !empty($keywords) ? implode(', ', $keywords) : null;
+        return MetaHelper::autoFillMetaFields($validated, $product);
     }
 
 }

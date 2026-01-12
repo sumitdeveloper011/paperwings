@@ -112,7 +112,7 @@
 
     @php
         try {
-            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+            $settings = \App\Helpers\SettingHelper::all();
             $gaId = $settings['google_analytics_id'] ?? '';
             $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
             $gaEcommerce = isset($settings['google_analytics_ecommerce']) && $settings['google_analytics_ecommerce'] == '1';

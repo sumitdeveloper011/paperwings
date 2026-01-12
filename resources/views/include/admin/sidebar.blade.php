@@ -266,11 +266,9 @@
                         </a>
                     </li>
                     @php
-                        $gaSettings = \App\Models\Setting::whereIn('key', ['google_analytics_id', 'google_analytics_enabled'])
-                            ->pluck('value', 'key')
-                            ->toArray();
-                        $gaId = $gaSettings['google_analytics_id'] ?? '';
-                        $gaEnabled = isset($gaSettings['google_analytics_enabled']) && $gaSettings['google_analytics_enabled'] == '1';
+                        $settings = \App\Helpers\SettingHelper::all();
+                        $gaId = $settings['google_analytics_id'] ?? '';
+                        $gaEnabled = isset($settings['google_analytics_enabled']) && $settings['google_analytics_enabled'] == '1';
                     @endphp
                     @if($gaEnabled && !empty($gaId))
                     <li class="sidebar-submenu-item">

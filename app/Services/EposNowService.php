@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\SettingHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ class EposNowService
     public function __construct()
     {
         // Read from database settings, fallback to config/env
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
 
         $this->baseUrl = rtrim(
             $settings['eposnow_api_base'] ?? config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'),
@@ -91,43 +92,27 @@ class EposNowService
                 // Reset empty counter if we got data
                 $emptyPageCount = 0;
 
-                // Check for duplicate data - extract IDs from current page
-                $currentPageIds = [];
-                foreach ($products as $product) {
-                    if (isset($product['Id'])) {
-                        $currentPageIds[] = (string)$product['Id'];
-                    }
-                }
+                // Check for duplicate data
+                $duplicateCheck = $this->checkForDuplicatePage(
+                    $products,
+                    $previousPageIds,
+                    $duplicatePageCount,
+                    $maxDuplicatePages,
+                    $page,
+                    'Products',
+                    count($allProducts)
+                );
 
-                // Check if current page has same IDs as previous page (duplicate data)
-                if (!empty($previousPageIds) && !empty($currentPageIds)) {
-                    $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
-                        && count($currentPageIds) === count($previousPageIds);
-
-                    if ($isDuplicate) {
-                        $duplicatePageCount++;
-                        Log::warning('EPOSNOW Products Import: Duplicate page detected', [
-                            'page' => $page,
-                            'duplicate_page_count' => $duplicatePageCount,
-                            'product_ids' => array_slice($currentPageIds, 0, 5) // Log first 5 IDs
-                        ]);
-
-                        if ($duplicatePageCount >= $maxDuplicatePages) {
-                            Log::info('EPOSNOW Products Import: Stopping due to duplicate pages', [
-                                'pages_fetched' => $page - 1,
-                                'total_products' => count($allProducts),
-                                'last_page' => $page - 1
-                            ]);
-                            break;
-                        }
-                        $page++;
-                        continue;
-                    }
+                if ($duplicateCheck === 'stop') {
+                    break;
+                } elseif ($duplicateCheck === 'skip') {
+                    $page++;
+                    continue;
                 }
 
                 // Reset duplicate counter if we got new data
                 $duplicatePageCount = 0;
-                $previousPageIds = $currentPageIds;
+                $previousPageIds = $duplicateCheck;
 
                 // Merge products
                 $allProducts = array_merge($allProducts, $products);
@@ -138,7 +123,7 @@ class EposNowService
                         'page' => $page,
                         'products_on_page' => count($products),
                         'total_products' => count($allProducts),
-                        'sample_ids' => array_slice($currentPageIds, 0, 3) // Log first 3 IDs
+                        'sample_ids' => is_array($duplicateCheck) ? array_slice($duplicateCheck, 0, 3) : [] // Log first 3 IDs
                     ]);
                 }
 
@@ -269,43 +254,27 @@ class EposNowService
                 // Reset empty counter if we got data
                 $emptyPageCount = 0;
 
-                // Check for duplicate data - extract IDs from current page
-                $currentPageIds = [];
-                foreach ($categories as $cat) {
-                    if (isset($cat['Id'])) {
-                        $currentPageIds[] = (string)$cat['Id'];
-                    }
-                }
+                // Check for duplicate data
+                $duplicateCheck = $this->checkForDuplicatePage(
+                    $categories,
+                    $previousPageIds,
+                    $duplicatePageCount,
+                    $maxDuplicatePages,
+                    $page,
+                    'Categories',
+                    count($allCategories)
+                );
 
-                // Check if current page has same IDs as previous page (duplicate data)
-                if (!empty($previousPageIds) && !empty($currentPageIds)) {
-                    $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
-                        && count($currentPageIds) === count($previousPageIds);
-
-                    if ($isDuplicate) {
-                        $duplicatePageCount++;
-                        Log::warning('EPOSNOW Categories Import: Duplicate page detected', [
-                            'page' => $page,
-                            'duplicate_page_count' => $duplicatePageCount,
-                            'category_ids' => array_slice($currentPageIds, 0, 5) // Log first 5 IDs
-                        ]);
-
-                        if ($duplicatePageCount >= $maxDuplicatePages) {
-                            Log::info('EPOSNOW Categories Import: Stopping due to duplicate pages', [
-                                'pages_fetched' => $page - 1,
-                                'total_categories' => count($allCategories),
-                                'last_page' => $page - 1
-                            ]);
-                            break;
-                        }
-                        $page++;
-                        continue;
-                    }
+                if ($duplicateCheck === 'stop') {
+                    break;
+                } elseif ($duplicateCheck === 'skip') {
+                    $page++;
+                    continue;
                 }
 
                 // Reset duplicate counter if we got new data
                 $duplicatePageCount = 0;
-                $previousPageIds = $currentPageIds;
+                $previousPageIds = $duplicateCheck;
 
                 // Merge categories
                 $allCategories = array_merge($allCategories, $categories);
@@ -316,7 +285,7 @@ class EposNowService
                         'page' => $page,
                         'categories_on_page' => count($categories),
                         'total_categories' => count($allCategories),
-                        'sample_ids' => array_slice($currentPageIds, 0, 3) // Log first 3 IDs
+                        'sample_ids' => is_array($duplicateCheck) ? array_slice($duplicateCheck, 0, 3) : [] // Log first 3 IDs
                     ]);
                 }
 
@@ -695,5 +664,62 @@ class EposNowService
                 'status' => 0
             ];
         }
+    }
+
+    /**
+     * Check for duplicate page data
+     *
+     * @param array $items Current page items
+     * @param array $previousPageIds IDs from previous page
+     * @param int $duplicatePageCount Current duplicate page count (passed by reference)
+     * @param int $maxDuplicatePages Maximum allowed duplicate pages
+     * @param int $page Current page number
+     * @param string $type Import type ('Products' or 'Categories')
+     * @param int $totalItems Total items collected so far
+     * @return array|string Returns current page IDs array, 'stop', or 'skip'
+     */
+    private function checkForDuplicatePage(
+        array $items,
+        array $previousPageIds,
+        int &$duplicatePageCount,
+        int $maxDuplicatePages,
+        int $page,
+        string $type,
+        int $totalItems
+    ) {
+        // Extract IDs from current page
+        $currentPageIds = [];
+        foreach ($items as $item) {
+            if (isset($item['Id'])) {
+                $currentPageIds[] = (string)$item['Id'];
+            }
+        }
+
+        // Check if current page has same IDs as previous page (duplicate data)
+        if (!empty($previousPageIds) && !empty($currentPageIds)) {
+            $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
+                && count($currentPageIds) === count($previousPageIds);
+
+            if ($isDuplicate) {
+                $duplicatePageCount++;
+                Log::warning("EPOSNOW {$type} Import: Duplicate page detected", [
+                    'page' => $page,
+                    'duplicate_page_count' => $duplicatePageCount,
+                    'item_ids' => array_slice($currentPageIds, 0, 5) // Log first 5 IDs
+                ]);
+
+                if ($duplicatePageCount >= $maxDuplicatePages) {
+                    Log::info("EPOSNOW {$type} Import: Stopping due to duplicate pages", [
+                        'pages_fetched' => $page - 1,
+                        'total_items' => $totalItems,
+                        'last_page' => $page - 1
+                    ]);
+                    return 'stop';
+                }
+                return 'skip';
+            }
+        }
+
+        return $currentPageIds;
     }
 }

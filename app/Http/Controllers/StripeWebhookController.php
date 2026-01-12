@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Helpers\SettingHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -16,9 +17,9 @@ class StripeWebhookController extends Controller
     {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        
+
         // Read Stripe keys from database settings
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
         $endpointSecret = $settings['stripe_webhook_secret'] ?? config('services.stripe.webhook_secret');
         $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 

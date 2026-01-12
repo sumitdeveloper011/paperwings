@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
@@ -154,8 +155,8 @@ class ImportEposNowProductsJob implements ShouldQueue
                                 'description' => $description,
                                 'short_description' => $description, // Same as description
                                 'meta_title' => $productName, // Product name as meta title
-                                'meta_description' => $this->truncateDescription($description, 160), // Truncated description for meta
-                                'meta_keywords' => $this->generateMetaKeywords($productName, $categoryId), // Generate keywords
+                                'meta_description' => \App\Helpers\MetaHelper::truncateDescription($description, 160), // Truncated description for meta
+                                'meta_keywords' => \App\Helpers\MetaHelper::generateMetaKeywords($productName, $categoryId), // Generate keywords
                                 'status' => 1,
                             ];
 
@@ -404,7 +405,7 @@ class ImportEposNowProductsJob implements ShouldQueue
         // Add category name if available
         if ($categoryId) {
             try {
-                $category = \App\Models\Category::find($categoryId);
+                $category = Category::find($categoryId);
                 if ($category && $category->name) {
                     $categoryWords = explode(' ', strtolower($category->name));
                     $keywords = array_merge($keywords, array_filter($categoryWords, function($word) {

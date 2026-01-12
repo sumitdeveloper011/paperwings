@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin\ApiSettings;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Helpers\SettingHelper;
+use App\Helpers\CacheHelper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class ApiSettingsController extends Controller
@@ -13,7 +16,7 @@ class ApiSettingsController extends Controller
     // Display the API settings page
     public function index(): View
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
 
         return view('admin.api-settings.index', compact('settings'));
     }
@@ -54,8 +57,7 @@ class ApiSettingsController extends Controller
         $this->updateSetting('facebook_login_enabled', $validated['facebook_login_enabled'] ?? '0');
 
         // Clear settings cache after update
-        \Illuminate\Support\Facades\Cache::forget('admin_settings');
-        \Illuminate\Support\Facades\Cache::forget('app_settings');
+        CacheHelper::forgetAllSettings();
 
         return redirect()->route('admin.api-settings.index')
             ->with('success', 'API Settings updated successfully!');

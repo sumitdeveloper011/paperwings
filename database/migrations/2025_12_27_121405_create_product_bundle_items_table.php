@@ -10,11 +10,12 @@ return new class extends Migration
     {
         Schema::create('product_bundle_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bundle_id')->constrained('product_bundles')->onDelete('cascade');
+            // bundle_id now references products table (where product_type = 4)
+            $table->foreignId('bundle_id')->constrained('products')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             $table->integer('quantity')->default(1);
             $table->timestamps();
-            
+
             $table->unique(['bundle_id', 'product_id']);
             $table->index('bundle_id');
             $table->index('product_id');

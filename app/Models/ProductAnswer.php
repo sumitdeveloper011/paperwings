@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class ProductAnswer extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -26,16 +27,6 @@ class ProductAnswer extends Model
         'status' => 'integer',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($answer) {
-            if (empty($answer->uuid)) {
-                $answer->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Get the question relationship
     public function question(): BelongsTo
@@ -46,7 +37,7 @@ class ProductAnswer extends Model
     // Get the user relationship
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     // Scope to filter approved answers

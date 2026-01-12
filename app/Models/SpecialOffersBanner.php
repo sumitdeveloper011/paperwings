@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class SpecialOffersBanner extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -38,10 +38,6 @@ class SpecialOffersBanner extends Model
         parent::boot();
 
         static::creating(function ($banner) {
-            if (empty($banner->uuid)) {
-                $banner->uuid = Str::uuid();
-            }
-
             if (is_null($banner->sort_order)) {
                 $maxOrder = static::max('sort_order') ?? 0;
                 $banner->sort_order = $maxOrder + 1;

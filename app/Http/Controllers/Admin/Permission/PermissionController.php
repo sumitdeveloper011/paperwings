@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Permission;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 class PermissionController extends Controller
 {
     // Display a listing of permissions
-    public function index(Request $request): View|\Illuminate\Http\JsonResponse
+    public function index(Request $request): View|JsonResponse
     {
         $search = trim($request->get('search', ''));
         $query = Permission::query();

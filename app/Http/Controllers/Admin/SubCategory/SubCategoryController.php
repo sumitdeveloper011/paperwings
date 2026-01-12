@@ -8,21 +8,26 @@ use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\ImageService;
 
 class SubCategoryController extends Controller
 {
     protected SubCategoryRepositoryInterface $subCategoryRepository;
     protected CategoryRepositoryInterface $categoryRepository;
+    protected ImageService $imageService;
 
     public function __construct(
         SubCategoryRepositoryInterface $subCategoryRepository,
-        CategoryRepositoryInterface $categoryRepository
+        CategoryRepositoryInterface $categoryRepository,
+        ImageService $imageService
     ) {
         $this->subCategoryRepository = $subCategoryRepository;
         $this->categoryRepository = $categoryRepository;
+        $this->imageService = $imageService;
     }
 
     // Display a listing of the resource
@@ -30,10 +35,10 @@ class SubCategoryController extends Controller
     {
         $search = $request->get('search');
         $categoryId = $request->get('category_id');
-        
+
         if ($search) {
             $subCategories = $this->subCategoryRepository->search($search);
-            $subCategories = new \Illuminate\Pagination\LengthAwarePaginator(
+            $subCategories = new LengthAwarePaginator(
                 $subCategories,
                 $subCategories->count(),
                 10,
@@ -42,7 +47,7 @@ class SubCategoryController extends Controller
             );
         } elseif ($categoryId) {
             $subCategories = $this->subCategoryRepository->getByCategory($categoryId);
-            $subCategories = new \Illuminate\Pagination\LengthAwarePaginator(
+            $subCategories = new LengthAwarePaginator(
                 $subCategories,
                 $subCategories->count(),
                 10,
@@ -77,10 +82,16 @@ class SubCategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('subcategories', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage(
+                $request->file('image'),
+                'subcategories',
+                null,
+                null,
+                false
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         // Generate slug if not provided
@@ -121,14 +132,14 @@ class SubCategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
-                Storage::disk('public')->delete($subcategory->image);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('image'),
+                'subcategories',
+                $subcategory->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('subcategories', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         // Generate slug if not provided
@@ -145,8 +156,8 @@ class SubCategoryController extends Controller
     // Remove the specified resource from storage
     public function destroy(SubCategory $subcategory): RedirectResponse
     {
-        if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
-            Storage::disk('public')->delete($subcategory->image);
+        if ($subcategory->image) {
+            $this->imageService->deleteImage($subcategory->image);
         }
 
         $this->subCategoryRepository->delete($subcategory);

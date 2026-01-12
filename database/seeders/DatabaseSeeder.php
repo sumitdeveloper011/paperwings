@@ -58,8 +58,9 @@ class DatabaseSeeder extends Seeder
         $this->command->newLine();
         $this->command->info('🛍️  Running product seeders...');
         $this->call([
-            ProductFaqSeeder::class,        // Product FAQs
-            ProductBundleSeeder::class,     // Product bundles
+            CategoryProductSeeder::class,    // Categories and Products (must run first)
+            ProductBundleSeeder::class,      // Product bundles
+            ProductFaqSeeder::class,         // Product FAQs
             ProductReviewSeeder::class,      // Product reviews
             ProductQuestionSeeder::class,    // Product questions
         ]);

@@ -12,6 +12,8 @@ use App\Mail\OrderConfirmationMail;
 use App\Services\ShippingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Helpers\SettingHelper;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +38,6 @@ class CheckoutController extends Controller
         return ['user_id' => Auth::id(), 'session_id' => null];
     }
 
-    // Display checkout page
     public function index()
     {
         $title = 'Checkout';
@@ -56,11 +57,11 @@ class CheckoutController extends Controller
         $productIds = $cartItems->pluck('product_id')->unique();
         if ($productIds->isNotEmpty()) {
             $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
-            
+
             $cartItems->each(function($item) use ($images) {
                 if ($item->product) {
                     $image = $images->get($item->product_id);
-                    $item->product->setAttribute('main_image', 
+                    $item->product->setAttribute('main_image',
                         $image ? $image->image_url : asset('assets/images/placeholder.jpg')
                     );
                 }
@@ -72,7 +73,7 @@ class CheckoutController extends Controller
         });
 
         $tax = 0.00;
-        
+
         $appliedCoupon = Session::get('applied_coupon');
         $discount = 0;
         if ($appliedCoupon) {
@@ -99,7 +100,7 @@ class CheckoutController extends Controller
         $total = $subtotal - $discount + $tax + $shipping;
 
         // Read Stripe publishable key from database settings
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
         $stripePublishableKey = $settings['stripe_key'] ?? config('services.stripe.key');
 
         return view('frontend.checkout.checkout', compact(
@@ -203,7 +204,7 @@ class CheckoutController extends Controller
                 ->where('coupon_code', $coupon->code)
                 ->where('payment_status', 'paid')
                 ->count();
-            
+
             if ($userCouponUsage >= $coupon->usage_limit_per_user) {
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -314,8 +315,8 @@ class CheckoutController extends Controller
             'shipping_price' => $shippingInfo['shipping_price'],
             'free_shipping_minimum' => $shippingInfo['free_shipping_minimum'],
             'is_free_shipping' => $shippingInfo['is_free_shipping'],
-            'message' => $shippingInfo['is_free_shipping'] 
-                ? 'Free shipping applied!' 
+            'message' => $shippingInfo['is_free_shipping']
+                ? 'Free shipping applied!'
                 : 'Shipping calculated successfully.'
         ]);
     }
@@ -328,7 +329,7 @@ class CheckoutController extends Controller
         ]);
 
         // Read Stripe secret from database settings
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
         $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 
         if (!$stripeSecret) {
@@ -422,7 +423,7 @@ class CheckoutController extends Controller
         }
 
         // Verify payment with Stripe - Read from database settings
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
         $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
 
         if (!$stripeSecret) {
@@ -459,20 +460,20 @@ class CheckoutController extends Controller
             $discount = round($appliedCoupon['discount'] ?? 0, 2);
             $couponCode = $appliedCoupon['code'] ?? null;
             $tax = 0.00;
-            
+
             // Calculate shipping based on shipping region
             $orderAmount = round($subtotal - $discount, 2);
             $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->shipping_region_id, $orderAmount);
             $shipping = round($shippingInfo['shipping_price'], 2);
             $shippingPrice = round($shippingInfo['shipping_price'], 2);
-            
+
             // Round total to avoid floating point precision issues
             $total = round($subtotal - $discount + $tax + $shipping, 2);
 
             // Verify total matches payment amount
             $paymentAmount = $paymentIntent->amount / 100; // Convert from cents
             $difference = abs($total - $paymentAmount);
-            
+
             // Log the mismatch for debugging
             if ($difference > 0.01) {
                 Log::warning('Payment amount mismatch detected', [
@@ -487,7 +488,7 @@ class CheckoutController extends Controller
                     'payment_intent_id' => $request->payment_intent_id,
                 ]);
             }
-            
+
             // Allow small rounding differences (up to 0.05 cents) due to floating point precision
             if ($difference > 0.05) {
                 return response()->json([
@@ -547,7 +548,7 @@ class CheckoutController extends Controller
                 // Bulk insert order items for better performance
                 $orderItems = [];
                 $now = now();
-                
+
                 foreach ($cartItems as $cartItem) {
                     $orderItems[] = [
                         'order_id' => $order->id,
@@ -561,10 +562,10 @@ class CheckoutController extends Controller
                         'updated_at' => $now,
                     ];
                 }
-                
+
                 // Single bulk insert instead of multiple individual inserts
                 if (!empty($orderItems)) {
-                    \App\Models\OrderItem::insert($orderItems);
+                    OrderItem::insert($orderItems);
                 }
 
                 // Update coupon usage if applied
@@ -651,7 +652,7 @@ class CheckoutController extends Controller
             if ($order->stripe_payment_intent_id) {
                 try {
                     // Read Stripe secret from database settings
-                    $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+                    $settings = SettingHelper::all();
                     $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
                     if ($stripeSecret) {
                         Stripe::setApiKey($stripeSecret);
@@ -695,7 +696,7 @@ class CheckoutController extends Controller
                 'title' => 'Order Confirmation',
                 'order' => $order
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             Log::error('Order not found for success page', [
                 'order_number' => $orderNumber,
                 'error' => $e->getMessage()

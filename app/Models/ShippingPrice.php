@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class ShippingPrice extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -25,17 +25,6 @@ class ShippingPrice extends Model
         'status' => 'integer',
     ];
 
-    // Boot method to generate UUID automatically
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($shippingPrice) {
-            if (empty($shippingPrice->uuid)) {
-                $shippingPrice->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Get the region relationship
     public function region(): BelongsTo

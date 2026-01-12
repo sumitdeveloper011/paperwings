@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class ContactMessage extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -26,17 +26,6 @@ class ContactMessage extends Model
         'admin_viewed_at' => 'datetime',
     ];
 
-    // Boot method to generate UUID automatically
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($message) {
-            if (empty($message->uuid)) {
-                $message->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Scope to filter pending messages
     public function scopePending($query)

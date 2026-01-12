@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
+use App\Traits\HasImageUrl;
+use App\Traits\HasThumbnail;
 
 class Testimonial extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid, HasImageUrl, HasThumbnail;
 
     protected $fillable = [
         'uuid',
@@ -34,10 +36,6 @@ class Testimonial extends Model
         parent::boot();
 
         static::creating(function ($testimonial) {
-            if (empty($testimonial->uuid)) {
-                $testimonial->uuid = Str::uuid();
-            }
-
             if (is_null($testimonial->sort_order)) {
                 $maxOrder = static::max('sort_order') ?? 0;
                 $testimonial->sort_order = $maxOrder + 1;
@@ -63,49 +61,16 @@ class Testimonial extends Model
         return $query->orderBy('sort_order');
     }
 
-    // Get image URL attribute (original)
-    public function getImageUrlAttribute()
+    // Override fallback image for Testimonial
+    protected function getFallbackImage(): string
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/profile.png');
+        return 'assets/images/profile.png';
     }
 
-    // Get thumbnail path attribute
-    public function getThumbnailPathAttribute()
+    // Override thumbnail fallback for Testimonial
+    protected function getThumbnailFallback(): ?string
     {
-        if (!$this->image) {
-            return null;
-        }
-
-        // Check if path has /original/ folder structure
-        if (strpos($this->image, '/original/') !== false) {
-            // Replace /original/ with /thumbnails/
-            return str_replace('/original/', '/thumbnails/', $this->image);
-        }
-
-        // For old structure (backward compatibility)
-        $pathParts = explode('/', $this->image);
-        $fileName = array_pop($pathParts);
-        $basePath = implode('/', $pathParts);
-
-        return $basePath . '/thumbnails/' . $fileName;
-    }
-
-    // Get thumbnail URL attribute
-    public function getThumbnailUrlAttribute()
-    {
-        if (!$this->image) {
-            return asset('assets/images/profile.png');
-        }
-
-        $thumbnailPath = $this->thumbnail_path;
-
-        // Check if thumbnail exists
-        if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
-            return asset('storage/' . $thumbnailPath);
-        }
-
-        // Fallback to original if thumbnail doesn't exist
-        return $this->image_url;
+        return asset('assets/images/profile.png');
     }
 
     // Get route key name

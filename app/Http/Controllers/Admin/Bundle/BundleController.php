@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin\Bundle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Bundle\StoreBundleRequest;
 use App\Http\Requests\Admin\Bundle\UpdateBundleRequest;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAccordion;
 use App\Models\ProductImage;
-use App\Repositories\Interfaces\BundleRepositoryInterface;
 use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,12 +27,9 @@ class BundleController extends Controller
         $this->imageService = $imageService;
     }
 
-    /**
-     * Get Bundles category
-     */
     private function getBundlesCategory()
     {
-        return \App\Models\Category::where('slug', 'bundles')->firstOrFail();
+        return Category::where('slug', 'bundles')->firstOrFail();
     }
     public function index(Request $request): View|JsonResponse
     {
@@ -84,7 +81,7 @@ class BundleController extends Controller
     public function create(): View
     {
         $bundlesCategory = $this->getBundlesCategory();
-        $categories = \App\Models\Category::active()->ordered()->get();
+        $categories = Category::active()->ordered()->get();
 
         // If validation failed, load products from old input
         $oldProductIds = old('product_ids', []);
@@ -93,7 +90,7 @@ class BundleController extends Controller
 
         if (!empty($oldProductIds)) {
             // Get products and maintain the order from oldProductIds
-            $productsById = \App\Models\Product::whereIn('id', $oldProductIds)
+            $productsById = Product::whereIn('id', $oldProductIds)
                 ->get()
                 ->keyBy('id');
 
@@ -120,15 +117,7 @@ class BundleController extends Controller
 
         // Generate UUID and slug
         $bundleUuid = Str::uuid()->toString();
-        $slug = Str::slug($validated['name']);
-
-        // Ensure unique slug
-        $originalSlug = $slug;
-        $counter = 1;
-        while (Product::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
-            $counter++;
-        }
+        $slug = Product::makeUniqueSlug($validated['name']);
 
         // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
@@ -256,7 +245,7 @@ class BundleController extends Controller
 
         $bundlesCategory = $this->getBundlesCategory();
         $bundle->load(['bundleProducts', 'images', 'accordions']);
-        $categories = \App\Models\Category::active()->ordered()->get();
+        $categories = Category::active()->ordered()->get();
 
         // If validation failed, load products from old input
         $oldProductIds = old('product_ids', []);
@@ -265,7 +254,7 @@ class BundleController extends Controller
 
         if (!empty($oldProductIds)) {
             // Get products and maintain the order from oldProductIds
-            $productsById = \App\Models\Product::whereIn('id', $oldProductIds)
+            $productsById = Product::whereIn('id', $oldProductIds)
                 ->get()
                 ->keyBy('id');
 
@@ -511,7 +500,6 @@ class BundleController extends Controller
             ->with('success', 'Bundle restored successfully!');
     }
 
-    // Force delete (permanently delete) bundle
     public function forceDelete($bundle): RedirectResponse
     {
         // Find bundle including soft deleted ones using UUID

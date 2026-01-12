@@ -94,7 +94,7 @@
                                     {{ $product->deleted_at->format('g:i A') }}
                                 </small>
                                 @php
-                                    $orderItemsCount = \App\Models\OrderItem::where('product_id', $product->id)->count();
+                                    $orderItemsCount = OrderItem::where('product_id', $product->id)->count();
                                 @endphp
                                 @if($orderItemsCount > 0)
                                     <br>
@@ -125,7 +125,7 @@
                                     </button>
                                 </form>
                                 @php
-                                    $orderItemsCount = \App\Models\OrderItem::where('product_id', $product->id)->count();
+                                    $orderItemsCount = OrderItem::where('product_id', $product->id)->count();
                                 @endphp
                                 @if($orderItemsCount == 0)
                                 <form method="POST"

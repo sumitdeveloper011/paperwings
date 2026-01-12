@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class ProductReview extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -31,16 +32,6 @@ class ProductReview extends Model
         'helpful_count' => 'integer',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($review) {
-            if (empty($review->uuid)) {
-                $review->uuid = Str::uuid();
-            }
-        });
-    }
 
     // Get the product relationship
     public function product(): BelongsTo
@@ -51,7 +42,7 @@ class ProductReview extends Model
     // Get the user relationship
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     // Scope to filter approved reviews

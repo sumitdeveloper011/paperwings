@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Activitylog\Models\Activity;
 
@@ -114,7 +115,7 @@ class AdminUserController extends Controller
 
         try {
             // Generate UUID first (will be used for folder name)
-            $userUuid = \Illuminate\Support\Str::uuid()->toString();
+            $userUuid = Str::uuid()->toString();
 
             $userData = [
                 'uuid' => $userUuid,

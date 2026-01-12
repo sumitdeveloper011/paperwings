@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
 
 class ProductView extends Model
 {
@@ -33,6 +35,6 @@ class ProductView extends Model
     // Get the user relationship
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 }

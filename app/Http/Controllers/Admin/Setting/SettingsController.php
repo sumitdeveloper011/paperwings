@@ -4,20 +4,31 @@ namespace App\Http\Controllers\Admin\Setting;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Helpers\SettingHelper;
+use App\Helpers\CacheHelper;
 use App\Services\InstagramService;
+use App\Services\ImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     // Display the settings page
     public function index(): View
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
+        $settings = SettingHelper::all();
 
         // Decode JSON arrays for emails and phones
         if (isset($settings['emails']) && is_string($settings['emails'])) {
@@ -106,17 +117,18 @@ class SettingsController extends Controller
 
         // Handle logo upload (required field - must be uploaded if doesn't exist)
         if ($request->hasFile('logo')) {
-            $image = $request->file('logo');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('settings', $imageName, 'public');
-
-            // Delete old logo if exists
             $oldLogo = Setting::where('key', 'logo')->first();
-            if ($oldLogo && $oldLogo->value) {
-                Storage::disk('public')->delete($oldLogo->value);
-            }
+            $oldLogoPath = $oldLogo && $oldLogo->value ? $oldLogo->value : null;
 
-            $this->updateSetting('logo', $imagePath);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('logo'),
+                'settings',
+                $oldLogoPath
+            );
+
+            if ($imagePath) {
+                $this->updateSetting('logo', $imagePath);
+            }
         } elseif (!$logoExists) {
             // If logo doesn't exist and no file uploaded, return error
             return redirect()->route('admin.settings.index')
@@ -126,17 +138,18 @@ class SettingsController extends Controller
 
         // Handle icon upload
         if ($request->hasFile('icon')) {
-            $image = $request->file('icon');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('settings', $imageName, 'public');
-
-            // Delete old icon if exists
             $oldIcon = Setting::where('key', 'icon')->first();
-            if ($oldIcon && $oldIcon->value) {
-                Storage::disk('public')->delete($oldIcon->value);
-            }
+            $oldIconPath = $oldIcon && $oldIcon->value ? $oldIcon->value : null;
 
-            $this->updateSetting('icon', $imagePath);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('icon'),
+                'settings',
+                $oldIconPath
+            );
+
+            if ($imagePath) {
+                $this->updateSetting('icon', $imagePath);
+            }
         }
 
         // Update meta tags (required fields)
@@ -198,10 +211,7 @@ class SettingsController extends Controller
         $this->updateSetting('private_key_3', $validated['private_key_3'] ?? '');
 
         // Clear settings cache after update
-        \Illuminate\Support\Facades\Cache::forget('admin_settings');
-        \Illuminate\Support\Facades\Cache::forget('app_settings');
-        \Illuminate\Support\Facades\Cache::forget('header_settings');
-        \Illuminate\Support\Facades\Cache::forget('footer_settings');
+        CacheHelper::forgetAllSettings();
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'Settings updated successfully!');

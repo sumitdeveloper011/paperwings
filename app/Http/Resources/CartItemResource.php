@@ -7,7 +7,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class CartItemResource extends JsonResource
 {
-    // Transform the resource into an array
     public function toArray(Request $request): array
     {
         return [
@@ -16,9 +15,9 @@ class CartItemResource extends JsonResource
             'product_name' => $this->product->name ?? '',
             'product_slug' => $this->product->slug ?? '',
             'product_image' => $this->when(
-                $this->relationLoaded('product') && 
-                $this->product && 
-                $this->product->relationLoaded('images') && 
+                $this->relationLoaded('product') &&
+                $this->product &&
+                $this->product->relationLoaded('images') &&
                 $this->product->images->isNotEmpty(),
                 fn() => $this->product->images->first()->image_url,
                 asset('assets/images/placeholder.jpg')

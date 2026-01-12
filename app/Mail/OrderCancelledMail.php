@@ -9,6 +9,8 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use App\Helpers\SettingHelper;
 
 class OrderCancelledMail extends Mailable
 {
@@ -66,9 +68,7 @@ class OrderCancelledMail extends Mailable
     public function content(): Content
     {
         // Fetch settings from database
-        $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
-            return \App\Models\Setting::pluck('value', 'key')->toArray();
-        });
+        $settings = SettingHelper::all();
 
         // Get logo URL
         $logoUrl = url('assets/frontend/images/logo.png');

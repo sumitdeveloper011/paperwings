@@ -17058,31 +17058,68 @@ select.form-input:focus {
     color: var(--coral-red);
 }
 
-.bundle-card-home__price {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.bundle-card-home__description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+    min-height: 2.7rem;
+}
+
+.bundle-card-home__price-wrapper {
     margin-bottom: 1rem;
     margin-top: auto;
 }
 
+.bundle-card-home__price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
 .bundle-price-home {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--coral-red);
 }
 
+.bundle-price-home-old {
+    font-size: 1rem;
+    color: #999;
+    text-decoration: line-through;
+}
+
 .bundle-products-count-home {
-    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
     color: #6c757d;
-    background: #f0f0f0;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
+    background: #f8f9fa;
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
+}
+
+.bundle-products-count-home i {
+    font-size: 0.75rem;
+    color: var(--coral-red);
 }
 
 .bundle-card-home__btn {
     width: 100%;
     font-weight: 600;
+    padding: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+}
+
+.bundle-card-home__btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* Bundle Detail Page - Product List in Tabs */

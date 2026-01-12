@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasUuid;
+use App\Models\User;
 
 class ProductQuestion extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -25,16 +27,6 @@ class ProductQuestion extends Model
         'status' => 'integer',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($productQuestion) {
-            if (empty($productQuestion->uuid)) {
-                $productQuestion->uuid = \Illuminate\Support\Str::uuid();
-            }
-        });
-    }
 
     // Get the product relationship
     public function product(): BelongsTo
@@ -45,7 +37,7 @@ class ProductQuestion extends Model
     // Get the user relationship
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     // Get the answers relationship

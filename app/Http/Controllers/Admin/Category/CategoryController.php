@@ -8,12 +8,15 @@ use App\Http\Requests\Admin\Category\UpdateCategoryRequest;
 use App\Http\Requests\Admin\Category\UpdateCategoryStatusRequest;
 use App\Jobs\ImportEposNowCategoriesJob;
 use App\Models\Category;
+use App\Models\Product;
+use App\Models\Product;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Services\EposNowService;
 use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -183,12 +186,12 @@ class CategoryController extends Controller
 
         if ($search !== '') {
             $searchResults = $this->categoryRepository->search($search);
-            $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
             $perPage = 10;
             $total = $searchResults->count();
             $items = $searchResults->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
-            $categories = new \Illuminate\Pagination\LengthAwarePaginator(
+            $categories = new LengthAwarePaginator(
                 $items,
                 $total,
                 $perPage,
@@ -204,7 +207,7 @@ class CategoryController extends Controller
 
         // Load product counts for each category
         $categoryIds = $categories->pluck('id')->toArray();
-        $productCounts = \App\Models\Product::whereIn('category_id', $categoryIds)
+        $productCounts = Product::whereIn('category_id', $categoryIds)
             ->selectRaw('category_id, COUNT(*) as count')
             ->groupBy('category_id')
             ->pluck('count', 'category_id')
@@ -219,7 +222,7 @@ class CategoryController extends Controller
         if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             $paginationHtml = '';
             // Check if categories is a paginator instance
-            if ($categories instanceof \Illuminate\Pagination\LengthAwarePaginator && $categories->hasPages()) {
+            if ($categories instanceof LengthAwarePaginator && $categories->hasPages()) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
                         'paginator' => $categories
@@ -231,6 +234,7 @@ class CategoryController extends Controller
                 'success' => true,
                 'html' => view('admin.category.partials.table', compact('categories'))->render(),
                 'pagination' => $paginationHtml,
+                'total' => $categories->total(),
             ]);
         }
 

@@ -6,7 +6,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
+use App\Helpers\SettingHelper;
 
 class VerifyEmailNotification extends Notification
 {
@@ -33,46 +35,14 @@ class VerifyEmailNotification extends Notification
         }
 
         // Fetch settings from database (same pattern as AppServiceProvider)
-        $settings = \Illuminate\Support\Facades\Cache::remember('email_settings', 3600, function() {
-            return \App\Models\Setting::pluck('value', 'key')->toArray();
-        });
+        $settings = SettingHelper::all();
 
         // Get social links from database
-        $socialLinks = [];
-        if (!empty($settings['social_facebook'])) {
-            $socialLinks['facebook'] = $settings['social_facebook'];
-        }
-        if (!empty($settings['social_instagram'])) {
-            $socialLinks['instagram'] = $settings['social_instagram'];
-        }
-        if (!empty($settings['social_twitter'])) {
-            $socialLinks['twitter'] = $settings['social_twitter'];
-        }
-        if (!empty($settings['social_linkedin'])) {
-            $socialLinks['linkedin'] = $settings['social_linkedin'];
-        }
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
 
-        // Get contact phone from database
-        $contactPhone = null;
-        if (isset($settings['phones']) && is_string($settings['phones'])) {
-            $phones = json_decode($settings['phones'], true) ?? [];
-            $contactPhone = !empty($phones) ? $phones[0] : null;
-        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
-            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
-        }
-        // Fallback if no phone found
-        if (empty($contactPhone)) {
-            $contactPhone = '+880 123 4567';
-        }
-
-        // Get contact email from database
-        $contactEmail = null;
-        if (isset($settings['emails']) && is_string($settings['emails'])) {
-            $emails = json_decode($settings['emails'], true) ?? [];
-            $contactEmail = !empty($emails) ? $emails[0] : null;
-        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
-            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
-        }
+        // Get contact phone and email from database
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails');
         // Fallback if no email found
         if (empty($contactEmail)) {
             $contactEmail = 'info@paperwings.com';

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductView;
 use App\Models\Order;
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ class AnalyticsController extends Controller
         ));
     }
 
-    public function searchProducts(Request $request): \Illuminate\Http\JsonResponse
+    public function searchProducts(Request $request): JsonResponse
     {
         $search = $request->get('search', $request->get('term', ''));
         $categoryId = $request->get('category_id');

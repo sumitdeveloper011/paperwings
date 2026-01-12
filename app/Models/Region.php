@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\HasUuid;
+use App\Traits\HasUniqueSlug;
 
 class Region extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuid, HasUniqueSlug;
 
     protected $fillable = [
         'uuid',
@@ -28,18 +30,9 @@ class Region extends Model
     {
         parent::boot();
 
-        static::creating(function ($region) {
-            if (empty($region->uuid)) {
-                $region->uuid = Str::uuid();
-            }
-            if (empty($region->slug)) {
-                $region->slug = Str::slug($region->name);
-            }
-        });
-
         static::updating(function ($region) {
-            if ($region->isDirty('name')) {
-                $region->slug = Str::slug($region->name);
+            if ($region->isDirty('name') && !$region->isDirty('slug')) {
+                $region->slug = static::makeUniqueSlug($region->name, $region->id);
             }
         });
     }

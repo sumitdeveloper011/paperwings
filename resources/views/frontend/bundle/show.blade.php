@@ -91,7 +91,7 @@
                             </a>
                             @if($bundle->discount_percentage)
                                 <div class="product-badges-wrapper product-badges-wrapper--detail">
-                                    <span class="product-badge product-badge--sale">{{ $bundle->discount_percentage }}% OFF</span>
+                                    <span class="product-badge product-badge--sale">{{ round($bundle->discount_percentage) }}% OFF</span>
                                 </div>
                             @endif
                         </div>

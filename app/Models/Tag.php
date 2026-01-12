@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
+use App\Traits\HasUuid;
+use App\Traits\HasUniqueSlug;
 
 class Tag extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid, HasUniqueSlug;
 
     protected $fillable = [
         'uuid',
@@ -21,18 +23,9 @@ class Tag extends Model
     {
         parent::boot();
 
-        static::creating(function ($tag) {
-            if (empty($tag->uuid)) {
-                $tag->uuid = Str::uuid();
-            }
-            if (empty($tag->slug)) {
-                $tag->slug = Str::slug($tag->name);
-            }
-        });
-
         static::updating(function ($tag) {
-            if ($tag->isDirty('name')) {
-                $tag->slug = Str::slug($tag->name);
+            if ($tag->isDirty('name') && !$tag->isDirty('slug')) {
+                $tag->slug = static::makeUniqueSlug($tag->name, $tag->id);
             }
         });
     }

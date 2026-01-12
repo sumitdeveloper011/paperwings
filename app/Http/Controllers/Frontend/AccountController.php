@@ -17,9 +17,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use App\Services\ImageService;
 
 class AccountController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     // Display the account page (redirects to view profile)
     public function index(): RedirectResponse
     {
@@ -82,15 +90,14 @@ class AccountController extends Controller
         ];
 
         if ($request->hasFile('avatar')) {
-            $image = $request->file('avatar');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('avatars', $imageName, 'public');
-
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            $imagePath = $this->imageService->uploadSimple(
+                $request->file('avatar'),
+                'avatars',
+                $user->avatar
+            );
+            if ($imagePath) {
+                $updateData['avatar'] = $imagePath;
             }
-
-            $updateData['avatar'] = $imagePath;
         }
 
         $user->update($updateData);

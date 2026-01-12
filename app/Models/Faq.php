@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class Faq extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'uuid',
@@ -29,10 +29,6 @@ class Faq extends Model
         parent::boot();
 
         static::creating(function ($faq) {
-            if (empty($faq->uuid)) {
-                $faq->uuid = Str::uuid();
-            }
-            
             if (is_null($faq->sort_order)) {
                 $maxOrder = static::max('sort_order') ?? 0;
                 $faq->sort_order = $maxOrder + 1;

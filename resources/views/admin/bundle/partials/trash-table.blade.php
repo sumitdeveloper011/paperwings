@@ -63,7 +63,7 @@
                         </td>
                         <td class="modern-table__td">
                             @if($bundle->discount_percentage)
-                                <span class="badge badge--success">{{ $bundle->discount_percentage }}%</span>
+                                <span class="badge badge--success">{{ round($bundle->discount_percentage) }}%</span>
                             @else
                                 <span class="text-muted">-</span>
                             @endif

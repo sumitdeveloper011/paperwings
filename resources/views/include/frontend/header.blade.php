@@ -71,11 +71,7 @@
                     <div class="col-md-3 col-4">
                         <div class="header__logo-wrapper">
                             <a href="{{ route('home') }}" class="header__logo">
-                                @if(isset($headerLogo) && $headerLogo)
-                                    <img src="{{ asset('storage/' . $headerLogo) }}" alt="{{ config('app.name', 'Paper Wings') }} Logo" class="header__logo-image" onerror="this.src='{{ asset('assets/frontend/images/logo.png') }}'">
-                                @else
-                                    <img src="{{ asset('assets/frontend/images/logo.png') }}" alt="{{ config('app.name', 'Paper Wings') }} Logo" class="header__logo-image">
-                                @endif
+                                <img src="{{ \App\Helpers\SettingHelper::logo() }}" alt="{{ config('app.name', 'Paper Wings') }} Logo" class="header__logo-image">
                             </a>
                         </div>
                     </div>

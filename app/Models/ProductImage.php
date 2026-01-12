@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Traits\HasUuid;
+use App\Traits\HasImageUrl;
+use App\Traits\HasThumbnail;
 
 class ProductImage extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid, HasImageUrl, HasThumbnail;
 
     protected $table = 'products_images';
 
@@ -21,67 +23,22 @@ class ProductImage extends Model
         'image',
     ];
 
-    // Boot method to generate UUID automatically
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($image) {
-            if (empty($image->uuid)) {
-                $image->uuid = Str::uuid();
-            }
-        });
-    }
-
     // Get the product relationship
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    // Get the image URL attribute (original)
-    public function getImageUrlAttribute()
+    // Override fallback image for ProductImage
+    protected function getFallbackImage(): string
     {
-        return $this->image ? asset('storage/'.$this->image) : asset('assets/images/no-image.png');
+        return 'assets/images/no-image.png';
     }
 
-    // Get thumbnail path attribute
-    public function getThumbnailPathAttribute()
+    // Override thumbnail fallback for ProductImage
+    protected function getThumbnailFallback(): ?string
     {
-        if (!$this->image) {
-            return null;
-        }
-
-        // Check if path has /original/ folder structure
-        if (strpos($this->image, '/original/') !== false) {
-            // Replace /original/ with /thumbnails/
-            return str_replace('/original/', '/thumbnails/', $this->image);
-        }
-
-        // For old structure (backward compatibility)
-        $pathParts = explode('/', $this->image);
-        $fileName = array_pop($pathParts);
-        $basePath = implode('/', $pathParts);
-
-        return $basePath . '/thumbnails/' . $fileName;
-    }
-
-    // Get thumbnail URL attribute
-    public function getThumbnailUrlAttribute()
-    {
-        if (!$this->image) {
-            return asset('assets/images/no-image.png');
-        }
-
-        $thumbnailPath = $this->thumbnail_path;
-
-        // Check if thumbnail exists
-        if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
-            return asset('storage/' . $thumbnailPath);
-        }
-
-        // Fallback to original if thumbnail doesn't exist
-        return $this->image_url;
+        return asset('assets/images/no-image.png');
     }
 }
 

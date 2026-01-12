@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -244,7 +245,7 @@ class SearchController extends Controller
 
         $products = $productsQuery->paginate(20)->withQueryString();
 
-        $categories = \App\Models\Category::active()
+        $categories = Category::active()
             ->orderBy('name')
             ->get();
 

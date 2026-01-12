@@ -9,10 +9,11 @@ use App\Models\Product;
 use App\Models\Testimonial;
 use App\Models\SpecialOffersBanner;
 use App\Models\Faq;
-use App\Models\Product;
 use App\Models\AboutSection;
+use App\Helpers\SettingHelper;
 use App\Services\InstagramService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
@@ -158,9 +159,7 @@ class HomeController extends Controller
             }
         }
 
-        $settings = \Illuminate\Support\Facades\Cache::remember('homepage_settings', 3600, function() {
-            return \App\Models\Setting::pluck('value', 'key')->toArray();
-        });
+        $settings = SettingHelper::all();
         $instagramLink = $settings['social_instagram'] ?? null;
 
         $instagramPosts = [];
