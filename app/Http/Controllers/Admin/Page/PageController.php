@@ -127,17 +127,17 @@ class PageController extends Controller
             'status' => 'nullable|boolean',
         ]);
 
-        // Handle image upload
+        // Update image using ImageService
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($page->image && Storage::disk('public')->exists($page->image)) {
-                Storage::disk('public')->delete($page->image);
+            $imagePath = $this->imageService->updateImage(
+                $request->file('image'),
+                'pages',
+                $page->uuid,
+                $page->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('pages', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         // Generate slug if not provided

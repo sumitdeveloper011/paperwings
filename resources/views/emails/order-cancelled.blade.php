@@ -112,10 +112,13 @@
                                     <td width="100" style="padding-right: 15px; vertical-align: top;">
                                         @php
                                             $productImage = asset('assets/images/placeholder.jpg');
-                                            if ($item->product && isset($item->product->main_image_url)) {
+                                            // Prefer thumbnail for emails (smaller file size)
+                                            if ($item->product && isset($item->product->main_thumbnail_url)) {
+                                                $productImage = $item->product->main_thumbnail_url;
+                                            } elseif ($item->product && isset($item->product->main_image_url)) {
                                                 $productImage = $item->product->main_image_url;
                                             } elseif ($item->product && $item->product->images && $item->product->images->count() > 0) {
-                                                $productImage = $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
+                                                $productImage = $item->product->images->first()->thumbnail_url ?? $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
                                             }
                                         @endphp
                                         <img src="{{ $productImage }}" alt="{{ $item->product_name }}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; display: block; opacity: 0.6;" />

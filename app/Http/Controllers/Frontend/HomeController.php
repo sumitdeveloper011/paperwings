@@ -9,7 +9,7 @@ use App\Models\Product;
 use App\Models\Testimonial;
 use App\Models\SpecialOffersBanner;
 use App\Models\Faq;
-use App\Models\ProductBundle;
+use App\Models\Product;
 use App\Models\AboutSection;
 use App\Services\InstagramService;
 use Illuminate\Http\Request;
@@ -24,6 +24,8 @@ class HomeController extends Controller
         $sliders = Slider::active()->ordered()->get();
 
         $categories = Category::active()
+            ->whereHas('activeProducts')
+            ->withCount('activeProducts')
             ->ordered()
             ->take(6)
             ->get();
@@ -234,31 +236,19 @@ class HomeController extends Controller
                 ->get();
         }
 
-        $bundles = ProductBundle::active()
-            ->ordered()
-            ->with(['products' => function($query) {
-                $query->select('products.id', 'products.name', 'products.slug', 'products.total_price', 'products.discount_price', 'products.status')
-                      ->where('products.status', 1);
-            }, 'products.images' => function($query) {
-                $query->select('products_images.id', 'products_images.product_id', 'products_images.image')
-                      ->orderBy('products_images.id')
-                      ->limit(1);
-            }])
+        $bundles = Product::bundles()
+            ->where('status', 1)
+            ->with('bundleProducts', 'images')
+            ->orderBy('sort_order')
             ->take(6)
             ->get();
 
         if ($bundles->isEmpty()) {
-            $bundles = ProductBundle::where('status', 1)
+            $bundles = Product::bundles()
+                ->where('status', 1)
                 ->orderBy('sort_order')
                 ->orderBy('id')
-                ->with(['products' => function($query) {
-                    $query->select('products.id', 'products.name', 'products.slug', 'products.total_price', 'products.discount_price', 'products.status')
-                          ->where('products.status', 1);
-                }, 'products.images' => function($query) {
-                    $query->select('products_images.id', 'products_images.product_id', 'products_images.image')
-                          ->orderBy('products_images.id')
-                          ->limit(1);
-                }])
+                ->with('bundleProducts', 'images')
                 ->take(6)
                 ->get();
         }

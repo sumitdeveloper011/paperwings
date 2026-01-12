@@ -1,21 +1,13 @@
 @extends('layouts.frontend.main')
 @section('content')
-    <section class="page-header">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">FAQ</li>
-                        </ol>
-                    </nav>
-                    <h1 class="page-title">Frequently Asked Questions</h1>
-                    <p class="page-subtitle">Find answers to common questions about our products and services</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    @include('frontend.partials.page-header', [
+        'title' => 'Frequently Asked Questions',
+        'subtitle' => 'Find answers to common questions about our products and services',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'FAQ', 'url' => null]
+        ]
+    ])
 
     <section class="faq-section">
         <div class="container">
@@ -24,12 +16,12 @@
                     @if($categories->count() > 0)
                     <div class="faq-filters mb-4">
                         <div class="faq-filter-buttons">
-                            <a href="{{ route('faq.index') }}" 
+                            <a href="{{ route('faq.index') }}"
                                class="faq-filter-btn {{ !$selectedCategory ? 'active' : '' }}">
                                 All Questions
                             </a>
                             @foreach($categories as $category)
-                                <a href="{{ route('faq.index', ['category' => $category['value']]) }}" 
+                                <a href="{{ route('faq.index', ['category' => $category['value']]) }}"
                                    class="faq-filter-btn {{ $selectedCategory == $category['value'] ? 'active' : '' }}">
                                     {{ $category['label'] }}
                                 </a>
@@ -42,10 +34,12 @@
                         <div class="faq-accordion" id="faqAccordion">
                             @foreach($faqs as $index => $faq)
                                 <div class="faq-item">
-                                    <div class="faq-question" data-bs-toggle="collapse" 
-                                         data-bs-target="#faq{{ $faq->id }}" 
+                                    <div class="faq-question"
+                                         data-toggle="collapse"
+                                         data-target="#faq{{ $faq->id }}"
                                          aria-expanded="{{ $index === 0 ? 'true' : 'false' }}"
-                                         aria-controls="faq{{ $faq->id }}">
+                                         aria-controls="faq{{ $faq->id }}"
+                                         role="button">
                                         <h3 class="faq-question-text">
                                             <span class="faq-question-number">{{ $index + 1 }}.</span>
                                             {{ $faq->question }}
@@ -54,12 +48,16 @@
                                             <i class="fas fa-chevron-down"></i>
                                         </span>
                                     </div>
-                                    <div id="faq{{ $faq->id }}" 
-                                         class="collapse {{ $index === 0 ? 'show' : '' }}" 
-                                         data-bs-parent="#faqAccordion">
+                                    <div id="faq{{ $faq->id }}"
+                                         class="collapse {{ $index === 0 ? 'show' : '' }}"
+                                         data-parent="#faqAccordion">
                                         <div class="faq-answer">
                                             <div class="faq-answer-content">
-                                                {!! nl2br(e($faq->answer)) !!}
+                                                @if($faq->answer && trim($faq->answer) !== '')
+                                                    {!! nl2br(e($faq->answer)) !!}
+                                                @else
+                                                    <p class="text-muted">No answer available.</p>
+                                                @endif
                                             </div>
                                             @if($faq->category)
                                                 <div class="faq-category-badge">
@@ -193,9 +191,27 @@
             transform: rotate(180deg);
         }
 
-        .faq-answer {
-            padding: 0 25px 25px 25px;
+        /* Override conflicting styles from main CSS file */
+        .faq-section #faqAccordion .faq-answer {
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 0 25px 25px 25px !important;
+            transition: none !important;
             border-top: 1px solid #e9ecef;
+        }
+
+        .faq-section #faqAccordion .faq-item.active .faq-answer,
+        .faq-section #faqAccordion .faq-item .faq-answer {
+            max-height: none !important;
+            padding: 0 25px 25px 25px !important;
+        }
+
+        .faq-section #faqAccordion .collapse {
+            display: none;
+        }
+
+        .faq-section #faqAccordion .collapse.show {
+            display: block !important;
         }
 
         .faq-answer-content {
@@ -203,6 +219,7 @@
             color: #555;
             line-height: 1.8;
             font-size: 15px;
+            min-height: 20px;
         }
 
         .faq-category-badge {
@@ -275,5 +292,55 @@
             }
         }
     </style>
+
+    @push('scripts')
+    <script>
+        (function() {
+            'use strict';
+
+            // Fallback for FAQ collapse if Bootstrap doesn't work
+            document.addEventListener('DOMContentLoaded', function() {
+                const faqQuestions = document.querySelectorAll('.faq-question');
+
+                faqQuestions.forEach(function(question) {
+                    question.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const targetId = this.getAttribute('data-target') || this.getAttribute('data-bs-target');
+                        if (!targetId) return;
+
+                        const target = document.querySelector(targetId);
+                        if (!target) return;
+
+                        const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                        const accordion = this.closest('#faqAccordion');
+
+                        // Close other items in accordion
+                        if (accordion) {
+                            const otherItems = accordion.querySelectorAll('.collapse.show');
+                            otherItems.forEach(function(item) {
+                                if (item !== target) {
+                                    item.classList.remove('show');
+                                    const otherQuestion = accordion.querySelector('[data-target="#' + item.id + '"], [data-bs-target="#' + item.id + '"]');
+                                    if (otherQuestion) {
+                                        otherQuestion.setAttribute('aria-expanded', 'false');
+                                    }
+                                }
+                            });
+                        }
+
+                        // Toggle current item
+                        if (isExpanded) {
+                            target.classList.remove('show');
+                            this.setAttribute('aria-expanded', 'false');
+                        } else {
+                            target.classList.add('show');
+                            this.setAttribute('aria-expanded', 'true');
+                        }
+                    });
+                });
+            });
+        })();
+    </script>
+    @endpush
 @endsection
 

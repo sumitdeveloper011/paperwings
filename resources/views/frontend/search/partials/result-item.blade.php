@@ -1,7 +1,7 @@
 {{-- Search Result Item Partial --}}
 <a href="{{ route('product.detail', $product->slug) }}" class="search-result-item">
     @if($product->relationLoaded('images') && $product->images->isNotEmpty())
-        <img src="{{ $product->images->first()->image_url }}" 
+        <img src="{{ $product->images->first()->thumbnail_url }}" 
              alt="{{ $product->name }}" 
              class="search-result-item__image" 
              onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">

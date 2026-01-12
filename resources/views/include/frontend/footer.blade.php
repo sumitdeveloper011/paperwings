@@ -59,7 +59,7 @@
                                 @if(isset($footerPages) && $footerPages->count() > 0)
                                     @foreach($footerPages as $page)
                                         <li>
-                                            <a href="{{ url('/' . $page->slug) }}" class="footer__link">
+                                            <a href="{{ route('page.show', $page->slug) }}" class="footer__link">
                                                 {{ $page->title }}
                                             </a>
                                         </li>

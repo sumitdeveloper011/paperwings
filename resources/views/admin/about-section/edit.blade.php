@@ -115,10 +115,9 @@
                                     'label' => 'Button Link',
                                     'value' => old('button_link', $aboutSection->button_link),
                                     'required' => false,
-                                    'categories' => $categories ?? [],
-                                    'products' => $products ?? [],
-                                    'bundles' => $bundles ?? [],
-                                    'pages' => []
+                                    'categories' => $categories ?? collect(),
+                                    'bundles' => $bundles ?? collect(),
+                                    'pages' => $pages ?? collect(),
                                 ])
                                 @error('button_link')
                                     <div class="form-error">{{ $message }}</div>

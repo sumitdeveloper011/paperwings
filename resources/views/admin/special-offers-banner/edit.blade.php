@@ -145,15 +145,18 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="button_link" class="form-label">Button Link</label>
-                                    <input type="url"
-                                           class="form-control @error('button_link') is-invalid @enderror"
-                                           id="button_link"
-                                           name="button_link"
-                                           value="{{ old('button_link', $specialOffersBanner->button_link) }}"
-                                           placeholder="https://example.com">
+                                    @include('components.smart-link-selector', [
+                                        'name' => 'button_link',
+                                        'id' => 'button_link',
+                                        'label' => 'Button Link',
+                                        'value' => old('button_link', $specialOffersBanner->button_link),
+                                        'required' => false,
+                                        'categories' => $categories ?? collect(),
+                                        'bundles' => $bundles ?? collect(),
+                                        'pages' => $pages ?? collect(),
+                                    ])
                                     @error('button_link')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>

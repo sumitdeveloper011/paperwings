@@ -70,21 +70,14 @@
 @endpush
 
 @section('content')
-    <section class="page-header">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">{{ $product->name ?? 'Page Title' }}</li>
-                        </ol>
-                    </nav>
-                    <h1 class="page-title">{{ $product->name ?? 'Page Title' }}</h1>
-                </div>
-            </div>
-        </div>
-    </section>
+    @include('frontend.partials.page-header', [
+        'title' => $product->name ?? 'Product',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => $product->category->name ?? 'Products', 'url' => $product->category ? route('category.show', $product->category->slug) : route('shop')],
+            ['label' => $product->name ?? 'Product', 'url' => null]
+        ]
+    ])
 
     <section class="product-details-section">
         <div class="container">
@@ -102,27 +95,29 @@
                             $hasImages = $productImages && $productImages->count() > 0;
                             $mainImageUrl = $hasImages ? $productImages->first()->image_url : ($product->main_image ?? asset('assets/images/placeholder.jpg'));
                         @endphp
-                        
+
                         @if($hasImages)
                             <div class="product-main-image">
                                 <a href="{{ $productImages->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
-                                    <img src="{{ $productImages->first()->image_url }}"
+                                    <img src="{{ $productImages->first()->thumbnail_url }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
                                          id="mainImage"
-                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Image failed to load: {{ $productImages->first()->image_url }}');">
+                                         data-full-image="{{ $productImages->first()->image_url }}"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Image failed to load: {{ $productImages->first()->thumbnail_url }}');">
                                 </a>
                             </div>
                             @if($productImages->count() > 1)
                             <div class="product-thumbnails">
                                 @foreach($productImages as $index => $image)
                                     <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
-                                         data-image="{{ $image->image_url }}">
+                                         data-image="{{ $image->image_url }}"
+                                         data-thumbnail="{{ $image->thumbnail_url }}">
                                         <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $index + 1 }}">
-                                            <img src="{{ $image->image_url }}"
+                                            <img src="{{ $image->thumbnail_url }}"
                                                  alt="{{ $product->name }} - Image {{ $index + 1 }}"
                                                  loading="lazy"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Thumbnail failed to load: {{ $image->image_url }}');">
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Thumbnail failed to load: {{ $image->thumbnail_url }}');">
                                         </a>
                                     </div>
                                 @endforeach
@@ -145,7 +140,7 @@
 
                 <!-- Product Info -->
                 <div class="col-lg-6">
-                    <div class="product-info">
+                    <div class="product-info" id="productInfo">
                         <h1 class="product-title">{{ $product->name }}</h1>
                         <div class="product-rating">
                             @php
@@ -169,7 +164,7 @@
 
                         <div class="product-price">
                             @if($product->discount_price)
-                                <span class="old-price" style="text-decoration: line-through; color: #999; margin-right: 10px;">${{ number_format($product->total_price, 2) }}</span>
+                                <span class="old-price">${{ number_format($product->total_price, 2) }}</span>
                                 <span class="current-price">${{ number_format($product->discount_price, 2) }}</span>
                                 <span class="discount">Save {{ round(($product->total_price - $product->discount_price) / $product->total_price * 100) }}%</span>
                             @else
@@ -177,8 +172,35 @@
                             @endif
                         </div>
 
+                        <!-- Stock Status -->
+                        @php
+                            $stock = $product->stock ?? 0;
+                            $isInStock = $stock > 0;
+                            $isLowStock = $stock > 0 && $stock <= 10;
+                        @endphp
+                        <div class="product-stock-status">
+                            @if($isInStock)
+                                @if($isLowStock)
+                                    <div class="stock-badge stock-badge--low">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <span>Only {{ $stock }} left in stock!</span>
+                                    </div>
+                                @else
+                                    <div class="stock-badge stock-badge--in-stock">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>In Stock</span>
+                                    </div>
+                                @endif
+                            @else
+                                <div class="stock-badge stock-badge--out-of-stock">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span>Out of Stock</span>
+                                </div>
+                            @endif
+                        </div>
+
                         @if($product->short_description)
-                        <div class="product-description mt-3">
+                        <div class="product-description">
                             <p>{!! $product->short_description !!}</p>
                         </div>
                         @endif
@@ -187,22 +209,63 @@
                             <div class="option-group">
                                 <label class="option-label">Quantity:</label>
                                 <div class="quantity-selector">
-                                    <button class="qty-btn" id="decreaseQty">-</button>
-                                    <input type="number" value="1" min="1" max="99" id="quantity">
-                                    <button class="qty-btn" id="increaseQty">+</button>
+                                    <button class="qty-btn" id="decreaseQty" type="button" aria-label="Decrease quantity">-</button>
+                                    <input type="number" value="1" min="1" max="{{ $isInStock ? min($stock, 99) : 99 }}" id="quantity" class="qty-input" aria-label="Quantity">
+                                    <button class="qty-btn" id="increaseQty" type="button" aria-label="Increase quantity">+</button>
                                 </div>
+                                @if($isInStock && $stock < 99)
+                                    <small class="quantity-hint">Max: {{ $stock }} available</small>
+                                @endif
                             </div>
                         </div>
 
                         <div class="product-actions">
-                            <button class="btn btn-primary add-to-cart" data-product-id="{{ $product->id }}" id="addToCartBtn">
+                            <button class="btn btn-primary add-to-cart" data-product-id="{{ $product->id }}" id="addToCartBtn" {{ !$isInStock ? 'disabled' : '' }}>
                                 <i class="fas fa-shopping-cart"></i>
-                                <span class="btn-text">Add to Cart</span>
+                                <span class="btn-text">{{ $isInStock ? 'Add to Cart' : 'Out of Stock' }}</span>
                             </button>
-                            <button class="btn btn-outline-primary add-to-wishlist wishlist-btn" data-product-id="{{ $product->id }}">
-                                <i class="fas fa-heart"></i>
+                            <button class="btn btn-outline-primary wishlist-btn" data-product-id="{{ $product->id }}">
+                                <i class="far fa-heart"></i>
                                 Add to Wishlist
                             </button>
+                        </div>
+
+                        <!-- Social Sharing -->
+                        <div class="product-social-share">
+                            <span class="share-label">Share:</span>
+                            <div class="share-buttons">
+                                <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(route('product.detail', $product->slug)) }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="share-btn share-btn--facebook"
+                                   title="Share on Facebook">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                                <a href="https://twitter.com/intent/tweet?url={{ urlencode(route('product.detail', $product->slug)) }}&text={{ urlencode($product->name) }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="share-btn share-btn--twitter"
+                                   title="Share on Twitter">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                <a href="https://wa.me/?text={{ urlencode($product->name . ' - ' . route('product.detail', $product->slug)) }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="share-btn share-btn--whatsapp"
+                                   title="Share on WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                                <a href="mailto:?subject={{ urlencode($product->name) }}&body={{ urlencode('Check out this product: ' . route('product.detail', $product->slug)) }}"
+                                   class="share-btn share-btn--email"
+                                   title="Email to a friend">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                                <button class="share-btn share-btn--copy"
+                                        data-copy-url="{{ route('product.detail', $product->slug) }}"
+                                        title="Copy link">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="product-meta">
@@ -213,7 +276,7 @@
                             @if($product->category)
                             <div class="meta-item">
                                 <span class="meta-label">Category:</span>
-                                <span class="meta-value">{{ $product->category->name }}</span>
+                                <a href="{{ route('category.show', $product->category->slug) }}" class="meta-value meta-link">{{ $product->category->name }}</a>
                             </div>
                             @endif
                             @if($product->brand)
@@ -226,11 +289,13 @@
 
                         <!-- Product Tags -->
                         @if($product->tags && $product->tags->count() > 0)
-                        <div class="product-tags mt-3">
+                        <div class="product-tags">
                             <span class="meta-label">Tags:</span>
-                            @foreach($product->tags as $tag)
-                                <a href="{{ route('shop') }}?tags[]={{ $tag->id }}" class="tag-link">{{ $tag->name }}</a>
-                            @endforeach
+                            <div class="tags-list">
+                                @foreach($product->tags as $tag)
+                                    <a href="{{ route('shop') }}?tags[]={{ $tag->id }}" class="tag-link">{{ $tag->name }}</a>
+                                @endforeach
+                            </div>
                         </div>
                         @endif
                     </div>
@@ -346,7 +411,7 @@
 
                             <div class="tab-pane fade {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description) ? 'show active' : '' }}" id="reviews" role="tabpanel">
                                 <div class="tab-content-body">
-                                    <h3>Customer Reviews</h3>
+                                    <h3 class="reviews-section-title">Customer Reviews</h3>
 
                                     @php
                                         $avgRating = $product->average_rating ?? 0;
@@ -355,7 +420,7 @@
                                     @endphp
 
                                     @if($reviewsCount > 0)
-                                        <div class="reviews-summary mb-4">
+                                        <div class="reviews-summary mb-3">
                                             <div class="overall-rating">
                                                 <div class="rating-number">{{ number_format($avgRating, 1) }}</div>
                                                 <div class="rating-stars">
@@ -375,7 +440,7 @@
 
                                         <div class="reviews-list">
                                             @foreach($approvedReviews as $review)
-                                                <div class="review-item mb-4">
+                                                <div class="review-item mb-3">
                                                     <div class="review-header d-flex justify-content-between align-items-center mb-2">
                                                         <div>
                                                             <div class="reviewer-name">{{ $review->reviewer_name }}</div>
@@ -406,12 +471,12 @@
                                     @endif
 
                                     <!-- Review Form -->
-                                    <div class="review-form mt-5">
-                                        <h4>Write a Review</h4>
-                                        <form id="reviewForm">
+                                    <div class="review-form">
+                                        <h4 class="review-form__title">Write a Review</h4>
+                                        <form id="reviewForm" class="review-form__form">
                                             @csrf
-                                            <div class="mb-3">
-                                                <label class="form-label">Rating *</label>
+                                            <div class="review-form__field">
+                                                <label class="review-form__label">Rating *</label>
                                                 <div class="star-rating">
                                                     @for($i = 5; $i >= 1; $i--)
                                                         <input type="radio" name="rating" value="{{ $i }}" id="rating{{ $i }}" required>
@@ -420,23 +485,23 @@
                                                 </div>
                                             </div>
                                             @guest
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Name *</label>
-                                                    <input type="text" name="name" class="form-control" required>
+                                            <div class="review-form__row">
+                                                <div class="review-form__col">
+                                                    <label class="review-form__label">Name *</label>
+                                                    <input type="text" name="name" class="review-form__input" required>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Email *</label>
-                                                    <input type="email" name="email" class="form-control" required>
+                                                <div class="review-form__col">
+                                                    <label class="review-form__label">Email *</label>
+                                                    <input type="email" name="email" class="review-form__input" required>
                                                 </div>
                                             </div>
                                             @endguest
-                                            <div class="mb-3">
-                                                <label class="form-label">Review *</label>
-                                                <textarea name="review" class="form-control" rows="5" minlength="10" maxlength="1000" required></textarea>
-                                                <small class="text-muted">Minimum 10 characters, maximum 1000 characters</small>
+                                            <div class="review-form__field">
+                                                <label class="review-form__label">Review *</label>
+                                                <textarea name="review" class="review-form__textarea" rows="4" minlength="10" maxlength="1000" required></textarea>
+                                                <small class="review-form__hint">Minimum 10 characters, maximum 1000 characters</small>
                                             </div>
-                                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                                            <button type="submit" class="review-form__submit btn btn-primary">Submit Review</button>
                                         </form>
                                     </div>
                                 </div>
@@ -530,34 +595,13 @@
                             @if($relatedProducts->count() > 0)
                                 @foreach($relatedProducts as $relatedProduct)
                                     <div class="col-lg-3 col-md-4 col-sm-6">
-                                        <div class="cute-stationery__item">
-                                            <div class="cute-stationery__image">
-                                                <a href="{{ route('product.detail', $relatedProduct->slug) }}" class="cute-stationery__image-link">
-                                                    <img src="{{ $relatedProduct->main_image }}" alt="{{ $relatedProduct->name }}" class="cute-stationery__img">
-                                                </a>
-                                                <div class="cute-stationery__actions">
-                                                    <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $relatedProduct->id }}" title="Add to Wishlist"><i class="far fa-heart"></i></button>
-                                                    <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $relatedProduct->id }}" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-                                                </div>
-                                            </div>
-                                            <div class="cute-stationery__info">
-                                                <h3 class="cute-stationery__name">
-                                                    <a href="{{ route('product.detail', $relatedProduct->slug) }}" class="cute-stationery__name-link">
-                                                        {{ $relatedProduct->name }}
-                                                    </a>
-                                                </h3>
-                                                <div class="cute-stationery__price">
-                                                    @if($relatedProduct->discount_price)
-                                                        <span class="cute-stationery__price-current">${{ $relatedProduct->discount_price }}</span>
-                                                        <span class="cute-stationery__price-old">${{ $relatedProduct->total_price }}</span>
-                                                    @else
-                                                        <span class="cute-stationery__price-current">${{ $relatedProduct->total_price }}</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
+                                        @include('frontend.product.partials.product-card', ['product' => $relatedProduct])
                                     </div>
                                 @endforeach
+                            @else
+                                <div class="col-12">
+                                    <p class="text-center text-muted">No related products found.</p>
+                                </div>
                             @endif
                         </div>
                     </div>
@@ -588,6 +632,86 @@
 <script src="{{ asset('assets/frontend/js/product/quantity.js') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/product/add-to-cart.js') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/product/forms.js') }}" defer></script>
+
+{{-- Product Detail Page Enhancements --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update main image when thumbnail is clicked (use thumbnail for display, full for lightbox)
+    document.querySelectorAll('.thumbnail-item').forEach(function(thumbnail) {
+        thumbnail.addEventListener('click', function(e) {
+            e.preventDefault();
+            const fullImage = this.getAttribute('data-image');
+            const thumbnailImage = this.getAttribute('data-thumbnail');
+            const mainImage = document.getElementById('mainImage');
+            const mainImageLink = mainImage ? mainImage.closest('a') : null;
+
+            if (mainImage && fullImage && thumbnailImage) {
+                // Add fade effect
+                mainImage.style.opacity = '0.5';
+
+                // Update src to thumbnail for fast loading
+                setTimeout(function() {
+                    mainImage.src = thumbnailImage;
+                    mainImage.setAttribute('data-full-image', fullImage);
+                    mainImage.classList.add('fade-in');
+                    mainImage.style.opacity = '1';
+
+                    // Update lightbox link to full image
+                    if (mainImageLink) {
+                        mainImageLink.href = fullImage;
+                    }
+                }, 150);
+
+                // Update active state
+                document.querySelectorAll('.thumbnail-item').forEach(function(item) {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+            }
+        });
+    });
+
+    // Copy link functionality
+    const copyBtn = document.querySelector('.share-btn--copy');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-copy-url');
+            const fullUrl = window.location.origin + url;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(function() {
+                    const originalHTML = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    copyBtn.style.background = '#28a745';
+                    setTimeout(function() {
+                        copyBtn.innerHTML = originalHTML;
+                        copyBtn.style.background = '';
+                    }, 2000);
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = fullUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalHTML = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    copyBtn.style.background = '#28a745';
+                    setTimeout(function() {
+                        copyBtn.innerHTML = originalHTML;
+                        copyBtn.style.background = '';
+                    }, 2000);
+                } catch (err) {
+                    alert('Failed to copy link');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+    }
+});
+</script>
 
 {{-- Pass route URLs to forms module --}}
 <script>

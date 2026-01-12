@@ -41,8 +41,8 @@
                 const $carousel = $(this);
                 const items = $carousel.children().length;
                 $carousel.owlCarousel({
-                    loop: items > 6,
-                    margin: 5,
+                    loop: items > 5,
+                    margin: 20,
                     nav: false,
                     dots: true,
                     autoplay: items > 1,
@@ -53,7 +53,7 @@
                         576: { items: 2 },
                         768: { items: 3 },
                         992: { items: 4 },
-                        1200: { items: 6 }
+                        1200: { items: 5 }
                     }
                 });
             });
@@ -64,8 +64,8 @@
                     const $carousel = $(this);
                     const items = $carousel.children().length;
                     $carousel.owlCarousel({
-                        loop: items > 6,
-                        margin: 30,
+                        loop: items > 5,
+                        margin: 20,
                         nav: false,
                         dots: true,
                         autoplay: items > 1,
@@ -76,7 +76,7 @@
                             576: { items: 2 },
                             768: { items: 3 },
                             992: { items: 4 },
-                            1200: { items: 6 }
+                            1200: { items: 5 }
                         }
                     });
                     Utils.log('Carousel', index + 1, 'initialized successfully');

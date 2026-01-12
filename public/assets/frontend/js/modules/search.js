@@ -6,6 +6,7 @@
     'use strict';
 
     function initSearch() {
+        // Desktop search elements
         const searchInput = document.getElementById('header-search-input');
         const searchBtn = document.getElementById('header-search-btn');
         const searchDropdown = document.getElementById('search-results-dropdown');
@@ -14,6 +15,27 @@
         const searchFooter = document.getElementById('search-results-footer');
         const viewAllResults = document.getElementById('view-all-results');
 
+        // Mobile search elements
+        const mobileSearchInput = document.getElementById('header-search-input-mobile');
+        const mobileSearchBtn = document.getElementById('header-search-btn-mobile');
+        const mobileSearchDropdown = document.getElementById('search-results-dropdown-mobile');
+        const mobileSearchResultsList = document.getElementById('search-results-list-mobile');
+        const mobileSearchLoading = document.getElementById('search-loading-mobile');
+        const mobileSearchFooter = document.getElementById('search-results-footer-mobile');
+        const mobileViewAllResults = document.getElementById('view-all-results-mobile');
+
+        // Initialize desktop search if elements exist
+        if (searchInput && searchDropdown) {
+            initSearchForInput(searchInput, searchBtn, searchDropdown, searchResultsList, searchLoading, searchFooter, viewAllResults, 'header-search');
+        }
+
+        // Initialize mobile search if elements exist
+        if (mobileSearchInput && mobileSearchDropdown) {
+            initSearchForInput(mobileSearchInput, mobileSearchBtn, mobileSearchDropdown, mobileSearchResultsList, mobileSearchLoading, mobileSearchFooter, mobileViewAllResults, 'header-search-mobile');
+        }
+    }
+
+    function initSearchForInput(searchInput, searchBtn, searchDropdown, searchResultsList, searchLoading, searchFooter, viewAllResults, containerId) {
         if (!searchInput || !searchDropdown) return;
 
         const Utils = window.ScriptUtils || { debounce: (fn, delay) => fn, error: () => {} };
@@ -100,7 +122,7 @@
         });
 
         document.addEventListener('click', function(e) {
-            const searchContainer = document.getElementById('header-search');
+            const searchContainer = document.getElementById(containerId);
             if (searchContainer && !searchContainer.contains(e.target)) {
                 searchDropdown.style.display = 'none';
             }

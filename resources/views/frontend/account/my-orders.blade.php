@@ -1,17 +1,13 @@
 @extends('layouts.frontend.main')
 @section('content')
-<section class="page-header">
-    <div class="container">
-        <div class="breadcrumb">
-            <a href="{{ route('home') }}">Home</a>
-            <span>/</span>
-            <a href="{{ route('account.view-profile') }}">My Account</a>
-            <span>/</span>
-            <span>My Orders</span>
-        </div>
-        <h1 class="page-title">My Account</h1>
-    </div>
-</section>
+@include('frontend.partials.page-header', [
+    'title' => 'My Orders',
+    'breadcrumbs' => [
+        ['label' => 'Home', 'url' => route('home')],
+        ['label' => 'My Account', 'url' => route('account.view-profile')],
+        ['label' => 'My Orders', 'url' => null]
+    ]
+])
 <section class="account-section">
     <div class="container">
         <div class="row">
@@ -52,7 +48,7 @@
                                                 @foreach($order->items as $item)
                                                 <div class="order-product-mini">
                                                     @if($item->product)
-                                                        <img src="{{ $item->product->main_image ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product->name ?? $item->product_name }}">
+                                                        <img src="{{ $item->product->main_thumbnail_url ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product->name ?? $item->product_name }}">
                                                         <span class="order-product-mini__name">{{ $item->product->name ?? $item->product_name }}</span>
                                                     @else
                                                         <img src="{{ asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product_name }}">
@@ -85,7 +81,7 @@
                                     </div>
                                 </div>
                                 @endforeach
-                                
+
                                 <!-- Pagination -->
                                 @if($orders->hasPages())
                                 <div class="mt-4">

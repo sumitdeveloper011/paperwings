@@ -1,6 +1,12 @@
 @extends('layouts.frontend.main')
 @section('content')
-    @include('include.frontend.breadcrumb')
+    @include('frontend.partials.page-header', [
+        'title' => 'Products',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Products', 'url' => null]
+        ]
+    ])
     <section class="products-section">
         <div class="container">
             <!-- Products Grid -->

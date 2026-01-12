@@ -5,10 +5,9 @@ namespace App\Http\Controllers\Admin\Bundle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Bundle\StoreBundleRequest;
 use App\Http\Requests\Admin\Bundle\UpdateBundleRequest;
-use App\Models\BundleAccordion;
-use App\Models\BundleImage;
-use App\Models\ProductBundle;
 use App\Models\Product;
+use App\Models\ProductAccordion;
+use App\Models\ProductImage;
 use App\Repositories\Interfaces\BundleRepositoryInterface;
 use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
@@ -20,23 +19,30 @@ use Illuminate\View\View;
 
 class BundleController extends Controller
 {
-    protected BundleRepositoryInterface $bundleRepository;
     protected ImageService $imageService;
 
     public function __construct(
-        BundleRepositoryInterface $bundleRepository,
         ImageService $imageService
     ) {
-        $this->bundleRepository = $bundleRepository;
         $this->imageService = $imageService;
+    }
+
+    /**
+     * Get Bundles category
+     */
+    private function getBundlesCategory()
+    {
+        return \App\Models\Category::where('slug', 'bundles')->firstOrFail();
     }
     public function index(Request $request): View|JsonResponse
     {
         $search = trim($request->get('search', ''));
         $status = $request->get('status');
 
-        // Build query using repository pattern
-        $query = ProductBundle::withCount('products')->with('images');
+        // Query products with product_type = 4 (bundles)
+        $query = Product::bundles()
+            ->withCount('bundleProducts')
+            ->with('images');
 
         // Apply search filter
         if ($search !== '') {
@@ -51,7 +57,8 @@ class BundleController extends Controller
         }
 
         // Get paginated results with query parameters preserved
-        $bundles = $query->ordered()
+        $bundles = $query->orderBy('sort_order')
+            ->orderBy('name')
             ->paginate(15)
             ->withPath($request->url())
             ->appends($request->except('page'));
@@ -76,6 +83,7 @@ class BundleController extends Controller
 
     public function create(): View
     {
+        $bundlesCategory = $this->getBundlesCategory();
         $categories = \App\Models\Category::active()->ordered()->get();
 
         // If validation failed, load products from old input
@@ -102,41 +110,83 @@ class BundleController extends Controller
             })->filter(); // Remove nulls if any product not found
         }
 
-        return view('admin.bundle.create', compact('categories', 'oldProducts', 'oldProductIds', 'oldQuantities'));
+        return view('admin.bundle.create', compact('bundlesCategory', 'categories', 'oldProducts', 'oldProductIds', 'oldQuantities'));
     }
 
     public function store(StoreBundleRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $bundlesCategory = $this->getBundlesCategory();
 
-        // Generate UUID for bundle
+        // Generate UUID and slug
         $bundleUuid = Str::uuid()->toString();
+        $slug = Str::slug($validated['name']);
 
-        $bundle = $this->bundleRepository->create([
+        // Ensure unique slug
+        $originalSlug = $slug;
+        $counter = 1;
+        while (Product::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        // Handle unified discount structure
+        $discountType = $request->input('discount_type', 'none');
+        $discountValue = null;
+        $discountPrice = null;
+
+        if ($discountType === 'percentage' && $request->has('discount_percentage')) {
+            $percentage = (float) $request->input('discount_percentage', 0);
+            if ($percentage > 0 && $percentage <= 100) {
+                $discountValue = $percentage;
+                $bundlePrice = $validated['bundle_price'];
+                $discountAmount = $bundlePrice * ($percentage / 100);
+                $discountPrice = round(max(0, $bundlePrice - $discountAmount), 2);
+            }
+        } elseif ($discountType === 'direct' && $request->has('discount_price')) {
+            $discountPrice = (float) $request->input('discount_price', 0);
+            if ($discountPrice > 0 && $discountPrice < $validated['bundle_price']) {
+                // discount_price is the final price customer pays
+            } else {
+                $discountPrice = null;
+                $discountType = 'none';
+            }
+        } else {
+            $discountType = 'none';
+        }
+
+        // Create product as bundle
+        $product = Product::create([
             'uuid' => $bundleUuid,
+            'category_id' => $bundlesCategory->id,
             'name' => $validated['name'],
+            'slug' => $slug,
             'description' => $validated['description'] ?? null,
             'short_description' => $validated['short_description'],
-            'bundle_price' => $validated['bundle_price'],
-            'discount_percentage' => $validated['discount_percentage'] ?? null,
-            'status' => $validated['status'] ?? true,
+            'total_price' => $validated['bundle_price'], // Map bundle_price to total_price
+            'discount_type' => $discountType,
+            'discount_value' => $discountValue,
+            'discount_price' => $discountPrice,
+            'product_type' => 4, // Bundle type
             'sort_order' => $validated['sort_order'] ?? 0,
+            'status' => $validated['status'] ? 1 : 0,
+            'meta_title' => $validated['name'],
+            'meta_description' => $validated['short_description'],
         ]);
 
-        // Upload images using ImageService
+        // Upload images using ImageService (to ProductImage)
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $imagePath = $this->imageService->uploadImage($image, 'bundles', $bundleUuid);
+                $imagePath = $this->imageService->uploadImage($image, 'products', $bundleUuid);
                 if ($imagePath) {
-                    // Check if image already exists for this bundle to prevent duplicates
-                    $existingImage = BundleImage::where('bundle_id', $bundle->id)
+                    $existingImage = ProductImage::where('product_id', $product->id)
                         ->where('image', $imagePath)
                         ->first();
 
                     if (!$existingImage) {
-                        BundleImage::create([
+                        ProductImage::create([
                             'uuid' => Str::uuid(),
-                            'bundle_id' => $bundle->id,
+                            'product_id' => $product->id,
                             'image' => $imagePath,
                         ]);
                     }
@@ -144,49 +194,31 @@ class BundleController extends Controller
             }
         }
 
-        // Attach products - remove duplicates and prepare sync data
+        // Attach products via product_bundle_items
         $productsData = [];
-        $productIds = array_unique($validated['product_ids']); // Remove duplicates
+        $productIds = array_unique($validated['product_ids']);
 
-        foreach ($productIds as $index => $productId) {
-            // Find the quantity for this product (handle array index mismatch after removing duplicates)
+        foreach ($productIds as $productId) {
             $originalIndex = array_search($productId, $validated['product_ids']);
             $quantity = isset($validated['quantities'][$originalIndex])
                 ? $validated['quantities'][$originalIndex]
                 : 1;
 
             $productsData[$productId] = [
-                'quantity' => max(1, (int)$quantity) // Ensure quantity is at least 1
+                'quantity' => max(1, (int)$quantity)
             ];
         }
 
-        // Use sync to attach products (handles duplicates automatically)
-        $bundle->products()->sync($productsData);
+        // Use sync to attach products
+        $product->bundleProducts()->sync($productsData);
 
-        // Auto-calculate discount percentage based on total products price vs bundle price
-        $bundle->load('products');
-        $totalProductsPrice = $bundle->products->sum(function($product) {
-            return ($product->discount_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
-        });
-
-        $discountPercentage = 0;
-        if ($totalProductsPrice > 0 && $bundle->bundle_price > 0) {
-            $discountPercentage = (($totalProductsPrice - $bundle->bundle_price) / $totalProductsPrice) * 100;
-            $discountPercentage = max(0, min(100, $discountPercentage)); // Clamp between 0-100
-        }
-
-        // Update discount percentage
-        $bundle->update([
-            'discount_percentage' => round($discountPercentage, 2)
-        ]);
-
-        // Handle accordion data
+        // Handle accordion data (create as ProductAccordion)
         if ($request->has('accordion_data') && is_array($request->accordion_data)) {
             foreach ($request->accordion_data as $item) {
                 if (!empty($item['heading']) && !empty($item['content'])) {
-                    BundleAccordion::create([
+                    ProductAccordion::create([
                         'uuid' => Str::uuid(),
-                        'bundle_id' => $bundle->id,
+                        'product_id' => $product->id,
                         'heading' => $item['heading'],
                         'content' => $item['content'],
                     ]);
@@ -200,21 +232,21 @@ class BundleController extends Controller
 
     public function show($bundle): View
     {
-        // Find bundle including soft deleted ones using UUID
-        $bundle = $this->bundleRepository->findByUuidWithTrashed($bundle);
+        // Find bundle (product with product_type = 4)
+        $bundle = Product::bundles()
+            ->where('uuid', $bundle)
+            ->with(['bundleProducts.images', 'images', 'accordions'])
+            ->firstOrFail();
 
-        if (!$bundle) {
-            abort(404);
-        }
-
-        $bundle->load(['products.images', 'images', 'accordions']);
         return view('admin.bundle.show', compact('bundle'));
     }
 
     public function edit($bundle): View|RedirectResponse
     {
-        // Find bundle including soft deleted ones using UUID
-        $bundle = ProductBundle::withTrashed()->where('uuid', $bundle)->firstOrFail();
+        // Find bundle (product with product_type = 4)
+        $bundle = Product::bundles()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
         // Don't allow editing trashed bundles
         if ($bundle->trashed()) {
@@ -222,7 +254,8 @@ class BundleController extends Controller
                 ->with('error', 'Cannot edit a deleted bundle. Please restore it first.');
         }
 
-        $bundle->load(['products', 'images', 'accordions']);
+        $bundlesCategory = $this->getBundlesCategory();
+        $bundle->load(['bundleProducts', 'images', 'accordions']);
         $categories = \App\Models\Category::active()->ordered()->get();
 
         // If validation failed, load products from old input
@@ -249,7 +282,7 @@ class BundleController extends Controller
             })->filter(); // Remove nulls if any product not found
         }
 
-        return view('admin.bundle.edit', compact('bundle', 'categories', 'oldProducts', 'oldProductIds', 'oldQuantities'));
+        return view('admin.bundle.edit', compact('bundle', 'bundlesCategory', 'categories', 'oldProducts', 'oldProductIds', 'oldQuantities'));
     }
 
     public function searchProducts(Request $request)
@@ -297,12 +330,10 @@ class BundleController extends Controller
 
     public function update(UpdateBundleRequest $request, $bundle): RedirectResponse
     {
-        // Find bundle including soft deleted ones using UUID
-        $bundle = $this->bundleRepository->findByUuidWithTrashed($bundle);
-
-        if (!$bundle) {
-            abort(404);
-        }
+        // Find bundle (product with product_type = 4)
+        $bundle = Product::bundles()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
         // Don't allow updating trashed bundles
         if ($bundle->trashed()) {
@@ -312,17 +343,45 @@ class BundleController extends Controller
 
         $validated = $request->validated();
 
-        $this->bundleRepository->update($bundle, [
+        // Handle unified discount structure
+        $discountType = $request->input('discount_type', 'none');
+        $discountValue = null;
+        $discountPrice = null;
+
+        if ($discountType === 'percentage' && $request->has('discount_percentage')) {
+            $percentage = (float) $request->input('discount_percentage', 0);
+            if ($percentage > 0 && $percentage <= 100) {
+                $discountValue = $percentage;
+                $bundlePrice = $validated['bundle_price'];
+                $discountAmount = $bundlePrice * ($percentage / 100);
+                $discountPrice = round(max(0, $bundlePrice - $discountAmount), 2);
+            }
+        } elseif ($discountType === 'direct' && $request->has('discount_price')) {
+            $discountPrice = (float) $request->input('discount_price', 0);
+            if ($discountPrice > 0 && $discountPrice < $validated['bundle_price']) {
+                // discount_price is the final price customer pays
+            } else {
+                $discountPrice = null;
+                $discountType = 'none';
+            }
+        } else {
+            $discountType = 'none';
+        }
+
+        // Update product
+        $bundle->update([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'short_description' => $validated['short_description'],
-            'bundle_price' => $validated['bundle_price'],
-            // Discount percentage will be calculated after products are synced
-            'status' => $validated['status'] ?? $bundle->status,
+            'total_price' => $validated['bundle_price'], // Map bundle_price to total_price
+            'discount_type' => $discountType,
+            'discount_value' => $discountValue,
+            'discount_price' => $discountPrice,
+            'status' => $validated['status'] ? 1 : 0,
             'sort_order' => $validated['sort_order'] ?? $bundle->sort_order,
         ]);
 
-        // Handle image upload - delete old images if not keeping existing
+        // Handle images (same as store, but with keep_existing_images check)
         if (!$request->boolean('keep_existing_images')) {
             $oldImages = $bundle->images;
             foreach ($oldImages as $oldImage) {
@@ -331,20 +390,18 @@ class BundleController extends Controller
             }
         }
 
-        // Upload new images using ImageService
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $imagePath = $this->imageService->uploadImage($image, 'bundles', $bundle->uuid);
+                $imagePath = $this->imageService->uploadImage($image, 'products', $bundle->uuid);
                 if ($imagePath) {
-                    // Check if image already exists for this bundle to prevent duplicates
-                    $existingImage = BundleImage::where('bundle_id', $bundle->id)
+                    $existingImage = ProductImage::where('product_id', $bundle->id)
                         ->where('image', $imagePath)
                         ->first();
 
                     if (!$existingImage) {
-                        BundleImage::create([
+                        ProductImage::create([
                             'uuid' => Str::uuid(),
-                            'bundle_id' => $bundle->id,
+                            'product_id' => $bundle->id,
                             'image' => $imagePath,
                         ]);
                     }
@@ -352,51 +409,32 @@ class BundleController extends Controller
             }
         }
 
-        // Sync products - remove duplicates and prepare sync data
+        // Sync products
         $productsData = [];
-        $productIds = array_unique($validated['product_ids']); // Remove duplicates
+        $productIds = array_unique($validated['product_ids']);
 
-        foreach ($productIds as $index => $productId) {
-            // Find the quantity for this product (handle array index mismatch after removing duplicates)
+        foreach ($productIds as $productId) {
             $originalIndex = array_search($productId, $validated['product_ids']);
             $quantity = isset($validated['quantities'][$originalIndex])
                 ? $validated['quantities'][$originalIndex]
                 : 1;
 
             $productsData[$productId] = [
-                'quantity' => max(1, (int)$quantity) // Ensure quantity is at least 1
+                'quantity' => max(1, (int)$quantity)
             ];
         }
 
-        // Use sync to update products (handles duplicates automatically)
-        $bundle->products()->sync($productsData);
+        $bundle->bundleProducts()->sync($productsData);
 
-        // Auto-calculate discount percentage based on total products price vs bundle price
-        $bundle->load('products');
-        $totalProductsPrice = $bundle->products->sum(function($product) {
-            return ($product->discount_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
-        });
-
-        $discountPercentage = 0;
-        if ($totalProductsPrice > 0 && $bundle->bundle_price > 0) {
-            $discountPercentage = (($totalProductsPrice - $bundle->bundle_price) / $totalProductsPrice) * 100;
-            $discountPercentage = max(0, min(100, $discountPercentage)); // Clamp between 0-100
-        }
-
-        // Update discount percentage
-        $bundle->update([
-            'discount_percentage' => round($discountPercentage, 2)
-        ]);
-
-        // Handle accordion data - delete old and create new
+        // Handle accordion data
         $bundle->accordions()->delete();
 
         if ($request->has('accordion_data') && is_array($request->accordion_data)) {
             foreach ($request->accordion_data as $item) {
                 if (!empty($item['heading']) && !empty($item['content'])) {
-                    BundleAccordion::create([
+                    ProductAccordion::create([
                         'uuid' => Str::uuid(),
-                        'bundle_id' => $bundle->id,
+                        'product_id' => $bundle->id,
                         'heading' => $item['heading'],
                         'content' => $item['content'],
                     ]);
@@ -404,7 +442,6 @@ class BundleController extends Controller
             }
         }
 
-        // Refresh bundle to get updated data
         $bundle->refresh();
 
         return redirect()->route('admin.bundles.index')
@@ -415,15 +452,12 @@ class BundleController extends Controller
     public function destroy($bundle): RedirectResponse
     {
         // Find bundle using UUID
-        $bundle = $this->bundleRepository->findByUuid($bundle);
+        $bundle = Product::bundles()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
-        if (!$bundle) {
-            abort(404);
-        }
-
-        // Soft delete the bundle (image remains intact for restore)
-        // Image will only be deleted on forceDelete (permanent delete)
-        $this->bundleRepository->delete($bundle);
+        // Soft delete the bundle
+        $bundle->delete();
 
         return redirect()->route('admin.bundles.index')
             ->with('success', 'Bundle deleted successfully!');
@@ -435,11 +469,10 @@ class BundleController extends Controller
         $search = trim($request->get('search', ''));
 
         // Build query for trashed bundles
-        // Get trashed bundles using repository
-        $bundles = $this->bundleRepository->getTrashed(15);
-
-        // Apply search filter if needed
-        $query = ProductBundle::onlyTrashed()->withCount('products')->with('images');
+        $query = Product::bundles()
+            ->onlyTrashed()
+            ->withCount('bundleProducts')
+            ->with('images');
 
         // Apply search filter
         if ($search !== '') {
@@ -462,18 +495,17 @@ class BundleController extends Controller
     public function restore($bundle): RedirectResponse
     {
         // Find bundle including soft deleted ones
-        $bundle = $this->bundleRepository->findByUuidWithTrashed($bundle);
-
-        if (!$bundle) {
-            abort(404);
-        }
+        $bundle = Product::bundles()
+            ->withTrashed()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
         if (!$bundle->trashed()) {
             return redirect()->route('admin.bundles.trash')
                 ->with('error', 'Bundle is not deleted!');
         }
 
-        $this->bundleRepository->restore($bundle);
+        $bundle->restore();
 
         return redirect()->route('admin.bundles.trash')
             ->with('success', 'Bundle restored successfully!');
@@ -483,20 +515,15 @@ class BundleController extends Controller
     public function forceDelete($bundle): RedirectResponse
     {
         // Find bundle including soft deleted ones using UUID
-        $bundleModel = $this->bundleRepository->findByUuidWithTrashed($bundle);
-
-        if (!$bundleModel) {
-            abort(404);
-        }
+        $bundleModel = Product::bundles()
+            ->withTrashed()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
         if (!$bundleModel->trashed()) {
             return redirect()->route('admin.bundles.trash')
                 ->with('error', 'Bundle is not deleted!');
         }
-
-        // Check if bundle is in any orders
-        // Note: You may need to add a bundles relationship to orders if bundles can be in orders
-        // For now, we'll just delete the image and bundle
 
         // Delete all bundle images only on permanent delete
         $images = $bundleModel->images;
@@ -506,10 +533,10 @@ class BundleController extends Controller
         }
 
         // Detach all products from bundle before permanent delete
-        $bundleModel->products()->detach();
+        $bundleModel->bundleProducts()->detach();
 
         // Force delete the bundle
-        $this->bundleRepository->forceDelete($bundleModel);
+        $bundleModel->forceDelete();
 
         return redirect()->route('admin.bundles.trash')
             ->with('success', 'Bundle permanently deleted!');
@@ -518,14 +545,12 @@ class BundleController extends Controller
     public function updateStatus(Request $request, $bundle)
     {
         // Find bundle using UUID
-        $bundle = $this->bundleRepository->findByUuid($bundle);
-
-        if (!$bundle) {
-            return response()->json(['success' => false, 'message' => 'Bundle not found'], 404);
-        }
+        $bundle = Product::bundles()
+            ->where('uuid', $bundle)
+            ->firstOrFail();
 
         $request->validate(['status' => 'required|in:1,0']);
-        $this->bundleRepository->updateStatus($bundle, $request->status);
+        $bundle->update(['status' => $request->status]);
 
         // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {

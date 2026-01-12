@@ -1,7 +1,7 @@
 {{-- Search Autocomplete Item Partial --}}
 <a href="{{ route('product.detail', $product->slug) }}" class="search-autocomplete-item">
     @if($product->relationLoaded('images') && $product->images->isNotEmpty())
-        <img src="{{ $product->images->first()->image_url }}" alt="{{ $product->name }}">
+        <img src="{{ $product->images->first()->thumbnail_url }}" alt="{{ $product->name }}">
     @else
         <img src="{{ asset('assets/images/placeholder.jpg') }}" alt="{{ $product->name }}">
     @endif

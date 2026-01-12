@@ -20,10 +20,11 @@ class ProductBundleItem extends Model
         'quantity' => 'integer',
     ];
 
-    // Get the bundle relationship
+    // Get the bundle relationship (now points to Product)
     public function bundle(): BelongsTo
     {
-        return $this->belongsTo(ProductBundle::class, 'bundle_id');
+        return $this->belongsTo(Product::class, 'bundle_id')
+                    ->where('product_type', 4);
     }
 
     // Get the product relationship

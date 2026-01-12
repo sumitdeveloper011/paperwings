@@ -1,15 +1,12 @@
 @extends('layouts.frontend.main')
 @section('content')
-<section class="page-header">
-    <div class="container">
-        <div class="breadcrumb">
-            <a href="{{ route('home') }}">Home</a>
-            <span>/</span>
-            <span>My Account</span>
-        </div>
-        <h1 class="page-title">My Account</h1>
-    </div>
-</section>
+@include('frontend.partials.page-header', [
+    'title' => 'My Account',
+    'breadcrumbs' => [
+        ['label' => 'Home', 'url' => route('home')],
+        ['label' => 'My Account', 'url' => null]
+    ]
+])
 <section class="account-section">
     <div class="container">
         <div class="row">

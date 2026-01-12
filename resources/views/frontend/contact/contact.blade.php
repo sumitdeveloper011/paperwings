@@ -1,27 +1,19 @@
 @extends('layouts.frontend.main')
 @section('content')
-    <section class="page-header">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Contact Us</li>
-                        </ol>
-                    </nav>
-                    <h1 class="page-title">Contact Us</h1>
-                    <p class="page-subtitle">Get in touch with us - we'd love to hear from you!</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    @include('frontend.partials.page-header', [
+        'title' => 'Contact Us',
+        'subtitle' => 'Get in touch with us - we\'d love to hear from you!',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Contact Us', 'url' => null]
+        ]
+    ])
 
     <section class="contact-section">
         <div class="container">
             <div class="row">
                 <!-- Contact Information -->
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="contact-info-card">
                         <div class="contact-info-card__icon">
                             <i class="fas fa-map-marker-alt"></i>
@@ -35,7 +27,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="contact-info-card">
                         <div class="contact-info-card__icon">
                             <i class="fas fa-phone"></i>
@@ -53,7 +45,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="contact-info-card">
                         <div class="contact-info-card__icon">
                             <i class="fas fa-envelope"></i>
@@ -72,7 +64,7 @@
                 </div>
 
                 @if($workingHours)
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="contact-info-card">
                         <div class="contact-info-card__icon">
                             <i class="fas fa-clock"></i>
@@ -86,7 +78,7 @@
                 @endif
 
                 @if(!empty($socialLinks))
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="contact-info-card">
                         <div class="contact-info-card__icon">
                             <i class="fas fa-share-alt"></i>
@@ -124,7 +116,7 @@
                 @endif
             </div>
 
-            <div class="row mt-5">
+            <div class="row mt-3">
                 <!-- Contact Form -->
                 <div class="col-12">
                     <div class="contact-form-wrapper">
@@ -214,7 +206,7 @@
                                     <textarea class="form-control @error('message') is-invalid @enderror"
                                               id="message"
                                               name="message"
-                                              rows="6"
+                                              rows="5"
                                               required>{{ old('message') }}</textarea>
                                     @error('message')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -234,47 +226,52 @@
                 </div>
             </div>
 
-            <!-- Google Map - Full Width -->
-            <div class="row mt-5">
-                <div class="col-12">
-                    <div class="contact-map-wrapper">
-                        <h3 class="contact-map__title">
-                            <i class="fas fa-map-marked-alt"></i>
-                            Find Us on Map
-                        </h3>
-                        @if($googleMap)
-                            <div class="contact-map" id="contactMap">
-                                {!! $googleMap !!}
-                            </div>
-                        @elseif($googleMapApiKey && $address)
-                            <div class="contact-map" id="contactMap" style="height: 500px;"></div>
-                            <script>
-                                function initMap() {
-                                    const geocoder = new google.maps.Geocoder();
-                                    const map = new google.maps.Map(document.getElementById('contactMap'), {
-                                        zoom: 15,
-                                        center: {lat: -36.8485, lng: 174.7633} // Default to Auckland, NZ
-                                    });
+        </div>
+    </section>
 
-                                    geocoder.geocode({ address: "{{ $address }}" }, function(results, status) {
-                                        if (status === 'OK') {
-                                            map.setCenter(results[0].geometry.location);
-                                            new google.maps.Marker({
-                                                map: map,
-                                                position: results[0].geometry.location
-                                            });
-                                        }
-                                    });
-                                }
-                            </script>
-                            <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapApiKey }}&callback=initMap"></script>
-                        @else
-                            <div class="contact-map-placeholder">
-                                <i class="fas fa-map-marked-alt"></i>
-                                <p>Map not available</p>
-                            </div>
-                        @endif
-                    </div>
+    <!-- Google Map - Full Width (Outside Container) -->
+    <section class="contact-map-section">
+        <div class="container-fluid px-0">
+            <div class="contact-map-wrapper">
+                <div class="container">
+                    <h3 class="contact-map__title">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Find Us on Map
+                    </h3>
+                </div>
+                <div class="contact-map-container">
+                    @if($googleMap)
+                        <div class="contact-map" id="contactMap">
+                            {!! $googleMap !!}
+                        </div>
+                    @elseif($googleMapApiKey && $address)
+                        <div class="contact-map" id="contactMap" style="height: 450px;"></div>
+                        <script>
+                            function initMap() {
+                                const geocoder = new google.maps.Geocoder();
+                                const map = new google.maps.Map(document.getElementById('contactMap'), {
+                                    zoom: 15,
+                                    center: {lat: -36.8485, lng: 174.7633} // Default to Auckland, NZ
+                                });
+
+                                geocoder.geocode({ address: "{{ $address }}" }, function(results, status) {
+                                    if (status === 'OK') {
+                                        map.setCenter(results[0].geometry.location);
+                                        new google.maps.Marker({
+                                            map: map,
+                                            position: results[0].geometry.location
+                                        });
+                                    }
+                                });
+                            }
+                        </script>
+                        <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapApiKey }}&callback=initMap"></script>
+                    @else
+                        <div class="contact-map-placeholder">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <p>Map not available</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

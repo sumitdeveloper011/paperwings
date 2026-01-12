@@ -3,10 +3,10 @@
     <div class="cart-sidebar-item__image">
         <a href="{{ route('product.detail', $item->product->slug) }}">
             @if($item->product->relationLoaded('images') && $item->product->images->isNotEmpty())
-                <img src="{{ $item->product->images->first()->image_url }}" 
+                <img src="{{ $item->product->images->first()->thumbnail_url }}"
                      alt="{{ $item->product->name }}">
             @else
-                <img src="{{ asset('assets/images/placeholder.jpg') }}" 
+                <img src="{{ asset('assets/images/placeholder.jpg') }}"
                      alt="{{ $item->product->name }}">
             @endif
         </a>
@@ -26,8 +26,8 @@
             </span>
         </div>
     </div>
-    <button class="cart-sidebar-item__remove" 
-            data-cart-item-id="{{ $item->id }}" 
+    <button class="cart-sidebar-item__remove"
+            data-cart-item-id="{{ $item->id }}"
             title="Remove">
         <i class="fas fa-times"></i>
     </button>

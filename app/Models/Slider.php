@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Slider extends Model
@@ -35,7 +36,7 @@ class Slider extends Model
             if (empty($slider->uuid)) {
                 $slider->uuid = Str::uuid();
             }
-            
+
             // Auto-set sort order if not provided
             if (is_null($slider->sort_order)) {
                 $maxOrder = static::max('sort_order') ?? 0;
@@ -65,15 +66,54 @@ class Slider extends Model
     // Get status badge attribute
     public function getStatusBadgeAttribute()
     {
-        return $this->status == 1 
+        return $this->status == 1
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
-    // Get image URL attribute
+    // Get image URL attribute (original)
     public function getImageUrlAttribute()
     {
         return $this->image ? asset('storage/' . $this->image) : asset('assets/images/no-image.png');
+    }
+
+    // Get thumbnail path attribute
+    public function getThumbnailPathAttribute()
+    {
+        if (!$this->image) {
+            return null;
+        }
+
+        // Check if path has /original/ folder structure
+        if (strpos($this->image, '/original/') !== false) {
+            // Replace /original/ with /thumbnails/
+            return str_replace('/original/', '/thumbnails/', $this->image);
+        }
+
+        // For old structure (backward compatibility)
+        $pathParts = explode('/', $this->image);
+        $fileName = array_pop($pathParts);
+        $basePath = implode('/', $pathParts);
+
+        return $basePath . '/thumbnails/' . $fileName;
+    }
+
+    // Get thumbnail URL attribute
+    public function getThumbnailUrlAttribute()
+    {
+        if (!$this->image) {
+            return asset('assets/images/no-image.png');
+        }
+
+        $thumbnailPath = $this->thumbnail_path;
+
+        // Check if thumbnail exists
+        if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
+            return asset('storage/' . $thumbnailPath);
+        }
+
+        // Fallback to original if thumbnail doesn't exist
+        return $this->image_url;
     }
 
     // Get button count attribute

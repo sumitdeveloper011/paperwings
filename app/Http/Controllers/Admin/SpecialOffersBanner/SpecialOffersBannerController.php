@@ -6,15 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\SpecialOffersBanner;
 use App\Http\Requests\Admin\SpecialOffersBanner\StoreSpecialOffersBannerRequest;
 use App\Http\Requests\Admin\SpecialOffersBanner\UpdateSpecialOffersBannerRequest;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class SpecialOffersBannerController extends Controller
 {
+    protected ImageService $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
@@ -59,20 +66,25 @@ class SpecialOffersBannerController extends Controller
         $categories = \App\Models\Category::active()->ordered()->get();
         $products = \App\Models\Product::active()->orderBy('name')->get();
         $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
 
-        return view('admin.special-offers-banner.create', compact('categories', 'products', 'bundles'));
+        return view('admin.special-offers-banner.create', compact('categories', 'products', 'bundles', 'pages'));
     }
 
     public function store(StoreSpecialOffersBannerRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        // Handle image upload
+        // Generate UUID first (will be used for folder name)
+        $bannerUuid = Str::uuid()->toString();
+        $validated['uuid'] = $bannerUuid;
+
+        // Upload image with banner UUID using ImageService
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('banners', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage($request->file('image'), 'special-offers', $bannerUuid);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         // Extract final URL from smart-link-selector
@@ -94,8 +106,9 @@ class SpecialOffersBannerController extends Controller
         $categories = \App\Models\Category::active()->ordered()->get();
         $products = \App\Models\Product::active()->orderBy('name')->get();
         $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
 
-        return view('admin.special-offers-banner.edit', compact('specialOffersBanner', 'categories', 'products', 'bundles'));
+        return view('admin.special-offers-banner.edit', compact('specialOffersBanner', 'categories', 'products', 'bundles', 'pages'));
     }
 
     public function update(UpdateSpecialOffersBannerRequest $request, SpecialOffersBanner $specialOffersBanner): RedirectResponse
@@ -104,24 +117,24 @@ class SpecialOffersBannerController extends Controller
 
         // Handle image removal
         if ($request->has('remove_image') && $request->remove_image == '1') {
-            // Delete old image
-            if ($specialOffersBanner->image && Storage::disk('public')->exists($specialOffersBanner->image)) {
-                Storage::disk('public')->delete($specialOffersBanner->image);
+            // Delete old image using ImageService
+            if ($specialOffersBanner->image) {
+                $this->imageService->deleteImage($specialOffersBanner->image);
             }
             $validated['image'] = null;
         }
 
-        // Handle image upload
+        // Update image using ImageService
         if ($request->hasFile('image')) {
-            // Delete old image
-            if ($specialOffersBanner->image && Storage::disk('public')->exists($specialOffersBanner->image)) {
-                Storage::disk('public')->delete($specialOffersBanner->image);
+            $imagePath = $this->imageService->updateImage(
+                $request->file('image'),
+                'special-offers',
+                $specialOffersBanner->uuid,
+                $specialOffersBanner->image
+            );
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
             }
-
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('banners', $imageName, 'public');
-            $validated['image'] = $imagePath;
         }
 
         // Extract final URL from smart-link-selector
@@ -135,9 +148,9 @@ class SpecialOffersBannerController extends Controller
 
     public function destroy(SpecialOffersBanner $specialOffersBanner): RedirectResponse
     {
-        // Delete image if exists
-        if ($specialOffersBanner->image && Storage::disk('public')->exists($specialOffersBanner->image)) {
-            Storage::disk('public')->delete($specialOffersBanner->image);
+        // Delete image using ImageService
+        if ($specialOffersBanner->image) {
+            $this->imageService->deleteImage($specialOffersBanner->image);
         }
 
         $specialOffersBanner->delete();

@@ -10,7 +10,7 @@ class SpecialOffersBannerSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     * 
+     *
      * This seeder creates special offers banners.
      * Will NOT run in production environment for safety.
      */
@@ -86,27 +86,6 @@ class SpecialOffersBannerSeeder extends Seeder
                 'sort_order' => 5,
             ],
         ];
-
-        foreach ($banners as $bannerData) {
-            SpecialOffersBanner::updateOrCreate(
-                [
-                    'title' => $bannerData['title']
-                ],
-                [
-                    'uuid' => Str::uuid(),
-                    'title' => $bannerData['title'],
-                    'description' => $bannerData['description'],
-                    'image' => $bannerData['image'],
-                    'button_text' => $bannerData['button_text'],
-                    'button_link' => $bannerData['button_link'],
-                    'start_date' => $bannerData['start_date'],
-                    'end_date' => $bannerData['end_date'],
-                    'show_countdown' => $bannerData['show_countdown'],
-                    'status' => $bannerData['status'],
-                    'sort_order' => $bannerData['sort_order'],
-                ]
-            );
-        }
 
         $created = 0;
         $updated = 0;

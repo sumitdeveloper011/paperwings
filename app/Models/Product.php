@@ -28,6 +28,8 @@ class Product extends Model
         'name',
         'slug',
         'total_price',
+        'discount_type',
+        'discount_value',
         'discount_price',
         'description',
         'short_description',
@@ -35,6 +37,8 @@ class Product extends Model
         'meta_description',
         'meta_keywords',
         'status',
+        'sort_order',
+        'discount_percentage', // Keep for backward compatibility, will be removed later
     ];
 
     protected $casts = [
@@ -48,7 +52,11 @@ class Product extends Model
         'barcode' => 'string',
         'stock' => 'integer',
         'product_type' => 'integer',
+        'discount_type' => 'string',
+        'discount_value' => 'decimal:2',
         'discount_price' => 'decimal:2',
+        'sort_order' => 'integer',
+        'discount_percentage' => 'decimal:2', // Keep for backward compatibility
     ];
 
     // Boot method to generate UUID and slug automatically
@@ -204,10 +212,27 @@ class Product extends Model
         return $this->hasMany(ProductView::class);
     }
 
-    // Get bundle items relationship
+    // Get bundle items relationship (self-referencing)
     public function bundleItems(): HasMany
     {
-        return $this->hasMany(ProductBundleItem::class);
+        return $this->hasMany(ProductBundleItem::class, 'bundle_id');
+    }
+
+    // Get products in bundle (many-to-many)
+    public function bundleProducts()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'product_bundle_items',
+            'bundle_id',
+            'product_id'
+        )->withPivot('quantity')->withTimestamps();
+    }
+
+    // Check if product is a bundle
+    public function isBundle(): bool
+    {
+        return $this->product_type === 4;
     }
 
     // Scope to filter active products
@@ -234,19 +259,34 @@ class Product extends Model
         return $query->where('brand_id', $brandId);
     }
 
-    // Scope to filter featured products
+    // Scope for bundles only (product_type = 4)
+    public function scopeBundles($query)
+    {
+        return $query->where('product_type', 4);
+    }
+
+    // Scope for regular products only (exclude bundles)
+    public function scopeProducts($query)
+    {
+        return $query->where(function($q) {
+            $q->where('product_type', '!=', 4)
+              ->orWhereNull('product_type');
+        });
+    }
+
+    // Scope to filter featured products (exclude bundles)
     public function scopeFeatured($query)
     {
         return $query->where('status', 1)->where('product_type', 1);
     }
 
-    // Scope to filter products on sale
+    // Scope to filter products on sale (exclude bundles)
     public function scopeOnSale($query)
     {
         return $query->where('status', 1)->where('product_type', 2);
     }
 
-    // Scope to filter top rated products
+    // Scope to filter top rated products (exclude bundles)
     public function scopeTopRated($query)
     {
         return $query->where('status', 1)->where('product_type', 3);
@@ -294,7 +334,7 @@ class Product extends Model
             : '<span class="badge bg-danger">Inactive</span>';
     }
 
-    // Get main image URL attribute
+    // Get main image URL attribute (original)
     public function getMainImageAttribute()
     {
         // Check if images are already loaded (eager loaded)
@@ -310,11 +350,26 @@ class Product extends Model
         return asset('assets/images/placeholder.jpg');
     }
 
-    // Get main image URL attribute safely
+    // Get main image URL attribute safely (original)
     public function getMainImageUrlAttribute(): string
     {
         if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
             return $this->images->first()->image_url;
+        }
+
+        return asset('assets/images/placeholder.jpg');
+    }
+
+    // Get main thumbnail URL attribute
+    public function getMainThumbnailUrlAttribute(): string
+    {
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->thumbnail_url;
+        }
+
+        $firstImage = $this->images()->first();
+        if ($firstImage) {
+            return $firstImage->thumbnail_url;
         }
 
         return asset('assets/images/placeholder.jpg');
@@ -366,6 +421,50 @@ class Product extends Model
             $this->load('approvedReviews');
         }
         return $this->approvedReviews->count();
+    }
+
+    // Get final price attribute (with discount applied)
+    public function getFinalPriceAttribute()
+    {
+        // Use new discount_type system
+        if ($this->discount_type === 'none' || !$this->discount_type) {
+            return $this->total_price;
+        }
+
+        if ($this->discount_type === 'percentage' && $this->discount_value) {
+            return max(0, $this->total_price - ($this->total_price * $this->discount_value / 100));
+        }
+
+        if ($this->discount_type === 'direct' && $this->discount_price && $this->discount_price < $this->total_price) {
+            return $this->discount_price;
+        }
+
+        // Backward compatibility: if discount_price exists but discount_type not set
+        if ($this->discount_price && $this->discount_price < $this->total_price && !$this->discount_type) {
+            return $this->discount_price;
+        }
+
+        return $this->total_price;
+    }
+
+    // Get discount percentage attribute (calculated)
+    public function getDiscountPercentageAttribute()
+    {
+        // Use new discount_type system
+        if ($this->discount_type === 'percentage' && $this->discount_value) {
+            return $this->discount_value;
+        }
+
+        if ($this->discount_type === 'direct' && $this->total_price > 0 && $this->discount_price && $this->discount_price < $this->total_price) {
+            return (($this->total_price - $this->discount_price) / $this->total_price) * 100;
+        }
+
+        // Backward compatibility: if discount_percentage exists but discount_type not set
+        if (isset($this->attributes['discount_percentage']) && $this->attributes['discount_percentage'] && !$this->discount_type) {
+            return $this->attributes['discount_percentage'];
+        }
+
+        return 0;
     }
 
     // Get route key name

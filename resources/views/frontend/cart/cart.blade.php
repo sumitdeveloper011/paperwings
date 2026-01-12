@@ -1,6 +1,12 @@
 @extends('layouts.frontend.main')
 @section('content')
-    @include('include.frontend.breadcrumb')
+    @include('frontend.partials.page-header', [
+        'title' => 'Shopping Cart',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Cart', 'url' => null]
+        ]
+    ])
     <section class="cart-section">
         <div class="container">
             <div class="row">
@@ -23,7 +29,7 @@
                                         <td class="cart-item__product">
                                             <div class="cart-item__image">
                                                 <a href="{{ route('product.detail', $cartItem->product->slug) }}">
-                                                    <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
+                                                    <img src="{{ $cartItem->product->main_thumbnail_url }}" alt="{{ $cartItem->product->name }}">
                                                 </a>
                                             </div>
                                             <div class="cart-item__info">

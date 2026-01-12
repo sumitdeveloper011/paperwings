@@ -57,13 +57,13 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/products/{slug}', [ProductController::class, 'productDetail'])->name('product.detail');
     Route::post('/products/{slug}/review', [ReviewController::class, 'store'])->name('review.store');
     Route::post('/products/{slug}/question', [QuestionController::class, 'store'])->name('question.store');
-    
+
     // Categories - new clean URLs
     Route::get('/categories/{slug}', [ProductController::class, 'productByCategory'])->name('category.show');
-    
+
     // Shop
     Route::get('/shop', [ProductController::class, 'shop'])->name('shop');
-    
+
     // Reviews and Questions (keep as is for API endpoints)
     Route::post('/review/{review}/helpful', [ReviewController::class, 'helpful'])->name('review.helpful');
     Route::post('/question/{question}/answer', [QuestionController::class, 'storeAnswer'])->name('question.answer');
@@ -72,7 +72,7 @@ Route::middleware('prevent.admin')->group(function () {
     // Bundles - fix singular to plural
     Route::get('/bundles', [BundleController::class, 'index'])->name('bundles.index');
     Route::get('/bundles/{slug}', [BundleController::class, 'show'])->name('bundle.show');
-    
+
     // Redirects from old URLs to new URLs (301 permanent redirects for SEO)
     Route::get('/product/{slug}', function($slug) {
         return redirect()->route('product.detail', $slug, 301);
@@ -87,23 +87,35 @@ Route::middleware('prevent.admin')->group(function () {
 
 Route::middleware('prevent.admin')->group(function () {
     // Direct routes for common pages (clean URLs)
-    Route::get('/about-us', [PageController::class, 'showBySlug'])->name('about');
-    Route::get('/privacy-policy', [PageController::class, 'showBySlug'])->name('privacy');
-    Route::get('/terms-and-conditions', [PageController::class, 'showBySlug'])->name('terms');
-    Route::get('/delivery-policy', [PageController::class, 'showBySlug'])->name('delivery');
-    Route::get('/return-policy', [PageController::class, 'showBySlug'])->name('returns');
-    Route::get('/cookie-policy', [PageController::class, 'showBySlug'])->name('cookies');
-    
+    Route::get('/about-us', function() {
+        return app(PageController::class)->showBySlug('about-us');
+    })->name('about');
+    Route::get('/privacy-policy', function() {
+        return app(PageController::class)->showBySlug('privacy-policy');
+    })->name('privacy');
+    Route::get('/terms-and-conditions', function() {
+        return app(PageController::class)->showBySlug('terms-and-conditions');
+    })->name('terms');
+    Route::get('/delivery-policy', function() {
+        return app(PageController::class)->showBySlug('delivery-policy');
+    })->name('delivery');
+    Route::get('/return-policy', function() {
+        return app(PageController::class)->showBySlug('return-policy');
+    })->name('returns');
+    Route::get('/cookie-policy', function() {
+        return app(PageController::class)->showBySlug('cookie-policy');
+    })->name('cookies');
+
     // Redirect from old /page/{slug} to new direct slug (301 for SEO) - must be before catch-all
     Route::get('/page/{slug}', function($slug) {
         return redirect('/' . $slug, 301);
     });
-    
+
     // Fallback for other pages (must be last with proper exclusions)
     Route::get('/{slug}', [PageController::class, 'showBySlug'])
         ->where('slug', '^(?!admin|api|cart|checkout|account|login|register|search|shop|products|categories|bundles|contact|faq|wishlist|unsubscribe|auth|stripe|reset-password|forgot-password|email|about-us|privacy-policy|terms-and-conditions|delivery-policy|return-policy|cookie-policy|page).*')
         ->name('page.show');
-    
+
     Route::get('/faq', [\App\Http\Controllers\Frontend\FaqController::class, 'index'])->name('faq.index');
 });
 

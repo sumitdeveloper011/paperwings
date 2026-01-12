@@ -221,12 +221,22 @@ class ProductController extends Controller
             // Optimized: Get categories with product count using category_id
             $cacheKey = 'categories_with_count_all';
             $categories = Cache::remember($cacheKey, 3600, function () {
-                return Category::active()
-                    ->withCount(['products' => function($query) {
-                        $query->where('status', 1);
-                    }])
-                    ->ordered()
+                $categories = Category::where('categories.status', 1)
+                    ->select('categories.id', 'categories.name', 'categories.slug')
+                    ->leftJoin('products', function($join) {
+                        $join->on('products.category_id', '=', 'categories.id')
+                             ->where('products.status', '=', 1);
+                    })
+                    ->groupBy('categories.id', 'categories.name', 'categories.slug')
+                    ->selectRaw('COUNT(products.id) as active_products_count')
+                    ->orderBy('categories.name', 'asc')
                     ->get();
+
+                // Ensure count is an integer
+                return $categories->map(function($category) {
+                    $category->active_products_count = (int) $category->active_products_count;
+                    return $category;
+                });
             });
 
             $subtitle = 'Browse products in ' . $category->name;

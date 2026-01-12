@@ -1,6 +1,13 @@
 @extends('layouts.frontend.main')
 @section('content')
-    @include('include.frontend.breadcrumb')
+    @include('frontend.partials.page-header', [
+        'title' => 'Checkout',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Cart', 'url' => route('cart.index')],
+            ['label' => 'Checkout', 'url' => null]
+        ]
+    ])
     <section class="checkout-section">
         <div class="container">
             <form class="checkout-form" id="checkoutForm">

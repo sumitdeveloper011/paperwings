@@ -5,7 +5,14 @@
 @endpush
 
 @section('content')
-    @include('include.frontend.breadcrumb')
+    @include('frontend.partials.page-header', [
+        'title' => 'Checkout',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Cart', 'url' => route('cart.index')],
+            ['label' => 'Checkout', 'url' => null]
+        ]
+    ])
 
     <!-- Checkout Section -->
     <section class="checkout-section">
@@ -221,7 +228,7 @@
                                 @foreach($cartItems as $cartItem)
                                 <div class="order-item">
                                     <div class="order-item__image">
-                                        <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
+                                        <img src="{{ $cartItem->product->main_thumbnail_url }}" alt="{{ $cartItem->product->name }}">
                                     </div>
                                     <div class="order-item__info">
                                         <h3 class="order-item__name">
@@ -332,7 +339,7 @@
                                         @foreach($cartItems as $cartItem)
                                         <div class="checkout-review-block__item">
                                             <div class="checkout-review-block__item-image">
-                                                <img src="{{ $cartItem->product->main_image }}" alt="{{ $cartItem->product->name }}">
+                                                <img src="{{ $cartItem->product->main_thumbnail_url }}" alt="{{ $cartItem->product->name }}">
                                             </div>
                                             <div class="checkout-review-block__item-info">
                                                 <h4 class="checkout-review-block__item-name">{{ $cartItem->product->name }}</h4>

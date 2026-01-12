@@ -56,10 +56,10 @@
                             </div>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge--info">{{ $bundle->products_count }}</span>
+                            <span class="badge badge--info">{{ $bundle->bundle_products_count }}</span>
                         </td>
                         <td class="modern-table__td">
-                            <strong>${{ number_format($bundle->bundle_price, 2) }}</strong>
+                            <strong>${{ number_format($bundle->total_price, 2) }}</strong>
                         </td>
                         <td class="modern-table__td">
                             @if($bundle->discount_percentage)

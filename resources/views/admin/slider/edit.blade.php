@@ -231,10 +231,9 @@
                                             'label' => 'Button URL',
                                             'value' => old('button_1_url', $button1['url'] ?? ''),
                                             'required' => false,
-                                            'categories' => $categories ?? [],
-                                            'products' => $products ?? [],
-                                            'bundles' => $bundles ?? [],
-                                            'pages' => []
+                                            'categories' => $categories ?? collect(),
+                                            'bundles' => $bundles ?? collect(),
+                                            'pages' => $pages ?? collect(),
                                         ])
                                         @error('button_1_url')
                                             <div class="form-error">
@@ -279,10 +278,9 @@
                                             'label' => 'Button URL',
                                             'value' => old('button_2_url', $button2['url'] ?? ''),
                                             'required' => false,
-                                            'categories' => $categories ?? [],
-                                            'products' => $products ?? [],
-                                            'bundles' => $bundles ?? [],
-                                            'pages' => []
+                                            'categories' => $categories ?? collect(),
+                                            'bundles' => $bundles ?? collect(),
+                                            'pages' => $pages ?? collect(),
                                         ])
                                         @error('button_2_url')
                                             <div class="form-error">

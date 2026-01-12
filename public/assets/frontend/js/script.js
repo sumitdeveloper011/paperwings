@@ -29,6 +29,7 @@
         ProductDetails.init();
         Select2Init.init();
         MegaMenu.init();
+        MobileHeader.init();
     }
 
     // Animations Module
@@ -160,7 +161,6 @@
             this.initViewToggle();
             this.initFilters(Utils);
             this.initCategorySearch();
-            this.initLoadMoreCategories();
         },
 
         initPriceRange: function(Utils, CONFIG) {
@@ -264,61 +264,6 @@
                     }
                 } else if (emptyMessage && searchTerm === '') {
                     emptyMessage.remove();
-                }
-            });
-        },
-
-        initLoadMoreCategories: function() {
-            const loadMoreBtn = document.getElementById('loadMoreCategories');
-            const categoriesList = document.getElementById('categoriesListContainer');
-
-            if (!loadMoreBtn || !categoriesList) return;
-
-            const itemsPerPage = parseInt(loadMoreBtn.getAttribute('data-items-per-page')) || 10;
-            const allItems = Array.from(categoriesList.querySelectorAll('.sidebar-category'));
-
-            // Ensure items beyond the first page are hidden (in case HTML didn't add the class)
-            allItems.forEach((item, index) => {
-                if (index >= itemsPerPage) {
-                    if (!item.classList.contains('category-item-hidden')) {
-                        item.classList.add('category-item-hidden');
-                    }
-                } else {
-                    // Ensure first 10 items are visible
-                    item.classList.remove('category-item-hidden');
-                    item.classList.remove('show-item');
-                }
-            });
-
-            loadMoreBtn.addEventListener('click', function() {
-                const hiddenItems = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
-
-                if (hiddenItems.length === 0) {
-                    // Show all items
-                    allItems.forEach(item => {
-                        if (!item.classList.contains('hidden')) {
-                            item.classList.remove('category-item-hidden');
-                            item.classList.add('show-item');
-                        }
-                    });
-                    this.querySelector('.load-more-text').style.display = 'none';
-                    this.querySelector('.load-all-text').style.display = 'inline';
-                    this.classList.add('hide-button');
-                } else {
-                    // Show next batch
-                    const itemsToShow = Math.min(itemsPerPage, hiddenItems.length);
-                    for (let i = 0; i < itemsToShow; i++) {
-                        hiddenItems[i].classList.remove('category-item-hidden');
-                        hiddenItems[i].classList.add('show-item');
-                    }
-
-                    // Check if all items are now visible
-                    const remainingHidden = categoriesList.querySelectorAll('.category-item-hidden:not(.hidden)');
-                    if (remainingHidden.length === 0) {
-                        this.querySelector('.load-more-text').style.display = 'none';
-                        this.querySelector('.load-all-text').style.display = 'inline';
-                        this.classList.add('hide-button');
-                    }
                 }
             });
         }
@@ -642,7 +587,8 @@
     const ProductDetails = {
         init: function() {
             this.initThumbnails();
-            this.initQuantity();
+            // Quantity controls are handled by dedicated quantity.js module
+            // Removed duplicate handler to prevent double increment/decrement
         },
 
         initThumbnails: function() {
@@ -654,37 +600,6 @@
                     $('.thumbnail-item').removeClass('active');
                     $(this).addClass('active');
                 }
-            });
-        },
-
-        initQuantity: function() {
-            $(document).on('click', '#increaseQty', function(e) {
-                e.preventDefault();
-                const quantityInput = $('#quantity');
-                let currentValue = parseInt(quantityInput.val()) || 1;
-                const maxValue = parseInt(quantityInput.attr('max')) || 99;
-                if (currentValue < maxValue) {
-                    quantityInput.val(++currentValue);
-                }
-            });
-
-            $(document).on('click', '#decreaseQty', function(e) {
-                e.preventDefault();
-                const quantityInput = $('#quantity');
-                let currentValue = parseInt(quantityInput.val()) || 1;
-                const minValue = parseInt(quantityInput.attr('min')) || 1;
-                if (currentValue > minValue) {
-                    quantityInput.val(--currentValue);
-                }
-            });
-
-            $('#quantity').on('change', function() {
-                let value = parseInt($(this).val()) || 1;
-                const minValue = parseInt($(this).attr('min')) || 1;
-                const maxValue = parseInt($(this).attr('max')) || 99;
-                if (value < minValue) value = minValue;
-                else if (value > maxValue) value = maxValue;
-                $(this).val(value);
             });
         }
     };
@@ -987,6 +902,148 @@
                         megaMenu.style.display = 'none';
                     }
                 }, 200);
+            });
+        }
+    };
+
+    // Mobile Header Module
+    const MobileHeader = {
+        init: function() {
+            const $ = jQuery;
+
+            // Mobile Search Toggle
+            const mobileSearchToggle = $('#mobileSearchToggle');
+            const mobileSearchRow = $('#mobileSearchRow');
+            const mobileSearchClose = $('#mobileSearchClose');
+            const mobileSearchInput = $('#header-search-input-mobile');
+
+            if (mobileSearchToggle.length) {
+                mobileSearchToggle.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    mobileSearchRow.slideDown(300);
+                    setTimeout(() => {
+                        mobileSearchInput.focus();
+                    }, 350);
+                });
+            }
+
+            if (mobileSearchClose.length) {
+                mobileSearchClose.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    mobileSearchRow.slideUp(300);
+                    mobileSearchInput.val('');
+                });
+            }
+
+            // Close search when clicking outside
+            $(document).on('click', function(e) {
+                if (mobileSearchRow.length && mobileSearchRow.is(':visible')) {
+                    if (!$(e.target).closest('#header-search-mobile, #mobileSearchToggle').length) {
+                        mobileSearchRow.slideUp(300);
+                        mobileSearchInput.val('');
+                    }
+                }
+            });
+
+            // Mobile User Login Dropdown
+            const userLoginToggle = $('#userLoginToggleMobile');
+            const userLoginMenu = $('#userLoginMenuMobile');
+            const userLoginDropdown = $('#userLoginDropdownMobile');
+
+            if (userLoginToggle.length) {
+                userLoginToggle.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Close other dropdowns
+                    $('.header__user-dropdown').not(userLoginDropdown).removeClass('open');
+
+                    // Toggle this dropdown
+                    userLoginDropdown.toggleClass('open');
+                });
+            }
+
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (userLoginDropdown.length) {
+                    if (!$(e.target).closest(userLoginDropdown).length) {
+                        userLoginDropdown.removeClass('open');
+                    }
+                }
+            });
+
+            // Mobile User Dropdown (for logged in users)
+            const userDropdownMobile = $('#userDropdownMobile');
+            const userDropdownTriggerMobile = $('#userDropdownTriggerMobile');
+
+            if (userDropdownTriggerMobile.length) {
+                userDropdownTriggerMobile.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Close other dropdowns
+                    $('.header__user-dropdown').not(userDropdownMobile).removeClass('open');
+
+                    // Toggle this dropdown
+                    userDropdownMobile.toggleClass('open');
+                });
+            }
+
+            // Mobile Navigation Menu Toggle
+            const navMobileMenuToggle = $('#navMobileMenuToggle');
+            const navMobileMenu = $('#navMobileMenu');
+            const navMobileMenuOverlay = $('#navMobileMenuOverlay');
+            const navMobileMenuClose = $('#navMobileMenuClose');
+            const body = $('body');
+
+            function openMobileMenu() {
+                navMobileMenu.addClass('active');
+                navMobileMenuOverlay.addClass('active');
+                body.css('overflow', 'hidden'); // Prevent body scroll
+            }
+
+            function closeMobileMenu() {
+                navMobileMenu.removeClass('active');
+                navMobileMenuOverlay.removeClass('active');
+                body.css('overflow', ''); // Restore body scroll
+            }
+
+            if (navMobileMenuToggle.length) {
+                navMobileMenuToggle.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openMobileMenu();
+                });
+            }
+
+            if (navMobileMenuClose.length) {
+                navMobileMenuClose.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileMenu();
+                });
+            }
+
+            // Close menu when clicking overlay
+            if (navMobileMenuOverlay.length) {
+                navMobileMenuOverlay.on('click', function(e) {
+                    e.preventDefault();
+                    closeMobileMenu();
+                });
+            }
+
+            // Close menu on escape key
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && navMobileMenu.hasClass('active')) {
+                    closeMobileMenu();
+                }
+            });
+
+            // Close menu when clicking on a link
+            $('.nav__mobile-menu-link, .nav__mobile-menu-categories-link').on('click', function() {
+                setTimeout(closeMobileMenu, 300); // Small delay for smooth transition
             });
         }
     };

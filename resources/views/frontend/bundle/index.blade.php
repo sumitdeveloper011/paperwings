@@ -1,78 +1,39 @@
 @extends('layouts.frontend.main')
 
 @section('content')
-    <section class="page-header">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Product Bundles</li>
-                        </ol>
-                    </nav>
-                    <h1 class="page-title">Product Bundles</h1>
-                    <p class="page-subtitle">Save more with our special product bundles</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    @include('frontend.partials.page-header', [
+        'title' => 'Product Bundles',
+        'subtitle' => 'Save more with our special product bundles',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Product Bundles', 'url' => null]
+        ]
+    ])
 
     <section class="bundles-section">
         <div class="container">
             @if($bundles && $bundles->count() > 0)
-            <div class="products-header">
-                <div class="products-header__left">
-                    <p class="products-count">Showing {{ $bundles->firstItem() ?? 0 }}-{{ $bundles->lastItem() ?? 0 }} of {{ $bundles->total() }} bundles</p>
-                </div>
-            </div>
+            @include('frontend.partials.products-header', [
+                'products' => $bundles,
+                'sort' => $sort ?? null,
+                'sortOptions' => [
+                    'featured' => 'Sort by: Featured',
+                    'price_low_high' => 'Price: Low to High',
+                    'price_high_low' => 'Price: High to Low',
+                    'name_asc' => 'Name: A to Z',
+                    'name_desc' => 'Name: Z to A',
+                    'newest' => 'Newest First',
+                ]
+            ])
 
             <div class="products-grid" id="bundlesGrid">
                 @foreach($bundles as $bundle)
-                <div class="cute-stationery__item">
-                    <div class="cute-stationery__image">
-                        <a href="{{ route('bundle.show', $bundle->slug) }}" class="cute-stationery__image-link">
-                            <img src="{{ $bundle->image ? asset('storage/' . $bundle->image) : asset('assets/images/placeholder.jpg') }}" 
-                                 alt="{{ $bundle->name }}" 
-                                 class="cute-stationery__img"
-                                 loading="lazy">
-                        </a>
-                        
-                        @if($bundle->discount_percentage)
-                        <span class="product-badge product-badge--sale">{{ $bundle->discount_percentage }}% OFF</span>
-                        @endif
-                        
-                        <div class="cute-stationery__actions">
-                            <a href="{{ route('bundle.show', $bundle->slug) }}" class="cute-stationery__action" title="View Bundle">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="cute-stationery__info">
-                        <h3 class="cute-stationery__name">
-                            <a href="{{ route('bundle.show', $bundle->slug) }}" class="cute-stationery__name-link">
-                                {{ $bundle->name }}
-                            </a>
-                        </h3>
-                        
-                        @if($bundle->products->count() > 0)
-                        <div class="product-stock-status">
-                            <span class="stock-badge stock-badge--in">{{ $bundle->products->count() }} {{ $bundle->products->count() == 1 ? 'Product' : 'Products' }}</span>
-                        </div>
-                        @endif
-                        
-                        <div class="cute-stationery__price">
-                            <span class="cute-stationery__price-current">${{ number_format($bundle->bundle_price, 2) }}</span>
-                        </div>
-                    </div>
-                </div>
+                    @include('frontend.bundle.partials.bundle-card', ['bundle' => $bundle])
                 @endforeach
             </div>
-            
-            @if($bundles->hasPages())
-            <div class="bundles-pagination">
+
+            @if($bundles && $bundles->hasPages())
                 @include('include.frontend.pagination', ['paginator' => $bundles])
-            </div>
             @endif
             @else
             <div class="products-grid__empty">
@@ -92,12 +53,6 @@
     padding: 3rem 0 4rem;
 }
 
-.bundles-pagination {
-    margin-top: 3rem;
-    padding-top: 2rem;
-    border-top: 1px solid #e9ecef;
-}
-
 .cute-stationery__action {
     text-decoration: none;
 }
@@ -105,6 +60,44 @@
 .cute-stationery__action:hover {
     color: var(--coral-red);
 }
+
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sortSelect = document.getElementById('sortSelect');
+
+        // Sort functionality
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                const selectedSort = this.value;
+                const currentUrl = new URL(window.location.href);
+
+                // Update or add sort parameter
+                currentUrl.searchParams.set('sort', selectedSort);
+
+                // Reset to page 1 when sorting changes
+                currentUrl.searchParams.delete('page');
+
+                // Redirect to new URL with sort parameter
+                window.location.href = currentUrl.toString();
+            });
+        }
+
+        // Bundle Add to Cart functionality
+        document.querySelectorAll('.bundle-add-to-cart').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const bundleId = this.getAttribute('data-bundle-id');
+                if (bundleId) {
+                    // Redirect to bundle detail page where user can add to cart
+                    window.location.href = '/bundles/' + bundleId;
+                }
+            });
+        });
+    });
+</script>
 @endpush
 

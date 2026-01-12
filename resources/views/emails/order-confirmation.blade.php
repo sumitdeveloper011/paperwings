@@ -19,7 +19,7 @@
                             @endif
                         </td>
                     </tr>
-                    
+
                     <!-- Header Banner - Dark Blue -->
                     <tr>
                         <td style="padding: 50px 40px; text-align: center; background-color: #374E94;">
@@ -61,7 +61,7 @@
                             </h1>
                         </td>
                     </tr>
-                    
+
                     <!-- Order Summary -->
                     <tr>
                         <td style="padding: 40px 40px 20px 40px; background-color: #ffffff;">
@@ -71,7 +71,7 @@
                             <p style="margin: 0 0 30px 0; color: #000000; font-size: 16px; font-weight: 400; line-height: 1.6;">
                                 We've received your order and it's being processed. You'll receive a shipping confirmation email once your order ships.
                             </p>
-                            
+
                             <!-- Order Info Box -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa; border-radius: 8px; margin-bottom: 30px;">
                                 <tr>
@@ -111,14 +111,14 @@
                             </table>
                         </td>
                     </tr>
-                    
+
                     <!-- Order Items -->
                     <tr>
                         <td style="padding: 0 40px 30px 40px; background-color: #ffffff;">
                             <h2 style="margin: 0 0 20px 0; color: #374E94; font-size: 20px; font-weight: 700; border-bottom: 2px solid #e9ecef; padding-bottom: 10px;">
                                 Order Items
                             </h2>
-                            
+
             @foreach($order->items as $item)
                             <!-- Product Item -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 20px; border-bottom: 1px solid #e9ecef; padding-bottom: 20px;">
@@ -126,10 +126,13 @@
                                     <td width="100" style="padding-right: 15px; vertical-align: top;">
                                         @php
                                             $productImage = asset('assets/images/placeholder.jpg');
-                                            if ($item->product && isset($item->product->main_image_url)) {
+                                            // Prefer thumbnail for emails (smaller file size)
+                                            if ($item->product && isset($item->product->main_thumbnail_url)) {
+                                                $productImage = $item->product->main_thumbnail_url;
+                                            } elseif ($item->product && isset($item->product->main_image_url)) {
                                                 $productImage = $item->product->main_image_url;
                                             } elseif ($item->product && $item->product->images && $item->product->images->count() > 0) {
-                                                $productImage = $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
+                                                $productImage = $item->product->images->first()->thumbnail_url ?? $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
                                             }
                                         @endphp
                                         <img src="{{ $productImage }}" alt="{{ $item->product_name }}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; display: block;" />
@@ -157,7 +160,7 @@
             @endforeach
                         </td>
                     </tr>
-                    
+
                     <!-- Order Totals -->
                     <tr>
                         <td style="padding: 0 40px 30px 40px; background-color: #ffffff;">
@@ -237,7 +240,7 @@
                             </table>
                         </td>
                     </tr>
-                    
+
                     <!-- Shipping & Billing Address -->
                     <tr>
                         <td style="padding: 0 40px 30px 40px; background-color: #ffffff;">
@@ -271,7 +274,7 @@
                             </table>
                         </td>
                     </tr>
-                    
+
                     <!-- Payment Method -->
                     <tr>
                         <td style="padding: 0 40px 30px 40px; background-color: #ffffff;">
@@ -286,7 +289,7 @@
                             </p>
                         </td>
                     </tr>
-                    
+
                     <!-- View Order Button -->
                     @if(isset($orderViewUrl))
                     <tr>
@@ -297,7 +300,7 @@
                         </td>
                     </tr>
                     @endif
-                    
+
                     <!-- Closing -->
                     <tr>
                         <td style="padding: 0 40px 40px 40px; background-color: #ffffff;">
@@ -312,7 +315,7 @@
                             </p>
                         </td>
                     </tr>
-                    
+
                     <!-- Footer - Contact Information -->
                     <tr>
                         <td style="padding: 40px 40px 30px 40px; background-color: #f5f5f5;">
@@ -329,7 +332,7 @@
                                 <a href="mailto:{{ $contactEmail }}" style="color: #000000; text-decoration: none;">{{ $contactEmail }}</a>
                             </p>
                             @endif
-                            
+
                             <!-- Social Media Icons -->
                             @if(isset($socialLinks) && !empty($socialLinks))
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -377,7 +380,7 @@
                             @endif
                         </td>
                     </tr>
-                    
+
                     <!-- Copyright Bar - Dark Blue -->
                     <tr>
                         <td style="padding: 20px 40px; text-align: center; background-color: #374E94;">

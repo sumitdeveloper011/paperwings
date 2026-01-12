@@ -1,19 +1,14 @@
 @extends('layouts.frontend.main')
 @section('content')
-<section class="page-header">
-    <div class="container">
-        <div class="breadcrumb">
-            <a href="{{ route('home') }}">Home</a>
-            <span>/</span>
-            <a href="{{ route('account.view-profile') }}">My Account</a>
-            <span>/</span>
-            <a href="{{ route('account.my-orders') }}">My Orders</a>
-            <span>/</span>
-            <span>Order Details</span>
-        </div>
-        <h1 class="page-title">Order Details</h1>
-    </div>
-</section>
+@include('frontend.partials.page-header', [
+    'title' => 'Order Details',
+    'breadcrumbs' => [
+        ['label' => 'Home', 'url' => route('home')],
+        ['label' => 'My Account', 'url' => route('account.view-profile')],
+        ['label' => 'My Orders', 'url' => route('account.my-orders')],
+        ['label' => 'Order Details', 'url' => null]
+    ]
+])
 
 <section class="account-section">
     <div class="container">
@@ -62,7 +57,7 @@
                                         <div class="order-item-card">
                                             <div class="order-item-card__image">
                                                 @if($item->product)
-                                                    <img src="{{ $item->product->main_image ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product->name ?? $item->product_name }}">
+                                                    <img src="{{ $item->product->main_thumbnail_url ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product->name ?? $item->product_name }}">
                                                 @else
                                                     <img src="{{ asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product_name }}">
                                                 @endif

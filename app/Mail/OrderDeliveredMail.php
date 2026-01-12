@@ -32,9 +32,15 @@ class OrderDeliveredMail extends Mailable
                 $order->items->each(function($item) use ($images) {
                     if ($item->product) {
                         $image = $images->get($item->product_id);
-                        $item->product->setAttribute('main_image_url',
-                            $image && isset($image->image_url) ? $image->image_url : asset('assets/images/placeholder.jpg')
-                        );
+                        if ($image) {
+                            // Use thumbnail for emails (smaller file size, faster delivery)
+                            $item->product->setAttribute('main_thumbnail_url', $image->thumbnail_url);
+                            // Also set main_image_url for backward compatibility
+                            $item->product->setAttribute('main_image_url', $image->image_url);
+                        } else {
+                            $item->product->setAttribute('main_thumbnail_url', asset('assets/images/placeholder.jpg'));
+                            $item->product->setAttribute('main_image_url', asset('assets/images/placeholder.jpg'));
+                        }
                     }
                 });
             } catch (\Exception $e) {

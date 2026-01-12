@@ -69,10 +69,13 @@
                     <td style="padding: 10px 8px; border-bottom: 1px solid #e9ecef; vertical-align: middle;">
                         @php
                             $productImage = asset('assets/images/placeholder.jpg');
-                            if ($item->product && isset($item->product->main_image_url)) {
+                            // Prefer thumbnail for PDF (smaller file size, faster rendering)
+                            if ($item->product && isset($item->product->main_thumbnail_url)) {
+                                $productImage = $item->product->main_thumbnail_url;
+                            } elseif ($item->product && isset($item->product->main_image_url)) {
                                 $productImage = $item->product->main_image_url;
                             } elseif ($item->product && $item->product->images && $item->product->images->count() > 0) {
-                                $productImage = $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
+                                $productImage = $item->product->images->first()->thumbnail_url ?? $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
                             }
                         @endphp
                         <img src="{{ $productImage }}" alt="{{ $item->product_name }}" style="width: 45px; height: 45px; object-fit: cover; border-radius: 4px; display: block;" />

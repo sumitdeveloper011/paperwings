@@ -168,15 +168,26 @@
                                 <div class="pricing-card__icon" style="font-size: 1.2rem; margin-bottom: 0.5rem;">
                                     <i class="fas fa-money-bill-wave"></i>
                                 </div>
-                                <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">${{ number_format($bundle->bundle_price, 2) }}</div>
+                                @php
+                                    $finalPrice = $bundle->final_price;
+                                    $hasDiscount = $bundle->discount_type !== 'none' && $bundle->discount_price && $bundle->discount_price < $bundle->total_price;
+                                @endphp
+                                @if($hasDiscount)
+                                    <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">
+                                        <span style="text-decoration: line-through; color: #999; font-size: 0.9em; margin-right: 0.5rem;">${{ number_format($bundle->total_price, 2) }}</span>
+                                        <span class="text-success">${{ number_format($finalPrice, 2) }}</span>
+                                    </div>
+                                @else
+                                    <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">${{ number_format($finalPrice, 2) }}</div>
+                                @endif
                                 <div class="pricing-card__label" style="font-size: 0.75rem;">Bundle Price</div>
                             </div>
 
                             @php
-                                $totalProductsPrice = $bundle->products->sum(function($product) {
-                                    return ($product->discount_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
+                                $totalProductsPrice = $bundle->bundleProducts->sum(function($product) {
+                                    return ($product->final_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
                                 });
-                                $savings = $totalProductsPrice - $bundle->bundle_price;
+                                $savings = $totalProductsPrice - $finalPrice;
                             @endphp
 
                             <div class="pricing-card pricing-card--info" style="padding: 1rem;">
@@ -187,12 +198,12 @@
                                 <div class="pricing-card__label" style="font-size: 0.75rem;">Total Products Value</div>
                             </div>
 
-                            @if($bundle->discount_percentage)
+                            @if($hasDiscount && $bundle->discount_type === 'percentage' && $bundle->discount_value)
                             <div class="pricing-card pricing-card--success" style="padding: 1rem;">
                                 <div class="pricing-card__icon" style="font-size: 1.2rem; margin-bottom: 0.5rem;">
                                     <i class="fas fa-percent"></i>
                                 </div>
-                                <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ number_format($bundle->discount_percentage, 1) }}%</div>
+                                <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ number_format($bundle->discount_value, 1) }}%</div>
                                 <div class="pricing-card__label" style="font-size: 0.75rem;">Discount</div>
                             </div>
                             @endif
@@ -212,17 +223,17 @@
             </div>
 
             <!-- Products in Bundle -->
-            @if($bundle->products && $bundle->products->count() > 0)
+            @if($bundle->bundleProducts && $bundle->bundleProducts->count() > 0)
             <div class="modern-card" style="margin-top: 2rem;">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
                         <i class="fas fa-box"></i>
-                        Products in Bundle ({{ $bundle->products->count() }})
+                        Products in Bundle ({{ $bundle->bundleProducts->count() }})
                     </h3>
                 </div>
                 <div class="modern-card__body">
                     <div class="row">
-                        @foreach($bundle->products as $product)
+                        @foreach($bundle->bundleProducts as $product)
                             <div class="col-md-4 mb-4">
                                 <div class="product-card-modern">
                                     <div class="product-card-modern__image">

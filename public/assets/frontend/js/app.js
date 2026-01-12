@@ -79,7 +79,7 @@
             if (typeof $.fn.owlCarousel !== 'undefined') {
                 $('.products-carousel').owlCarousel({
                     loop: true,
-                    margin: 5,
+                    margin: 20,
                     nav: false,
                     dots: true,
                     autoplay: true,
@@ -90,7 +90,7 @@
                         576: { items: 2 },
                         768: { items: 3 },
                         992: { items: 4 },
-                        1200: { items: 6 }
+                        1200: { items: 5 }
                     }
                 });
 
@@ -108,10 +108,10 @@
 
         // Initialize search with debouncing
         initSearch() {
-            const searchInput = document.getElementById('search-input') || 
+            const searchInput = document.getElementById('search-input') ||
                                document.querySelector('input[name="q"]') ||
                                document.querySelector('.search-input');
-            
+
             if (!searchInput) return;
 
             const performSearch = this.debounce((value) => {
@@ -183,7 +183,7 @@
                 const cartBtn = e.target.closest('.add-to-cart-btn, [data-add-to-cart]');
                 if (cartBtn) {
                     e.preventDefault();
-                    const productId = cartBtn.getAttribute('data-product-id') || 
+                    const productId = cartBtn.getAttribute('data-product-id') ||
                                      cartBtn.getAttribute('data-add-to-cart');
                     if (productId && window.CartFunctions) {
                         window.CartFunctions.addToCart(productId, 1, cartBtn);
@@ -246,7 +246,7 @@
 
             subscriptionForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                
+
                 const formData = new FormData(subscriptionForm);
                 const submitBtn = subscriptionForm.querySelector('button[type="submit"]');
                 const originalText = submitBtn?.textContent;

@@ -130,6 +130,38 @@ class ProductBundle extends Model
         return $query->orderBy('sort_order')->orderBy('name');
     }
 
+    // Get main image URL attribute (original)
+    public function getImageAttribute()
+    {
+        // Check if images are already loaded (eager loaded)
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->image_url;
+        }
+
+        $firstImage = $this->images()->first();
+        if ($firstImage) {
+            return $firstImage->image_url;
+        }
+
+        return asset('assets/images/placeholder.jpg');
+    }
+
+    // Get main thumbnail URL attribute
+    public function getThumbnailUrlAttribute()
+    {
+        // Check if images are already loaded (eager loaded)
+        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
+            return $this->images->first()->thumbnail_url;
+        }
+
+        $firstImage = $this->images()->first();
+        if ($firstImage) {
+            return $firstImage->thumbnail_url;
+        }
+
+        return asset('assets/images/placeholder.jpg');
+    }
+
     /**
      * Get the route key for the model.
      *

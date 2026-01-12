@@ -29,15 +29,36 @@
             @if($sliders && $sliders->count() > 0)
                 @foreach($sliders as $slider)
                     <div class="slider__slide" style="background-image: url('{{ asset('storage/' . $slider->image) }}');">
+                        <div class="slider__overlay"></div>
                         <div class="container">
-                            <div class="row">
-                                <div class="col-lg-6">
+                            <div class="row align-items-center">
+                                <div class="col-lg-8 col-xl-7">
                                     <div class="slider__content">
-                                        <div class="slider__tagline">{{ $slider->sub_heading }}</div>
+                                        @if($slider->sub_heading)
+                                            <div class="slider__badge">
+                                                <span class="slider__badge-text">{{ $slider->sub_heading }}</span>
+                                            </div>
+                                        @endif
                                         <h1 class="slider__heading">{{ $slider->heading }}</h1>
-                                        <a href="{{ $slider->buttons[0]['url'] }}" class="slider__btn">
-                                            {{ $slider->buttons[0]['name'] }} <i class="fas fa-arrow-right"></i>
-                                        </a>
+                                        <div class="slider__actions">
+                                            @php
+                                                $buttons = is_array($slider->buttons) ? $slider->buttons : (is_string($slider->buttons) ? json_decode($slider->buttons, true) : []);
+                                            @endphp
+                                            @if(!empty($buttons) && count($buttons) > 0)
+                                                @if(isset($buttons[0]) && isset($buttons[0]['url']) && isset($buttons[0]['name']))
+                                                    <a href="{{ $buttons[0]['url'] }}" class="slider__btn slider__btn--primary">
+                                                        <span>{{ $buttons[0]['name'] }}</span>
+                                                        <i class="fas fa-arrow-right"></i>
+                                                    </a>
+                                                @endif
+                                                @if(isset($buttons[1]) && isset($buttons[1]['url']) && isset($buttons[1]['name']))
+                                                    <a href="{{ $buttons[1]['url'] }}" class="slider__btn slider__btn--secondary">
+                                                        <span>{{ $buttons[1]['name'] }}</span>
+                                                        <i class="fas fa-arrow-right"></i>
+                                                    </a>
+                                                @endif
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -46,13 +67,21 @@
                 @endforeach
             @else
                 <div class="slider__slide" style="background-image: url('{{ asset('assets/frontend/images/banner-1.jpg') }}');">
+                    <div class="slider__overlay"></div>
                     <div class="container">
-                        <div class="row">
-                            <div class="col-lg-6">
+                        <div class="row align-items-center">
+                            <div class="col-lg-8 col-xl-7">
                                 <div class="slider__content">
-                                    <div class="slider__tagline">Welcome to Paper Wings</div>
-                                    <h1 class="slider__heading">Welcome to Paper Wings</h1>
-                                    <a href="#" class="slider__btn">Shop Now →</a>
+                                    <div class="slider__badge">
+                                        <span class="slider__badge-text">Welcome to Paper Wings</span>
+                                    </div>
+                                    <h1 class="slider__heading">Premium Stationery & Office Supplies</h1>
+                                    <div class="slider__actions">
+                                        <a href="{{ route('shop') }}" class="slider__btn slider__btn--primary">
+                                            <span>Shop Now</span>
+                                            <i class="fas fa-arrow-right"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -76,16 +105,20 @@
             <div class="row">
                 @if($categories && $categories->count() > 0)
                 @foreach($categories as $category)
-                    <div class="col-lg-2 col-md-4 col-sm-6">
-                        <div class="category-item">
-                            <div class="category__image">
-                                <a href="{{ route('category.show', $category->slug) }}">
-                                    <img src="{{ asset('storage/' . $category->image) ?? asset('assets/frontend/images/office-supplies.jpg') }}" alt="{{ $category->name }}" class="category__img">
-                                </a>
-                            </div>
-                            <h3 class="category__name">
-                                <a href="{{ route('category.show', $category->slug) }}">{{ $category->name }}</a>
-                            </h3>
+                    <div class="col-lg-2 col-md-4 col-sm-6 col-6">
+                        <div class="category-card">
+                            <a href="{{ route('category.show', $category->slug) }}" class="category-card__link">
+                                <div class="category-card__image-wrapper">
+                                    <img src="{{ $category->thumbnail_url ?? asset('assets/frontend/images/office-supplies.jpg') }}" alt="{{ $category->name }}" class="category-card__image">
+                                    <div class="category-card__overlay"></div>
+                                    @if(isset($category->active_products_count) && $category->active_products_count > 0)
+                                        <span class="category-card__badge">{{ $category->active_products_count }} items</span>
+                                    @endif
+                                </div>
+                                <div class="category-card__content">
+                                    <h3 class="category-card__name">{{ $category->name }}</h3>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 @endforeach
@@ -152,58 +185,6 @@
         </div>
     </section>
 
-    <!-- New Arrivals Section -->
-    <section class="new-arrivals-section">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header">
-                        <h2 class="section-title">New Arrivals</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                @if($newArrivals && $newArrivals->count() > 0)
-                <div class="owl-carousel new-arrivals-carousel">
-                    @foreach($newArrivals as $product)
-                        @include('frontend.product.partials.product-card', ['product' => $product])
-                    @endforeach
-                </div>
-                @else
-                <div class="col-12 text-center py-5">
-                    <p class="text-muted">No new arrivals at the moment. Check back soon!</p>
-                </div>
-                @endif
-            </div>
-        </div>
-    </section>
-
-    <!-- Recently Viewed Section -->
-    <section class="recently-viewed-section">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header">
-                        <h2 class="section-title">Recently Viewed</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                @if($recentlyViewed && $recentlyViewed->count() > 0)
-                <div class="owl-carousel recently-viewed-carousel">
-                    @foreach($recentlyViewed as $product)
-                        @include('frontend.product.partials.product-card', ['product' => $product])
-                    @endforeach
-                </div>
-                @else
-                <div class="col-12 text-center py-5">
-                    <p class="text-muted">Start browsing products to see your recently viewed items here!</p>
-                </div>
-                @endif
-            </div>
-        </div>
-    </section>
-
     <!-- Special Offers Banner Section -->
     @if($specialOfferBanners && $specialOfferBanners->count() > 0)
     <section class="special-offers-banner-section">
@@ -255,29 +236,135 @@
     </section>
     @endif
 
-    <!-- About Section -->
-    @if($aboutSection)
-    <section class="about-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <div class="about__image">
-                        <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}" class="about__img">
+    <!-- New Arrivals Section -->
+    <section class="new-arrivals-section">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="section-header">
+                        <h2 class="section-title">New Arrivals</h2>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="about__content">
-                        @if($aboutSection->badge)
-                            <div class="about__badge">{{ $aboutSection->badge }}</div>
-                        @endif
-                        <h2 class="about__title">{{ $aboutSection->title }}</h2>
-                        @if($aboutSection->description)
-                            <p class="about__description">{{ $aboutSection->description }}</p>
-                        @endif
-                        @if($aboutSection->button_text && $aboutSection->button_link)
-                            <a href="{{ $aboutSection->button_link }}" class="about__btn">{{ $aboutSection->button_text }} <i class="fas fa-arrow-right"></i></a>
-                        @endif
+            </div>
+            <div class="row">
+                @if($newArrivals && $newArrivals->count() > 0)
+                <div class="owl-carousel new-arrivals-carousel">
+                    @foreach($newArrivals as $product)
+                        @include('frontend.product.partials.product-card', ['product' => $product])
+                    @endforeach
+                </div>
+                @else
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted">No new arrivals at the moment. Check back soon!</p>
+                </div>
+                @endif
+            </div>
+        </div>
+    </section>
+
+    <!-- Product Bundles Section -->
+    <section class="bundles-section">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="section-header">
+                        <h2 class="section-title">Special Bundles</h2>
+                        <p class="section-subtitle">Save more with our exclusive product bundles</p>
                     </div>
+                </div>
+            </div>
+            <div class="row">
+                @if($bundles && $bundles->count() > 0)
+                <div class="owl-carousel bundles-carousel">
+                    @foreach($bundles as $bundle)
+                    <div class="bundle-card-home">
+                        <div class="bundle-card-home__image">
+                            <a href="{{ route('bundle.show', $bundle->slug) }}">
+                                <img src="{{ $bundle->thumbnail_url }}"
+                                     alt="{{ $bundle->name }}"
+                                     class="bundle-card-home__img">
+                            </a>
+                            @if($bundle->discount_percentage)
+                            <span class="bundle-badge-home">{{ $bundle->discount_percentage }}% OFF</span>
+                            @endif
+                        </div>
+                        <div class="bundle-card-home__body">
+                            <h3 class="bundle-card-home__title">
+                                <a href="{{ route('bundle.show', $bundle->slug) }}">{{ $bundle->name }}</a>
+                            </h3>
+                            <div class="bundle-card-home__price">
+                                @php
+                                    $finalPrice = $bundle->final_price;
+                                    $hasDiscount = $bundle->discount_type !== 'none' && $bundle->discount_price && $bundle->discount_price < $bundle->total_price;
+                                @endphp
+                                @if($hasDiscount)
+                                    <span class="bundle-price-home-old" style="text-decoration: line-through; color: #999; font-size: 0.9em; margin-right: 0.5rem;">${{ number_format($bundle->total_price, 2) }}</span>
+                                    <span class="bundle-price-home">${{ number_format($finalPrice, 2) }}</span>
+                                @else
+                                    <span class="bundle-price-home">${{ number_format($finalPrice, 2) }}</span>
+                                @endif
+                                @if($bundle->bundleProducts->count() > 0)
+                                <span class="bundle-products-count-home">{{ $bundle->bundleProducts->count() }} Items</span>
+                                @endif
+                            </div>
+                            <a href="{{ route('bundle.show', $bundle->slug) }}" class="btn btn-sm btn-primary bundle-card-home__btn">View Bundle</a>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @else
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted">No bundles available at the moment. Check back soon!</p>
+                </div>
+                @endif
+            </div>
+            @if($bundles && $bundles->count() > 0)
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <a href="{{ route('bundles.index') }}" class="btn btn-outline-primary">View All Bundles</a>
+                </div>
+            </div>
+            @endif
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    @if($testimonials && $testimonials->count() > 0)
+    <section class="testimonials-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="section-header text-center">
+                        <h2 class="section-title">What Our Customers Say</h2>
+                        <p class="section-subtitle">Read what our satisfied customers have to say about us</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="owl-carousel testimonials-carousel">
+                    @foreach($testimonials as $testimonial)
+                    <div class="testimonial-item">
+                        <div class="testimonial-rating">
+                            @for($i = 1; $i <= 5; $i++)
+                                <i class="fas fa-star {{ $i <= $testimonial->rating ? 'active' : '' }}"></i>
+                            @endfor
+                        </div>
+                        <p class="testimonial-text">"{{ strip_tags($testimonial->review) }}"</p>
+                        <div class="testimonial-author">
+                            @if($testimonial->image)
+                                <img src="{{ $testimonial->thumbnail_url }}" alt="{{ $testimonial->name }}" class="testimonial-author__image">
+                            @else
+                                <div class="testimonial-author__avatar">{{ substr($testimonial->name, 0, 1) }}</div>
+                            @endif
+                            <div class="testimonial-author__info">
+                                <h4 class="testimonial-author__name">{{ $testimonial->name }}</h4>
+                                @if($testimonial->designation)
+                                    <p class="testimonial-author__designation">{{ $testimonial->designation }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -335,196 +422,34 @@
         </div>
     </section>
 
-    <!-- Testimonials Section -->
-    @if($testimonials && $testimonials->count() > 0)
-    <section class="testimonials-section">
+    <!-- About Section -->
+    @if($aboutSection)
+    <section class="about-section">
         <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header text-center">
-                        <h2 class="section-title">What Our Customers Say</h2>
-                        <p class="section-subtitle">Read what our satisfied customers have to say about us</p>
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <div class="about__image">
+                        <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}" class="about__img">
                     </div>
                 </div>
-            </div>
-            <div class="row">
-                <div class="owl-carousel testimonials-carousel">
-                    @foreach($testimonials as $testimonial)
-                    <div class="testimonial-item">
-                        <div class="testimonial-rating">
-                            @for($i = 1; $i <= 5; $i++)
-                                <i class="fas fa-star {{ $i <= $testimonial->rating ? 'active' : '' }}"></i>
-                            @endfor
-                        </div>
-                        <p class="testimonial-text">"{{ $testimonial->review }}"</p>
-                        <div class="testimonial-author">
-                            @if($testimonial->image)
-                                <img src="{{ asset('storage/' . $testimonial->image) }}" alt="{{ $testimonial->name }}" class="testimonial-author__image">
-                            @else
-                                <div class="testimonial-author__avatar">{{ substr($testimonial->name, 0, 1) }}</div>
-                            @endif
-                            <div class="testimonial-author__info">
-                                <h4 class="testimonial-author__name">{{ $testimonial->name }}</h4>
-                                @if($testimonial->designation)
-                                    <p class="testimonial-author__designation">{{ $testimonial->designation }}</p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </section>
-    @endif
-
-    <!-- You May Also Like Section -->
-    <section class="you-may-also-like-section">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header">
-                        <h2 class="section-title">You May Also Like</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                @if($youMayAlsoLike && $youMayAlsoLike->count() > 0)
-                <div class="owl-carousel you-may-also-like-carousel">
-                    @foreach($youMayAlsoLike as $product)
-                        @include('frontend.product.partials.product-card', ['product' => $product])
-                    @endforeach
-                </div>
-                @else
-                <div class="col-12 text-center py-5">
-                    <p class="text-muted">Browse more products to see personalized recommendations!</p>
-                </div>
-                @endif
-            </div>
-        </div>
-    </section>
-
-    <!-- Product Bundles Section -->
-    <section class="bundles-section">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header">
-                        <h2 class="section-title">Special Bundles</h2>
-                        <p class="section-subtitle">Save more with our exclusive product bundles</p>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                @if($bundles && $bundles->count() > 0)
-                <div class="owl-carousel bundles-carousel">
-                    @foreach($bundles as $bundle)
-                    <div class="bundle-card-home">
-                        <div class="bundle-card-home__image">
-                            <a href="{{ route('bundle.show', $bundle->slug) }}">
-                                <img src="{{ $bundle->image ? asset('storage/' . $bundle->image) : asset('assets/images/placeholder.jpg') }}"
-                                     alt="{{ $bundle->name }}"
-                                     class="bundle-card-home__img">
-                            </a>
-                            @if($bundle->discount_percentage)
-                            <span class="bundle-badge-home">{{ $bundle->discount_percentage }}% OFF</span>
-                            @endif
-                        </div>
-                        <div class="bundle-card-home__body">
-                            <h3 class="bundle-card-home__title">
-                                <a href="{{ route('bundle.show', $bundle->slug) }}">{{ $bundle->name }}</a>
-                            </h3>
-                            <div class="bundle-card-home__price">
-                                <span class="bundle-price-home">${{ number_format($bundle->bundle_price, 2) }}</span>
-                                @if($bundle->products->count() > 0)
-                                <span class="bundle-products-count-home">{{ $bundle->products->count() }} Items</span>
-                                @endif
-                            </div>
-                            <a href="{{ route('bundle.show', $bundle->slug) }}" class="btn btn-sm btn-primary bundle-card-home__btn">View Bundle</a>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-                @else
-                <div class="col-12 text-center py-5">
-                    <p class="text-muted">No bundles available at the moment. Check back soon!</p>
-                </div>
-                @endif
-            </div>
-            @if($bundles && $bundles->count() > 0)
-            <div class="row mt-4">
-                <div class="col-12 text-center">
-                    <a href="{{ route('bundles.index') }}" class="btn btn-outline-primary">View All Bundles</a>
-                </div>
-            </div>
-            @endif
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-    @if($faqs && $faqs->count() > 0)
-    <section class="faq-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="section-header text-center">
-                        <h2 class="section-title">Frequently Asked Questions</h2>
-                        <p class="section-subtitle">Find answers to common questions</p>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-lg-8 offset-lg-2">
-                    <div class="faq-accordion">
-                        @foreach($faqs as $faq)
-                        <div class="faq-item">
-                            <div class="faq-question" data-faq-id="{{ $faq->id }}">
-                                <h3>{{ $faq->question }}</h3>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="faq-answer">
-                                <p>{{ $faq->answer }}</p>
-                            </div>
-                        </div>
-                        @endforeach
+                <div class="col-lg-6">
+                    <div class="about__content">
+                        @if($aboutSection->badge)
+                            <div class="about__badge">{{ $aboutSection->badge }}</div>
+                        @endif
+                        <h2 class="about__title">{{ $aboutSection->title }}</h2>
+                        @if($aboutSection->description)
+                            <p class="about__description">{{ $aboutSection->description }}</p>
+                        @endif
+                        @if($aboutSection->button_text && $aboutSection->button_link)
+                            <a href="{{ $aboutSection->button_link }}" class="about__btn">{{ $aboutSection->button_text }} <i class="fas fa-arrow-right"></i></a>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </section>
     @endif
-
-    <!-- Trust Badges Section -->
-    <section class="trust-badges-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="trust-badges">
-                        <div class="trust-badge-item">
-                            <i class="fas fa-shield-alt"></i>
-                            <h4>Secure Payment</h4>
-                            <p>100% Secure Transactions</p>
-                        </div>
-                        <div class="trust-badge-item">
-                            <i class="fas fa-truck"></i>
-                            <h4>Free Shipping</h4>
-                            <p>On Orders Over $50</p>
-                        </div>
-                        <div class="trust-badge-item">
-                            <i class="fas fa-undo"></i>
-                            <h4>Easy Returns</h4>
-                            <p>30-Day Return Policy</p>
-                        </div>
-                        <div class="trust-badge-item">
-                            <i class="fas fa-headset"></i>
-                            <h4>24/7 Support</h4>
-                            <p>Customer Service</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Subscription Banner Section -->
     <section class="subscription-banner">
@@ -646,46 +571,6 @@
     </section>
 @endsection
 
-@push('styles')
-<style>
-/* Alternating Background Colors for Symmetry */
-.categories-section {
-    background-color: #ffffff !important;
-}
-
-.products-section {
-    background-color: #f8f9fa !important;
-}
-
-.new-arrivals-section {
-    background-color: #ffffff !important;
-}
-
-.recently-viewed-section {
-    background-color: #f8f9fa !important;
-}
-
-.cute-stationery-section {
-    background-color: #ffffff !important;
-}
-
-.testimonials-section {
-    background-color: #f8f9fa !important;
-}
-
-.you-may-also-like-section {
-    background-color: #ffffff !important;
-}
-
-.bundles-section {
-    background-color: #f8f9fa !important;
-}
-
-/* Owl Carousel Navigation Arrows - Fixed Positioning and Styling */
-{{-- Carousel navigation styles moved to main style.css --}}
-{{-- Arrows are hidden globally, dots are enabled --}}
-</style>
-@endpush
 
 @push('scripts')
 {{-- Home Page JavaScript Modules --}}

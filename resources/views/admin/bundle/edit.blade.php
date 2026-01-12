@@ -40,6 +40,17 @@
                         </div>
                         <div class="modern-card__body">
                             <div class="mb-3">
+                                <label for="category_id" class="form-label">Category</label>
+                                <select class="form-select" id="category_id" name="category_id" required readonly>
+                                    <option value="{{ $bundlesCategory->id }}" selected>
+                                        {{ $bundlesCategory->name }}
+                                    </option>
+                                </select>
+                                <input type="hidden" name="category_id" value="{{ $bundlesCategory->id }}">
+                                <small class="form-text text-muted">Bundles category (auto-selected)</small>
+                            </div>
+
+                            <div class="mb-3">
                                 <label for="name" class="form-label">Bundle Name <span class="text-danger">*</span></label>
                                 <input type="text"
                                        class="form-control @error('name') is-invalid @enderror"
@@ -125,7 +136,7 @@
                                 <select class="form-select" id="product_ids" name="product_ids_select" multiple>
                                     @php
                                         // Use old products if validation failed, otherwise use bundle products
-                                        $productsToShow = !empty($oldProductIds) ? $oldProducts : $bundle->products;
+                                        $productsToShow = !empty($oldProductIds) ? $oldProducts : $bundle->bundleProducts;
                                     @endphp
                                     @foreach($productsToShow as $product)
                                         @php
@@ -171,7 +182,7 @@
                         <div class="modern-card__body">
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle"></i>
-                                <strong>Note:</strong> Select products first to see the total value. Then set your bundle price below. Discount percentage will be calculated automatically.
+                                <strong>Note:</strong> Select products first to see the total value. Then set your bundle price and discount (optional) below.
                             </div>
                             <div class="row">
                                 <div class="col-md-6">
@@ -181,7 +192,7 @@
                                                class="form-control @error('bundle_price') is-invalid @enderror"
                                                id="bundle_price"
                                                name="bundle_price"
-                                               value="{{ old('bundle_price', $bundle->bundle_price) }}"
+                                               value="{{ old('bundle_price', $bundle->total_price) }}"
                                                step="0.01"
                                                min="0"
                                                placeholder="0.00"
@@ -194,19 +205,51 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="discount_percentage" class="form-label">Discount Percentage (Auto-calculated)</label>
-                                        <input type="text"
-                                               class="form-control"
-                                               id="discount_percentage"
-                                               name="discount_percentage"
-                                               value="{{ old('discount_percentage', $bundle->discount_percentage) }}"
-                                               readonly
-                                               style="background-color: #f8f9fa; cursor: not-allowed;">
-                                        <small class="form-text text-muted">Automatically calculated based on total products price vs bundle price</small>
-                                        <input type="hidden" id="discount_percentage_hidden" name="discount_percentage">
-                                        @error('discount_percentage')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                        <label for="discount_type" class="form-label">Discount Type</label>
+                                        @php
+                                            $discountType = old('discount_type', $bundle->discount_type ?? 'none');
+                                            if (!$discountType && $bundle->discount_percentage) {
+                                                $discountType = 'percentage';
+                                            } elseif (!$discountType && $bundle->discount_price && $bundle->discount_price < $bundle->total_price) {
+                                                $discountType = 'direct';
+                                            }
+                                        @endphp
+                                        <select class="form-select" id="discount_type" name="discount_type">
+                                            <option value="none" {{ $discountType == 'none' ? 'selected' : '' }}>No Discount</option>
+                                            <option value="direct" {{ $discountType == 'direct' ? 'selected' : '' }}>Direct Price</option>
+                                            <option value="percentage" {{ $discountType == 'percentage' ? 'selected' : '' }}>Percentage</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Discount</label>
+                                        <div id="discount_field_wrapper">
+                                            <div class="input-group" id="discount_direct_wrapper" style="display: {{ $discountType == 'direct' ? 'flex' : 'none' }};">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control @error('discount_price') is-invalid @enderror"
+                                                       id="discount_price" name="discount_price"
+                                                       value="{{ old('discount_price', $bundle->discount_price) }}"
+                                                       step="0.01" min="0" placeholder="0.00" {{ $discountType != 'direct' ? 'disabled' : '' }}>
+                                            </div>
+                                            <div class="input-group" id="discount_percentage_wrapper" style="display: {{ $discountType == 'percentage' ? 'flex' : 'none' }};">
+                                                <input type="number" class="form-control @error('discount_percentage') is-invalid @enderror"
+                                                       id="discount_percentage" name="discount_percentage"
+                                                       value="{{ old('discount_percentage', $bundle->discount_value ?? $bundle->discount_percentage) }}"
+                                                       step="0.01" min="0" max="100" placeholder="0" {{ $discountType != 'percentage' ? 'disabled' : '' }}>
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            <small class="form-text text-muted" id="calculated_discount_price"></small>
+                                            @error('discount_price')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            @error('discount_percentage')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <small class="form-text text-muted">Optional: Set a discount using direct price or percentage</small>
                                     </div>
                                 </div>
                             </div>
@@ -356,7 +399,7 @@
                                     Selected Products
                                 </div>
                                 <div class="detail-item__value">
-                                    <span id="summaryProductCount" class="badge badge--info">{{ $bundle->products->count() }}</span>
+                                    <span id="summaryProductCount" class="badge badge--info">{{ $bundle->bundleProducts->count() }}</span>
                                 </div>
                             </div>
                             <div class="detail-item">
@@ -374,7 +417,7 @@
                                     Bundle Price
                                 </div>
                                 <div class="detail-item__value">
-                                    <span id="summaryBundlePrice" class="text-success">${{ number_format($bundle->bundle_price, 2) }}</span>
+                                    <span id="summaryBundlePrice" class="text-success">${{ number_format($bundle->total_price, 2) }}</span>
                                 </div>
                             </div>
                             <div class="detail-item">
@@ -480,9 +523,9 @@
                 });
                 productQuantities[{{ $product->id }}] = {{ $quantity }};
             @endforeach
-        @elseif($bundle->products && $bundle->products->count() > 0)
+        @elseif($bundle->bundleProducts && $bundle->bundleProducts->count() > 0)
             // Use bundle products
-            @foreach($bundle->products as $product)
+            @foreach($bundle->bundleProducts as $product)
             selectedProducts.push({
                 id: {{ $product->id }},
                 name: '{{ addslashes($product->name) }}',
@@ -733,15 +776,56 @@
             $('#displayBundlePrice').text('$' + bundlePrice.toFixed(2));
             $('#customerSavings').text('$' + (savings > 0 ? savings.toFixed(2) : '0.00'));
 
-            // Update discount percentage (both visible and hidden)
-            $('#discount_percentage').val(discountPercentage.toFixed(2) + '%');
-            // Store clean numeric value without % for form submission
-            $('#discount_percentage_hidden').val(discountPercentage.toFixed(2));
+            // Don't auto-update discount fields - client sets manually
         }
 
         // Bundle price change handler
         $('#bundle_price').on('input change', function() {
             updateSummary();
+        });
+
+        // Discount type change handler (same as products)
+        $('#discount_type').on('change', function() {
+            const discountType = $(this).val();
+
+            if (discountType === 'none') {
+                $('#discount_direct_wrapper').hide();
+                $('#discount_percentage_wrapper').hide();
+                $('#discount_price').prop('disabled', true).val('');
+                $('#discount_percentage').prop('disabled', true).val('');
+                $('#calculated_discount_price').text('');
+            } else if (discountType === 'direct') {
+                $('#discount_direct_wrapper').show();
+                $('#discount_percentage_wrapper').hide();
+                $('#discount_price').prop('disabled', false);
+                $('#discount_percentage').prop('disabled', true).val('');
+                $('#calculated_discount_price').text('');
+            } else if (discountType === 'percentage') {
+                $('#discount_direct_wrapper').hide();
+                $('#discount_percentage_wrapper').show();
+                $('#discount_price').prop('disabled', true);
+                $('#discount_percentage').prop('disabled', false);
+                calculateDiscountPrice();
+            }
+        });
+
+        // Calculate discount price from percentage
+        function calculateDiscountPrice() {
+            const bundlePrice = parseFloat($('#bundle_price').val()) || 0;
+            const percentage = parseFloat($('#discount_percentage').val()) || 0;
+
+            if (bundlePrice > 0 && percentage > 0) {
+                const discountAmount = bundlePrice * (percentage / 100);
+                const finalPrice = bundlePrice - discountAmount;
+                $('#calculated_discount_price').text(`Final price: $${finalPrice.toFixed(2)}`);
+            } else {
+                $('#calculated_discount_price').text('');
+            }
+        }
+
+        // Discount percentage input handler
+        $('#discount_percentage').on('input', function() {
+            calculateDiscountPrice();
         });
 
         // Initial summary update on page load - ensure it runs after everything is initialized
@@ -765,12 +849,7 @@
             // Clear the Select2 select to avoid conflicts
             $('#product_ids').val(null).trigger('change');
 
-            // Clean discount percentage - remove % sign if present
-            const discountValue = $('#discount_percentage_hidden').val();
-            if (discountValue) {
-                const cleanDiscount = discountValue.toString().replace('%', '').trim();
-                $('#discount_percentage_hidden').val(cleanDiscount);
-            }
+            // Discount fields are already clean (no % sign in input)
 
             // Create hidden inputs for product_ids and quantities
             selectedProducts.forEach((product, index) => {

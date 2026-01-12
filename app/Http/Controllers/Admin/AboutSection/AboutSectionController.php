@@ -42,10 +42,10 @@ class AboutSectionController extends Controller
         }
 
         $categories = \App\Models\Category::active()->ordered()->get();
-        $products = \App\Models\Product::active()->orderBy('name')->get();
         $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
 
-        return view('admin.about-section.edit', compact('aboutSection', 'categories', 'products', 'bundles'));
+        return view('admin.about-section.edit', compact('aboutSection', 'categories', 'bundles', 'pages'));
     }
 
     /**

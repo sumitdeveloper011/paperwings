@@ -1,6 +1,12 @@
 @extends('layouts.frontend.main')
 @section('content')
-    @include('include.frontend.breadcrumb')
+    @include('frontend.partials.page-header', [
+        'title' => 'Order Confirmed',
+        'breadcrumbs' => [
+            ['label' => 'Home', 'url' => route('home')],
+            ['label' => 'Order Confirmed', 'url' => null]
+        ]
+    ])
 
     <section class="checkout-success-section">
         <div class="container">

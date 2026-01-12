@@ -1,19 +1,14 @@
 @extends('layouts.frontend.main')
 
 @section('content')
-<section class="page-header">
-    <div class="container">
-        <div class="breadcrumb">
-            <a href="{{ route('home') }}">Home</a>
-            <span>/</span>
-            <span>Search</span>
-        </div>
-        <h1 class="page-title">Search Results</h1>
-        @if($query)
-            <p class="page-subtitle">Found {{ $products->total() }} result(s) for "{{ $query }}"</p>
-        @endif
-    </div>
-</section>
+@include('frontend.partials.page-header', [
+    'title' => 'Search Results',
+    'subtitle' => $query ? 'Found ' . $products->total() . ' result(s) for "' . $query . '"' : null,
+    'breadcrumbs' => [
+        ['label' => 'Home', 'url' => route('home')],
+        ['label' => 'Search', 'url' => null]
+    ]
+])
 
 <section class="search-results-section">
     <div class="container">
@@ -123,7 +118,7 @@
                         <div class="product-card">
                             <div class="product-card__image">
                                 <a href="{{ route('product.detail', $product->slug) }}">
-                                    <img src="{{ $product->main_image }}" alt="{{ $product->name }}">
+                                    <img src="{{ $product->main_thumbnail_url }}" alt="{{ $product->name }}">
                                 </a>
                                 @if($product->discount_price)
                                     <span class="product-card__badge">Sale</span>

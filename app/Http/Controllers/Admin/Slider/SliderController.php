@@ -38,8 +38,9 @@ class SliderController extends Controller
         $categories = \App\Models\Category::active()->ordered()->get();
         $products = \App\Models\Product::active()->orderBy('name')->get();
         $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
 
-        return view('admin.slider.create', compact('categories', 'products', 'bundles'));
+        return view('admin.slider.create', compact('categories', 'products', 'bundles', 'pages'));
     }
 
     // Store a newly created resource in storage
@@ -57,11 +58,16 @@ class SliderController extends Controller
             'status' => 'required|in:1,0'
         ]);
 
+        // Generate UUID first (will be used for folder name)
+        $sliderUuid = Str::uuid()->toString();
+        $validated['uuid'] = $sliderUuid;
+
+        // Upload image with slider UUID using ImageService
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $imagePath = $image->storeAs('sliders', $imageName, 'public');
-            $validated['image'] = $imagePath;
+            $imagePath = $this->imageService->uploadImage($request->file('image'), 'sliders', $sliderUuid);
+            if ($imagePath) {
+                $validated['image'] = $imagePath;
+            }
         }
 
         // Handle buttons - use final URL values from smart link selector
@@ -103,8 +109,9 @@ class SliderController extends Controller
         $categories = \App\Models\Category::active()->ordered()->get();
         $products = \App\Models\Product::active()->orderBy('name')->get();
         $bundles = \App\Models\ProductBundle::active()->orderBy('name')->get();
+        $pages = \App\Models\Page::where('status', 1)->orderBy('title')->get();
 
-        return view('admin.slider.edit', compact('slider', 'categories', 'products', 'bundles'));
+        return view('admin.slider.edit', compact('slider', 'categories', 'products', 'bundles', 'pages'));
     }
 
     // Update the specified resource in storage

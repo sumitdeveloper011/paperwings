@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
             AboutSectionSeeder::class,      // About sections
             SpecialOffersBannerSeeder::class, // Special offers
             TestimonialSeeder::class,       // Testimonials
+            FaqSeeder::class,               // FAQs
         ]);
 
         // Product-related seeders (development only)

@@ -384,19 +384,29 @@ class ProductController extends Controller
         }
         $productUuid = $validated['uuid'];
 
-        // Handle discount percentage conversion to discount price
+        // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
+        $validated['discount_type'] = $discountType;
+        
         if ($discountType === 'percentage' && $request->has('discount_percentage')) {
             $percentage = (float) $request->input('discount_percentage', 0);
             if ($percentage > 0 && isset($validated['total_price'])) {
+                $validated['discount_value'] = $percentage;
                 $discountAmount = $validated['total_price'] * ($percentage / 100);
                 $validated['discount_price'] = round($validated['total_price'] - $discountAmount, 2);
+            } else {
+                $validated['discount_value'] = null;
+                $validated['discount_price'] = null;
             }
-        } elseif ($discountType === 'none') {
-            // Clear discount price if no discount
+        } elseif ($discountType === 'direct') {
+            // Direct price - discount_value not used
+            $validated['discount_value'] = null;
+            // discount_price is already in validated array
+        } else {
+            // No discount
+            $validated['discount_value'] = null;
             $validated['discount_price'] = null;
         }
-        // If discount_type is 'direct', discount_price is already in validated array
 
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated);
@@ -479,19 +489,29 @@ class ProductController extends Controller
             $validated['slug'] = Str::slug($validated['name']);
         }
 
-        // Handle discount percentage conversion to discount price
+        // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
+        $validated['discount_type'] = $discountType;
+        
         if ($discountType === 'percentage' && $request->has('discount_percentage')) {
             $percentage = (float) $request->input('discount_percentage', 0);
             if ($percentage > 0 && isset($validated['total_price'])) {
+                $validated['discount_value'] = $percentage;
                 $discountAmount = $validated['total_price'] * ($percentage / 100);
                 $validated['discount_price'] = round($validated['total_price'] - $discountAmount, 2);
+            } else {
+                $validated['discount_value'] = null;
+                $validated['discount_price'] = null;
             }
-        } elseif ($discountType === 'none') {
-            // Clear discount price if no discount
+        } elseif ($discountType === 'direct') {
+            // Direct price - discount_value not used
+            $validated['discount_value'] = null;
+            // discount_price is already in validated array
+        } else {
+            // No discount
+            $validated['discount_value'] = null;
             $validated['discount_price'] = null;
         }
-        // If discount_type is 'direct', discount_price is already in validated array
 
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated, $product);
