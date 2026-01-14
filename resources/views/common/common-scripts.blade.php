@@ -66,3 +66,4 @@
     }
 </script>
 <script src="{{ asset('assets/js/admin-script.js') }}"></script>
+<script src="{{ asset('assets/js/admin-image-preview.js') }}"></script>

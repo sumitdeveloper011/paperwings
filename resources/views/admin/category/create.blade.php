@@ -128,20 +128,19 @@
                             <label for="image" class="form-label-modern">
                                 Category Image
                             </label>
+                            
+                            <x-image-requirements type="category" />
+                            
                             <div class="file-upload-wrapper">
                                 <input type="file"
                                        class="file-upload-input @error('image') is-invalid @enderror"
                                        id="image"
                                        name="image"
-                                       accept="image/*">
+                                       accept="image/jpeg, image/png, image/jpg, image/gif">
                                 <label for="image" class="file-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <span>Choose Image</span>
                                 </label>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
                             </div>
                             @error('image')
                                 <div class="form-error">
@@ -151,15 +150,7 @@
                             @enderror
                         </div>
 
-                        <div class="form-group-modern" id="imagePreview" style="display: none;">
-                            <label class="form-label-modern">Image Preview</label>
-                            <div class="image-preview">
-                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
-                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <x-image-preview />
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary btn-lg">
@@ -204,8 +195,8 @@
                         <li class="tips-list__item">
                             <i class="fas fa-check-circle"></i>
                             <div>
-                                <strong>Quality Images</strong>
-                                <p>Use high-quality images for better presentation</p>
+                                <strong>Image Dimensions</strong>
+                                <p>Images are automatically resized to 800x800px (square). Use square images for best results.</p>
                             </div>
                         </li>
                         <li class="tips-list__item">
@@ -223,29 +214,6 @@
 </div>
 
 <script>
-// Image Preview
-document.getElementById('image').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    const preview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            preview.style.display = 'block';
-        }
-        reader.readAsDataURL(file);
-    } else {
-        preview.style.display = 'none';
-    }
-});
-
-function removeImagePreview() {
-    document.getElementById('image').value = '';
-    document.getElementById('imagePreview').style.display = 'none';
-}
-
 // Auto-generate slug from name (slug is readonly, always auto-generated)
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');

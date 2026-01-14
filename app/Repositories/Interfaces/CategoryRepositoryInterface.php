@@ -49,4 +49,7 @@ interface CategoryRepositoryInterface
 
     // Get categories without image
     public function withoutImage(): Collection;
+
+    // Get category by Eposnow category ID
+    public function getByEposnowCategoryId(int $eposnowCategoryId): ?Category;
 }

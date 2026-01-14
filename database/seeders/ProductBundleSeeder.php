@@ -32,9 +32,9 @@ class ProductBundleSeeder extends Seeder
             return;
         }
 
-        // Get or create Bundles category
+        // Get or create Bundles category (uses Special Combos slug)
         $bundlesCategory = Category::firstOrCreate(
-            ['slug' => 'bundles'],
+            ['slug' => config('categories.special_combos_slug')],
             [
                 'uuid' => Str::uuid(),
                 'name' => 'Bundles',

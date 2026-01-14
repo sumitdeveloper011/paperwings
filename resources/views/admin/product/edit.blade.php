@@ -232,6 +232,29 @@
                         'oldAccordionData' => old('accordion_data')
                     ])
 
+                    <!-- Product Images -->
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-images"></i>
+                                Product Images
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <x-image-requirements type="product" />
+                            
+                            @include('components.multiple-image-upload', [
+                                'name' => 'images',
+                                'id' => 'images',
+                                'label' => 'Upload Images',
+                                'existingImages' => $product->images,
+                                'entityName' => $product->name,
+                                'showKeepExisting' => true,
+                                'maxImages' => 10
+                            ])
+                        </div>
+                    </div>
+
                     <!-- SEO Meta Fields -->
                     <div class="modern-card mb-4">
                         <div class="modern-card__header">
@@ -280,17 +303,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Current Images -->
-                    @include('components.multiple-image-upload', [
-                        'name' => 'images',
-                        'id' => 'images',
-                        'label' => 'Upload Images',
-                        'existingImages' => $product->images,
-                        'entityName' => $product->name,
-                        'showKeepExisting' => true,
-                        'maxImages' => 10
-                    ])
                 </div>
 
                 <!-- Right Column - Categories & Relationships -->
@@ -316,14 +328,25 @@
                                     <i class="fas fa-check-circle"></i>
                                     <div>
                                         <strong>Image Management</strong>
-                                        <p>Check "Keep existing images" to add new images without removing old ones</p>
+                                        <p>Upload high-quality square images (1:1 ratio). Images will be automatically resized to 1200x1200 (original). Check "Keep existing images" to add new images without removing old ones. Max 2MB each, up to 10 images.</p>
                                     </div>
                                 </li>
                                 <li class="tips-list__item">
                                     <i class="fas fa-check-circle"></i>
                                     <div>
                                         <strong>Pricing</strong>
-                                        <p>Update prices carefully. Use percentage or direct discount price</p>
+                                        <p>Enter the total price including tax (15%). Price without tax and tax amount are automatically calculated. You can set discounts using:</p>
+                                        <ul style="margin-top: 0.5rem; margin-left: 1.5rem; font-size: 0.9em;">
+                                            <li><strong>Direct Price:</strong> Set the final selling price directly. Example: Total price $100, Direct discount $80 = Customer pays $80</li>
+                                            <li><strong>Percentage:</strong> Set discount percentage. Example: Total price $100, 20% discount = Customer pays $80</li>
+                                        </ul>
+                                    </div>
+                                </li>
+                                <li class="tips-list__item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Product Type</strong>
+                                        <p>Optional: Select "Featured" to highlight special products, "On Sale" for discounted items, or "Top Rated" for highly-rated products. This helps categorize and display products on the frontend.</p>
                                     </div>
                                 </li>
                                 <li class="tips-list__item">

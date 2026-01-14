@@ -129,10 +129,30 @@ class ImportEposNowProductsJob implements ShouldQueue
                             $productName = $product['Name'];
                             $slug = Str::slug($productName) . '-' . $eposnowProductId;
 
-                            $categoryId = 17;
+                            // Get category ID from EposNow category mapping or use default (General Products)
+                            $categoryId = null;
                             if (!empty($product['CategoryId'])) {
                                 $category = $categoryRepository->getByEposnowCategoryId($product['CategoryId']);
-                                $categoryId = $category ? $category->id : 17;
+                                if ($category) {
+                                    $categoryId = $category->id;
+                                }
+                            }
+                            
+                            // If no category found, use default "General Products" category by slug
+                            if (!$categoryId) {
+                                $defaultCategory = Category::where('slug', config('categories.general_products_slug'))->first();
+                                if ($defaultCategory) {
+                                    $categoryId = $defaultCategory->id;
+                                } else {
+                                    // If default category doesn't exist, skip this product
+                                    $failed[] = [
+                                        'id' => $eposnowProductId,
+                                        'name' => $productName,
+                                        'error' => 'Category not found and default category (General Products) does not exist'
+                                    ];
+                                    $processed++;
+                                    continue;
+                                }
                             }
 
                             $existing = Product::where('eposnow_product_id', $eposnowProductId)->first();

@@ -115,12 +115,11 @@
                                     </label>
                                     <div class="input-wrapper">
                                         <i class="fas fa-sort-numeric-down input-icon"></i>
-                                        <input type="number"
+                                        <input type="text"
                                                class="form-input-modern @error('sort_order') is-invalid @enderror"
                                                id="sort_order"
                                                name="sort_order"
-                                               value="{{ old('sort_order', $slider->sort_order) }}"
-                                               min="1"
+                                               value="{{ old('sort_order', $slider->sort_order ?? null) }}"
                                                placeholder="Auto-assigned if empty">
                                     </div>
                                     <div class="form-hint">
@@ -141,7 +140,7 @@
                         <div class="form-group-modern">
                             <label class="form-label-modern">Current Image</label>
                             <div class="image-preview">
-                                <img src="{{ $slider->image_url }}" alt="{{ $slider->heading }}" class="image-preview__img">
+                                <img src="{{ $slider->thumbnail_url ?? $slider->image_url }}" alt="{{ $slider->heading }}" class="image-preview__img">
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -153,20 +152,19 @@
                             <label for="image" class="form-label-modern">
                                 Update Image
                             </label>
+                            
+                            <x-image-requirements type="slider" />
+                            
                             <div class="file-upload-wrapper">
                                 <input type="file"
                                        class="file-upload-input @error('image') is-invalid @enderror"
                                        id="image"
                                        name="image"
-                                       accept="image/*">
+                                       accept="image/jpeg,image/png,image/jpg,image/gif">
                                 <label for="image" class="file-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <span>Choose New Image</span>
                                 </label>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Leave empty to keep current image. Recommended size: 1920x800px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
                             </div>
                             @error('image')
                                 <div class="form-error">
@@ -176,15 +174,7 @@
                             @enderror
                         </div>
 
-                        <div class="form-group-modern" id="imagePreview" style="display: none;">
-                            <label class="form-label-modern">New Image Preview</label>
-                            <div class="image-preview">
-                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
-                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <x-image-preview label="New Image Preview" />
 
                         <!-- Button Configuration -->
                         <div class="form-group-modern">
@@ -327,7 +317,7 @@
                     </h3>
                 </div>
                 <div class="modern-card__body">
-                    <div id="sliderPreview" class="position-relative bg-light rounded" style="min-height: 200px; border: 2px dashed var(--border-color); background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }}); background-size: cover; background-position: center;">
+                    <div id="sliderPreview" class="position-relative bg-light rounded" style="min-height: 200px; border: 2px dashed var(--border-color); background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }}); background-size: cover; background-position: center;" data-original-image="{{ $slider->image_url }}">
                         <!-- Preview Content -->
                         <div id="previewContent" class="position-absolute top-50 start-50 translate-middle text-center w-100">
                             <h3 id="previewHeading" class="text-white mb-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">{{ $slider->heading }}</h3>
@@ -364,7 +354,7 @@
                             <i class="fas fa-check-circle"></i>
                             <div>
                                 <strong>Quality Images</strong>
-                                <p>Use high-resolution images (1920x800px recommended)</p>
+                                <p>Use high-resolution images (1920x600px recommended)</p>
                             </div>
                         </li>
                         <li class="tips-list__item">
@@ -388,188 +378,16 @@
     </div>
 </div>
 
-<style>
-#sliderPreview {
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    transition: all 0.3s ease;
-}
-
-.preview-button {
-    background-color: rgba(55, 78, 148, 0.9);
-    border: 2px solid var(--primary-color);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 0.5rem;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: inline-block;
-}
-
-.preview-button:hover {
-    background-color: var(--primary-color);
-    color: white;
-    text-decoration: none;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(55, 78, 148, 0.3);
-}
-
-.preview-button.secondary {
-    background-color: rgba(128, 188, 192, 0.9);
-    border-color: var(--secondary-color);
-}
-
-.preview-button.secondary:hover {
-    background-color: var(--secondary-color);
-}
-</style>
-
+@push('scripts')
+<script src="{{ asset('assets/js/admin-slider-preview.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const imageInput = document.getElementById('image');
-    const imagePreview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    const sliderPreview = document.getElementById('sliderPreview');
-
-    // Form inputs for live preview
-    const headingInput = document.getElementById('heading');
-    const subHeadingInput = document.getElementById('sub_heading');
-    const button1NameInput = document.getElementById('button_1_name');
-    const button1UrlInput = document.getElementById('button_1_url'); // Hidden input with final URL
-    const button2NameInput = document.getElementById('button_2_name');
-    const button2UrlInput = document.getElementById('button_2_url'); // Hidden input with final URL
-
-    // Image preview functionality
-    imageInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImg.src = e.target.result;
-                imagePreview.style.display = 'block';
-
-                // Update slider preview background
-                sliderPreview.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${e.target.result})`;
-            };
-            reader.readAsDataURL(this.files[0]);
-        }
-    });
-
-    // Remove image functionality
-    function removeImagePreview() {
-        imageInput.value = '';
-        imagePreview.style.display = 'none';
-        // Reset to original image
-        sliderPreview.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url({{ $slider->image_url }})`;
+    if (typeof AdminSliderPreview !== 'undefined') {
+        AdminSliderPreview.init({
+            originalImageUrl: '{{ $slider->image_url }}'
+        });
     }
-    window.removeImagePreview = removeImagePreview;
-
-    // Live preview updates
-    function updatePreview() {
-        const heading = headingInput.value.trim();
-        const subHeading = subHeadingInput.value.trim();
-        const button1Name = button1NameInput.value.trim();
-        const button1Url = button1UrlInput.value.trim();
-        const button2Name = button2NameInput.value.trim();
-        const button2Url = button2UrlInput.value.trim();
-
-        // Update heading
-        const previewHeading = document.getElementById('previewHeading');
-        previewHeading.textContent = heading || 'Your Heading Here';
-
-        // Update sub heading
-        const previewSubHeading = document.getElementById('previewSubHeading');
-        if (subHeading) {
-            previewSubHeading.textContent = subHeading;
-            previewSubHeading.style.display = 'block';
-        } else {
-            previewSubHeading.style.display = 'none';
-        }
-
-        // Update buttons
-        const previewButtons = document.getElementById('previewButtons');
-        previewButtons.innerHTML = '';
-
-        if (button1Name && button1Url) {
-            const btn1 = document.createElement('a');
-            btn1.href = '#';
-            btn1.className = 'preview-button';
-            btn1.textContent = button1Name;
-            previewButtons.appendChild(btn1);
-        }
-
-        if (button2Name && button2Url) {
-            const btn2 = document.createElement('a');
-            btn2.href = '#';
-            btn2.className = 'preview-button secondary';
-            btn2.textContent = button2Name;
-            previewButtons.appendChild(btn2);
-        }
-    }
-
-    // Add event listeners for live preview
-    [headingInput, subHeadingInput, button1NameInput, button1UrlInput, button2NameInput, button2UrlInput].forEach(input => {
-        if (input) {
-            input.addEventListener('input', updatePreview);
-        }
-    });
-
-    // Button validation
-    function validateButtons() {
-        const button1Name = button1NameInput.value.trim();
-        const button1Url = button1UrlInput.value.trim();
-        const button2Name = button2NameInput.value.trim();
-        const button2Url = button2UrlInput.value.trim();
-
-        // If button 1 name is filled, URL is required
-        if (button1Name && !button1Url) {
-            button1UrlInput.setCustomValidity('URL is required when button name is provided');
-        } else {
-            button1UrlInput.setCustomValidity('');
-        }
-
-        // If button 1 URL is filled, name is required
-        if (button1Url && !button1Name) {
-            button1NameInput.setCustomValidity('Button name is required when URL is provided');
-        } else {
-            button1NameInput.setCustomValidity('');
-        }
-
-        // If button 2 name is filled, URL is required
-        if (button2Name && !button2Url) {
-            button2UrlInput.setCustomValidity('URL is required when button name is provided');
-        } else {
-            button2UrlInput.setCustomValidity('');
-        }
-
-        // If button 2 URL is filled, name is required
-        if (button2Url && !button2Name) {
-            button2NameInput.setCustomValidity('Button name is required when URL is provided');
-        } else {
-            button2NameInput.setCustomValidity('');
-        }
-    }
-
-    // Add validation event listeners
-    [button1NameInput, button1UrlInput, button2NameInput, button2UrlInput].forEach(input => {
-        if (input) {
-            input.addEventListener('blur', validateButtons);
-        }
-    });
-
-    // Form submission validation
-    document.getElementById('sliderForm').addEventListener('submit', function(e) {
-        validateButtons();
-
-        // Check if form is valid
-        if (!this.checkValidity()) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        this.classList.add('was-validated');
-    });
 });
 </script>
+@endpush
 @endsection

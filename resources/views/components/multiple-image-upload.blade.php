@@ -22,7 +22,7 @@
                 @foreach($existingImages as $index => $image)
                     <div class="col-md-4 col-sm-6">
                         <div class="position-relative">
-                            <img src="{{ $image->image_url ?? asset('storage/' . $image->image) }}"
+                            <img src="{{ $image->thumbnail_url ?? $image->image_url ?? asset('storage/' . $image->image) }}"
                                  alt="{{ $entityName }} - Image {{ $index + 1 }}"
                                  class="img-fluid rounded shadow-sm"
                                  style="width: 100%; height: 150px; object-fit: cover;">
@@ -64,8 +64,8 @@
                    id="{{ $id }}"
                    name="{{ $name }}[]"
                    multiple
-                   accept="image/*">
-            <small class="form-text text-muted">You can select multiple images (max {{ $maxImages }}). Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB per image.</small>
+                   accept="image/jpeg, image/png, image/jpg, image/gif,image/webp">
+            <small class="form-text text-muted">You can select multiple images (max {{ $maxImages }}). Supported formats: JPEG, PNG, JPG, GIF, WEBP. Max size: 2MB per image.</small>
             @error($name)
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror

@@ -21,6 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const topbar = document.querySelector('.topbar');
     const sidebarOverlay = document.querySelector('.sidebar-overlay');
 
+    // Exit early if sidebar doesn't exist (e.g., on login page or error pages)
+    if (!sidebar) {
+        return;
+    }
+
     // Check localStorage for saved state
     const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
     const isMobile = window.innerWidth <= 1024;
@@ -30,15 +35,17 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebar.classList.add('show');
         if (isCollapsed) {
             sidebar.classList.add('collapsed');
-            adminMain.classList.add('sidebar-collapsed');
-            adminFooter.classList.add('sidebar-collapsed');
-            topbar.classList.add('sidebar-collapsed');
+            if (adminMain) adminMain.classList.add('sidebar-collapsed');
+            if (adminFooter) adminFooter.classList.add('sidebar-collapsed');
+            if (topbar) topbar.classList.add('sidebar-collapsed');
         }
     }
 
     // Sidebar toggle functionality
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', function() {
+            if (!sidebar) return;
+            
             if (isMobile) {
                 // Mobile behavior: show/hide sidebar
                 sidebar.classList.toggle('show');
@@ -48,9 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Desktop behavior: collapse/expand sidebar
                 sidebar.classList.toggle('collapsed');
-                adminMain.classList.toggle('sidebar-collapsed');
-                adminFooter.classList.toggle('sidebar-collapsed');
-                topbar.classList.toggle('sidebar-collapsed');
+                if (adminMain) adminMain.classList.toggle('sidebar-collapsed');
+                if (adminFooter) adminFooter.classList.toggle('sidebar-collapsed');
+                if (topbar) topbar.classList.toggle('sidebar-collapsed');
 
                 // Save state to localStorage
                 const isNowCollapsed = sidebar.classList.contains('collapsed');
@@ -62,6 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close sidebar on mobile
     if (sidebarClose) {
         sidebarClose.addEventListener('click', function() {
+            if (!sidebar) return;
             sidebar.classList.remove('show');
             if (sidebarOverlay) {
                 sidebarOverlay.classList.remove('show');
@@ -72,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close sidebar when clicking overlay on mobile
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', function() {
+            if (!sidebar) return;
             sidebar.classList.remove('show');
             sidebarOverlay.classList.remove('show');
         });
@@ -79,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle window resize
     window.addEventListener('resize', function() {
+        // Check if sidebar still exists (might be removed dynamically)
+        if (!sidebar) {
+            return;
+        }
+
         const newIsMobile = window.innerWidth <= 1024;
 
         if (newIsMobile !== isMobile) {
@@ -86,9 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (newIsMobile) {
                 // Switched to mobile
                 sidebar.classList.remove('collapsed');
-                adminMain.classList.remove('sidebar-collapsed');
-                adminFooter.classList.remove('sidebar-collapsed');
-                topbar.classList.remove('sidebar-collapsed');
+                if (adminMain) adminMain.classList.remove('sidebar-collapsed');
+                if (adminFooter) adminFooter.classList.remove('sidebar-collapsed');
+                if (topbar) topbar.classList.remove('sidebar-collapsed');
                 sidebar.classList.remove('show');
                 if (sidebarOverlay) {
                     sidebarOverlay.classList.remove('show');
@@ -99,9 +113,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const savedCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
                 if (savedCollapsed) {
                     sidebar.classList.add('collapsed');
-                    adminMain.classList.add('sidebar-collapsed');
-                    adminFooter.classList.add('sidebar-collapsed');
-                    topbar.classList.add('sidebar-collapsed');
+                    if (adminMain) adminMain.classList.add('sidebar-collapsed');
+                    if (adminFooter) adminFooter.classList.add('sidebar-collapsed');
+                    if (topbar) topbar.classList.add('sidebar-collapsed');
                 }
             }
         }

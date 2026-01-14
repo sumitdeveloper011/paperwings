@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin\Slider;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Slider\StoreSliderRequest;
+use App\Http\Requests\Admin\Slider\UpdateSliderRequest;
 use App\Models\Slider;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
 use App\Services\ImageService;
@@ -41,19 +43,9 @@ class SliderController extends Controller
         return view('admin.slider.create', $formData);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSliderRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'heading' => 'required|string|max:255',
-            'sub_heading' => 'nullable|string|max:255',
-            'button_1_name' => 'nullable|string|max:100',
-            'button_1_url' => 'nullable|url|max:255',
-            'button_2_name' => 'nullable|string|max:100',
-            'button_2_url' => 'nullable|url|max:255',
-            'sort_order' => 'nullable|integer|min:1',
-            'status' => 'required|in:1,0'
-        ]);
+        $validated = $request->validated();
 
         // Generate UUID first (will be used for folder name)
         $sliderUuid = Str::uuid()->toString();
@@ -106,19 +98,9 @@ class SliderController extends Controller
         return view('admin.slider.edit', array_merge(['slider' => $slider], $formData));
     }
 
-    public function update(Request $request, Slider $slider): RedirectResponse
+    public function update(UpdateSliderRequest $request, Slider $slider): RedirectResponse
     {
-        $validated = $request->validate([
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'heading' => 'required|string|max:255',
-            'sub_heading' => 'nullable|string|max:255',
-            'button_1_name' => 'nullable|string|max:100',
-            'button_1_url' => 'nullable|string|max:500',
-            'button_2_name' => 'nullable|string|max:100',
-            'button_2_url' => 'nullable|string|max:500',
-            'sort_order' => 'nullable|integer|min:1',
-            'status' => 'required|in:1,0'
-        ]);
+        $validated = $request->validated();
 
         // Use final URL values from smart link selector
         $button1Url = $request->input('button_1_url') ?: '';
@@ -196,21 +178,61 @@ class SliderController extends Controller
     }
 
     // Move slider up in order
-    public function moveUp(Slider $slider): RedirectResponse
+    public function moveUp(Request $request, Slider $slider): RedirectResponse|JsonResponse
     {
-        $this->sliderRepository->moveUp($slider);
+        $result = $this->sliderRepository->moveUp($slider);
+
+        if ($request->ajax() || $request->expectsJson()) {
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Slider moved up successfully!'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Slider is already at the top position.',
+                    'type' => 'info'
+                ], 200);
+            }
+        }
+
+        if ($result) {
+            return redirect()->back()
+                            ->with('success', 'Slider moved up successfully!');
+        }
 
         return redirect()->back()
-                        ->with('success', 'Slider moved up successfully!');
+                        ->with('error', 'Failed to move slider up. No previous slider found.');
     }
 
     // Move slider down in order
-    public function moveDown(Slider $slider): RedirectResponse
+    public function moveDown(Request $request, Slider $slider): RedirectResponse|JsonResponse
     {
-        $this->sliderRepository->moveDown($slider);
+        $result = $this->sliderRepository->moveDown($slider);
+
+        if ($request->ajax() || $request->expectsJson()) {
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Slider moved down successfully!'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Slider is already at the bottom position.',
+                    'type' => 'info'
+                ], 200);
+            }
+        }
+
+        if ($result) {
+            return redirect()->back()
+                            ->with('success', 'Slider moved down successfully!');
+        }
 
         return redirect()->back()
-                        ->with('success', 'Slider moved down successfully!');
+                        ->with('error', 'Failed to move slider down. No next slider found.');
     }
 
     // Update slider sort order via AJAX

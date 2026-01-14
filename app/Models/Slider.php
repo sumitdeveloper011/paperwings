@@ -108,6 +108,7 @@ class Slider extends Model
     // Move slider up in order
     public function moveUp()
     {
+        // Find the slider with the highest sort_order that is less than current
         $previousSlider = static::where('sort_order', '<', $this->sort_order)
                                ->orderBy('sort_order', 'desc')
                                ->first();
@@ -119,12 +120,21 @@ class Slider extends Model
 
             $this->save();
             $previousSlider->save();
+            
+            // Refresh both models to ensure data is up to date
+            $this->refresh();
+            $previousSlider->refresh();
+            
+            return true;
         }
+        
+        return false;
     }
 
     // Move slider down in order
     public function moveDown()
     {
+        // Find the slider with the lowest sort_order that is greater than current
         $nextSlider = static::where('sort_order', '>', $this->sort_order)
                            ->orderBy('sort_order', 'asc')
                            ->first();
@@ -136,7 +146,15 @@ class Slider extends Model
 
             $this->save();
             $nextSlider->save();
+            
+            // Refresh both models to ensure data is up to date
+            $this->refresh();
+            $nextSlider->refresh();
+            
+            return true;
         }
+        
+        return false;
     }
 
     // Move slider to specific position

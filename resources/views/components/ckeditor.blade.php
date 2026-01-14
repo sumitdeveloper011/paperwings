@@ -22,11 +22,24 @@
     const uploadUrl = @if($uploadUrl) '{{ $uploadUrl }}' @else null @endif;
     const toolbarType = '{{ $toolbarType }}';
 
-    // Check if CKEditor is loaded
-    if (typeof ClassicEditor === 'undefined') {
-        console.error('CKEditor is not loaded. Please include the CKEditor script before using this component.');
-        return;
-    }
+    // Wait for DOM to be ready
+    function initializeEditor() {
+        // Check if CKEditor is loaded
+        if (typeof ClassicEditor === 'undefined') {
+            console.error('CKEditor is not loaded. Please include the CKEditor script before using this component.');
+            return;
+        }
+
+        const textarea = document.querySelector('#' + editorId);
+        if (!textarea) {
+            console.error('Textarea with id "' + editorId + '" not found.');
+            return;
+        }
+
+        // Check if editor already initialized
+        if (window[editorId + 'Editor']) {
+            return;
+        }
 
     // Define toolbar configurations (Custom build with SourceEditing plugin)
     const toolbarConfigs = {
@@ -111,19 +124,30 @@
         };
     }
 
-    // Initialize CKEditor (Custom build with SourceEditing)
+        // Preserve textarea content before CKEditor takes over
+        const preservedContent = textarea.value || '';
+
     ClassicEditor
-        .create(document.querySelector('#' + editorId), editorConfig)
+        .create(textarea, editorConfig)
         .then(editor => {
             window[editorId + 'Editor'] = editor;
-            const textarea = document.querySelector('#' + editorId);
             const isRequired = textarea.hasAttribute('data-required') || textarea.hasAttribute('required');
 
-            // Ensure old() values are loaded into editor after initialization
-            // This handles cases where textarea has content from validation errors
-            if (textarea.value && textarea.value.trim()) {
-                editor.setData(textarea.value);
+            // Always load content from preserved value or textarea (from old() or database)
+            // This ensures content persists on page refresh or validation errors
+            const contentToLoad = preservedContent || textarea.value || '';
+            if (contentToLoad.trim()) {
+                // Use setData to load existing content
+                editor.setData(contentToLoad);
+                // Also update textarea to ensure sync
+                textarea.value = contentToLoad;
             }
+
+            // Sync editor content to textarea on every change to keep them in sync
+            editor.model.document.on('change:data', () => {
+                const currentContent = editor.getData();
+                textarea.value = currentContent;
+            });
 
             // Sync editor content to textarea before form submission
             const form = textarea.closest('form');
@@ -168,5 +192,15 @@
         .catch(error => {
             console.error('CKEditor initialization error for #' + editorId + ':', error);
         });
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeEditor, 100);
+        });
+    } else {
+        setTimeout(initializeEditor, 100);
+    }
 })();
 </script>

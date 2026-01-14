@@ -37,34 +37,66 @@
         }
 
         // CSRF Token Auto-Refresh - Prevent 419 errors
-        // Update CSRF token from meta tag to form before submission
         const loginForm = document.querySelector('.login-form');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
 
-        if (loginForm && csrfToken) {
-            // Ensure form has latest CSRF token before submission
-            loginForm.addEventListener('submit', function(e) {
-                const csrfInput = loginForm.querySelector('input[name="_token"]');
-                if (csrfInput && csrfToken) {
-                    csrfInput.value = csrfToken.getAttribute('content');
-                }
-            });
-
-            // Refresh page token every 30 minutes to keep session alive
-            // This helps prevent token expiration when form is open for long time
-            setInterval(function() {
-                // Just reload the page token by fetching current page
-                // This keeps the session alive
-                fetch(window.location.href, {
+        if (loginForm && csrfTokenMeta) {
+            // Function to fetch fresh CSRF token from server
+            function refreshCsrfToken() {
+                return fetch(window.location.href, {
                     method: 'GET',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html',
                     },
                     credentials: 'same-origin'
-                }).catch(() => {
-                    // Silently fail - user can still refresh manually
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newToken = doc.querySelector('meta[name="csrf-token"]');
+                    if (newToken) {
+                        const tokenValue = newToken.getAttribute('content');
+                        csrfTokenMeta.setAttribute('content', tokenValue);
+                        const csrfInput = loginForm.querySelector('input[name="_token"]');
+                        if (csrfInput) {
+                            csrfInput.value = tokenValue;
+                        }
+                        return tokenValue;
+                    }
+                })
+                .catch(() => {
+                    // If fetch fails, try to use current meta tag value
+                    const csrfInput = loginForm.querySelector('input[name="_token"]');
+                    if (csrfInput && csrfTokenMeta) {
+                        csrfInput.value = csrfTokenMeta.getAttribute('content');
+                    }
                 });
-            }, 30 * 60 * 1000); // 30 minutes
+            }
+
+            // Ensure form has latest CSRF token before submission
+            loginForm.addEventListener('submit', function(e) {
+                const csrfInput = loginForm.querySelector('input[name="_token"]');
+                if (csrfInput && csrfTokenMeta) {
+                    // Update from meta tag first (fast)
+                    csrfInput.value = csrfTokenMeta.getAttribute('content');
+                    
+                    // Try to fetch fresh token (async, won't block submission)
+                    refreshCsrfToken().then(() => {
+                        // Update again with fresh token if available
+                        if (csrfTokenMeta) {
+                            csrfInput.value = csrfTokenMeta.getAttribute('content');
+                        }
+                    });
+                }
+            });
+
+            // Refresh CSRF token periodically to keep session alive
+            // Refresh every 10 minutes to prevent expiration
+            setInterval(function() {
+                refreshCsrfToken();
+            }, 10 * 60 * 1000); // 10 minutes
         }
     });
 </script>

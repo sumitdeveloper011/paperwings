@@ -40,8 +40,12 @@
                         <div class="category-image-large">
                             <img src="{{ $product->images->first()->image_url }}"
                                  alt="{{ $product->name }}"
-                                 class="category-image-large__img"
-                                 onclick="openImageModal('{{ $product->images->first()->image_url }}')">
+                                 class="category-image-large__img">
+                            <div class="category-image-large__overlay" onclick="openImageModal('{{ $product->images->first()->image_url }}')">
+                                <div class="category-image-large__zoom">
+                                    <i class="fas fa-search-plus"></i>
+                                </div>
+                            </div>
                         </div>
                     @endif
 

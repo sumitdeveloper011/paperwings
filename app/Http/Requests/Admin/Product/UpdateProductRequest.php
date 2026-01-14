@@ -45,7 +45,7 @@ class UpdateProductRequest extends FormRequest
             'accordion_data.*.heading' => 'required_with:accordion_data|string|max:255',
             'accordion_data.*.content' => 'required_with:accordion_data|string',
             'images' => 'nullable|array|max:10',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=1/1',
             'tag_ids' => 'nullable|array',
             'tag_ids.*' => 'exists:tags,id',
             'meta_title' => 'nullable|string|max:255',

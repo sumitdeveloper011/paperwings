@@ -89,6 +89,15 @@
         const newIndex = maxIndex + 1;
 
         const accordionItem = createAccordionItem(newIndex);
+        // Mark this as a new item to prevent content copying during reindex
+        accordionItem.setAttribute('data-is-new', 'true');
+        
+        // Ensure the new item's textarea is empty before inserting
+        const newTextarea = accordionItem.querySelector('textarea');
+        if (newTextarea) {
+            newTextarea.value = '';
+        }
+        
         // Insert at the top instead of bottom
         if (accordionContainer.firstChild) {
             accordionContainer.insertBefore(accordionItem, accordionContainer.firstChild);
@@ -97,7 +106,16 @@
         }
         accordionCounter = Math.max(accordionCounter, newIndex + 1);
         updateAccordionVisibility();
-        reindexAccordionItems();
+        // Reindex after a short delay to ensure the new item is fully added
+        setTimeout(() => {
+            // Double-check new item is empty before reindexing
+            if (newTextarea) {
+                newTextarea.value = '';
+            }
+            reindexAccordionItems();
+            // Remove the new item marker after reindexing
+            accordionItem.removeAttribute('data-is-new');
+        }, 50);
     });
 
     function createAccordionItem(index) {
@@ -113,7 +131,7 @@
             </div>
             <div class="mb-2">
                 <input type="text" class="form-control" name="{{ $name }}[${index}][heading]"
-                       placeholder="Section heading...">
+                       placeholder="Section heading..." value="">
             </div>
             <div>
                 <textarea class="form-control accordion-content-editor" id="${textareaId}" name="{{ $name }}[${index}][content]"
@@ -121,9 +139,14 @@
             </div>
         `;
 
+        // Ensure textarea is empty
+        const textarea = div.querySelector('textarea');
+        if (textarea) {
+            textarea.value = '';
+        }
+
         // Add remove functionality
         div.querySelector('.remove-accordion-item').addEventListener('click', function() {
-            const textarea = div.querySelector('textarea');
             if (textarea && window[textareaId + 'Editor']) {
                 window[textareaId + 'Editor'].destroy()
                     .then(() => {
@@ -137,9 +160,14 @@
         });
 
         // Initialize CKEditor for the textarea after adding to DOM
+        // Only initialize if editor doesn't already exist
         setTimeout(() => {
-            initializeAccordionEditor(textareaId);
-        }, 100);
+            if (textarea && !window[textareaId + 'Editor']) {
+                // Ensure textarea is empty for new items
+                textarea.value = '';
+                initializeAccordionEditor(textareaId);
+            }
+        }, 150);
 
         return div;
     }
@@ -149,6 +177,14 @@
         if (!textarea || typeof ClassicEditor === 'undefined') {
             return;
         }
+
+        // Check if editor already exists for this textarea
+        if (window[textareaId + 'Editor']) {
+            return; // Editor already initialized, don't create duplicate
+        }
+
+        // Preserve textarea content before CKEditor takes over
+        const preservedContent = textarea.value || '';
 
         ClassicEditor
             .create(textarea, {
@@ -184,11 +220,20 @@
             .then(editor => {
                 window[textareaId + 'Editor'] = editor;
 
-                // Ensure old() values are loaded into editor after initialization
-                // This handles cases where textarea has content from validation errors
-                if (textarea.value && textarea.value.trim()) {
-                    editor.setData(textarea.value);
+                // Always load content from preserved value or textarea (from old() or database)
+                // This ensures content persists on page refresh or validation errors
+                const contentToLoad = preservedContent || textarea.value || '';
+                if (contentToLoad.trim()) {
+                    // Use setData to load existing content
+                    editor.setData(contentToLoad);
+                    // Also update textarea to ensure sync
+                    textarea.value = contentToLoad;
                 }
+
+                // Sync editor content to textarea on every change
+                editor.model.document.on('change:data', () => {
+                    textarea.value = editor.getData();
+                });
 
                 // Sync editor content to textarea before form submission
                 const form = textarea.closest('form');
@@ -214,6 +259,8 @@
         Array.from(accordionContainer.children).forEach((item, index) => {
             item.querySelector('h6').textContent = `Section ${index + 1}`;
             const inputs = item.querySelectorAll('input, textarea');
+            const isNewItem = item.hasAttribute('data-is-new');
+            
             inputs.forEach(input => {
                 const name = input.getAttribute('name');
                 if (name) {
@@ -225,26 +272,67 @@
                     const oldId = input.id;
                     const newId = `accordion_content_${componentId}_${index}`;
 
-                    // Destroy old editor if exists
-                    if (oldId && window[oldId + 'Editor']) {
-                        window[oldId + 'Editor'].destroy()
-                            .then(() => {
-                                delete window[oldId + 'Editor'];
-                                input.id = newId;
-                                // Reinitialize editor with new ID
-                                setTimeout(() => {
-                                    initializeAccordionEditor(newId);
-                                }, 100);
-                            })
-                            .catch(err => console.error('Error reindexing editor:', err));
-                    } else {
-                        input.id = newId;
-                        // Initialize editor if not already initialized
-                        setTimeout(() => {
-                            if (!window[newId + 'Editor']) {
-                                initializeAccordionEditor(newId);
+                        // Only reindex if the ID actually changed
+                    if (oldId !== newId) {
+                        // For new items, ensure they stay empty and don't copy content
+                        if (isNewItem) {
+                            // Destroy old editor if it exists
+                            if (oldId && window[oldId + 'Editor']) {
+                                window[oldId + 'Editor'].destroy()
+                                    .then(() => {
+                                        delete window[oldId + 'Editor'];
+                                    })
+                                    .catch(err => console.error('Error destroying old editor:', err));
                             }
-                        }, 100);
+                            input.value = '';
+                            input.id = newId;
+                            // Only initialize if editor doesn't exist
+                            setTimeout(() => {
+                                if (!window[newId + 'Editor']) {
+                                    initializeAccordionEditor(newId);
+                                }
+                            }, 100);
+                        } else {
+                            // Preserve content before destroying editor for existing items
+                            let preservedContent = '';
+                            if (oldId && window[oldId + 'Editor']) {
+                                preservedContent = window[oldId + 'Editor'].getData();
+                                window[oldId + 'Editor'].destroy()
+                                    .then(() => {
+                                        delete window[oldId + 'Editor'];
+                                        input.id = newId;
+                                        // Set the preserved content to textarea before initializing new editor
+                                        input.value = preservedContent;
+                                        // Reinitialize editor with new ID only if it doesn't exist
+                                        setTimeout(() => {
+                                            if (!window[newId + 'Editor']) {
+                                                initializeAccordionEditor(newId);
+                                            }
+                                        }, 100);
+                                    })
+                                    .catch(err => console.error('Error reindexing editor:', err));
+                            } else {
+                                // No editor exists, just update ID and preserve value
+                                preservedContent = input.value;
+                                input.id = newId;
+                                input.value = preservedContent;
+                                // Initialize editor if not already initialized
+                                setTimeout(() => {
+                                    if (!window[newId + 'Editor']) {
+                                        initializeAccordionEditor(newId);
+                                    }
+                                }, 100);
+                            }
+                        }
+                    } else {
+                        // ID didn't change, but ensure editor exists (don't create duplicate)
+                        if (!window[oldId + 'Editor'] && oldId) {
+                            setTimeout(() => {
+                                if (!window[oldId + 'Editor']) {
+                                    initializeAccordionEditor(oldId);
+                                }
+                            }, 100);
+                        }
                     }
                 }
             });
@@ -274,11 +362,26 @@
     });
 
     // Initialize CKEditor for existing accordion items (from database or old input)
-    document.querySelectorAll('#accordionContainer' + componentId + ' .accordion-content-editor').forEach((textarea, index) => {
-        if (textarea.id) {
-            initializeAccordionEditor(textarea.id);
-        }
-    });
+    // Wait for DOM to be fully ready before initializing
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                document.querySelectorAll('#accordionContainer' + componentId + ' .accordion-content-editor').forEach((textarea, index) => {
+                    if (textarea.id && !window[textarea.id + 'Editor']) {
+                        initializeAccordionEditor(textarea.id);
+                    }
+                });
+            }, 200);
+        });
+    } else {
+        setTimeout(() => {
+            document.querySelectorAll('#accordionContainer' + componentId + ' .accordion-content-editor').forEach((textarea, index) => {
+                if (textarea.id && !window[textarea.id + 'Editor']) {
+                    initializeAccordionEditor(textarea.id);
+                }
+            });
+        }, 200);
+    }
 
     // Initial accordion visibility check
     updateAccordionVisibility();

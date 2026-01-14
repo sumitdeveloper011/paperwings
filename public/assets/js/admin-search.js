@@ -165,14 +165,22 @@
                 if (!response.ok) {
                     // Try to get error message from response
                     return response.text().then(text => {
-                        let errorMessage = 'Network response was not ok';
+                        let errorMessage = 'An error occurred. Please try again later.';
                         try {
                             const json = JSON.parse(text);
                             errorMessage = json.message || json.error || errorMessage;
                         } catch (e) {
-                            errorMessage = `Error ${response.status}: ${response.statusText}`;
+                            // If it's an HTML error page, try to extract meaningful error
+                            if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
+                                errorMessage = `Server error (${response.status}). Please refresh the page and try again.`;
+                            } else {
+                                errorMessage = `Error ${response.status}: ${response.statusText}`;
+                            }
                         }
                         throw new Error(errorMessage);
+                    }).catch(err => {
+                        // If text() fails, throw a generic error
+                        throw new Error(`Server error (${response.status}). Please try again later.`);
                     });
                 }
                 // Check if response is JSON
@@ -213,7 +221,12 @@
             })
             .catch(error => {
                 if (error.name !== 'AbortError') {
-                    this.handleError(error);
+                    // Only show error if it's not a user-initiated abort
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        this.handleError(new Error('Network error. Please check your connection and try again.'));
+                    } else {
+                        this.handleError(error);
+                    }
                 }
             })
             .finally(() => {
@@ -492,7 +505,12 @@
             })
             .catch(error => {
                 if (error.name !== 'AbortError') {
-                    this.handleError(error);
+                    // Only show error if it's not a user-initiated abort
+                    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                        this.handleError(new Error('Network error. Please check your connection and try again.'));
+                    } else {
+                        this.handleError(error);
+                    }
                 }
             })
             .finally(() => {

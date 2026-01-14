@@ -6,6 +6,7 @@ use App\Models\Slider;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class SliderRepository implements SliderRepositoryInterface
 {
@@ -95,9 +96,20 @@ class SliderRepository implements SliderRepositoryInterface
     public function moveUp(Slider $slider): bool
     {
         try {
-            $slider->moveUp();
-            return true;
+            // Ensure sort_order is set (in case it's 0 or null)
+            if ($slider->sort_order === 0 || $slider->sort_order === null) {
+                $this->normalizeSortOrders();
+                $slider->refresh();
+            }
+            
+            return $slider->moveUp();
         } catch (\Exception $e) {
+            Log::error('Error moving slider up: ' . $e->getMessage(), [
+                'slider_id' => $slider->id,
+                'slider_uuid' => $slider->uuid,
+                'sort_order' => $slider->sort_order,
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
         }
     }
@@ -106,10 +118,31 @@ class SliderRepository implements SliderRepositoryInterface
     public function moveDown(Slider $slider): bool
     {
         try {
-            $slider->moveDown();
-            return true;
+            // Ensure sort_order is set (in case it's 0 or null)
+            if ($slider->sort_order === 0 || $slider->sort_order === null) {
+                $this->normalizeSortOrders();
+                $slider->refresh();
+            }
+            
+            return $slider->moveDown();
         } catch (\Exception $e) {
+            Log::error('Error moving slider down: ' . $e->getMessage(), [
+                'slider_id' => $slider->id,
+                'slider_uuid' => $slider->uuid,
+                'sort_order' => $slider->sort_order,
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
+        }
+    }
+
+    // Normalize sort orders to ensure they are sequential starting from 1
+    protected function normalizeSortOrders(): void
+    {
+        $sliders = $this->model->orderBy('id')->get();
+        foreach ($sliders as $index => $slider) {
+            $slider->sort_order = $index + 1;
+            $slider->save();
         }
     }
 

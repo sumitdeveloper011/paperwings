@@ -5056,7 +5056,7 @@ button.header__user-menu-link {
 
 /* Footer Section */
 .footer {
-    background-color: var(--dark-blue);
+    background-color: #2850a3;
     color: #ffffff;
     position: relative;
 }
@@ -5204,8 +5204,9 @@ button.header__user-menu-link {
 }
 
 .footer__copyright {
-    color: #adb5bd;
+    color: #fff;
     font-size: 0.9rem;
+	font-weight:600;
 }
 
 /* Language section removed - copyright is now centered */

@@ -29,7 +29,7 @@ class BundleController extends Controller
 
     private function getBundlesCategory()
     {
-        return Category::where('slug', 'bundles')->firstOrFail();
+        return Category::where('slug', config('categories.special_combos_slug'))->firstOrFail();
     }
     public function index(Request $request): View|JsonResponse
     {

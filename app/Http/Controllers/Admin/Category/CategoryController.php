@@ -9,7 +9,6 @@ use App\Http\Requests\Admin\Category\UpdateCategoryStatusRequest;
 use App\Jobs\ImportEposNowCategoriesJob;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Product;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Services\EposNowService;
 use App\Services\ImageService;
@@ -18,9 +17,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Log;
 
 class CategoryController extends Controller
 {
@@ -35,11 +34,9 @@ class CategoryController extends Controller
         $this->imageService = $imageService;
     }
 
-    // Dispatch job to import categories from EposNow
     public function getCategoriesForEposNow(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            // Pre-check API limit before starting import
             $apiCheck = $this->eposNow->checkApiLimit();
 
             if (!$apiCheck['available']) {
@@ -58,7 +55,6 @@ class CategoryController extends Controller
                     ->with('error', $message);
             }
 
-            // Continue with import if API is available
             $jobId = time() . '_' . uniqid();
 
             Cache::put("category_import_{$jobId}", [
@@ -100,10 +96,9 @@ class CategoryController extends Controller
         }
     }
 
-    // Check import job status
     public function checkImportStatus(Request $request): JsonResponse
     {
-        \Log::info('checkImportStatus method called', [
+        Log::info('checkImportStatus method called', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'all_input' => $request->all()
@@ -129,7 +124,7 @@ class CategoryController extends Controller
             $jobId = urldecode($jobId);
 
             $cacheKey = "category_import_{$jobId}";
-            \Log::info('Import status check', [
+            Log::info('Import status check', [
                 'jobId' => $jobId,
                 'cache_key' => $cacheKey,
                 'request_url' => $request->fullUrl(),
@@ -137,7 +132,7 @@ class CategoryController extends Controller
 
             $progressData = Cache::get($cacheKey);
 
-            \Log::info('Cache check result', [
+            Log::info('Cache check result', [
                 'cache_key' => $cacheKey,
                 'has_data' => !is_null($progressData),
                 'data' => $progressData
@@ -179,7 +174,7 @@ class CategoryController extends Controller
             ]);
         }
     }
-    // Display a listing of the resource
+    
     public function index(Request $request)
     {
         $search = trim($request->get('search', ''));
@@ -205,7 +200,6 @@ class CategoryController extends Controller
             $categories = $this->categoryRepository->paginate(10);
         }
 
-        // Load product counts for each category
         $categoryIds = $categories->pluck('id')->toArray();
         $productCounts = Product::whereIn('category_id', $categoryIds)
             ->selectRaw('category_id, COUNT(*) as count')
@@ -213,15 +207,12 @@ class CategoryController extends Controller
             ->pluck('count', 'category_id')
             ->toArray();
 
-        // Add product count to each category
         foreach ($categories as $category) {
             $category->products_count = $productCounts[$category->id] ?? 0;
         }
 
-        // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             $paginationHtml = '';
-            // Check if categories is a paginator instance
             if ($categories instanceof LengthAwarePaginator && $categories->hasPages()) {
                 $paginationHtml = '<div class="pagination-wrapper">' .
                     view('components.pagination', [
@@ -241,22 +232,18 @@ class CategoryController extends Controller
         return view('admin.category.index', compact('categories', 'search'));
     }
 
-    // Show the form for creating a new resource
     public function create(): View
     {
         return view('admin.category.create');
     }
 
-    // Store a newly created resource in storage
     public function store(StoreCategoryRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        // Generate UUID first (will be used for folder name)
         $categoryUuid = Str::uuid()->toString();
         $validated['uuid'] = $categoryUuid;
 
-        // Upload image with category UUID if provided
         if ($request->hasFile('image')) {
             $imagePath = $this->imageService->uploadImage($request->file('image'), 'categories', $categoryUuid);
             if ($imagePath) {
@@ -264,7 +251,6 @@ class CategoryController extends Controller
             }
         }
 
-        // Generate slug if not provided
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
@@ -275,24 +261,20 @@ class CategoryController extends Controller
             ->with('success', 'Category created successfully!');
     }
 
-    // Display the specified resource
     public function show(Category $category): View
     {
         return view('admin.category.show', compact('category'));
     }
 
-    // Show the form for editing the specified resource
     public function edit(Category $category): View
     {
         return view('admin.category.edit', compact('category'));
     }
 
-    // Update the specified resource in storage
     public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
     {
         $validated = $request->validated();
 
-        // Use existing category UUID for folder name
         if ($request->hasFile('image')) {
             $imagePath = $this->imageService->updateImage($request->file('image'), 'categories', $category->uuid, $category->image);
             if ($imagePath) {
@@ -300,7 +282,6 @@ class CategoryController extends Controller
             }
         }
 
-        // Generate slug if not provided
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
@@ -311,7 +292,6 @@ class CategoryController extends Controller
             ->with('success', 'Category updated successfully!');
     }
 
-    // Show products linked to a category
     public function products(Category $category, Request $request): View
     {
         $products = $category->products()->paginate(15);
@@ -319,10 +299,8 @@ class CategoryController extends Controller
         return view('admin.category.products', compact('category', 'products'));
     }
 
-    // Remove the specified resource from storage
     public function destroy(Category $category): RedirectResponse
     {
-        // Check if category has products
         $productsCount = $category->products()->count();
 
         if ($productsCount > 0) {
@@ -330,7 +308,6 @@ class CategoryController extends Controller
                 ->with('error', "Cannot delete category. This category has {$productsCount} product(s) associated with it. Please remove or reassign products before deleting the category.");
         }
 
-        // Delete image and its folder
         $this->imageService->deleteImage($category->image);
 
         $this->categoryRepository->delete($category);
@@ -339,14 +316,12 @@ class CategoryController extends Controller
             ->with('success', 'Category deleted successfully!');
     }
 
-    // Update category status
     public function updateStatus(UpdateCategoryStatusRequest $request, Category $category)
     {
         $validated = $request->validated();
 
         $this->categoryRepository->updateStatus($category, $validated['status']);
 
-        // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,

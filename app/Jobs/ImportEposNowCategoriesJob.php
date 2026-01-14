@@ -201,6 +201,9 @@ class ImportEposNowCategoriesJob implements ShouldQueue
                 }
             }
 
+            // Create default categories after import is complete
+            $this->createDefaultCategories($categoryRepository);
+
             $finalStatus = "Import completed! Inserted: {$inserted}, Updated: {$updated}";
             if (!empty($failed)) {
                 $finalStatus .= ", Failed: " . count($failed);
@@ -250,6 +253,86 @@ class ImportEposNowCategoriesJob implements ShouldQueue
         ], $additional);
 
         Cache::put("category_import_{$this->jobId}", $progressData, 3600);
+    }
+
+    /**
+     * Create default categories after import is complete
+     */
+    protected function createDefaultCategories(CategoryRepositoryInterface $categoryRepository): void
+    {
+        try {
+            Log::info('Starting to create default categories');
+            
+            $defaultCategories = [
+                [
+                    'name' => 'Special Combos',
+                    'slug' => config('categories.special_combos_slug'),
+                    'description' => 'Special combo products',
+                    'status' => 1,
+                ],
+                [
+                    'name' => 'General Products',
+                    'slug' => config('categories.general_products_slug'),
+                    'description' => 'General products',
+                    'status' => 1,
+                ],
+            ];
+
+            foreach ($defaultCategories as $categoryData) {
+                try {
+                    // Check if category already exists by slug
+                    $existing = Category::where('slug', $categoryData['slug'])->first();
+                    
+                    if (!$existing) {
+                        // Create category with auto-generated ID
+                        $categoryData['uuid'] = Str::uuid();
+                        $category = $categoryRepository->create($categoryData);
+                        
+                        Log::info('Default category created successfully', [
+                            'id' => $category->id,
+                            'name' => $categoryData['name']
+                        ]);
+                    } else {
+                        // Update existing category if needed
+                        $needsUpdate = false;
+                        if ($existing->name !== $categoryData['name']) $needsUpdate = true;
+                        if ($existing->description !== $categoryData['description']) $needsUpdate = true;
+                        if ($existing->status != $categoryData['status']) $needsUpdate = true;
+                        
+                        if ($needsUpdate) {
+                            $categoryRepository->update($existing, [
+                                'name' => $categoryData['name'],
+                                'description' => $categoryData['description'],
+                                'status' => $categoryData['status'],
+                            ]);
+                            
+                            Log::info('Default category updated', [
+                                'id' => $existing->id,
+                                'name' => $categoryData['name']
+                            ]);
+                        } else {
+                            Log::info('Default category already exists and is up to date', [
+                                'id' => $existing->id,
+                                'name' => $categoryData['name']
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to create/update default category', [
+                        'category_name' => $categoryData['name'],
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+            
+            Log::info('Finished creating default categories');
+        } catch (\Exception $e) {
+            Log::error('Failed to create default categories', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 
     // Handle a job failure

@@ -75,12 +75,16 @@
                                     </td>
                                     <td class="modern-table__td">
                                         <div class="category-image category-image--enhanced">
-                                            <img src="{{ $slider->image_url }}"
+                                            @php
+                                                $imageUrl = $slider->thumbnail_url ?? $slider->image_url ?? asset('assets/images/placeholder.png');
+                                                $originalImageUrl = $slider->image_url ?? asset('assets/images/placeholder.png');
+                                            @endphp
+                                            <img src="{{ $imageUrl }}"
                                                  alt="{{ $slider->heading }}"
                                                  class="category-image__img"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
                                             <div class="category-image__overlay">
-                                                <a href="{{ $slider->image_url }}" target="_blank" class="category-image__view">
+                                                <a href="{{ $originalImageUrl }}" target="_blank" class="category-image__view">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                             </div>
@@ -203,7 +207,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Handle status change with AJAX (prevent page freeze)
-    // Use event delegation to handle dynamically added elements
     document.addEventListener('change', function(e) {
         if (e.target && e.target.classList.contains('status-select')) {
             e.preventDefault();
@@ -271,6 +274,88 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Error updating status. Please try again.');
                 }
             });
+        }
+    });
+
+    // Handle up/down arrow buttons with AJAX
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (form && form.classList.contains('action-form')) {
+            const action = form.getAttribute('action');
+            if (action && (action.includes('move-up') || action.includes('move-down'))) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const button = form.querySelector('button[type="submit"]');
+                if (!button) return;
+
+                const originalHtml = button.innerHTML;
+                const originalDisabled = button.disabled;
+
+                // Disable button during request
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                // Get CSRF token
+                const csrfToken = form.querySelector('input[name="_token"]').value;
+
+                // Send AJAX request
+                fetch(action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: new URLSearchParams({
+                        '_token': csrfToken,
+                        '_method': 'PATCH'
+                    })
+                })
+                .then(response => {
+                    return response.json().then(data => {
+                        if (!response.ok && response.status !== 200) {
+                            throw new Error(data.message || 'Network response was not ok');
+                        }
+                        return data;
+                    });
+                })
+                .then(data => {
+                    // Re-enable button
+                    button.disabled = originalDisabled;
+                    button.innerHTML = originalHtml;
+
+                    if (data && data.success) {
+                        if (typeof showToast === 'function') {
+                            showToast('Success', data.message || 'Slider moved successfully!', 'success', 3000);
+                        }
+                        // Reload page to show updated order
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        // Handle case where move was not possible (e.g., already at top/bottom)
+                        const messageType = data.type || 'info';
+                        if (typeof showToast === 'function') {
+                            showToast('Info', data.message || 'Cannot move slider further', messageType, 3000);
+                        } else {
+                            alert(data.message || 'Cannot move slider further');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error moving slider:', error);
+                    // Re-enable button
+                    button.disabled = originalDisabled;
+                    button.innerHTML = originalHtml;
+                    if (typeof showToast === 'function') {
+                        showToast('Error', error.message || 'Failed to move slider', 'error', 5000);
+                    } else {
+                        alert(error.message || 'Error moving slider. Please try again.');
+                    }
+                });
+            }
         }
     });
 });

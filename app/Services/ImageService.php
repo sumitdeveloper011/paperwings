@@ -24,35 +24,56 @@ class ImageService
     public function uploadImage(UploadedFile $file, string $baseFolder, ?string $uuid = null, ?string $oldImagePath = null, bool $generateThumbnail = true): ?string
     {
         try {
-            // Delete old image and thumbnails if exists
             if ($oldImagePath) {
                 $this->deleteImage($oldImagePath);
             }
 
-            // Use provided UUID or generate new one
             $folderUuid = $uuid ?? Str::uuid()->toString();
 
-            // Create folder structure: {baseFolder}/{uuid}/original
             $originalFolderPath = $baseFolder . '/' . $folderUuid . '/original';
             if (!Storage::disk('public')->exists($originalFolderPath)) {
                 Storage::disk('public')->makeDirectory($originalFolderPath, 0755, true);
             }
 
-            // Also create thumbnails folder structure for future use
             $thumbnailsFolderPath = $baseFolder . '/' . $folderUuid . '/thumbnails';
             if (!Storage::disk('public')->exists($thumbnailsFolderPath)) {
                 Storage::disk('public')->makeDirectory($thumbnailsFolderPath, 0755, true);
             }
 
-            // Generate unique image name
             $imageName = Str::uuid() . '.' . $file->getClientOriginalExtension();
 
-            // Store original image
-            $originalImagePath = $file->storeAs($originalFolderPath, $imageName, 'public');
+            // Use Storage::putFileAs to ensure correct path handling
+            $originalImagePath = Storage::disk('public')->putFileAs($originalFolderPath, $file, $imageName);
+            
+            // Log for debugging
+            Log::info('Image uploaded', [
+                'baseFolder' => $baseFolder,
+                'folderUuid' => $folderUuid,
+                'originalFolderPath' => $originalFolderPath,
+                'finalImagePath' => $originalImagePath,
+                'expectedPath' => $originalFolderPath . '/' . $imageName
+            ]);
 
-            // Generate thumbnail if enabled
+            // Process category, subcategory, slider, and product images with specific dimensions
+            if ($baseFolder === 'categories' || $baseFolder === 'subcategories') {
+                $this->processCategoryImage($originalImagePath);
+            } elseif ($baseFolder === 'sliders') {
+                $this->processSliderImage($originalImagePath);
+            } elseif ($baseFolder === 'products') {
+                $this->processProductImage($originalImagePath);
+            } else {
+                // For other images, resize original if needed
+                $this->resizeOriginalImage($originalImagePath, $baseFolder);
+            }
+
             if ($generateThumbnail && config('images.storage.generate_on_upload', true)) {
-                $this->generateThumbnail($originalImagePath);
+                if ($baseFolder === 'products') {
+                    // Generate both medium and thumbnail for products
+                    $this->generateProductMedium($originalImagePath);
+                    $this->generateThumbnail($originalImagePath, $baseFolder);
+                } else {
+                    $this->generateThumbnail($originalImagePath, $baseFolder);
+                }
             }
 
             return $originalImagePath;
@@ -68,12 +89,238 @@ class ImageService
     }
 
     /**
+     * Process category image with specific dimensions
+     *
+     * @param string $originalImagePath Path to original image
+     * @return bool True on success, false on failure
+     */
+    protected function processCategoryImage(string $originalImagePath): bool
+    {
+        try {
+            if (!Storage::disk('public')->exists($originalImagePath)) {
+                Log::warning('Original image not found for category processing: ' . $originalImagePath);
+                return false;
+            }
+
+            $config = config('images.category.original', []);
+            $width = $config['width'] ?? 800;
+            $height = $config['height'] ?? 800;
+            $quality = $config['quality'] ?? 90;
+            $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+            $fit = $config['fit'] ?? 'cover';
+
+            $originalFullPath = Storage::disk('public')->path($originalImagePath);
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($originalFullPath);
+
+            if ($preserveAspectRatio) {
+                $image->scale(width: $width, height: $height);
+            } else {
+                // For category images, scale to cover then crop to exact dimensions
+                if ($fit === 'cover') {
+                    // Scale to cover the dimensions (maintains aspect ratio, may crop)
+                    $image->scale(width: $width, height: $height);
+                    // Crop to exact dimensions from center
+                    $image->crop($width, $height);
+                } else {
+                    $image->resize($width, $height);
+                }
+            }
+
+            $image->toJpeg($quality)->save($originalFullPath);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Category image processing failed: ' . $e->getMessage(), [
+                'original_path' => $originalImagePath,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Process slider image with specific dimensions
+     *
+     * @param string $originalImagePath Path to original image
+     * @return bool True on success, false on failure
+     */
+    protected function processSliderImage(string $originalImagePath): bool
+    {
+        try {
+            if (!Storage::disk('public')->exists($originalImagePath)) {
+                Log::warning('Original image not found for slider processing: ' . $originalImagePath);
+                return false;
+            }
+
+            $config = config('images.slider.original', []);
+            $width = $config['width'] ?? 1920;
+            $height = $config['height'] ?? 600;
+            $quality = $config['quality'] ?? 90;
+            $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+            $fit = $config['fit'] ?? 'cover';
+
+            $originalFullPath = Storage::disk('public')->path($originalImagePath);
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($originalFullPath);
+
+            if ($preserveAspectRatio) {
+                $image->scale(width: $width, height: $height);
+            } else {
+                // For slider images, use cover fit to ensure exact dimensions
+                if ($fit === 'cover') {
+                    // Scale to cover the dimensions (maintains aspect ratio, may crop)
+                    $image->scale(width: $width, height: $height);
+                    // Crop to exact dimensions from center
+                    $image->crop($width, $height);
+                } else {
+                    $image->resize($width, $height);
+                }
+            }
+
+            $image->toJpeg($quality)->save($originalFullPath);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Slider image processing failed: ' . $e->getMessage(), [
+                'original_path' => $originalImagePath,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Process product image with specific dimensions
+     *
+     * @param string $originalImagePath Path to original image
+     * @return bool True on success, false on failure
+     */
+    protected function processProductImage(string $originalImagePath): bool
+    {
+        try {
+            if (!Storage::disk('public')->exists($originalImagePath)) {
+                Log::warning('Original image not found for product processing: ' . $originalImagePath);
+                return false;
+            }
+
+            $config = config('images.product.original', []);
+            $width = $config['width'] ?? 1200;
+            $height = $config['height'] ?? 1200;
+            $quality = $config['quality'] ?? 90;
+            $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+            $fit = $config['fit'] ?? 'cover';
+
+            $originalFullPath = Storage::disk('public')->path($originalImagePath);
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($originalFullPath);
+
+            if ($preserveAspectRatio) {
+                $image->scale(width: $width, height: $height);
+            } else {
+                // For product images, use cover fit to ensure exact dimensions
+                if ($fit === 'cover') {
+                    // Scale to cover the dimensions (maintains aspect ratio, may crop)
+                    $image->scale(width: $width, height: $height);
+                    // Crop to exact dimensions from center
+                    $image->crop($width, $height);
+                } else {
+                    $image->resize($width, $height);
+                }
+            }
+
+            $image->toJpeg($quality)->save($originalFullPath);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Product image processing failed: ' . $e->getMessage(), [
+                'original_path' => $originalImagePath,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Generate medium size image for products (600x600)
+     *
+     * @param string $originalImagePath Path to original image
+     * @return string|null Medium image path or null on failure
+     */
+    protected function generateProductMedium(string $originalImagePath): ?string
+    {
+        try {
+            if (!Storage::disk('public')->exists($originalImagePath)) {
+                Log::warning('Original image not found for product medium generation: ' . $originalImagePath);
+                return null;
+            }
+
+            $config = config('images.product.medium', []);
+            $width = $config['width'] ?? 600;
+            $height = $config['height'] ?? 600;
+            $quality = $config['quality'] ?? 85;
+            $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+            $fit = $config['fit'] ?? 'cover';
+
+            // Generate medium path (replace /original/ with /medium/)
+            $mediumPath = str_replace('/original/', '/medium/', $originalImagePath);
+            $mediumDir = dirname($mediumPath);
+            
+            if (!Storage::disk('public')->exists($mediumDir)) {
+                Storage::disk('public')->makeDirectory($mediumDir, 0755, true);
+            }
+
+            $originalFullPath = Storage::disk('public')->path($originalImagePath);
+            $mediumFullPath = Storage::disk('public')->path($mediumPath);
+
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($originalFullPath);
+
+            if ($preserveAspectRatio) {
+                $image->scale(width: $width, height: $height);
+            } else {
+                if ($fit === 'cover') {
+                    $image->scale(width: $width, height: $height);
+                    $image->crop($width, $height);
+                } else {
+                    $image->resize($width, $height);
+                }
+            }
+
+            $image->toJpeg($quality)->save($mediumFullPath);
+
+            return $mediumPath;
+        } catch (\Exception $e) {
+            Log::error('Product medium image generation failed: ' . $e->getMessage(), [
+                'original_path' => $originalImagePath,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Resize original image if needed (for non-category/slider/product images)
+     *
+     * @param string $originalImagePath Path to original image
+     * @param string $baseFolder Base folder name
+     * @return bool True on success, false on failure
+     */
+    protected function resizeOriginalImage(string $originalImagePath, string $baseFolder): bool
+    {
+        // For now, keep original size for other images
+        // Can be extended later if needed
+        return true;
+    }
+
+    /**
      * Generate thumbnail from original image
      *
      * @param string $originalImagePath Path to original image
+     * @param string|null $baseFolder Base folder name to determine image type
      * @return string|null Thumbnail path or null on failure
      */
-    public function generateThumbnail(string $originalImagePath): ?string
+    public function generateThumbnail(string $originalImagePath, ?string $baseFolder = null): ?string
     {
         try {
             if (!Storage::disk('public')->exists($originalImagePath)) {
@@ -81,46 +328,61 @@ class ImageService
                 return null;
             }
 
-            // Get thumbnail settings from config
-            $thumbnailWidth = config('images.thumbnail.width', 400);
-            $thumbnailHeight = config('images.thumbnail.height', 400);
-            $quality = config('images.thumbnail.quality', 85);
-            $preserveAspectRatio = config('images.thumbnail.preserve_aspect_ratio', true);
+            // Use category-specific settings if it's a category image
+            if ($baseFolder === 'categories' || $baseFolder === 'subcategories') {
+                $config = config('images.category.thumbnail', []);
+                $thumbnailWidth = $config['width'] ?? 400;
+                $thumbnailHeight = $config['height'] ?? 400;
+                $quality = $config['quality'] ?? 85;
+                $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+                $fit = $config['fit'] ?? 'cover';
+            } elseif ($baseFolder === 'sliders') {
+                $config = config('images.slider.thumbnail', []);
+                $thumbnailWidth = $config['width'] ?? 400;
+                $thumbnailHeight = $config['height'] ?? 400;
+                $quality = $config['quality'] ?? 85;
+                $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? true;
+                $fit = $config['fit'] ?? 'contain';
+            } elseif ($baseFolder === 'products') {
+                $config = config('images.product.thumbnail', []);
+                $thumbnailWidth = $config['width'] ?? 300;
+                $thumbnailHeight = $config['height'] ?? 300;
+                $quality = $config['quality'] ?? 85;
+                $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+                $fit = $config['fit'] ?? 'cover';
+            } else {
+                $thumbnailWidth = config('images.thumbnail.width', 400);
+                $thumbnailHeight = config('images.thumbnail.height', 400);
+                $quality = config('images.thumbnail.quality', 85);
+                $preserveAspectRatio = config('images.thumbnail.preserve_aspect_ratio', true);
+                $fit = 'contain';
+            }
 
-            // Generate thumbnail path: products/{uuid}/original/image.jpg -> products/{uuid}/thumbnails/image.jpg
             $thumbnailPath = $this->getThumbnailPath($originalImagePath);
 
-            // Create thumbnails directory if not exists
             $thumbnailDir = dirname($thumbnailPath);
             if (!Storage::disk('public')->exists($thumbnailDir)) {
                 Storage::disk('public')->makeDirectory($thumbnailDir, 0755, true);
             }
 
-            // Get full path to original image
             $originalFullPath = Storage::disk('public')->path($originalImagePath);
 
-            // Create image manager
             $manager = new ImageManager(new Driver());
 
-            // Read and process image
             $image = $manager->read($originalFullPath);
 
-            // Strip EXIF data if enabled (Intervention Image v3 handles this automatically on save)
-            // EXIF data is removed when encoding to JPEG
-
-            // Resize image
-            if ($preserveAspectRatio) {
-                // Scale maintaining aspect ratio
+            if (($baseFolder === 'categories' || $baseFolder === 'subcategories' || $baseFolder === 'products') && $fit === 'cover' && !$preserveAspectRatio) {
+                // For category/subcategory/product thumbnails, scale to cover then crop to exact dimensions
+                $image->scale(width: $thumbnailWidth, height: $thumbnailHeight);
+                $image->crop($thumbnailWidth, $thumbnailHeight);
+            } elseif ($preserveAspectRatio) {
                 $image->scale(width: $thumbnailWidth, height: $thumbnailHeight);
             } else {
-                // Resize to exact dimensions
-                $image->resize(width: $thumbnailWidth, height: $thumbnailHeight);
+                $image->resize($thumbnailWidth, $thumbnailHeight);
             }
 
-            // Get thumbnail full path
             $thumbnailFullPath = Storage::disk('public')->path($thumbnailPath);
 
-            // Save thumbnail with quality
             $image->toJpeg($quality)->save($thumbnailFullPath);
 
             return $thumbnailPath;
@@ -141,14 +403,10 @@ class ImageService
      */
     public function getThumbnailPath(string $originalImagePath): string
     {
-        // Check if path already has /original/ folder structure
         if (strpos($originalImagePath, '/original/') !== false) {
-            // Replace /original/ with /thumbnails/
             return str_replace('/original/', '/thumbnails/', $originalImagePath);
         }
 
-        // For old structure (backward compatibility): products/{uuid}/image.jpg
-        // Convert to: products/{uuid}/thumbnails/image.jpg
         $pathParts = explode('/', $originalImagePath);
         $fileName = array_pop($pathParts);
         $basePath = implode('/', $pathParts);
@@ -170,12 +428,10 @@ class ImageService
 
         $thumbnailPath = $this->getThumbnailPath($originalImagePath);
 
-        // Check if thumbnail exists, if not return original
         if (Storage::disk('public')->exists($thumbnailPath)) {
             return asset('storage/' . $thumbnailPath);
         }
 
-        // Fallback to original if thumbnail doesn't exist
         return $this->getImageUrl($originalImagePath);
     }
 
@@ -190,15 +446,12 @@ class ImageService
     public function uploadSimple(UploadedFile $file, string $folder, ?string $oldImagePath = null): ?string
     {
         try {
-            // Delete old image if exists
             if ($oldImagePath && Storage::disk('public')->exists($oldImagePath)) {
                 Storage::disk('public')->delete($oldImagePath);
             }
 
-            // Generate unique image name
             $imageName = Str::uuid() . '.' . $file->getClientOriginalExtension();
 
-            // Store image directly in folder
             $imagePath = $file->storeAs($folder, $imageName, 'public');
 
             return $imagePath;
@@ -227,19 +480,16 @@ class ImageService
         try {
             $deleted = false;
 
-            // Delete original image
             if (Storage::disk('public')->exists($imagePath)) {
                 Storage::disk('public')->delete($imagePath);
                 $deleted = true;
             }
 
-            // Delete thumbnail if exists (works for both old and new structure)
             $thumbnailPath = $this->getThumbnailPath($imagePath);
             if (Storage::disk('public')->exists($thumbnailPath)) {
                 Storage::disk('public')->delete($thumbnailPath);
             }
 
-            // Handle folder cleanup for new structure (with /original/ folder)
             if (strpos($imagePath, '/original/') !== false) {
                 $folderPath = dirname(dirname($imagePath));
                 $originalFolder = $folderPath . '/original';
@@ -250,12 +500,10 @@ class ImageService
                 $thumbnailsEmpty = !Storage::disk('public')->exists($thumbnailsFolder) ||
                                   count(Storage::disk('public')->files($thumbnailsFolder)) === 0;
 
-                // If both folders are empty, delete the parent folder
                 if ($originalEmpty && $thumbnailsEmpty && Storage::disk('public')->exists($folderPath)) {
                     Storage::disk('public')->deleteDirectory($folderPath);
                 }
             } else {
-                // Handle old structure: delete folder if empty
                 $folderPath = dirname($imagePath);
                 if (Storage::disk('public')->exists($folderPath)) {
                     $files = Storage::disk('public')->files($folderPath);
@@ -301,7 +549,6 @@ class ImageService
             return null;
         }
 
-        // Use asset helper to generate public URL
         return $imagePath ? asset('storage/' . $imagePath) : null;
     }
 
@@ -309,19 +556,24 @@ class ImageService
      * Regenerate thumbnails for an existing image
      *
      * @param string $originalImagePath Original image path
+     * @param string|null $baseFolder Base folder name to determine image type
      * @return bool True on success, false on failure
      */
-    public function regenerateThumbnail(string $originalImagePath): bool
+    public function regenerateThumbnail(string $originalImagePath, ?string $baseFolder = null): bool
     {
         try {
-            // Delete existing thumbnail if exists
             $thumbnailPath = $this->getThumbnailPath($originalImagePath);
             if (Storage::disk('public')->exists($thumbnailPath)) {
                 Storage::disk('public')->delete($thumbnailPath);
             }
 
-            // Generate new thumbnail
-            $newThumbnailPath = $this->generateThumbnail($originalImagePath);
+            // Determine base folder from path if not provided
+            if (!$baseFolder && strpos($originalImagePath, '/') !== false) {
+                $pathParts = explode('/', $originalImagePath);
+                $baseFolder = $pathParts[0] ?? null;
+            }
+
+            $newThumbnailPath = $this->generateThumbnail($originalImagePath, $baseFolder);
 
             return $newThumbnailPath !== null;
         } catch (\Exception $e) {

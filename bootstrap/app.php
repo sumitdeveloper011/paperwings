@@ -40,10 +40,49 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($request->is('admin/*')) {
                 // Always show custom error page, even in development
-                return response()->view('admin.errors.419', ['exception' => $e], 419);
+                try {
+                    return response()->view('admin.errors.419', ['exception' => $e], 419);
+                } catch (\Throwable $viewError) {
+                    // Log error but still try to show custom page
+                    Log::error('Failed to render 419 error page: ' . $viewError->getMessage(), [
+                        'trace' => $viewError->getTraceAsString()
+                    ]);
+                    // Return a simple error response if view completely fails
+                    return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please <a href="' . route('admin.login') . '">refresh the page</a> and try again.</p>', 419)
+                        ->header('Content-Type', 'text/html');
+                }
             }
 
             return response()->view('frontend.errors.419', [], 419);
+        });
+
+        // Also catch HTTP exceptions with 419 status code as fallback
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() === 419) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Your session has expired. Please refresh the page and try again.',
+                        'error' => 'CSRF token mismatch'
+                    ], 419);
+                }
+
+                if ($request->is('admin/*')) {
+                    try {
+                        return response()->view('admin.errors.419', ['exception' => $e], 419);
+                    } catch (\Throwable $viewError) {
+                        // Log error but still try to show custom page
+                        Log::error('Failed to render 419 error page: ' . $viewError->getMessage(), [
+                            'trace' => $viewError->getTraceAsString()
+                        ]);
+                        // Return a simple error response if view completely fails
+                        return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please <a href="' . route('admin.login') . '">refresh the page</a> and try again.</p>', 419)
+                            ->header('Content-Type', 'text/html');
+                    }
+                }
+
+                return response()->view('frontend.errors.419', [], 419);
+            }
+            return null;
         });
 
         // Handle 401 - Unauthenticated
@@ -121,16 +160,26 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 500);
             }
 
-            // Don't show custom error page in development - show Laravel's debug page
-            if (app()->environment('local', 'development')) {
-                return null;
-            }
-
+            // Always show custom error page (even in development)
+            // Error details are shown in the custom page for development environments
             if ($request->is('admin/*')) {
-                return response()->view('admin.errors.500', [], 500);
+                try {
+                    return response()->view('admin.errors.500', ['exception' => $e], 500);
+                } catch (\Throwable $viewError) {
+                    // Fallback if view fails
+                    Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
+                    return response('<h1>500 - Internal Server Error</h1><p>An error occurred. Please <a href="' . route('admin.dashboard') . '">go back</a>.</p>', 500)
+                        ->header('Content-Type', 'text/html');
+                }
             }
 
-            return response()->view('frontend.errors.500', [], 500);
+            try {
+                return response()->view('frontend.errors.500', ['exception' => $e], 500);
+            } catch (\Throwable $viewError) {
+                Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
+                return response('<h1>500 - Internal Server Error</h1><p>An error occurred. Please try again later.</p>', 500)
+                    ->header('Content-Type', 'text/html');
+            }
         });
 
         // Handle 404 errors - redirect based on user role and route type

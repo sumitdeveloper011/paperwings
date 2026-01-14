@@ -39,7 +39,7 @@ class SettingHelper
         if ($favicon && !empty($favicon)) {
             return asset('storage/' . $favicon);
         }
-        return asset('assets/images/favicon.ico');
+        return asset('assets/frontend/images/icon.png');
     }
 
     // Get site name with fallback

@@ -131,7 +131,7 @@
                             <div class="form-group-modern">
                                 <label class="form-label-modern">Current Image</label>
                                 <div class="current-image">
-                                    <img src="{{ $category->image_url }}" 
+                                    <img src="{{ $category->thumbnail_url ?? $category->image_url }}" 
                                          alt="{{ $category->name }}" 
                                          class="current-image__img">
                                 </div>
@@ -142,6 +142,9 @@
                             <label for="image" class="form-label-modern">
                                 {{ $category->image ? 'Replace Image' : 'Category Image' }}
                             </label>
+                            
+                            <x-image-requirements type="category" />
+                            
                             <div class="file-upload-wrapper">
                                 <input type="file" 
                                        class="file-upload-input @error('image') is-invalid @enderror" 
@@ -165,15 +168,7 @@
                             @enderror
                         </div>
 
-                        <div class="form-group-modern" id="imagePreview" style="display: none;">
-                            <label class="form-label-modern">New Image Preview</label>
-                            <div class="image-preview">
-                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
-                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <x-image-preview label="New Image Preview" />
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary btn-lg">
@@ -253,8 +248,8 @@
                         <li class="tips-list__item">
                             <i class="fas fa-check-circle"></i>
                             <div>
-                                <strong>Image Replacement</strong>
-                                <p>Uploading a new image will replace the current one</p>
+                                <strong>Image Dimensions</strong>
+                                <p>New images will be resized to 800x800px (square). Use square images for best results.</p>
                             </div>
                         </li>
                         <li class="tips-list__item">
@@ -272,29 +267,6 @@
 </div>
 
 <script>
-// Image Preview
-document.getElementById('image').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    const preview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            preview.style.display = 'block';
-        }
-        reader.readAsDataURL(file);
-    } else {
-        preview.style.display = 'none';
-    }
-});
-
-function removeImagePreview() {
-    document.getElementById('image').value = '';
-    document.getElementById('imagePreview').style.display = 'none';
-}
-
 // Auto-generate slug from name
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');

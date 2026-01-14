@@ -1,10 +1,20 @@
 @php
     // Check if user is on login page or authenticated
-    $isLoginPage = request()->is('admin/login') || request()->routeIs('admin.login');
-    $isAuthenticated = auth()->check();
+    try {
+        $isLoginPage = request()->is('admin/login') || request()->routeIs('admin.login');
+        $isAuthenticated = auth()->check();
+    } catch (\Exception $e) {
+        $isLoginPage = false;
+        $isAuthenticated = false;
+    }
 
     // Use auth layout for login page, main layout for authenticated users
-    $layout = ($isLoginPage || !$isAuthenticated) ? 'layouts.admin.auth' : 'layouts.admin.main';
+    // Default to auth layout if we can't determine
+    try {
+        $layout = ($isLoginPage || !$isAuthenticated) ? 'layouts.admin.auth' : 'layouts.admin.main';
+    } catch (\Exception $e) {
+        $layout = 'layouts.admin.auth';
+    }
 @endphp
 
 @extends($layout)
@@ -29,11 +39,25 @@
                                 <i class="fas fa-sync-alt"></i> Refresh Page
                             </a>
                             @if($isAuthenticated)
-                                <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-primary">
+                                @php
+                                    try {
+                                        $dashboardRoute = route('admin.dashboard');
+                                    } catch (\Exception $e) {
+                                        $dashboardRoute = '/admin/dashboard';
+                                    }
+                                @endphp
+                                <a href="{{ $dashboardRoute }}" class="btn btn-outline-primary">
                                     <i class="fas fa-tachometer-alt"></i> Go to Dashboard
                                 </a>
                             @else
-                                <a href="{{ route('admin.login') }}" class="btn btn-outline-primary">
+                                @php
+                                    try {
+                                        $loginRoute = route('admin.login');
+                                    } catch (\Exception $e) {
+                                        $loginRoute = '/admin/login';
+                                    }
+                                @endphp
+                                <a href="{{ $loginRoute }}" class="btn btn-outline-primary">
                                     <i class="fas fa-sign-in-alt"></i> Go to Login
                                 </a>
                             @endif

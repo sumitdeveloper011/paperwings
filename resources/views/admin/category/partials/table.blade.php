@@ -37,7 +37,7 @@
                     <tr class="modern-table__row">
                         <td class="modern-table__td">
                             <div class="category-image">
-                                <img src="{{ $category->image_url }}"
+                                <img src="{{ $category->thumbnail_url ?? $category->image_url }}"
                                      alt="{{ $category->name }}"
                                      class="category-image__img"
                                      onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
