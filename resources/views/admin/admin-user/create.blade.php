@@ -158,29 +158,25 @@
                         <div class="mb-3">
                             <label for="avatar" class="form-label">Profile Image</label>
 
-                            <!-- New Image Preview -->
-                            <div class="image-preview-wrapper" id="newImagePreview" style="display: none; margin-bottom: 1rem;">
-                                <div class="image-preview" style="position: relative; display: inline-block; border-radius: 50%; overflow: hidden; border: 3px solid #dee2e6; width: 150px; height: 150px;">
-                                    <img id="previewImg" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-                                    <button type="button" class="image-preview__remove" onclick="removeImagePreview()" style="position: absolute; top: 5px; right: 5px; background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
+                            <x-image-requirements type="user" />
 
-                            <input type="file"
-                                   class="form-control @error('avatar') is-invalid @enderror"
-                                   id="avatar"
-                                   name="avatar"
-                                   accept="image/*">
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i>
-                                Recommended size: 300x300px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB. If no image is provided, a default profile image will be used.
-                            </small>
+                            <div class="file-upload-wrapper">
+                                <input type="file"
+                                       class="file-upload-input @error('avatar') is-invalid @enderror"
+                                       id="avatar"
+                                       name="avatar"
+                                       accept="image/jpeg, image/png, image/jpg, image/gif, image/webp">
+                                <label for="avatar" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Image</span>
+                                </label>
+                            </div>
                             @error('avatar')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <x-image-preview inputId="avatar" previewId="avatarPreview" previewImgId="avatarPreviewImg" />
                     </div>
                 </div>
 
@@ -418,50 +414,71 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form validation
+    // Form validation and scroll prevention
     const form = document.getElementById('admin-user-form');
     if (form) {
+        // Form validation - check roles before submission
         form.addEventListener('submit', function(e) {
+            // Check roles first
             const roles = document.querySelectorAll('input[name="roles[]"]:checked');
             if (roles.length === 0) {
                 e.preventDefault();
+                e.stopPropagation();
                 alert('Please select at least one role.');
                 return false;
             }
+            
+            // Check form validity - if invalid, show errors but don't scroll
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                
+                // Find first invalid field and show error without scrolling
+                const firstInvalid = form.querySelector(':invalid');
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    // Don't scroll - just focus
+                    setTimeout(() => {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+                return false;
+            }
+            // If form is valid and roles are selected, allow submission
         });
     }
 
     // Image preview functionality
-    const imageInput = document.getElementById('avatar');
-    const newImagePreview = document.getElementById('newImagePreview');
-    const previewImg = document.getElementById('previewImg');
+    const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarPreviewImg = document.getElementById('avatarPreviewImg');
 
-    if (imageInput) {
-        imageInput.addEventListener('change', function(e) {
+    if (avatarInput && avatarPreview && avatarPreviewImg) {
+        avatarInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    previewImg.src = e.target.result;
-                    newImagePreview.style.display = 'block';
+                    avatarPreviewImg.src = e.target.result;
+                    avatarPreview.style.display = 'block';
                 };
                 reader.readAsDataURL(file);
             } else {
-                newImagePreview.style.display = 'none';
+                avatarPreview.style.display = 'none';
             }
         });
     }
 });
 
-// Remove new image preview
 function removeImagePreview() {
-    const imageInput = document.getElementById('avatar');
-    const newImagePreview = document.getElementById('newImagePreview');
-    if (imageInput) {
-        imageInput.value = '';
+    const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatarPreview');
+    if (avatarInput) {
+        avatarInput.value = '';
     }
-    if (newImagePreview) {
-        newImagePreview.style.display = 'none';
+    if (avatarPreview) {
+        avatarPreview.style.display = 'none';
     }
 }
 </script>

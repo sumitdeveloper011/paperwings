@@ -77,17 +77,11 @@
                                         <div class="category-image category-image--enhanced">
                                             @php
                                                 $imageUrl = $slider->thumbnail_url ?? $slider->image_url ?? asset('assets/images/placeholder.png');
-                                                $originalImageUrl = $slider->image_url ?? asset('assets/images/placeholder.png');
                                             @endphp
                                             <img src="{{ $imageUrl }}"
                                                  alt="{{ $slider->heading }}"
                                                  class="category-image__img"
                                                  onerror="this.src='{{ asset('assets/images/placeholder.png') }}'">
-                                            <div class="category-image__overlay">
-                                                <a href="{{ $originalImageUrl }}" target="_blank" class="category-image__view">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </div>
                                         </div>
                                     </td>
                                     <td class="modern-table__td">

@@ -23,7 +23,7 @@
     <div class="row">
         <!-- Main Form -->
         <div class="col-lg-8">
-            <form method="POST" action="{{ route('admin.faqs.store') }}" class="modern-form" id="faqForm" novalidate>
+            <form method="POST" action="{{ route('admin.faqs.store') }}" class="modern-form" id="faqForm" enctype="multipart/form-data" novalidate>
                 @csrf
 
                 <!-- Basic Information -->
@@ -42,8 +42,7 @@
                                    id="question"
                                    name="question"
                                    value="{{ old('question') }}"
-                                   placeholder="Enter question"
-                                   required>
+                                   placeholder="Enter question">
                             @error('question')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -55,8 +54,7 @@
                                       id="answer"
                                       name="answer"
                                       rows="6"
-                                      placeholder="Enter answer"
-                                      required>{{ old('answer') }}</textarea>
+                                      placeholder="Enter answer">{{ old('answer') }}</textarea>
                             @error('answer')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -115,8 +113,7 @@
                                     <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                                     <select class="form-select @error('status') is-invalid @enderror"
                                             id="status"
-                                            name="status"
-                                            required>
+                                            name="status">
                                         <option value="">Select Status</option>
                                         <option value="1" {{ old('status', 1) == 1 ? 'selected' : '' }}>Active</option>
                                         <option value="0" {{ old('status') == 0 ? 'selected' : '' }}>Inactive</option>
@@ -150,4 +147,28 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+@include('components.ckeditor', [
+    'id' => 'answer',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('faqForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
+    }
+});
+</script>
+@endpush
 @endsection

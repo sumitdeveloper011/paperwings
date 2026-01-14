@@ -76,8 +76,30 @@
 @push('scripts')
 <script src="{{ asset('assets/js/admin-search.js') }}"></script>
 <script>
+function deleteTag(url, tagName) {
+    if (confirm('Are you sure you want to delete the tag "' + tagName + '"?\n\nThis action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize AJAX search
     if (typeof AdminSearch !== 'undefined') {
         AdminSearch.init({
             searchInput: '#search-input',

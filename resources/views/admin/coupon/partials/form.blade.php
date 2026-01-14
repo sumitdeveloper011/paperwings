@@ -20,8 +20,7 @@
                            id="code"
                            name="code"
                            value="{{ old('code', $coupon->code ?? '') }}"
-                           placeholder="e.g., SAVE20"
-                           required>
+                           placeholder="e.g., SAVE20">
                     @error('code')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -35,8 +34,7 @@
                            id="name"
                            name="name"
                            value="{{ old('name', $coupon->name ?? '') }}"
-                           placeholder="e.g., Summer Sale 2024"
-                           required>
+                           placeholder="e.g., Summer Sale 2024">
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -85,8 +83,7 @@
                     <label for="type" class="form-label">Discount Type <span class="text-danger">*</span></label>
                     <select class="form-select @error('type') is-invalid @enderror"
                             id="type"
-                            name="type"
-                            required>
+                            name="type">
                         <option value="">Select Type</option>
                         <option value="percentage" {{ old('type', $coupon->type ?? '') === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
                         <option value="fixed" {{ old('type', $coupon->type ?? '') === 'fixed' ? 'selected' : '' }}>Fixed Amount ($)</option>
@@ -108,8 +105,7 @@
                            value="{{ old('value', $coupon->value ?? '') }}"
                            placeholder="0.00"
                            data-validation="numeric"
-                           data-required="true"
-                           required>
+                           data-required="true">
                     @error('value')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -266,8 +262,7 @@
                                value="{{ old('end_date', $coupon && $coupon->end_date ? $coupon->end_date->format('d-m-Y') : '') }}"
                                placeholder="dd-mm-yyyy"
                                autocomplete="off"
-                               readonly
-                               required>
+                               readonly>
                         <span class="datepicker-trigger" data-target="#end_date">
                             <i class="fas fa-calendar-alt"></i>
                         </span>
@@ -300,8 +295,7 @@
                     <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                     <select class="form-select @error('status') is-invalid @enderror"
                             id="status"
-                            name="status"
-                            required>
+                            name="status">
                         <option value="">Select Status</option>
                         <option value="1" {{ old('status', $coupon->status ?? 1) == 1 ? 'selected' : '' }}>Active</option>
                         <option value="0" {{ old('status', $coupon->status ?? 0) == 0 ? 'selected' : '' }}>Inactive</option>

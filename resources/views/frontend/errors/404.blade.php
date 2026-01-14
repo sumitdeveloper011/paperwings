@@ -38,7 +38,7 @@
                                 <a href="{{ route('home') }}" class="btn btn-primary">
                                     <i class="fas fa-home"></i> Go to Homepage
                                 </a>
-                                <a href="{{ route('product.by.category', 'all') }}" class="btn btn-outline-primary">
+                                <a href="{{ route('shop') }}" class="btn btn-outline-primary">
                                     <i class="fas fa-shopping-bag"></i> Browse Products
                                 </a>
                             @endauth

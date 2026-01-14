@@ -42,8 +42,7 @@
                                    id="title"
                                    name="title"
                                    value="{{ old('title') }}"
-                                   placeholder="Enter banner title"
-                                   required>
+                                   placeholder="Enter banner title">
                             @error('title')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -54,7 +53,8 @@
                             <textarea class="form-control @error('description') is-invalid @enderror"
                                       id="description"
                                       name="description"
-                                      rows="4"
+                                      rows="6"
+                                      data-required="false"
                                       placeholder="Enter banner description">{{ old('description') }}</textarea>
                             @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -72,20 +72,36 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        <div class="mb-3">
-                            <label for="image" class="form-label">Image</label>
-                            <input type="file"
-                                   class="form-control @error('image') is-invalid @enderror"
-                                   id="image"
-                                   name="image"
-                                   accept="image/*">
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i>
-                                Recommended size: 1920x600px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
-                            </small>
+                        <div class="form-group-modern">
+                            <label for="image" class="form-label-modern">Banner Image</label>
+                            <x-image-requirements type="special-offers" />
+                            <div class="file-upload-wrapper">
+                                <input type="file"
+                                       class="file-upload-input @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
+                                       accept="image/*">
+                                <label for="image" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Image</span>
+                                </label>
+                            </div>
                             @error('image')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
                             @enderror
+                        </div>
+
+                        <div class="form-group-modern" id="imagePreview" style="display: none;">
+                            <label class="form-label-modern">Image Preview</label>
+                            <div class="image-preview">
+                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -148,7 +164,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="start_date" class="form-label">Start Date</label>
-                                    <input type="datetime-local"
+                                    <input type="date"
                                            class="form-control @error('start_date') is-invalid @enderror"
                                            id="start_date"
                                            name="start_date"
@@ -161,7 +177,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="end_date" class="form-label">End Date</label>
-                                    <input type="datetime-local"
+                                    <input type="date"
                                            class="form-control @error('end_date') is-invalid @enderror"
                                            id="end_date"
                                            name="end_date"
@@ -261,4 +277,52 @@
         </div>
     </div>
 </div>
+
+<!-- CKEditor 5 - Custom build with SourceEditing -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+
+<!-- CKEditor Component for Description -->
+@include('components.ckeditor', [
+    'id' => 'description',
+    'uploadUrl' => route('admin.pages.uploadImage'),
+    'toolbar' => 'full'
+])
+
+<script>
+// Image Preview
+document.getElementById('image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
+function removeImagePreview() {
+    document.getElementById('image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('bannerForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
+    }
+});
+</script>
 @endsection

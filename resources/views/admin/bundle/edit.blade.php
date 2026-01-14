@@ -65,6 +65,15 @@
                             </div>
 
                             <div class="mb-3">
+                                <label for="slug" class="form-label">Slug <small class="text-muted">(Leave empty to auto-generate)</small></label>
+                                <input type="text" class="form-control @error('slug') is-invalid @enderror"
+                                       id="slug" name="slug" value="{{ old('slug', $bundle->slug) }}">
+                                @error('slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
                                 <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('short_description') is-invalid @enderror"
                                           id="short_description"
@@ -93,15 +102,27 @@
                     </div>
 
                     <!-- Bundle Images -->
-                    @include('components.multiple-image-upload', [
-                        'name' => 'images',
-                        'id' => 'images',
-                        'label' => 'Upload Images',
-                        'existingImages' => $bundle->images,
-                        'entityName' => $bundle->name,
-                        'showKeepExisting' => true,
-                        'maxImages' => 10
-                    ])
+                    <div class="modern-card mb-4">
+                        <div class="modern-card__header">
+                            <h3 class="modern-card__title">
+                                <i class="fas fa-images"></i>
+                                Bundle Images
+                            </h3>
+                        </div>
+                        <div class="modern-card__body">
+                            <x-image-requirements type="bundle" />
+                            
+                            @include('components.multiple-image-upload', [
+                                'name' => 'images',
+                                'id' => 'images',
+                                'label' => 'Upload Images',
+                                'existingImages' => $bundle->images,
+                                'entityName' => $bundle->name,
+                                'showKeepExisting' => true,
+                                'maxImages' => 10
+                            ])
+                        </div>
+                    </div>
 
                     <!-- Product Selection -->
                     <div class="modern-card mb-4">
@@ -376,7 +397,20 @@
                                 <i class="fas fa-check-circle"></i>
                                 <div>
                                     <strong>Bundle Pricing</strong>
-                                    <p>Set bundle price lower than total for discount</p>
+                                    <p>Set the base bundle price that customers will pay. You can optionally add discounts:</p>
+                                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem; font-size: 0.9em;">
+                                        <li><strong>Direct Price:</strong> Set the final discounted price directly. Example: Bundle price $100, Direct discount $80 = Customer pays $80</li>
+                                        <li><strong>Percentage:</strong> Set discount percentage. Example: Bundle price $100, 20% discount = Customer pays $80</li>
+                                        <li><strong>No Discount:</strong> Customer pays the full bundle price</li>
+                                    </ul>
+                                    <p style="margin-top: 0.5rem; font-size: 0.9em;"><strong>Note:</strong> The system calculates savings by comparing total products value vs. final bundle price.</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Image Management</strong>
+                                    <p>Upload high-quality square images (1:1 ratio). Images will be automatically resized to 1200x1200 (original). Check "Keep existing images" to add new images without removing old ones. Max 2MB each, up to 10 images.</p>
                                 </div>
                             </li>
                         </ul>
@@ -501,6 +535,23 @@
     }
 
     function initBundleForm() {
+        // Auto-generate slug from name
+        const nameInput = document.getElementById('name');
+        const slugInput = document.getElementById('slug');
+        const originalSlug = '{{ $bundle->slug }}';
+
+        if (nameInput && slugInput) {
+            nameInput.addEventListener('input', function() {
+                if (slugInput.value === originalSlug || !slugInput.value) {
+                    slugInput.value = this.value.toLowerCase()
+                        .replace(/[^a-z0-9 -]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-')
+                        .trim();
+                }
+            });
+        }
+
         let selectedProducts = [];
         let productQuantities = {};
 

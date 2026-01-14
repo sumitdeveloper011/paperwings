@@ -17,7 +17,7 @@
                 @foreach($testimonials as $testimonial)
                     <tr class="modern-table__row">
                         <td class="modern-table__td">
-                            <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}"
+                            <img src="{{ $testimonial->thumbnail_url ?? asset('assets/images/profile.png') }}"
                                  alt="{{ $testimonial->name }}"
                                  class="img-thumbnail"
                                  style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;"

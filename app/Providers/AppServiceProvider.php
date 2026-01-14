@@ -239,49 +239,18 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        view()->composer('layouts.admin.*', function ($view) {
+        $adminSettingsCallback = function() {
             try {
-                $settings = Cache::remember('admin_settings', 3600, function() {
-                    try {
-                        return SettingHelper::all();
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
-                        return [];
-                    }
-                });
-
-                $view->with([
-                    'settings' => $settings,
-                    'siteLogo' => !empty($settings['logo']) ? asset('storage/' . $settings['logo']) : asset('assets/frontend/images/logo.png'),
-                    'siteFavicon' => !empty($settings['icon']) ? asset('storage/' . $settings['icon']) : asset('assets/frontend/images/icon.png'),
-                    'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
-                ]);
+                return SettingHelper::all();
             } catch (\Exception $e) {
-                Log::error('Admin layout view composer error: ' . $e->getMessage(), [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                // Provide default values to prevent view errors
-                $view->with([
-                    'settings' => [],
-                    'siteLogo' => asset('assets/frontend/images/logo.png'),
-                    'siteFavicon' => asset('assets/frontend/images/icon.png'),
-                    'siteName' => 'PAPERWINGS',
-                ]);
+                Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
+                return [];
             }
-        });
+        };
 
-        view()->composer('include.admin.*', function ($view) {
+        view()->composer(['layouts.admin.*', 'include.admin.*'], function ($view) use ($adminSettingsCallback) {
             try {
-                $settings = Cache::remember('admin_settings', 3600, function() {
-                    try {
-                        return SettingHelper::all();
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to fetch admin settings: ' . $e->getMessage());
-                        return [];
-                    }
-                });
+                $settings = Cache::remember('admin_settings', 3600, $adminSettingsCallback);
 
                 $view->with([
                     'settings' => $settings,
@@ -290,7 +259,7 @@ class AppServiceProvider extends ServiceProvider
                     'siteName' => $settings['site_name'] ?? 'PAPERWINGS',
                 ]);
             } catch (\Exception $e) {
-                Log::error('Admin include view composer error: ' . $e->getMessage(), [
+                Log::error('Admin view composer error: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()

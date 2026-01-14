@@ -107,10 +107,14 @@ class AdminUserController extends Controller
                     ->symbols()
             ],
             'phone' => 'nullable|string|max:20',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=1/1',
             'status' => 'required|in:0,1',
             'roles' => 'required|array|min:1',
             'roles.*' => 'exists:roles,id',
+        ], [
+            'avatar.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'avatar.dimensions' => 'The image must have a 1:1 aspect ratio (square, e.g., 200x200 pixels).',
+            'avatar.max' => 'The image size must not exceed 2MB.',
         ]);
 
         try {
@@ -277,9 +281,14 @@ class AdminUserController extends Controller
                     ->symbols()
             ],
             'phone' => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=1/1',
             'status' => 'required|in:0,1',
             'roles' => 'required|array|min:1',
             'roles.*' => 'exists:roles,id',
+        ], [
+            'avatar.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'avatar.dimensions' => 'The image must have a 1:1 aspect ratio (square, e.g., 200x200 pixels).',
+            'avatar.max' => 'The image size must not exceed 2MB.',
         ]);
 
         try {
@@ -294,6 +303,20 @@ class AdminUserController extends Controller
             // Update password if provided
             if (!empty($validated['password'])) {
                 $updateData['password'] = Hash::make($validated['password']);
+            }
+
+            // Handle avatar upload/removal
+            if ($request->has('remove_avatar') && $request->remove_avatar == '1') {
+                if ($user->avatar) {
+                    (new ImageService())->deleteImage($user->avatar);
+                }
+                $updateData['avatar'] = null;
+            } elseif ($request->hasFile('avatar')) {
+                $oldAvatarPath = $user->avatar;
+                $avatarPath = (new ImageService())->uploadImage($request->file('avatar'), 'users', $user->uuid, $oldAvatarPath);
+                if ($avatarPath) {
+                    $updateData['avatar'] = $avatarPath;
+                }
             }
 
             $user->update($updateData);

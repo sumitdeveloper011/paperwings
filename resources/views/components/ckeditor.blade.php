@@ -131,7 +131,6 @@
         .create(textarea, editorConfig)
         .then(editor => {
             window[editorId + 'Editor'] = editor;
-            const isRequired = textarea.hasAttribute('data-required') || textarea.hasAttribute('required');
 
             // Always load content from preserved value or textarea (from old() or database)
             // This ensures content persists on page refresh or validation errors
@@ -149,43 +148,10 @@
                 textarea.value = currentContent;
             });
 
-            // Sync editor content to textarea before form submission
             const form = textarea.closest('form');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    // Update textarea with editor content
                     textarea.value = editor.getData();
-
-                    // Validate if required
-                    if (isRequired) {
-                        const content = editor.getData().trim();
-                        // Remove HTML tags for validation
-                        const textContent = content.replace(/<[^>]*>/g, '').trim();
-
-                        if (!textContent) {
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // Show validation error
-                            textarea.classList.add('is-invalid');
-                            if (!textarea.nextElementSibling || !textarea.nextElementSibling.classList.contains('invalid-feedback')) {
-                                const errorDiv = document.createElement('div');
-                                errorDiv.className = 'invalid-feedback';
-                                errorDiv.textContent = 'This field is required.';
-                                textarea.parentNode.insertBefore(errorDiv, textarea.nextSibling);
-                            }
-
-                            // Focus on editor
-                            editor.editing.view.focus();
-                            return false;
-                        } else {
-                            textarea.classList.remove('is-invalid');
-                            const errorDiv = textarea.nextElementSibling;
-                            if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
-                                errorDiv.remove();
-                            }
-                        }
-                    }
                 });
             }
         })

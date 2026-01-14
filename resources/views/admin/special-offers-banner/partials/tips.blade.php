@@ -18,8 +18,8 @@
             <li class="tips-list__item">
                 <i class="fas fa-check-circle"></i>
                 <div>
-                    <strong>High-Quality Images</strong>
-                    <p>Use high-resolution banner images (recommended: 1920x600px) for best visual impact.</p>
+                    <strong>Banner Image</strong>
+                    <p>Upload a banner image with 1920x450 dimensions (4.27:1 ratio). The system will automatically generate medium (960x225) and thumbnail (480x112) sizes. Supported formats: JPEG, PNG, JPG, GIF, WEBP. Max size: 2MB.</p>
                 </div>
             </li>
             <li class="tips-list__item">

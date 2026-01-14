@@ -81,8 +81,11 @@ class PageController extends Controller
             'slug' => 'nullable|string|max:255|unique:pages,slug',
             'sub_title' => 'nullable|string|max:255',
             'content' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=3/1',
             'status' => 'nullable|boolean',
+        ], [
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'image.dimensions' => 'The image must have a 3:1 aspect ratio (e.g., 1200x400 pixels).',
         ]);
 
         // Generate UUID first (will be used for folder name)
@@ -133,8 +136,11 @@ class PageController extends Controller
             'slug' => 'nullable|string|max:255|unique:pages,slug,' . $page->id,
             'sub_title' => 'nullable|string|max:255',
             'content' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=3/1',
             'status' => 'nullable|boolean',
+        ], [
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'image.dimensions' => 'The image must have a 3:1 aspect ratio (e.g., 1200x400 pixels).',
         ]);
 
         // Update image using ImageService

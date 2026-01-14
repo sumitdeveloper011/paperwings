@@ -23,7 +23,7 @@
     <div class="row">
         <!-- Main Form -->
         <div class="col-lg-8">
-            <form method="POST" action="{{ route('admin.product-faqs.store') }}" class="modern-form" id="faqForm" novalidate>
+            <form method="POST" action="{{ route('admin.product-faqs.store') }}" class="modern-form" id="faqForm" enctype="multipart/form-data" novalidate>
                 @csrf
 
                 <!-- Basic Information -->
@@ -35,21 +35,6 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        @include('components.select-category', [
-                            'id' => 'category_id',
-                            'name' => 'category_id',
-                            'label' => 'Category',
-                            'required' => false,
-                            'selected' => old('category_id'),
-                            'categories' => $categories,
-                            'useUuid' => false,
-                            'placeholder' => 'Select Category (Optional)',
-                            'class' => 'form-control',
-                            'useSelect2' => true,
-                            'showLabel' => true,
-                            'wrapperClass' => 'mb-3',
-                        ])
-
                         <div class="mb-3">
                             <label for="category_filter" class="form-label">Filter Products by Category (Optional)</label>
                             @include('components.select-category', [
@@ -110,12 +95,21 @@
                             <!-- FAQ items will be added here dynamically -->
                         </div>
 
-                        @error('faqs')
-                            <div class="alert alert-danger">{{ $message }}</div>
-                        @enderror
-                        @error('faqs.*')
-                            <div class="alert alert-danger">{{ $message }}</div>
-                        @enderror
+                        @if($errors->has('faqs'))
+                            <div class="alert alert-danger">{{ $errors->first('faqs') }}</div>
+                        @endif
+                        @if($errors->has('faqs.*'))
+                            <div class="alert alert-danger">{{ $errors->first('faqs.*') }}</div>
+                        @endif
+                        @if($errors->any())
+                            <div id="serverErrors" class="alert alert-danger" style="display: none;">
+                                <ul class="mb-0">
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -147,6 +141,8 @@
 @endpush
 
 @push('scripts')
+<!-- CKEditor 5 - Custom build -->
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
@@ -228,127 +224,15 @@
         });
 
         // Initialize FAQ repeater
-        initFaqRepeater();
-    }
-
-    function initFaqRepeater() {
-        let faqIndex = 0;
-
-        // Template for FAQ row
-        function getFaqRowTemplate(index) {
-            return `
-                <div class="faq-item mb-4 p-3 border rounded" data-index="${index}">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">
-                            <i class="fas fa-question"></i>
-                            FAQ #<span class="faq-number">${index + 1}</span>
-                        </h5>
-                        <button type="button" class="btn btn-danger btn-sm remove-faq-btn" ${faqIndex === 0 ? 'style="display:none;"' : ''}>
-                            <i class="fas fa-trash"></i>
-                            Remove
-                        </button>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Question <span class="text-danger">*</span></label>
-                        <input type="text"
-                               class="form-control @error('faqs.${index}.question') is-invalid @enderror"
-                               name="faqs[${index}][question]"
-                               placeholder="Enter question"
-                               required>
-                        @error('faqs.${index}.question')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Answer <span class="text-danger">*</span></label>
-                        <textarea class="form-control @error('faqs.${index}.answer') is-invalid @enderror"
-                                  name="faqs[${index}][answer]"
-                                  rows="4"
-                                  placeholder="Enter answer" required></textarea>
-                        @error('faqs.${index}.answer')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Sort Order</label>
-                                <input type="number"
-                                       class="form-control"
-                                       name="faqs[${index}][sort_order]"
-                                       value="${index}"
-                                       min="0">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" name="faqs[${index}][status]">
-                                    <option value="1" selected>Active</option>
-                                    <option value="0">Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Add first FAQ row
-        function addFirstFaq() {
-            if ($('#faqsContainer').children().length === 0) {
-                $('#faqsContainer').prepend(getFaqRowTemplate(0));
-                faqIndex = 1;
-                updateRemoveButtons();
-            }
-        }
-
-        // Add FAQ button click - prepend instead of append to show latest first
-        $('#addFaqBtn').on('click', function() {
-            const currentCount = $('#faqsContainer .faq-item').length;
-            const newFaqHtml = getFaqRowTemplate(currentCount);
-            // Prepend to show latest first
-            $('#faqsContainer').prepend(newFaqHtml);
-            faqIndex = currentCount + 1;
-            updateRemoveButtons();
-            updateFaqNumbers();
+        @include('admin.product-faq.partials.repeater-scripts')
+        
+        window.initFaqRepeater({
+            containerId: 'faqsContainer',
+            addButtonId: 'addFaqBtn',
+            formId: 'faqForm',
+            existingFaqs: null,
+            uploadUrl: '{{ route('admin.pages.uploadImage') }}'
         });
-
-        // Remove FAQ button click (delegated)
-        $(document).on('click', '.remove-faq-btn', function() {
-            $(this).closest('.faq-item').remove();
-            updateFaqNumbers();
-            updateRemoveButtons();
-        });
-
-        // Update FAQ numbers
-        function updateFaqNumbers() {
-            $('#faqsContainer .faq-item').each(function(index) {
-                $(this).find('.faq-number').text(index + 1);
-                $(this).attr('data-index', index);
-                // Update input names
-                $(this).find('input, textarea, select').each(function() {
-                    const name = $(this).attr('name');
-                    if (name) {
-                        const newName = name.replace(/faqs\[\d+\]/, `faqs[${index}]`);
-                        $(this).attr('name', newName);
-                    }
-                });
-            });
-        }
-
-        // Update remove buttons visibility
-        function updateRemoveButtons() {
-            const faqCount = $('#faqsContainer .faq-item').length;
-            if (faqCount <= 1) {
-                $('.remove-faq-btn').hide();
-            } else {
-                $('.remove-faq-btn').show();
-            }
-        }
 
         // Form validation
         let isSubmitting = false;
@@ -371,17 +255,6 @@
                 return false;
             }
 
-            const faqCount = $('#faqsContainer .faq-item').length;
-            if (faqCount === 0) {
-                e.preventDefault();
-                if (typeof showToast === 'function') {
-                    showToast('Error', 'Please add at least one FAQ.', 'error', 5000);
-                } else {
-                    alert('Please add at least one FAQ.');
-                }
-                return false;
-            }
-
             isSubmitting = true;
             const $submitBtn = $(this).find('button[type="submit"]');
             const originalText = $submitBtn.html();
@@ -396,9 +269,6 @@
 
             return true;
         });
-
-        // Initialize with first FAQ
-        addFirstFaq();
     }
 
     // Start initialization

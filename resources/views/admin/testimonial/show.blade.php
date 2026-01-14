@@ -35,9 +35,9 @@
                             <strong>Image:</strong>
                         </div>
                         <div class="col-md-8">
-                            <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}"
+                            <img src="{{ $testimonial->image_url ?? asset('assets/images/profile.png') }}"
                                  alt="{{ $testimonial->name }}"
-                                 style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;"
+                                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 50%;"
                                  onerror="this.src='{{ asset('assets/images/profile.png') }}'">
                         </div>
                     </div>
@@ -92,7 +92,9 @@
                             <strong>Review:</strong>
                         </div>
                         <div class="col-md-8">
-                            <p>{{ $testimonial->review }}</p>
+                            <div class="page-content" style="line-height: 1.8; color: var(--text-primary);">
+                                {!! $testimonial->review !!}
+                            </div>
                         </div>
                     </div>
 

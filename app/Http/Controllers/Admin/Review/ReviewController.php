@@ -11,7 +11,7 @@ use Illuminate\View\View;
 
 class ReviewController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->get('search');
         $status = $request->get('status');
@@ -38,6 +38,24 @@ class ReviewController extends Controller
         }
 
         $reviews = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // If AJAX request, return JSON response
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
+            $paginationHtml = '';
+            if ($reviews->total() > 0 && $reviews->hasPages()) {
+                $paginationHtml = '<div class="pagination-wrapper">' .
+                    view('components.pagination', [
+                        'paginator' => $reviews->appends($request->query())
+                    ])->render() .
+                    '</div>';
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.review.partials.table', compact('reviews'))->render(),
+                'pagination' => $paginationHtml
+            ]);
+        }
 
         return view('admin.review.index', compact('reviews', 'search', 'status', 'productId'));
     }

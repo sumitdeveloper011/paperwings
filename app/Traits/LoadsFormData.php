@@ -15,11 +15,30 @@ trait LoadsFormData
      */
     protected function getFormData(): array
     {
-        return [
-            'categories' => Category::active()->ordered()->get(),
-            'products' => Product::active()->orderBy('name')->get(),
-            'bundles' => Product::bundles()->where('status', 1)->orderBy('name')->get(),
-            'pages' => Page::where('status', 1)->orderBy('title')->get(),
-        ];
+        try {
+            return [
+                'categories' => Category::active()->ordered()->get(),
+                'products' => Product::active()
+                    ->select('id', 'uuid', 'name', 'slug')
+                    ->orderBy('name')
+                    ->get(),
+                'bundles' => Product::bundles()
+                    ->where('status', 1)
+                    ->select('id', 'uuid', 'name', 'slug')
+                    ->orderBy('name')
+                    ->get(),
+                'pages' => Page::where('status', 1)
+                    ->select('id', 'uuid', 'title', 'slug')
+                    ->orderBy('title')
+                    ->get(),
+            ];
+        } catch (\Exception $e) {
+            return [
+                'categories' => collect(),
+                'products' => collect(),
+                'bundles' => collect(),
+                'pages' => collect(),
+            ];
+        }
     }
 }

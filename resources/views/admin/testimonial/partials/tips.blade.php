@@ -18,8 +18,8 @@
             <li class="tips-list__item">
                 <i class="fas fa-check-circle"></i>
                 <div>
-                    <strong>High-Quality Images</strong>
-                    <p>Use professional profile photos (300x300px) for better visual appeal.</p>
+                    <strong>Profile Image</strong>
+                    <p>Upload a square profile image with 200x200 dimensions (1:1 ratio). The system will automatically generate a thumbnail (100x100). Supported formats: JPEG, PNG, JPG, GIF, WEBP. Max size: 2MB.</p>
                 </div>
             </li>
             <li class="tips-list__item">

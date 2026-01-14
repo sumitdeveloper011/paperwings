@@ -35,14 +35,16 @@
                 <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
                         @if(count($categories) > 0)
-                        <select name="category" id="category-filter" class="form-control form-control-sm" style="width: 150px; margin-right: 10px;" onchange="document.getElementById('search-form').submit()">
-                            <option value="">All Categories</option>
-                            @foreach($categories as $cat)
-                                <option value="{{ $cat }}" {{ $category == $cat ? 'selected' : '' }}>
-                                    {{ ucfirst(str_replace('_', ' ', $cat)) }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div style="margin-right: 10px;">
+                            <select name="category" id="category-filter" class="form-control form-control-sm select2-category" style="width: 150px;">
+                                <option value="">All Categories</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat }}" {{ $category == $cat ? 'selected' : '' }}>
+                                        {{ ucfirst(str_replace('_', ' ', $cat)) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         @endif
                         <div class="search-form__input-wrapper">
                             <input type="text"
@@ -84,10 +86,39 @@
     </div>
 </div>
 
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+@endpush
+
 @push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ asset('assets/js/admin-search.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for category dropdown
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+        $('#category-filter').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'All Categories',
+            allowClear: true,
+            width: '150px'
+        });
+    } else {
+        setTimeout(function() {
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                $('#category-filter').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'All Categories',
+                    allowClear: true,
+                    width: '150px'
+                });
+            }
+        }, 500);
+    }
+
     // Initialize AJAX search
     if (typeof AdminSearch !== 'undefined') {
         AdminSearch.init({
@@ -103,41 +134,66 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle category filter change with AJAX
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-            const form = document.getElementById('search-form');
-            const formData = new FormData(form);
-            formData.append('ajax', '1');
+    // Handle category filter change with AJAX (using jQuery for Select2)
+    function performFilter() {
+        const form = document.getElementById('search-form');
+        if (!form) return;
 
-            const searchInput = document.getElementById('search-input');
-            const searchLoading = document.getElementById('search-loading');
-            const resultsContainer = document.getElementById('results-container');
-            const paginationContainer = document.getElementById('pagination-container');
+        const formData = new FormData(form);
+        formData.append('ajax', '1');
 
-            if (searchLoading) searchLoading.style.display = 'flex';
+        const searchLoading = document.getElementById('search-loading');
+        const resultsContainer = document.getElementById('results-container');
+        const paginationContainer = document.getElementById('pagination-container');
 
-            fetch('{{ route('admin.faqs.index') }}?' + new URLSearchParams(formData), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                if (data.success && data.html) {
-                    resultsContainer.innerHTML = data.html;
-                    paginationContainer.innerHTML = data.pagination || '';
-                }
-            })
-            .catch(error => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                console.error('Error:', error);
-            });
+        if (searchLoading) searchLoading.style.display = 'flex';
+
+        fetch('{{ route('admin.faqs.index') }}?' + new URLSearchParams(formData), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (searchLoading) searchLoading.style.display = 'none';
+            if (data.success && data.html) {
+                resultsContainer.innerHTML = data.html;
+                paginationContainer.innerHTML = data.pagination || '';
+            }
+        })
+        .catch(error => {
+            if (searchLoading) searchLoading.style.display = 'none';
+            console.error('Error:', error);
         });
+    }
+
+    // Setup category filter change handler
+    if (typeof jQuery !== 'undefined') {
+        const $categorySelect = $('#category-filter');
+        
+        // Wait for Select2 to be initialized
+        if ($categorySelect.data('select2')) {
+            $categorySelect.on('change', function() {
+                performFilter();
+            });
+        } else {
+            // Wait for Select2 initialization
+            $categorySelect.on('select2:initialized', function() {
+                $categorySelect.on('change', function() {
+                    performFilter();
+                });
+            });
+            // Fallback: try after a delay
+            setTimeout(function() {
+                if ($categorySelect.data('select2')) {
+                    $categorySelect.on('change', function() {
+                        performFilter();
+                    });
+                }
+            }, 1000);
+        }
     }
 
     // AJAX status update

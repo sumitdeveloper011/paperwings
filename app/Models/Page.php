@@ -49,6 +49,53 @@ class Page extends Model
         return asset('assets/images/placeholder.jpg');
     }
 
+    /**
+     * Get medium image path attribute
+     *
+     * @return string|null
+     */
+    public function getMediumPathAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+
+        // Check if path has /original/ folder structure
+        if (strpos($this->image, '/original/') !== false) {
+            // Replace /original/ with /medium/
+            return str_replace('/original/', '/medium/', $this->image);
+        }
+
+        // For old structure (backward compatibility)
+        $pathParts = explode('/', $this->image);
+        $fileName = array_pop($pathParts);
+        $basePath = implode('/', $pathParts);
+
+        return $basePath . '/medium/' . $fileName;
+    }
+
+    /**
+     * Get medium image URL attribute
+     *
+     * @return string|null
+     */
+    public function getMediumUrlAttribute(): ?string
+    {
+        $mediumPath = $this->medium_path;
+
+        if (!$mediumPath) {
+            return $this->image_url;
+        }
+
+        // Check if medium exists
+        if (Storage::disk('public')->exists($mediumPath)) {
+            return asset('storage/' . $mediumPath);
+        }
+
+        // Fallback to original if medium doesn't exist
+        return $this->image_url;
+    }
+
     // Get route key name
     public function getRouteKeyName()
     {

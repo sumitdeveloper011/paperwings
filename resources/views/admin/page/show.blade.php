@@ -38,14 +38,15 @@
                 <div class="modern-card__body">
                     <div class="category-image-large category-image-large--enhanced">
                         @php
-                            $imageUrl = $page->image ? asset('storage/' . $page->image) : asset('assets/images/placeholder.jpg');
+                            $mediumImageUrl = $page->medium_url ?? asset('assets/images/placeholder.jpg');
+                            $originalImageUrl = $page->image_url ?? asset('assets/images/placeholder.jpg');
                         @endphp
-                        <img src="{{ $imageUrl }}" 
+                        <img src="{{ $mediumImageUrl }}" 
                              alt="{{ $page->title }}" 
                              class="category-image-large__img"
                              onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                         <div class="category-image-large__overlay">
-                            <a href="{{ $imageUrl }}" target="_blank" class="category-image-large__zoom">
+                            <a href="{{ $originalImageUrl }}" target="_blank" class="category-image-large__zoom">
                                 <i class="fas fa-search-plus"></i>
                             </a>
                         </div>

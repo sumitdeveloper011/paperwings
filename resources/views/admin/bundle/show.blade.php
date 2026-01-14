@@ -42,18 +42,20 @@
                                 <i class="fas fa-images"></i>
                                 Bundle Images
                             </h4>
-                            <div class="row g-3">
+                            <div class="image-gallery">
                                 @foreach($bundle->images as $index => $image)
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="position-relative">
-                                            <img src="{{ $image->image_url }}"
-                                                 alt="{{ $bundle->name }} - Image {{ $index + 1 }}"
-                                                 class="img-fluid rounded shadow-sm"
-                                                 style="width: 100%; height: 200px; object-fit: cover; cursor: pointer;"
-                                                 onclick="openImageModal('{{ $image->image_url }}')">
-                                            @if($index === 0)
-                                                <span class="position-absolute top-0 start-0 badge bg-primary m-2">Main</span>
-                                            @endif
+                                    <div class="image-gallery__item" onclick="openImageModal('{{ $image->image_url }}')">
+                                        <img src="{{ $image->medium_url }}"
+                                             alt="{{ $bundle->name }} - Image {{ $index + 1 }}"
+                                             class="image-gallery__img">
+                                        @if($index === 0)
+                                            <div class="image-gallery__badge">
+                                                <i class="fas fa-star"></i>
+                                                Main
+                                            </div>
+                                        @endif
+                                        <div class="image-gallery__overlay">
+                                            <i class="fas fa-search-plus"></i>
                                         </div>
                                     </div>
                                 @endforeach
@@ -104,7 +106,7 @@
                             Short Description
                         </h4>
                         <div class="description-content" style="line-height: 1.6; color: var(--text-secondary);">
-                            {!! nl2br(e($bundle->short_description)) !!}
+                            {!! $bundle->short_description !!}
                         </div>
                     </div>
                     @endif
@@ -117,7 +119,7 @@
                             Full Description
                         </h4>
                         <div class="description-content" style="line-height: 1.6; color: var(--text-secondary);">
-                            {!! nl2br(e($bundle->description)) !!}
+                            {!! $bundle->description !!}
                         </div>
                     </div>
                     @endif
@@ -170,7 +172,10 @@
                                 </div>
                                 @php
                                     $finalPrice = $bundle->final_price;
-                                    $hasDiscount = $bundle->discount_type !== 'none' && $bundle->discount_price && $bundle->discount_price < $bundle->total_price;
+                                    $hasDiscount = $bundle->discount_type !== 'none' && 
+                                                  (($bundle->discount_type === 'percentage' && $bundle->discount_value) || 
+                                                   ($bundle->discount_type === 'direct' && $bundle->discount_price && $bundle->discount_price < $bundle->total_price)) &&
+                                                  $finalPrice < $bundle->total_price;
                                 @endphp
                                 @if($hasDiscount)
                                     <div class="pricing-card__amount" style="font-size: 1.1rem; margin-bottom: 0.25rem;">
@@ -185,7 +190,7 @@
 
                             @php
                                 $totalProductsPrice = $bundle->bundleProducts->sum(function($product) {
-                                    return ($product->final_price ?? $product->total_price) * ($product->pivot->quantity ?? 1);
+                                    return $product->total_price * ($product->pivot->quantity ?? 1);
                                 });
                                 $savings = $totalProductsPrice - $finalPrice;
                             @endphp
@@ -234,8 +239,8 @@
                 <div class="modern-card__body">
                     <div class="row">
                         @foreach($bundle->bundleProducts as $product)
-                            <div class="col-md-4 mb-4">
-                                <div class="product-card-modern">
+                            <div class="col-md-4 mb-4 d-flex">
+                                <div class="product-card-modern w-100">
                                     <div class="product-card-modern__image">
                                         <img src="{{ $product->main_image }}"
                                              alt="{{ $product->name }}"
@@ -251,7 +256,19 @@
                                             </span>
                                         </div>
                                         <div class="product-card-modern__price">
-                                            <strong class="text-success">${{ number_format($product->total_price, 2) }}</strong>
+                                            @php
+                                                $productFinalPrice = $product->final_price ?? $product->total_price;
+                                                $productHasDiscount = $product->discount_type !== 'none' && 
+                                                                      (($product->discount_type === 'percentage' && $product->discount_value) || 
+                                                                       ($product->discount_type === 'direct' && $product->discount_price && $product->discount_price < $product->total_price)) &&
+                                                                      $productFinalPrice < $product->total_price;
+                                            @endphp
+                                            @if($productHasDiscount)
+                                                <span style="text-decoration: line-through; color: #999; font-size: 0.9em; margin-right: 0.5rem;">${{ number_format($product->total_price, 2) }}</span>
+                                                <strong class="text-success">${{ number_format($productFinalPrice, 2) }}</strong>
+                                            @else
+                                                <strong class="text-success">${{ number_format($productFinalPrice, 2) }}</strong>
+                                            @endif
                                         </div>
                                         <a href="{{ route('admin.products.show', $product) }}" class="btn btn-outline-primary btn-sm mt-2" style="width: 100%;">
                                             <i class="fas fa-eye"></i>
@@ -422,6 +439,9 @@
     overflow: hidden;
     transition: transform 0.2s, box-shadow 0.2s;
     background: white;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .product-card-modern:hover {
@@ -444,6 +464,9 @@
 
 .product-card-modern__body {
     padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }
 
 .product-card-modern__name {
@@ -465,6 +488,7 @@
 .product-card-modern__price {
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
+    margin-top: auto;
 }
 </style>
 

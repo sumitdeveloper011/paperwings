@@ -153,74 +153,75 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle category filter change with AJAX
-    const categoryFilter = document.getElementById('category_id');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-            const form = document.getElementById('search-form');
-            const formData = new FormData(form);
-            formData.append('ajax', '1');
+    // Handle category filter change with AJAX (using jQuery for Select2)
+    function setupCategoryFilter() {
+        if (typeof jQuery !== 'undefined') {
+            const $categorySelect = $('#category_id');
+            
+            // Wait for Select2 to be initialized
+            if ($categorySelect.data('select2')) {
+                $categorySelect.on('change', function() {
+                    performFilter();
+                });
+            } else {
+                // Wait for Select2 initialization
+                $categorySelect.on('select2:initialized', function() {
+                    $categorySelect.on('change', function() {
+                        performFilter();
+                    });
+                });
+                // Fallback: try after a delay
+                setTimeout(function() {
+                    if ($categorySelect.data('select2')) {
+                        $categorySelect.on('change', function() {
+                            performFilter();
+                        });
+                    }
+                }, 1000);
+            }
+        }
+    }
 
-            const searchLoading = document.getElementById('search-loading');
-            const resultsContainer = document.getElementById('results-container');
-            const paginationContainer = document.getElementById('pagination-container');
+    function performFilter() {
+        const form = document.getElementById('search-form');
+        if (!form) return;
 
-            if (searchLoading) searchLoading.style.display = 'flex';
+        const formData = new FormData(form);
+        formData.append('ajax', '1');
 
-            fetch('{{ route('admin.product-faqs.index') }}?' + new URLSearchParams(formData), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                if (data.success && data.html) {
-                    resultsContainer.innerHTML = data.html;
-                    paginationContainer.innerHTML = data.pagination || '';
-                }
-            })
-            .catch(error => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                console.error('Error:', error);
-            });
+        const searchLoading = document.getElementById('search-loading');
+        const resultsContainer = document.getElementById('results-container');
+        const paginationContainer = document.getElementById('pagination-container');
+
+        if (searchLoading) searchLoading.style.display = 'flex';
+
+        fetch('{{ route('admin.product-faqs.index') }}?' + new URLSearchParams(formData), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (searchLoading) searchLoading.style.display = 'none';
+            if (data.success && data.html) {
+                resultsContainer.innerHTML = data.html;
+                paginationContainer.innerHTML = data.pagination || '';
+            }
+        })
+        .catch(error => {
+            if (searchLoading) searchLoading.style.display = 'none';
+            console.error('Error:', error);
         });
     }
 
+    setupCategoryFilter();
+
     // Handle product filter change with AJAX (using jQuery for Select2)
     if (typeof jQuery !== 'undefined') {
-        $(document).on('change', '#product_id', function() {
-            const form = document.getElementById('search-form');
-            const formData = new FormData(form);
-            formData.append('ajax', '1');
-
-            const searchLoading = document.getElementById('search-loading');
-            const resultsContainer = document.getElementById('results-container');
-            const paginationContainer = document.getElementById('pagination-container');
-
-            if (searchLoading) searchLoading.style.display = 'flex';
-
-            fetch('{{ route('admin.product-faqs.index') }}?' + new URLSearchParams(formData), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                if (data.success && data.html) {
-                    resultsContainer.innerHTML = data.html;
-                    paginationContainer.innerHTML = data.pagination || '';
-                }
-            })
-            .catch(error => {
-                if (searchLoading) searchLoading.style.display = 'none';
-                console.error('Error:', error);
-            });
+        $('#product_id').on('change', function() {
+            performFilter();
         });
     }
 });

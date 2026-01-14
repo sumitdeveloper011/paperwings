@@ -462,8 +462,14 @@ document.addEventListener('DOMContentLoaded', function() {
             maxDiscountInput.addEventListener('blur', validateMaximumDiscount);
         }
 
-        // Form submission - only convert dates, don't prevent submission
-        // Server-side validation will handle errors and display them
+        const allInputs = form.querySelectorAll('input, select, textarea');
+        allInputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
+
         form.addEventListener('submit', function(e) {
             // Convert dates before submission
             const startDateInput = document.getElementById('start_date');
@@ -487,18 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             validateDiscountValue();
             validateMaximumDiscount();
-
-            // Check if there are client-side validation errors
-            const clientErrors = form.querySelectorAll('.is-invalid.field-error');
-            if (clientErrors.length > 0) {
-                // Show warning but still allow submission for server-side validation
-                const firstError = form.querySelector('.is-invalid');
-                if (firstError) {
-                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    firstError.focus();
-                }
-                // Don't prevent - let server validate
-            }
         });
     }
 });

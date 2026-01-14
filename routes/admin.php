@@ -136,14 +136,15 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
 
     // Pages - requires pages permissions
-    Route::middleware('permission:pages.view')->group(function () {
-        Route::get('pages', [PageController::class, 'index'])->name('pages.index');
-        Route::get('pages/{page}', [PageController::class, 'show'])->name('pages.show');
-    });
+    // IMPORTANT: pages/create must come before pages/{page} to avoid route conflicts
     Route::middleware('permission:pages.create')->group(function () {
         Route::get('pages/create', [PageController::class, 'create'])->name('pages.create');
         Route::post('pages', [PageController::class, 'store'])->name('pages.store');
         Route::post('pages/upload-image', [PageController::class, 'uploadImage'])->name('pages.uploadImage');
+    });
+    Route::middleware('permission:pages.view')->group(function () {
+        Route::get('pages', [PageController::class, 'index'])->name('pages.index');
+        Route::get('pages/{page}', [PageController::class, 'show'])->name('pages.show');
     });
     Route::middleware('permission:pages.edit')->group(function () {
         Route::get('pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
@@ -246,7 +247,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::patch('product-faqs/{product_faq}/status', [ProductFaqController::class, 'updateStatus'])->name('product-faqs.updateStatus');
 
     // Tags - no permissions in seeder, accessible to all admin roles
-    Route::resource('tags', TagController::class);
+    Route::resource('tags', TagController::class)->except(['show']);
 
     // Questions - no permissions in seeder, accessible to all admin roles
     Route::resource('questions', QuestionController::class)->except(['create', 'store', 'edit', 'update']);

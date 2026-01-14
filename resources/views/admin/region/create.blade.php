@@ -21,13 +21,13 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.regions.store') }}" class="modern-form" id="regionForm">
-        @csrf
+    <div class="row">
+        <!-- Main Form -->
+        <div class="col-lg-8">
+            <form method="POST" action="{{ route('admin.regions.store') }}" class="modern-form" id="regionForm">
+                @csrf
 
-        <div class="row">
-            <!-- Main Form -->
-            <div class="col-lg-8">
-                <div class="modern-card">
+                <div class="modern-card mb-4">
                     <div class="modern-card__header">
                         <h3 class="modern-card__title">
                             <i class="fas fa-info-circle"></i>
@@ -35,7 +35,6 @@
                         </h3>
                     </div>
                     <div class="modern-card__body">
-
                         <div class="mb-3">
                             <label for="name" class="form-label">Region Name <span class="text-danger">*</span></label>
                             <input type="text"
@@ -43,8 +42,7 @@
                                    id="name"
                                    name="name"
                                    value="{{ old('name') }}"
-                                   placeholder="e.g., New York"
-                                   required>
+                                   placeholder="e.g., New York">
                             <small class="form-text text-muted">
                                 <i class="fas fa-info-circle"></i>
                                 Enter a clear, descriptive region name.
@@ -61,32 +59,18 @@
                                    id="slug"
                                    name="slug"
                                    value="{{ old('slug') }}"
-                                   placeholder="e.g., new-york">
+                                   placeholder="Auto-generated slug"
+                                   readonly
+                                   style="background-color: #f8f9fa;">
                             <small class="form-text text-muted">
                                 <i class="fas fa-info-circle"></i>
-                                Leave empty to auto-generate from name. Slug is URL-friendly.
+                                Slug is auto-generated from the region name.
                             </small>
                             @error('slug')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                @include('admin.region.partials.tips')
-
-                <div class="modern-card mb-4">
-                    <div class="modern-card__header">
-                        <h3 class="modern-card__title">
-                            <i class="fas fa-cog"></i>
-                            Settings
-                        </h3>
-                    </div>
-                    <div class="modern-card__body">
                         <div class="mb-3">
                             <div class="form-check form-switch">
                                 <input class="form-check-input"
@@ -107,20 +91,55 @@
                     </div>
                 </div>
 
-                <!-- Submit Button -->
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <!-- Form Actions -->
+                <div class="form-actions" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                    <button type="submit" class="btn btn-primary btn-lg">
                         <i class="fas fa-save"></i>
                         Create Region
                     </button>
-                    <a href="{{ route('admin.regions.index') }}" class="btn btn-outline-secondary btn-block">
+                    <a href="{{ route('admin.regions.index') }}" class="btn btn-outline-secondary btn-lg" style="background-color: #f8f9fa;">
                         <i class="fas fa-times"></i>
                         Cancel
                     </a>
                 </div>
-            </div>
+            </form>
         </div>
-    </form>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            @include('admin.region.partials.tips')
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const slugInput = document.getElementById('slug');
+
+    if (nameInput && slugInput) {
+        nameInput.addEventListener('input', function(e) {
+            const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9 -]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+            slugInput.value = slug;
+        });
+    }
+
+    const form = document.getElementById('regionForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
+    }
+});
+</script>
 @endsection
 

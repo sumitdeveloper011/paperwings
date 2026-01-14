@@ -20,8 +20,7 @@
                            id="name"
                            name="name"
                            value="{{ old('name', $testimonial->name ?? '') }}"
-                           placeholder="Enter full name"
-                           required>
+                           placeholder="Enter full name">
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -62,8 +61,7 @@
                     <label for="rating" class="form-label">Rating <span class="text-danger">*</span></label>
                     <select class="form-select @error('rating') is-invalid @enderror"
                             id="rating"
-                            name="rating"
-                            required>
+                            name="rating">
                         <option value="">Select Rating</option>
                         @for($i = 1; $i <= 5; $i++)
                             <option value="{{ $i }}" {{ old('rating', $testimonial->rating ?? '') == $i ? 'selected' : '' }}>
@@ -96,8 +94,7 @@
                       name="review"
                       rows="6"
                       placeholder="Enter customer review or testimonial"
-                      data-required="true"
-                      required>{{ old('review', $testimonial->review ?? '') }}</textarea>
+                      data-required="true">{{ old('review', $testimonial->review ?? '') }}</textarea>
             <small class="form-text text-muted">
                 <i class="fas fa-info-circle"></i>
                 Write a detailed review or testimonial from the customer
@@ -118,60 +115,51 @@
         </h3>
     </div>
     <div class="modern-card__body">
-        <div class="mb-3">
-            <label for="image" class="form-label">Profile Image</label>
-
+        <div class="form-group-modern">
+            <label for="image" class="form-label-modern">Profile Image</label>
+            <x-image-requirements type="testimonial" />
+            
             <!-- Current Image Preview (Edit Page) -->
-            @if($testimonial)
-            <div class="mb-3">
-                <label class="form-label">Current Image</label>
-                <div class="image-preview-wrapper">
-                    <div class="image-preview" id="currentImagePreview">
-                        <img src="{{ $testimonial->image ? asset('storage/' . $testimonial->image) : asset('assets/images/profile.png') }}"
-                             alt="{{ $testimonial->name }}"
-                             class="image-preview__img"
-                             onerror="this.src='{{ asset('assets/images/profile.png') }}'">
-                        @if($testimonial->image)
-                        <button type="button" class="image-preview__remove" onclick="removeCurrentImage()" title="Remove current image">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        @endif
-                    </div>
+            @if($testimonial && $testimonial->image_url)
+            <div class="form-group-modern mb-3">
+                <label class="form-label-modern">Current Image</label>
+                <div class="image-preview">
+                    <img src="{{ $testimonial->image_url }}" alt="{{ $testimonial->name }}" class="image-preview__img">
                 </div>
-                <small class="form-text text-muted">
+                <div class="form-hint">
                     <i class="fas fa-info-circle"></i>
-                    @if($testimonial->image)
-                        Current image will be replaced if you upload a new one
-                    @else
-                        No image uploaded. Default profile image will be used.
-                    @endif
-                </small>
+                    Current image will be replaced if you upload a new one
+                </div>
             </div>
             @endif
 
-            <!-- New Image Preview -->
-            <div class="image-preview-wrapper" id="newImagePreview" style="display: none;">
-                <div class="image-preview">
-                    <img id="previewImg" src="" alt="Preview" class="image-preview__img">
-                    <button type="button" class="image-preview__remove" onclick="removeImagePreview()" title="Remove preview">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+            <div class="file-upload-wrapper">
+                <input type="file"
+                       class="file-upload-input @error('image') is-invalid @enderror"
+                       id="image"
+                       name="image"
+                       accept="image/*">
+                <label for="image" class="file-upload-label">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Choose {{ $testimonial && $testimonial->image_url ? 'New ' : '' }}Image</span>
+                </label>
             </div>
-
-            <!-- File Input -->
-            <input type="file"
-                   class="form-control @error('image') is-invalid @enderror"
-                   id="image"
-                   name="image"
-                   accept="image/*">
-            <small class="form-text text-muted">
-                <i class="fas fa-info-circle"></i>
-                Recommended size: 300x300px. Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
-            </small>
             @error('image')
-                <div class="invalid-feedback">{{ $message }}</div>
+                <div class="form-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ $message }}
+                </div>
             @enderror
+        </div>
+
+        <div class="form-group-modern" id="imagePreview" style="display: none;">
+            <label class="form-label-modern">New Image Preview</label>
+            <div class="image-preview">
+                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -210,8 +198,7 @@
                     <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                     <select class="form-select @error('status') is-invalid @enderror"
                             id="status"
-                            name="status"
-                            required>
+                            name="status">
                         <option value="">Select Status</option>
                         <option value="1" {{ old('status', $testimonial->status ?? 1) == 1 ? 'selected' : '' }}>Active</option>
                         <option value="0" {{ old('status', $testimonial->status ?? 0) == 0 ? 'selected' : '' }}>Inactive</option>
@@ -225,55 +212,10 @@
     </div>
 </div>
 
-<style>
-.image-preview-wrapper {
-    margin-bottom: 1rem;
-}
-
-.image-preview {
-    position: relative;
-    display: inline-block;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid var(--border-color);
-    width: 150px;
-    height: 150px;
-}
-
-.image-preview__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-.image-preview__remove {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(220, 53, 69, 0.9);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.image-preview__remove:hover {
-    background: rgba(220, 53, 69, 1);
-    transform: scale(1.1);
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('image');
-    const newImagePreview = document.getElementById('newImagePreview');
+    const imagePreview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
 
     // Image preview functionality
@@ -284,11 +226,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     previewImg.src = e.target.result;
-                    newImagePreview.style.display = 'block';
+                    imagePreview.style.display = 'block';
                 };
                 reader.readAsDataURL(file);
             } else {
-                newImagePreview.style.display = 'none';
+                imagePreview.style.display = 'none';
             }
         });
     }
@@ -297,31 +239,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // Remove new image preview
 function removeImagePreview() {
     const imageInput = document.getElementById('image');
-    const newImagePreview = document.getElementById('newImagePreview');
+    const imagePreview = document.getElementById('imagePreview');
     if (imageInput) {
         imageInput.value = '';
     }
-    if (newImagePreview) {
-        newImagePreview.style.display = 'none';
+    if (imagePreview) {
+        imagePreview.style.display = 'none';
     }
 }
 
-// Remove current image (for edit page)
-function removeCurrentImage() {
-    if (confirm('Are you sure you want to remove the current image? You will need to upload a new one.')) {
-        const currentPreview = document.getElementById('currentImagePreview');
-        if (currentPreview) {
-            currentPreview.style.display = 'none';
-        }
-        // Add hidden input to indicate image removal
-        const form = document.querySelector('form');
-        if (form && !form.querySelector('input[name="remove_image"]')) {
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'remove_image';
-            hiddenInput.value = '1';
-            form.appendChild(hiddenInput);
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('testimonialForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
     }
-}
+});
 </script>

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Bundle;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreBundleRequest extends FormRequest
 {
@@ -14,11 +15,17 @@ class StoreBundleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('products', 'name')
+            ],
+            'slug' => 'nullable|string|max:255|unique:products,slug',
             'description' => 'nullable|string',
             'short_description' => 'required|string|max:500',
             'images' => 'nullable|array|max:10',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=1/1',
             'bundle_price' => 'required|numeric|min:0',
             'discount_type' => 'nullable|in:none,direct,percentage',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
@@ -39,7 +46,10 @@ class StoreBundleRequest extends FormRequest
     {
         return [
             'name.required' => 'Bundle name is required.',
+            'name.unique' => 'A bundle with this name already exists.',
             'name.max' => 'Bundle name cannot exceed 255 characters.',
+            'slug.unique' => 'A bundle with this slug already exists.',
+            'slug.max' => 'Slug cannot exceed 255 characters.',
             'description.string' => 'Description must be a valid string.',
             'short_description.required' => 'Short description is required.',
             'short_description.max' => 'Short description cannot exceed 500 characters.',
@@ -50,8 +60,9 @@ class StoreBundleRequest extends FormRequest
             'images.array' => 'Images must be an array.',
             'images.max' => 'You can upload a maximum of 10 images.',
             'images.*.image' => 'Each uploaded file must be an image.',
-            'images.*.mimes' => 'Each image must be a file of type: jpeg, png, jpg, gif.',
+            'images.*.mimes' => 'Each image must be a file of type: jpeg, png, jpg, gif, webp.',
             'images.*.max' => 'Each image size must not exceed 2MB.',
+            'images.*.dimensions' => 'Each image must have a 1:1 aspect ratio (square).',
             'bundle_price.required' => 'Bundle price is required.',
             'bundle_price.numeric' => 'Bundle price must be a valid number.',
             'bundle_price.min' => 'Bundle price must be at least 0.',

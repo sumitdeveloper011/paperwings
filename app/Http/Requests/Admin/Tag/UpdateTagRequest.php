@@ -22,7 +22,7 @@ class UpdateTagRequest extends FormRequest
                 'string',
                 'max:255',
                 'min:2',
-                Rule::unique('tags', 'name')->ignore($tag->uuid, 'uuid')
+                Rule::unique('tags', 'name')->ignore($tag->id)
             ],
         ];
     }

@@ -17,12 +17,12 @@
                 @foreach($banners as $banner)
                     <tr class="modern-table__row">
                         <td class="modern-table__td">
-                            @if($banner->image_url)
-                                <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}"
-                                     class="img-thumbnail" style="width: 80px; height: 50px; object-fit: cover;">
-                            @else
-                                <span class="text-muted">No Image</span>
-                            @endif
+                            <div class="category-image category-image--enhanced">
+                                <img src="{{ $banner->thumbnail_url ?? asset('assets/images/placeholder.jpg') }}"
+                                     alt="{{ $banner->title }}"
+                                     class="category-image__img"
+                                     onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
+                            </div>
                         </td>
                         <td class="modern-table__td">
                             <strong>{{ $banner->title }}</strong>
@@ -42,13 +42,13 @@
                         <td class="modern-table__td">
                             <small>
                                 @if($banner->start_date)
-                                    {{ $banner->start_date->format('M d, Y') }}
+                                    {{ $banner->start_date->format('d-m-Y') }}
                                 @else
                                     <span class="text-muted">No start</span>
                                 @endif
                                 <br>
                                 @if($banner->end_date)
-                                    {{ $banner->end_date->format('M d, Y') }}
+                                    {{ $banner->end_date->format('d-m-Y') }}
                                 @else
                                     <span class="text-muted">No end</span>
                                 @endif

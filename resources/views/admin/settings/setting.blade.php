@@ -38,36 +38,26 @@
                                 <i class="fas fa-image"></i>
                                 Site Logo
                             </label>
+
+                            <x-image-requirements type="logo" />
+
+                            @if(!empty($settings['logo']))
+                            <div class="current-image mb-3">
+                                <p class="current-image-label">Current Logo:</p>
+                                <img src="{{ asset('storage/' . $settings['logo']) }}" alt="Current Logo" class="current-image-preview">
+                            </div>
+                            @endif
+
                             <div class="file-upload-wrapper">
-                                <div class="file-upload-area" id="logoUploadArea">
-                                    <input type="file"
-                                           name="logo"
-                                           id="logoInput"
-                                           class="file-input"
-                                           accept="image/*"
-                                           onchange="previewImage(this, 'logoPreview')">
-                                    <div class="file-upload-content">
-                                        <div class="file-upload-icon">
-                                            <i class="fas fa-cloud-upload-alt"></i>
-                                        </div>
-                                        <p class="file-upload-text">
-                                            <span class="file-upload-highlight">Click to upload</span> or drag and drop
-                                        </p>
-                                        <p class="file-upload-hint">PNG, JPG, GIF up to 2MB</p>
-                                    </div>
-                                    <div class="file-preview" id="logoPreview" style="display: none;">
-                                        <img src="" alt="Logo Preview" class="preview-image">
-                                        <button type="button" class="preview-remove" onclick="removePreview('logoInput', 'logoPreview')">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                @if(!empty($settings['logo']))
-                                <div class="current-image">
-                                    <p class="current-image-label">Current Logo:</p>
-                                    <img src="{{ asset('storage/' . $settings['logo']) }}" alt="Current Logo" class="current-image-preview">
-                                </div>
-                                @endif
+                                <input type="file"
+                                       class="file-upload-input @error('logo') is-invalid @enderror"
+                                       id="logoInput"
+                                       name="logo"
+                                       accept="image/jpeg, image/png, image/jpg, image/gif, image/webp">
+                                <label for="logoInput" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Logo</span>
+                                </label>
                             </div>
                             @error('logo')
                                 <div class="form-error">
@@ -75,6 +65,8 @@
                                     {{ $message }}
                                 </div>
                             @enderror
+
+                            <x-image-preview inputId="logoInput" previewId="logoPreview" previewImgId="logoPreviewImg" />
                         </div>
 
                         <!-- Icon Upload -->
@@ -83,36 +75,26 @@
                                 <i class="fas fa-favicon"></i>
                                 Site Icon (Favicon)
                             </label>
+
+                            <x-image-requirements type="icon" />
+
+                            @if(!empty($settings['icon']))
+                            <div class="current-image mb-3">
+                                <p class="current-image-label">Current Icon:</p>
+                                <img src="{{ asset('storage/' . $settings['icon']) }}" alt="Current Icon" class="current-image-preview current-image-preview--small">
+                            </div>
+                            @endif
+
                             <div class="file-upload-wrapper">
-                                <div class="file-upload-area file-upload-area--small" id="iconUploadArea">
-                                    <input type="file"
-                                           name="icon"
-                                           id="iconInput"
-                                           class="file-input"
-                                           accept="image/*"
-                                           onchange="previewImage(this, 'iconPreview')">
-                                    <div class="file-upload-content">
-                                        <div class="file-upload-icon">
-                                            <i class="fas fa-cloud-upload-alt"></i>
-                                        </div>
-                                        <p class="file-upload-text">
-                                            <span class="file-upload-highlight">Click to upload</span> favicon
-                                        </p>
-                                        <p class="file-upload-hint">ICO, PNG up to 500KB (Recommended: 32x32 or 16x16)</p>
-                                    </div>
-                                    <div class="file-preview file-preview--small" id="iconPreview" style="display: none;">
-                                        <img src="" alt="Icon Preview" class="preview-image">
-                                        <button type="button" class="preview-remove" onclick="removePreview('iconInput', 'iconPreview')">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                @if(!empty($settings['icon']))
-                                <div class="current-image">
-                                    <p class="current-image-label">Current Icon:</p>
-                                    <img src="{{ asset('storage/' . $settings['icon']) }}" alt="Current Icon" class="current-image-preview current-image-preview--small">
-                                </div>
-                                @endif
+                                <input type="file"
+                                       class="file-upload-input @error('icon') is-invalid @enderror"
+                                       id="iconInput"
+                                       name="icon"
+                                       accept="image/jpeg, image/png, image/jpg, image/gif, image/webp, image/x-icon">
+                                <label for="iconInput" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Icon</span>
+                                </label>
                             </div>
                             @error('icon')
                                 <div class="form-error">
@@ -120,6 +102,8 @@
                                     {{ $message }}
                                 </div>
                             @enderror
+
+                            <x-image-preview inputId="iconInput" previewId="iconPreview" previewImgId="iconPreviewImg" />
                         </div>
                     </div>
                 </div>
@@ -140,7 +124,6 @@
                                 Meta Title
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-heading input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('meta_title') is-invalid @enderror"
                                        id="meta_title"
@@ -198,7 +181,6 @@
                                 Meta Keywords
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('meta_keywords') is-invalid @enderror"
                                        id="meta_keywords"
@@ -224,7 +206,6 @@
                                 Meta Author
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-user input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('meta_author') is-invalid @enderror"
                                        id="meta_author"
@@ -259,7 +240,6 @@
                                 Address
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-map-marker-alt input-icon"></i>
                                 <textarea class="form-input-modern @error('address') is-invalid @enderror"
                                           id="address"
                                           name="address"
@@ -281,7 +261,6 @@
                                 Google Map Embed
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-map input-icon"></i>
                                 <textarea class="form-input-modern @error('google_map') is-invalid @enderror"
                                           id="google_map"
                                           name="google_map"
@@ -315,7 +294,6 @@
                                 Google Map API Key
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('google_map_api_key') is-invalid @enderror"
                                        id="google_map_api_key"
@@ -347,7 +325,6 @@
                                         @foreach($settings['emails'] as $index => $email)
                                         <div class="repeater-item" data-index="{{ $index }}">
                                             <div class="input-wrapper">
-                                                <i class="fas fa-envelope input-icon"></i>
                                                 <input type="email"
                                                        class="form-input-modern"
                                                        name="emails[]"
@@ -362,7 +339,6 @@
                                     @else
                                         <div class="repeater-item" data-index="0">
                                             <div class="input-wrapper">
-                                                <i class="fas fa-envelope input-icon"></i>
                                                 <input type="email"
                                                        class="form-input-modern"
                                                        name="emails[]"
@@ -394,7 +370,6 @@
                                         @foreach($settings['phones'] as $index => $phone)
                                         <div class="repeater-item" data-index="{{ $index }}">
                                             <div class="input-wrapper">
-                                                <i class="fas fa-phone input-icon"></i>
                                                 <input type="tel"
                                                        class="form-input-modern"
                                                        name="phones[]"
@@ -409,7 +384,6 @@
                                     @else
                                         <div class="repeater-item" data-index="0">
                                             <div class="input-wrapper">
-                                                <i class="fas fa-phone input-icon"></i>
                                                 <input type="tel"
                                                        class="form-input-modern"
                                                        name="phones[]"
@@ -449,7 +423,6 @@
                                     Facebook
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-facebook-f input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_facebook') is-invalid @enderror"
                                            id="social_facebook"
@@ -472,7 +445,6 @@
                                     Twitter
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-twitter input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_twitter') is-invalid @enderror"
                                            id="social_twitter"
@@ -495,7 +467,6 @@
                                     Instagram
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-instagram input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_instagram') is-invalid @enderror"
                                            id="social_instagram"
@@ -518,7 +489,6 @@
                                     LinkedIn
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-linkedin-in input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_linkedin') is-invalid @enderror"
                                            id="social_linkedin"
@@ -541,7 +511,6 @@
                                     YouTube
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-youtube input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_youtube') is-invalid @enderror"
                                            id="social_youtube"
@@ -564,7 +533,6 @@
                                     Pinterest
                                 </label>
                                 <div class="input-wrapper">
-                                    <i class="fab fa-pinterest input-icon"></i>
                                     <input type="url"
                                            class="form-input-modern @error('social_pinterest') is-invalid @enderror"
                                            id="social_pinterest"
@@ -611,7 +579,6 @@
                                 Instagram App ID
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('instagram_app_id') is-invalid @enderror"
                                        id="instagram_app_id"
@@ -638,7 +605,6 @@
                                 Instagram App Secret
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
                                 <input type="password"
                                        class="form-input-modern @error('instagram_app_secret') is-invalid @enderror"
                                        id="instagram_app_secret"
@@ -668,7 +634,6 @@
                                 Instagram Access Token
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-token input-icon"></i>
                                 <input type="password"
                                        class="form-input-modern @error('instagram_access_token') is-invalid @enderror"
                                        id="instagram_access_token"
@@ -698,7 +663,6 @@
                                 Instagram User ID
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-user input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('instagram_user_id') is-invalid @enderror"
                                        id="instagram_user_id"
@@ -751,7 +715,6 @@
                                 Private Key 1
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
                                 <input type="password"
                                        class="form-input-modern @error('private_key_1') is-invalid @enderror"
                                        id="private_key_1"
@@ -781,7 +744,6 @@
                                 Private Key 2
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
                                 <input type="password"
                                        class="form-input-modern @error('private_key_2') is-invalid @enderror"
                                        id="private_key_2"
@@ -811,7 +773,6 @@
                                 Private Key 3
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
                                 <input type="password"
                                        class="form-input-modern @error('private_key_3') is-invalid @enderror"
                                        id="private_key_3"
@@ -853,7 +814,6 @@
                                 Google Analytics Measurement ID (GA4)
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-chart-line input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('google_analytics_id') is-invalid @enderror"
                                        id="google_analytics_id"
@@ -1066,7 +1026,6 @@
                                 Copyright Text
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-copyright input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('copyright_text') is-invalid @enderror"
                                        id="copyright_text"
@@ -1155,35 +1114,65 @@
 
 
 <script>
-// Image Preview Function
-function previewImage(input, previewId) {
-    const file = input.files[0];
-    const preview = document.getElementById(previewId);
-    const uploadContent = preview.parentElement.querySelector('.file-upload-content');
+// Image preview functionality for logo and icon
+document.addEventListener('DOMContentLoaded', function() {
+    // Logo preview
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+    const logoPreviewImg = document.getElementById('logoPreviewImg');
 
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.querySelector('img').src = e.target.result;
-            preview.style.display = 'flex';
-            if (uploadContent) {
-                uploadContent.style.display = 'none';
+    if (logoInput && logoPreview && logoPreviewImg) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logoPreviewImg.src = e.target.result;
+                    logoPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                logoPreview.style.display = 'none';
             }
-        };
-        reader.readAsDataURL(file);
+        });
     }
-}
 
-// Remove Preview Function
-function removePreview(inputId, previewId) {
-    const input = document.getElementById(inputId);
-    const preview = document.getElementById(previewId);
-    const uploadContent = preview.parentElement.querySelector('.file-upload-content');
+    // Icon preview
+    const iconInput = document.getElementById('iconInput');
+    const iconPreview = document.getElementById('iconPreview');
+    const iconPreviewImg = document.getElementById('iconPreviewImg');
 
-    input.value = '';
-    preview.style.display = 'none';
-    if (uploadContent) {
-        uploadContent.style.display = 'block';
+    if (iconInput && iconPreview && iconPreviewImg) {
+        iconInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    iconPreviewImg.src = e.target.result;
+                    iconPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                iconPreview.style.display = 'none';
+            }
+        });
+    }
+});
+
+function removeImagePreview() {
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+    const iconInput = document.getElementById('iconInput');
+    const iconPreview = document.getElementById('iconPreview');
+
+    if (logoInput && logoPreview) {
+        logoInput.value = '';
+        logoPreview.style.display = 'none';
+    }
+
+    if (iconInput && iconPreview) {
+        iconInput.value = '';
+        iconPreview.style.display = 'none';
     }
 }
 
@@ -1203,7 +1192,6 @@ function addRepeaterItem(repeaterId, type) {
     newItem.setAttribute('data-index', newIndex);
     newItem.innerHTML = `
         <div class="input-wrapper">
-            <i class="fas ${iconClass} input-icon"></i>
             <input type="${inputType}"
                    class="form-input-modern"
                    name="${type}s[]"
@@ -1281,36 +1269,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Drag and drop for file uploads
-    const uploadAreas = document.querySelectorAll('.file-upload-area');
-    uploadAreas.forEach(area => {
-        const input = area.querySelector('.file-input');
-
-        area.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            area.style.borderColor = 'var(--primary-color)';
-            area.style.background = 'rgba(55, 78, 148, 0.05)';
-        });
-
-        area.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            area.style.borderColor = 'var(--border-color)';
-            area.style.background = 'var(--background-color)';
-        });
-
-        area.addEventListener('drop', function(e) {
-            e.preventDefault();
-            area.style.borderColor = 'var(--border-color)';
-            area.style.background = 'var(--background-color)';
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                input.files = files;
-                const previewId = input.id === 'logoInput' ? 'logoPreview' : 'iconPreview';
-                previewImage(input, previewId);
-            }
-        });
-    });
 
     // Password toggle function
     function togglePassword(inputId) {

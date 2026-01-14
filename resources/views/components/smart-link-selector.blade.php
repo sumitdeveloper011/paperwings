@@ -229,7 +229,8 @@
 
     // Initialize Select2 for dropdowns
     function initSelect2ForDropdowns() {
-        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+        if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+            const $ = window.jQuery;
             const container = typeSelector.closest('.smart-link-selector');
             const selects = [
                 container.querySelector('#{{ $id }}_category'),
@@ -268,7 +269,8 @@
             selectedOption.style.display = 'block';
 
             // Initialize Select2 for newly shown dropdown
-            if (selectedType !== 'custom' && typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+            if (selectedType !== 'custom' && typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+                const $ = window.jQuery;
                 const select = selectedOption.querySelector('select');
                 if (select && !$(select).data('select2')) {
                     $(select).select2({
@@ -293,30 +295,48 @@
 
         if (selectedType === 'category') {
             const select = container.querySelector('#{{ $id }}_category');
-            if (select && typeof jQuery !== 'undefined' && $(select).data('select2')) {
-                const val = $(select).val();
-                const selectedOption = select.querySelector(`option[value="${val}"]`);
-                url = selectedOption?.getAttribute('data-url') || '';
+            if (select && typeof window.jQuery !== 'undefined') {
+                const $ = window.jQuery;
+                if ($(select).data('select2')) {
+                    const val = $(select).val();
+                    const selectedOption = select.querySelector(`option[value="${val}"]`);
+                    url = selectedOption?.getAttribute('data-url') || '';
+                } else {
+                    const selectedOption = select?.options[select.selectedIndex];
+                    url = selectedOption?.getAttribute('data-url') || '';
+                }
             } else {
                 const selectedOption = select?.options[select.selectedIndex];
                 url = selectedOption?.getAttribute('data-url') || '';
             }
         } else if (selectedType === 'bundle') {
             const select = container.querySelector('#{{ $id }}_bundle');
-            if (select && typeof jQuery !== 'undefined' && $(select).data('select2')) {
-                const val = $(select).val();
-                const selectedOption = select.querySelector(`option[value="${val}"]`);
-                url = selectedOption?.getAttribute('data-url') || '';
+            if (select && typeof window.jQuery !== 'undefined') {
+                const $ = window.jQuery;
+                if ($(select).data('select2')) {
+                    const val = $(select).val();
+                    const selectedOption = select.querySelector(`option[value="${val}"]`);
+                    url = selectedOption?.getAttribute('data-url') || '';
+                } else {
+                    const selectedOption = select?.options[select.selectedIndex];
+                    url = selectedOption?.getAttribute('data-url') || '';
+                }
             } else {
                 const selectedOption = select?.options[select.selectedIndex];
                 url = selectedOption?.getAttribute('data-url') || '';
             }
         } else if (selectedType === 'page') {
             const select = container.querySelector('#{{ $id }}_page');
-            if (select && typeof jQuery !== 'undefined' && $(select).data('select2')) {
-                const val = $(select).val();
-                const selectedOption = select.querySelector(`option[value="${val}"]`);
-                url = selectedOption?.getAttribute('data-url') || '';
+            if (select && typeof window.jQuery !== 'undefined') {
+                const $ = window.jQuery;
+                if ($(select).data('select2')) {
+                    const val = $(select).val();
+                    const selectedOption = select.querySelector(`option[value="${val}"]`);
+                    url = selectedOption?.getAttribute('data-url') || '';
+                } else {
+                    const selectedOption = select?.options[select.selectedIndex];
+                    url = selectedOption?.getAttribute('data-url') || '';
+                }
             } else {
                 const selectedOption = select?.options[select.selectedIndex];
                 url = selectedOption?.getAttribute('data-url') || '';
@@ -354,8 +374,8 @@
     }
 
     // Listen for Select2 changes
-    if (typeof jQuery !== 'undefined') {
-        $(document).on('change', '#{{ $id }}_category, #{{ $id }}_bundle, #{{ $id }}_page', updateFinalUrl);
+    if (typeof window.jQuery !== 'undefined') {
+        window.jQuery(document).on('change', '#{{ $id }}_category, #{{ $id }}_bundle, #{{ $id }}_page', updateFinalUrl);
     }
 })();
 </script>

@@ -73,21 +73,46 @@
 
                         <div class="form-group-modern">
                             <label for="image" class="form-label-modern">Image</label>
+                            <x-image-requirements type="about-section" />
                             @if($aboutSection->image_url)
-                                <div class="mb-2">
-                                    <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}"
-                                         class="img-thumbnail" style="max-width: 200px; max-height: 150px;">
+                                <div class="form-group-modern mb-3">
+                                    <label class="form-label-modern">Current Image</label>
+                                    <div class="image-preview">
+                                        <img src="{{ $aboutSection->image_url }}" alt="{{ $aboutSection->title }}" class="image-preview__img">
+                                    </div>
+                                    <div class="form-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Current image will be replaced if you upload a new one
+                                    </div>
                                 </div>
                             @endif
-                            <input type="file"
-                                   class="form-input-modern @error('image') is-invalid @enderror"
-                                   id="image"
-                                   name="image"
-                                   accept="image/*">
-                            <small class="form-text text-muted">Max size: 2MB. Formats: JPEG, PNG, JPG, GIF, WEBP. Leave empty to keep current image.</small>
+                            <div class="file-upload-wrapper">
+                                <input type="file"
+                                       class="file-upload-input @error('image') is-invalid @enderror"
+                                       id="image"
+                                       name="image"
+                                       accept="image/*">
+                                <label for="image" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose {{ $aboutSection->image_url ? 'New ' : '' }}Image</span>
+                                </label>
+                            </div>
                             @error('image')
-                                <div class="form-error">{{ $message }}</div>
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
                             @enderror
+                        </div>
+
+                        <div class="form-group-modern" id="imagePreview" style="display: none;">
+                            <label class="form-label-modern">New Image Preview</label>
+                            <div class="image-preview">
+                                <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                                <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="row">
@@ -168,5 +193,30 @@
     'uploadUrl' => route('admin.pages.uploadImage'),
     'toolbar' => 'full'
 ])
+
+<script>
+// Image Preview
+document.getElementById('image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
+function removeImagePreview() {
+    document.getElementById('image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+}
+</script>
 @endsection
 

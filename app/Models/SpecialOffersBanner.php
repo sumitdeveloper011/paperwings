@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\HasUuid;
+use App\Traits\HasImageUrl;
+use App\Traits\HasThumbnail;
 
 class SpecialOffersBanner extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, HasImageUrl, HasThumbnail;
 
     protected $fillable = [
         'uuid',
@@ -71,14 +73,24 @@ class SpecialOffersBanner extends Model
         return $query->orderBy('sort_order');
     }
 
-    // Get image URL attribute (original)
-    public function getImageUrlAttribute()
+    // Override fallback image for SpecialOffersBanner
+    protected function getFallbackImage(): string
     {
-        return $this->image ? asset('storage/' . $this->image) : null;
+        return 'assets/images/placeholder.jpg';
     }
 
-    // Get thumbnail path attribute
-    public function getThumbnailPathAttribute()
+    // Override thumbnail fallback for SpecialOffersBanner
+    protected function getThumbnailFallback(): ?string
+    {
+        return asset('assets/images/placeholder.jpg');
+    }
+
+    /**
+     * Get medium image path attribute
+     *
+     * @return string|null
+     */
+    public function getMediumPathAttribute(): ?string
     {
         if (!$this->image) {
             return null;
@@ -86,8 +98,8 @@ class SpecialOffersBanner extends Model
 
         // Check if path has /original/ folder structure
         if (strpos($this->image, '/original/') !== false) {
-            // Replace /original/ with /thumbnails/
-            return str_replace('/original/', '/thumbnails/', $this->image);
+            // Replace /original/ with /medium/
+            return str_replace('/original/', '/medium/', $this->image);
         }
 
         // For old structure (backward compatibility)
@@ -95,24 +107,28 @@ class SpecialOffersBanner extends Model
         $fileName = array_pop($pathParts);
         $basePath = implode('/', $pathParts);
 
-        return $basePath . '/thumbnails/' . $fileName;
+        return $basePath . '/medium/' . $fileName;
     }
 
-    // Get thumbnail URL attribute
-    public function getThumbnailUrlAttribute()
+    /**
+     * Get medium image URL attribute
+     *
+     * @return string|null
+     */
+    public function getMediumUrlAttribute(): ?string
     {
-        if (!$this->image) {
-            return null;
+        $mediumPath = $this->medium_path;
+
+        if (!$mediumPath) {
+            return $this->image_url;
         }
 
-        $thumbnailPath = $this->thumbnail_path;
-
-        // Check if thumbnail exists
-        if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
-            return asset('storage/' . $thumbnailPath);
+        // Check if medium exists
+        if (Storage::disk('public')->exists($mediumPath)) {
+            return asset('storage/' . $mediumPath);
         }
 
-        // Fallback to original if thumbnail doesn't exist
+        // Fallback to original if medium doesn't exist
         return $this->image_url;
     }
 

@@ -40,18 +40,10 @@
                     <tr class="modern-table__row modern-table__row--animated" style="animation-delay: {{ $index * 0.05 }}s;">
                         <td class="modern-table__td">
                             <div class="category-image category-image--enhanced">
-                                @php
-                                    $imageUrl = $page->image ? asset('storage/' . $page->image) : asset('assets/images/placeholder.jpg');
-                                @endphp
-                                <img src="{{ $imageUrl }}"
+                                <img src="{{ $page->thumbnail_url ?? asset('assets/images/placeholder.jpg') }}"
                                      alt="{{ $page->title }}"
                                      class="category-image__img"
                                      onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
-                                <div class="category-image__overlay">
-                                    <a href="{{ $imageUrl }}" target="_blank" class="category-image__view">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                </div>
                             </div>
                         </td>
                         <td class="modern-table__td">

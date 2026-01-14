@@ -10,9 +10,19 @@ class SettingHelper
     // Get all settings (cached)
     public static function all(): array
     {
-        return Cache::remember('app_settings', 3600, function() {
-            return Setting::pluck('value', 'key')->toArray();
-        });
+        try {
+            return Cache::remember('app_settings', 3600, function() {
+                try {
+                    return Setting::pluck('value', 'key')->toArray();
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to fetch settings from database: ' . $e->getMessage());
+                    return [];
+                }
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to access settings cache: ' . $e->getMessage());
+            return [];
+        }
     }
 
     // Get a specific setting value (cached)

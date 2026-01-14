@@ -78,8 +78,11 @@ class AboutSectionController extends Controller
             'description' => 'nullable|string',
             'button_text' => 'nullable|string|max:255',
             'button_link' => 'nullable|string|max:500',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=3/2',
             'status' => 'required|integer|in:0,1',
+        ], [
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'image.dimensions' => 'The image must have a 3:2 aspect ratio (e.g., 600x400 pixels).',
         ]);
 
         // Use final URL from smart link selector

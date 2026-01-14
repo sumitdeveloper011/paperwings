@@ -40,7 +40,7 @@
                     <tr class="modern-table__row">
                         <td class="modern-table__td">
                             @if($bundle->images && $bundle->images->count() > 0)
-                                <img src="{{ $bundle->images->first()->image_url }}"
+                                <img src="{{ $bundle->images->first()->thumbnail_url }}"
                                      alt="{{ $bundle->name }}"
                                      style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"
                                      onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">

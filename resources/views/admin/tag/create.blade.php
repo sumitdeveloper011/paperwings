@@ -43,7 +43,6 @@
                                    name="name"
                                    value="{{ old('name') }}"
                                    placeholder="Enter tag name"
-                                   required
                                    minlength="2"
                                    maxlength="255">
                             <small class="form-text text-muted">
@@ -51,6 +50,25 @@
                                 Tag name must be unique. Slug will be auto-generated from the name.
                             </small>
                             @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="slug" class="form-label">Slug</label>
+                            <input type="text"
+                                   class="form-control @error('slug') is-invalid @enderror"
+                                   id="slug"
+                                   name="slug"
+                                   value="{{ old('slug') }}"
+                                   placeholder="Auto-generated slug"
+                                   readonly
+                                   style="background-color: #f8f9fa;">
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Slug is auto-generated from the tag name.
+                            </small>
+                            @error('slug')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -79,15 +97,32 @@
 </div>
 
 <script>
-// Auto-generate slug from name (for display purposes)
-document.getElementById('name').addEventListener('input', function(e) {
-    const slug = e.target.value
-        .toLowerCase()
-        .replace(/[^a-z0-9 -]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim('-');
-    // Slug is auto-generated in model
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const slugInput = document.getElementById('slug');
+
+    if (nameInput && slugInput) {
+        nameInput.addEventListener('input', function(e) {
+            const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9 -]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+            slugInput.value = slug;
+        });
+    }
+
+    const form = document.getElementById('tagForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('invalid', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }, true);
+        });
+    }
 });
 </script>
 @endsection

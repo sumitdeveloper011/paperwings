@@ -125,6 +125,7 @@
                             <label for="image" class="form-label-modern">
                                 Banner Image
                             </label>
+                            <x-image-requirements type="page" />
                             <div class="file-upload-wrapper">
                                 <input type="file"
                                        class="file-upload-input @error('image') is-invalid @enderror"
@@ -135,10 +136,6 @@
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <span>Choose Image</span>
                                 </label>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
                             </div>
                             @error('image')
                                 <div class="form-error">
@@ -209,7 +206,7 @@
                             <i class="fas fa-check-circle"></i>
                             <div>
                                 <strong>Banner Image</strong>
-                                <p>Add a banner image to make your page more attractive</p>
+                                <p>Upload a banner image with 1200x400 dimensions (3:1 ratio). The system will automatically generate medium (600x200) and thumbnail (300x100) sizes. Supported formats: JPEG, PNG, JPG, GIF, WEBP. Max size: 2MB.</p>
                             </div>
                         </li>
                     </ul>

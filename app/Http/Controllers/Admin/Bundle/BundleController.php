@@ -117,7 +117,9 @@ class BundleController extends Controller
 
         // Generate UUID and slug
         $bundleUuid = Str::uuid()->toString();
-        $slug = Product::makeUniqueSlug($validated['name']);
+        $slug = !empty($validated['slug']) 
+            ? Product::makeUniqueSlug($validated['slug'])
+            : Product::makeUniqueSlug($validated['name']);
 
         // Handle unified discount structure
         $discountType = $request->input('discount_type', 'none');
@@ -357,9 +359,15 @@ class BundleController extends Controller
             $discountType = 'none';
         }
 
+        // Handle slug
+        $slug = !empty($validated['slug']) 
+            ? Product::makeUniqueSlug($validated['slug'], $bundle->id)
+            : Product::makeUniqueSlug($validated['name'], $bundle->id);
+
         // Update product
         $bundle->update([
             'name' => $validated['name'],
+            'slug' => $slug,
             'description' => $validated['description'] ?? null,
             'short_description' => $validated['short_description'],
             'total_price' => $validated['bundle_price'], // Map bundle_price to total_price

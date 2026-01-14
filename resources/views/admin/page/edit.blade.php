@@ -144,6 +144,7 @@
                             <label for="image" class="form-label-modern">
                                 {{ $page->image ? 'Update Banner Image' : 'Banner Image' }}
                             </label>
+                            <x-image-requirements type="page" />
                             <div class="file-upload-wrapper">
                                 <input type="file"
                                        class="file-upload-input @error('image') is-invalid @enderror"
@@ -155,10 +156,12 @@
                                     <span>Choose {{ $page->image ? 'New ' : '' }}Image</span>
                                 </label>
                             </div>
+                            @if($page->image)
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
-                                {{ $page->image ? 'Leave empty to keep current image. ' : '' }}Supported formats: JPEG, PNG, JPG, GIF. Max size: 2MB
+                                Leave empty to keep current image.
                             </div>
+                            @endif
                             @error('image')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -232,7 +235,7 @@
                             <i class="fas fa-check-circle"></i>
                             <div>
                                 <strong>Banner Image</strong>
-                                <p>Add a banner image to make your page more attractive</p>
+                                <p>Upload a banner image with 1200x400 dimensions (3:1 ratio). The system will automatically generate medium (600x200) and thumbnail (300x100) sizes. Supported formats: JPEG, PNG, JPG, GIF, WEBP. Max size: 2MB.</p>
                             </div>
                         </li>
                     </ul>

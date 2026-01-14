@@ -87,7 +87,12 @@ class SettingsController extends Controller
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
+            'logo.mimes' => 'The logo must be a file of type: jpeg, png, jpg, gif, webp.',
+            'logo.dimensions' => 'The logo must have a 1640:762 aspect ratio (e.g., 1640x762 pixels).',
             'logo.max' => 'Logo must not exceed 2MB.',
+            'icon.mimes' => 'The icon must be a file of type: jpeg, png, jpg, gif, ico, webp.',
+            'icon.dimensions' => 'The icon must have a 1:1 aspect ratio (square, e.g., 64x64 pixels).',
+            'icon.max' => 'Icon must not exceed 512KB.',
             'meta_title.required' => 'Meta title is required.',
             'meta_keywords.required' => 'Meta keywords are required.',
             'meta_author.required' => 'Meta author is required.',
@@ -120,9 +125,11 @@ class SettingsController extends Controller
             $oldLogo = Setting::where('key', 'logo')->first();
             $oldLogoPath = $oldLogo && $oldLogo->value ? $oldLogo->value : null;
 
-            $imagePath = $this->imageService->uploadSimple(
+            // Use 'settings' as baseFolder and 'logo' as UUID to identify it as logo
+            $imagePath = $this->imageService->uploadImage(
                 $request->file('logo'),
                 'settings',
+                'logo',
                 $oldLogoPath
             );
 
@@ -141,9 +148,11 @@ class SettingsController extends Controller
             $oldIcon = Setting::where('key', 'icon')->first();
             $oldIconPath = $oldIcon && $oldIcon->value ? $oldIcon->value : null;
 
-            $imagePath = $this->imageService->uploadSimple(
+            // Use 'settings' as baseFolder and 'icon' as UUID to identify it as icon
+            $imagePath = $this->imageService->uploadImage(
                 $request->file('icon'),
                 'settings',
+                'icon',
                 $oldIconPath
             );
 

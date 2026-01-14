@@ -66,11 +66,7 @@ class RegionController extends Controller
     public function store(StoreRegionRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-
-        // Auto-generate slug if not provided
-        if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
+        unset($validated['slug']);
 
         $validated['status'] = $request->has('status') ? 1 : 0;
 
@@ -97,11 +93,7 @@ class RegionController extends Controller
     public function update(UpdateRegionRequest $request, Region $region): RedirectResponse
     {
         $validated = $request->validated();
-
-        // Auto-generate slug if name changed and slug not provided
-        if ($region->isDirty('name') && empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
+        unset($validated['slug']);
 
         $validated['status'] = $request->has('status') ? 1 : 0;
 

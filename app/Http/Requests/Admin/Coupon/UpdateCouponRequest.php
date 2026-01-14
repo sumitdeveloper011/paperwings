@@ -27,7 +27,12 @@ class UpdateCouponRequest extends FormRequest
                 'regex:/^[A-Z0-9]+$/',
                 Rule::unique('coupons', 'code')->ignore($couponUuid, 'uuid'),
             ],
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('coupons', 'name')->ignore($couponUuid, 'uuid')
+            ],
             'description' => 'nullable|string',
             'type' => 'required|in:percentage,fixed',
             'value' => [
@@ -133,6 +138,7 @@ class UpdateCouponRequest extends FormRequest
             'code.regex' => 'Coupon code must contain only uppercase letters and numbers (no spaces or special characters).',
             'code.max' => 'Coupon code cannot exceed 50 characters.',
             'name.required' => 'Coupon name is required.',
+            'name.unique' => 'A coupon with this name already exists.',
             'name.max' => 'Coupon name cannot exceed 255 characters.',
             'type.required' => 'Discount type is required.',
             'type.in' => 'Discount type must be either percentage or fixed.',

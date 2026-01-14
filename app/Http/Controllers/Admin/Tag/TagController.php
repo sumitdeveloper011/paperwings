@@ -49,19 +49,12 @@ class TagController extends Controller
     public function store(StoreTagRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        unset($validated['slug']);
 
         Tag::create($validated);
 
         return redirect()->route('admin.tags.index')
             ->with('success', 'Tag created successfully!');
-    }
-
-    public function show(Tag $tag): View
-    {
-        $tag->load(['products' => function($query) {
-            $query->with('images')->limit(20);
-        }]);
-        return view('admin.tag.show', compact('tag'));
     }
 
     public function edit(Tag $tag): View
@@ -72,6 +65,7 @@ class TagController extends Controller
     public function update(UpdateTagRequest $request, Tag $tag): RedirectResponse
     {
         $validated = $request->validated();
+        unset($validated['slug']);
 
         $tag->update($validated);
 
