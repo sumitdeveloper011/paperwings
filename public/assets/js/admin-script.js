@@ -237,9 +237,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Mark notification as read
-    window.markNotificationAsRead = function(orderId) {
-        const markReadUrl = document.getElementById('notificationBtn')?.dataset.markReadUrl || '/admin/notifications';
-        const url = markReadUrl.replace(':id', orderId);
+    window.markNotificationAsRead = function(notificationId) {
+        const url = `/admin/notifications/${notificationId}/read`;
         fetch(url, {
             method: 'POST',
             headers: {

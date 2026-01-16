@@ -17,4 +17,20 @@
             <a href="{{ route('home') }}" class="btn btn-primary">Continue Shopping</a>
         </div>
     </div>
+    <div class="wishlist-sidebar__footer" id="wishlist-sidebar-footer" style="display: none;">
+        <div class="wishlist-sidebar__actions">
+            <label class="wishlist-select-all-label">
+                <input type="checkbox" id="wishlist-select-all" class="wishlist-select-all-checkbox">
+                <span>Select All</span>
+            </label>
+            <div class="wishlist-bulk-actions">
+                <button class="btn btn-primary btn-sm move-to-cart-btn" id="wishlist-add-selected-to-cart" disabled>
+                    <i class="fas fa-shopping-cart"></i> <span class="btn-text">Add to Cart</span>
+                </button>
+                <button class="btn btn-outline-danger btn-sm" id="wishlist-remove-selected" disabled>
+                    <i class="fas fa-trash"></i> <span class="btn-text">Remove</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

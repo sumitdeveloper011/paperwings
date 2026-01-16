@@ -35,10 +35,16 @@
         }
 
         addToCartBtn.addEventListener('click', function() {
-            const productId = this.getAttribute('data-product-id');
+            const productUuid = this.getAttribute('data-product-uuid');
             const quantity = parseInt(quantityInput?.value) || 1;
             const btnText = this.querySelector('.btn-text');
             const btnIcon = this.querySelector('i');
+
+            // Validate product UUID
+            if (!productUuid) {
+                showNotification('Product UUID is missing. Please refresh the page.', 'error');
+                return;
+            }
 
             // Disable button and show loading state
             this.disabled = true;
@@ -56,7 +62,7 @@
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    product_id: productId,
+                    product_uuid: productUuid,
                     quantity: quantity
                 })
             })
@@ -92,7 +98,6 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 showNotification('An error occurred. Please try again.', 'error');
 
                 // Reset button state

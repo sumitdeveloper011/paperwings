@@ -16,9 +16,19 @@ use Illuminate\Support\Facades\Auth;
 use App\Mail\OrderConfirmationMail;
 use App\Mail\OrderDeliveredMail;
 use App\Mail\OrderCancelledMail;
+use App\Mail\OrderProcessingMail;
+use App\Mail\OrderShippedMail;
+use App\Services\NotificationService;
 
 class OrderController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     // Display a listing of orders
     public function index(Request $request): View|JsonResponse
     {
@@ -66,7 +76,7 @@ class OrderController extends Controller
         });
 
         // Return JSON for AJAX requests
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             return response()->json([
                 'html' => view('admin.order.partials.table', compact('orders'))->render(),
                 'pagination' => view('admin.order.partials.pagination', compact('orders'))->render()
@@ -101,6 +111,9 @@ class OrderController extends Controller
             });
         }
 
+        // Mark order notifications as read when viewing
+        $this->notificationService->markAsReadByNotifiable($order);
+
         return view('admin.order.show', compact('order'));
     }
 
@@ -134,14 +147,13 @@ class OrderController extends Controller
         // Send email notification based on status (queue it to avoid blocking redirect)
         try {
             if ($request->status === 'delivered') {
-                // Use OrderDeliveredMail for delivered status
                 Mail::to($order->billing_email)->queue(new OrderDeliveredMail($order));
             } elseif ($request->status === 'cancelled') {
-                // Use OrderCancelledMail for cancelled status
                 Mail::to($order->billing_email)->queue(new OrderCancelledMail($order));
             } elseif ($request->status === 'shipped') {
-                // Use OrderConfirmationMail for shipped status
-                Mail::to($order->billing_email)->queue(new OrderConfirmationMail($order));
+                Mail::to($order->billing_email)->queue(new OrderShippedMail($order));
+            } elseif ($request->status === 'processing') {
+                Mail::to($order->billing_email)->queue(new OrderProcessingMail($order));
             }
         } catch (\Exception $e) {
             Log::error('Failed to queue order status email', [

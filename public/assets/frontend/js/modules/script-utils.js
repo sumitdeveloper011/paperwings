@@ -42,7 +42,9 @@
         },
 
         error: function(...args) {
-            console.error(...args);
+            if (CONFIG.isDevelopment) {
+                console.error(...args);
+            }
         },
 
         getConfig: function() {

@@ -1,0 +1,46 @@
+/* Components CSS - Reusable component styles */
+/* This file should contain: buttons, cards, modals, dropdowns, etc. */
+
+/* Frontend Toast Component Styles */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.frontend-toast-container {
+    pointer-events: none;
+}
+
+.frontend-toast {
+    pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+    #frontend-toast-container {
+        left: 20px;
+        right: 20px;
+        max-width: calc(100% - 40px);
+    }
+    
+    .frontend-toast {
+        min-width: auto;
+        max-width: 100%;
+    }
+}

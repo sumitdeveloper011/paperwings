@@ -9,10 +9,12 @@ use App\Http\Controllers\Frontend\CheckoutController;
 use App\Http\Controllers\Frontend\AccountController;
 use App\Http\Controllers\Frontend\SubscriptionController;
 use App\Http\Controllers\Frontend\PageController;
+use App\Http\Controllers\Frontend\CookiePreferencesController;
 use App\Http\Controllers\Frontend\ContactController;
+use App\Http\Controllers\Frontend\GalleryController;
 use App\Http\Controllers\Frontend\ReviewController;
 use App\Http\Controllers\Frontend\QuestionController;
-use App\Http\Controllers\Frontend\BundleController;
+use App\Http\Controllers\Frontend\UtilityController;
 use App\Http\Controllers\Auth\SocialAuthController;
 
 Route::middleware('prevent.admin')->group(function () {
@@ -70,8 +72,10 @@ Route::middleware('prevent.admin')->group(function () {
     Route::post('/answer/{answer}/helpful', [QuestionController::class, 'helpful'])->name('answer.helpful');
 
     // Bundles - fix singular to plural
-    Route::get('/bundles', [BundleController::class, 'index'])->name('bundles.index');
-    Route::get('/bundles/{slug}', [BundleController::class, 'show'])->name('bundle.show');
+    Route::get('/bundles', [ProductController::class, 'bundles'])->name('bundles.index');
+    Route::get('/bundles/{slug}', function($slug) {
+        return redirect()->route('product.detail', $slug, 301);
+    });
 
     // Redirects from old URLs to new URLs (301 permanent redirects for SEO)
     Route::get('/product/{slug}', function($slug) {
@@ -81,7 +85,7 @@ Route::middleware('prevent.admin')->group(function () {
         return redirect()->route('category.show', $slug, 301);
     });
     Route::get('/bundle/{slug}', function($slug) {
-        return redirect()->route('bundle.show', $slug, 301);
+        return redirect()->route('product.detail', $slug, 301);
     });
 });
 
@@ -105,6 +109,13 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/cookie-policy', function() {
         return app(PageController::class)->showBySlug('cookie-policy');
     })->name('cookies');
+    
+    Route::get('/cookie-preferences', [CookiePreferencesController::class, 'index'])->name('cookie-preferences.index');
+    Route::post('/cookie-preferences/update', [CookiePreferencesController::class, 'update'])->name('cookie-preferences.update');
+
+    // Galleries
+    Route::get('/galleries', [GalleryController::class, 'index'])->name('galleries.index');
+    Route::get('/gallery/{slug}', [GalleryController::class, 'show'])->name('gallery.show');
 
     // Redirect from old /page/{slug} to new direct slug (301 for SEO) - must be before catch-all
     Route::get('/page/{slug}', function($slug) {
@@ -113,7 +124,7 @@ Route::middleware('prevent.admin')->group(function () {
 
     // Fallback for other pages (must be last with proper exclusions)
     Route::get('/{slug}', [PageController::class, 'showBySlug'])
-        ->where('slug', '^(?!admin|api|cart|checkout|account|login|register|search|shop|products|categories|bundles|contact|faq|wishlist|unsubscribe|auth|stripe|reset-password|forgot-password|email|about-us|privacy-policy|terms-and-conditions|delivery-policy|return-policy|cookie-policy|page).*')
+        ->where('slug', '^(?!admin|api|cart|checkout|account|login|register|search|shop|products|categories|bundles|contact|faq|wishlist|unsubscribe|auth|stripe|reset-password|forgot-password|email|about-us|privacy-policy|terms-and-conditions|delivery-policy|return-policy|cookie-policy|page|galleries|gallery).*')
         ->name('page.show');
 
     Route::get('/faq', [\App\Http\Controllers\Frontend\FaqController::class, 'index'])->name('faq.index');
@@ -127,32 +138,58 @@ Route::middleware('prevent.admin')->group(function () {
 Route::middleware('prevent.admin')->group(function () {
     Route::post('/wishlist/add', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/wishlist/remove', [WishlistController::class, 'remove'])->name('wishlist.remove');
+    Route::post('/wishlist/remove-multiple', [WishlistController::class, 'removeMultiple'])->name('wishlist.remove-multiple');
     Route::get('/wishlist/list', [WishlistController::class, 'list'])->name('wishlist.list');
     Route::get('/wishlist/render', [WishlistController::class, 'render'])->name('wishlist.render');
     Route::get('/wishlist/count', [WishlistController::class, 'count'])->name('wishlist.count');
     Route::post('/wishlist/check', [WishlistController::class, 'check'])->name('wishlist.check');
 });
 
-Route::middleware(['auth', 'prevent.admin'])->group(function () {
+Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::get('/cart/list', [CartController::class, 'index'])->name('cart.list');
-    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-    Route::put('/cart/update', [CartController::class, 'update'])->name('cart.update');
-    Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
     Route::get('/cart/api/list', [CartController::class, 'list'])->name('cart.api.list');
     Route::get('/cart/render', [CartController::class, 'render'])->name('cart.render');
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
+});
+
+Route::middleware(['auth', 'prevent.admin', 'throttle:30,1'])->group(function () {
+    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
+    Route::post('/cart/add-multiple', [CartController::class, 'addMultiple'])->name('cart.add-multiple');
+    Route::put('/cart/update', [CartController::class, 'update'])->name('cart.update');
+    Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
     Route::post('/cart/check', [CartController::class, 'check'])->name('cart.check');
 });
 
-Route::middleware(['auth', 'prevent.admin'])->group(function () {
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('checkout.apply-coupon');
-    Route::post('/checkout/remove-coupon', [CheckoutController::class, 'removeCoupon'])->name('checkout.remove-coupon');
-    Route::post('/checkout/calculate-shipping', [CheckoutController::class, 'calculateShipping'])->name('checkout.calculate-shipping');
-    Route::post('/checkout/create-payment-intent', [CheckoutController::class, 'createPaymentIntent'])->name('checkout.create-payment-intent');
-    Route::post('/checkout/process-order', [CheckoutController::class, 'processOrder'])->name('checkout.process-order');
-    Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
+Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function () {
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::get('/', [CheckoutController::class, 'index'])->name('index');
+        Route::get('/details', [CheckoutController::class, 'details'])->name('details');
+        Route::get('/review', [CheckoutController::class, 'review'])->name('review');
+        Route::get('/payment', [CheckoutController::class, 'payment'])->name('payment');
+    });
+});
+
+Route::middleware(['auth', 'prevent.admin', 'throttle:20,1'])->group(function () {
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::post('/details', [CheckoutController::class, 'storeDetails'])->name('store-details');
+        Route::post('/review', [CheckoutController::class, 'confirmReview'])->name('confirm-review');
+        Route::post('/payment', [CheckoutController::class, 'processPayment'])->name('process-payment');
+        
+        Route::post('/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('apply-coupon');
+        Route::post('/remove-coupon', [CheckoutController::class, 'removeCoupon'])->name('remove-coupon');
+        Route::post('/calculate-shipping', [CheckoutController::class, 'calculateShipping'])->name('calculate-shipping');
+        Route::post('/create-payment-intent', [CheckoutController::class, 'createPaymentIntent'])->name('create-payment-intent');
+        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
+        Route::post('/search-address', [CheckoutController::class, 'searchAddress'])->name('search-address');
+        Route::get('/get-address/{id}', [CheckoutController::class, 'getAddress'])->name('get-address');
+    });
+});
+
+Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::post('/process-order', [CheckoutController::class, 'processOrder'])->name('process-order');
+    });
 });
 
 Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
@@ -172,6 +209,12 @@ Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::put('/account/addresses/{id}', [AccountController::class, 'updateAddress'])->name('account.addresses.update');
     Route::delete('/account/addresses/{id}', [AccountController::class, 'destroyAddress'])->name('account.addresses.destroy');
     Route::put('/account/addresses/{id}/set-default', [AccountController::class, 'setDefaultAddress'])->name('account.addresses.set-default');
+    Route::post('/account/search-address', [AccountController::class, 'searchAddress'])->name('account.search-address');
+    Route::get('/account/get-address/{id}', [AccountController::class, 'getAddress'])->name('account.get-address');
     Route::get('/account/my-orders', [AccountController::class, 'myOrders'])->name('account.my-orders');
     Route::get('/account/orders/{orderNumber}', [AccountController::class, 'orderDetails'])->name('account.order-details');
 });
+
+Route::post('/api/log-client-error', [UtilityController::class, 'logClientError'])
+    ->name('api.log-client-error')
+    ->middleware('web');

@@ -3,14 +3,30 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Frontend\StoreContactRequest;
+use App\Mail\ContactNotificationMail;
+use App\Mail\ContactAdminNotificationMail;
+use App\Services\NotificationService;
 use App\Models\ContactMessage;
+use App\Services\GoogleAnalyticsService;
 use App\Helpers\SettingHelper;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ContactController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     // Display the contact page
     public function index(): View
     {
@@ -42,24 +58,57 @@ class ContactController extends Controller
     }
 
     // Store a contact message
-    public function store(Request $request): RedirectResponse
+    public function store(StoreContactRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string|max:5000',
-        ], [
-            'name.required' => 'Please enter your name.',
-            'email.required' => 'Please enter your email address.',
-            'email.email' => 'Please enter a valid email address.',
-            'subject.required' => 'Please enter a subject.',
-            'message.required' => 'Please enter your message.',
-            'message.max' => 'Your message is too long. Maximum 5000 characters allowed.',
-        ]);
+        $validated = $request->validated();
 
-        ContactMessage::create($validated);
+        // Handle image upload if provided
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $folderUuid = Str::uuid()->toString();
+            $folderPath = 'contact-messages/' . $folderUuid;
+            
+            // Create directory if it doesn't exist
+            if (!Storage::disk('public')->exists($folderPath)) {
+                Storage::disk('public')->makeDirectory($folderPath, 0755, true);
+            }
+            
+            $imageName = Str::uuid() . '.' . $image->getClientOriginalExtension();
+            $imagePath = Storage::disk('public')->putFileAs($folderPath, $image, $imageName);
+            
+            $validated['image'] = $imagePath;
+        }
+
+        $contactMessage = ContactMessage::create($validated);
+
+        try {
+            $analyticsService = app(GoogleAnalyticsService::class);
+            $analyticsService->trackEvent('contact_form_submit', [
+                'form_type' => 'contact',
+                'user_id' => Auth::id() ?? null
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Analytics tracking failed for contact form', [
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        try {
+            // Send confirmation email to client
+            Mail::to($contactMessage->email)->send(new ContactNotificationMail($contactMessage));
+        } catch (\Exception $e) {
+            Log::error('Failed to send contact confirmation email', [
+                'error' => $e->getMessage(),
+                'contact_message_id' => $contactMessage->id
+            ]);
+        }
+
+        // Create admin notification (this will also send admin email if enabled)
+        try {
+            $this->notificationService->createContactNotification($contactMessage);
+        } catch (\Exception $e) {
+            Log::error('Failed to create contact notification: ' . $e->getMessage());
+        }
 
         return redirect()->route('contact')
             ->with('success', 'Thank you for contacting us! We will get back to you soon.');

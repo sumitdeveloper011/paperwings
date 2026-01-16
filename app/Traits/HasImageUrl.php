@@ -25,6 +25,6 @@ trait HasImageUrl
      */
     protected function getFallbackImage(): string
     {
-        return 'assets/images/no-image.png'; // Default fallback
+        return 'assets/images/placeholder.jpg'; // Default fallback
     }
 }

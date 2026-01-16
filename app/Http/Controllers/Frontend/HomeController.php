@@ -14,6 +14,7 @@ use App\Helpers\SettingHelper;
 use App\Services\InstagramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
@@ -21,7 +22,8 @@ class HomeController extends Controller
 
     // Display homepage with products, categories, testimonials, and other content
     public function index(){
-        $title = 'Home';
+        $settings = SettingHelper::all();
+        $title = $settings['meta_title'] ?? config('app.name', 'Paper Wings');
         $sliders = Slider::active()->ordered()->get();
 
         $categories = Category::active()
@@ -31,15 +33,25 @@ class HomeController extends Controller
             ->take(6)
             ->get();
 
+        // Featured Products - Show latest products (product_type 2) for testing
+        $featuredProducts = Product::active()
+            ->where('product_type', 2)
+            ->withFirstImage()
+            ->selectMinimal()
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->take(8)
+            ->get();
+
         $allProducts = Product::active()
-            ->whereIn('product_type', [1, 2, 3])
+            ->whereIn('product_type', [1,3])
             ->withFirstImage()
             ->selectMinimal()
             ->get()
             ->shuffle()
             ->groupBy('product_type');
 
-        $featuredProducts = $allProducts->get(1, collect())->take(8);
+        // $featuredProducts = $allProducts->get(1, collect())->take(8);
         $onSaleProducts = $allProducts->get(2, collect())->take(8);
         $topRatedProducts = $allProducts->get(3, collect())->take(8);
 

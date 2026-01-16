@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Helpers\SettingHelper;
 use App\Helpers\CacheHelper;
+use App\Services\ApiKeyEncryptionService;
+use App\Services\InstagramService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
@@ -34,6 +37,28 @@ class ApiSettingsController extends Controller
             'stripe_key' => 'nullable|string|max:500',
             'stripe_secret' => 'nullable|string|max:500',
             'stripe_webhook_secret' => 'nullable|string|max:500',
+
+            // Google OAuth
+            'google_client_id' => 'nullable|string|max:500',
+            'google_client_secret' => 'nullable|string|max:500',
+            'google_login_enabled' => 'nullable|in:0,1',
+
+            // Facebook OAuth
+            'facebook_client_id' => 'nullable|string|max:500',
+            'facebook_client_secret' => 'nullable|string|max:500',
+            'facebook_login_enabled' => 'nullable|in:0,1',
+
+            // NZ Post
+            'nzpost_api_key' => 'nullable|string|max:500',
+
+            // Google Maps
+            'google_map_api_key' => 'nullable|string|max:500',
+
+            // Instagram
+            'instagram_app_id' => 'nullable|string|max:255',
+            'instagram_app_secret' => 'nullable|string|max:255',
+            'instagram_access_token' => 'nullable|string|max:500',
+            'instagram_user_id' => 'nullable|string|max:255',
         ]);
 
         // Update EPOSNOW Keys
@@ -56,19 +81,73 @@ class ApiSettingsController extends Controller
         $this->updateSetting('facebook_client_secret', $validated['facebook_client_secret'] ?? '');
         $this->updateSetting('facebook_login_enabled', $validated['facebook_login_enabled'] ?? '0');
 
+        // Update NZ Post Settings
+        $this->updateSetting('nzpost_api_key', $validated['nzpost_api_key'] ?? '');
+
+        // Update Google Maps Settings
+        $this->updateSetting('google_map_api_key', $validated['google_map_api_key'] ?? '');
+
+        // Update Instagram Settings
+        $this->updateSetting('instagram_app_id', $validated['instagram_app_id'] ?? '');
+        $this->updateSetting('instagram_app_secret', $validated['instagram_app_secret'] ?? '');
+        $this->updateSetting('instagram_access_token', $validated['instagram_access_token'] ?? '');
+        $this->updateSetting('instagram_user_id', $validated['instagram_user_id'] ?? '');
+
         // Clear settings cache after update
         CacheHelper::forgetAllSettings();
+
+        // Clear Instagram cache if credentials were updated
+        if (isset($validated['instagram_access_token']) || isset($validated['instagram_user_id'])) {
+            $instagramService = new InstagramService();
+            $instagramService->clearCache();
+        }
 
         return redirect()->route('admin.api-settings.index')
             ->with('success', 'API Settings updated successfully!');
     }
 
+    // Test Instagram API connection
+    public function testInstagram(Request $request): JsonResponse
+    {
+        $request->validate([
+            'instagram_app_id' => 'nullable|string',
+            'instagram_app_secret' => 'nullable|string',
+            'instagram_access_token' => 'nullable|string',
+            'instagram_user_id' => 'nullable|string',
+        ]);
+
+        // Temporarily update settings for testing (with encryption)
+        if ($request->has('instagram_app_id')) {
+            $value = ApiKeyEncryptionService::encrypt('instagram_app_id', $request->instagram_app_id);
+            Setting::updateOrCreate(['key' => 'instagram_app_id'], ['value' => $value]);
+        }
+        if ($request->has('instagram_app_secret')) {
+            $value = ApiKeyEncryptionService::encrypt('instagram_app_secret', $request->instagram_app_secret);
+            Setting::updateOrCreate(['key' => 'instagram_app_secret'], ['value' => $value]);
+        }
+        if ($request->has('instagram_access_token')) {
+            $value = ApiKeyEncryptionService::encrypt('instagram_access_token', $request->instagram_access_token);
+            Setting::updateOrCreate(['key' => 'instagram_access_token'], ['value' => $value]);
+        }
+        if ($request->has('instagram_user_id')) {
+            Setting::updateOrCreate(['key' => 'instagram_user_id'], ['value' => $request->instagram_user_id]);
+        }
+
+        $instagramService = new InstagramService();
+        $result = $instagramService->testConnection();
+
+        return response()->json($result);
+    }
+
     // Update or create a setting
     private function updateSetting(string $key, ?string $value): void
     {
+        // Encrypt sensitive keys before storing
+        $encryptedValue = ApiKeyEncryptionService::encrypt($key, $value);
+        
         Setting::updateOrCreate(
             ['key' => $key],
-            ['value' => $value]
+            ['value' => $encryptedValue]
         );
     }
 }

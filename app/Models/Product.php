@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Traits\HasUuid;
 use App\Traits\HasUniqueSlug;
 use App\Helpers\CacheHelper;
@@ -273,9 +274,10 @@ class Product extends Model
     // Scope to eager load first image
     public function scopeWithFirstImage($query)
     {
+        // Eager load images with limit - Laravel handles limit per parent
         return $query->with(['images' => function($q) {
             $q->select('id', 'product_id', 'image')
-              ->orderBy('id')
+              ->orderBy('id', 'asc')
               ->limit(1);
         }]);
     }
@@ -283,7 +285,7 @@ class Product extends Model
     // Scope to select minimal columns
     public function scopeSelectMinimal($query)
     {
-        return $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'product_type', 'status', 'category_id', 'eposnow_category_id');
+        return $query->select('id', 'uuid', 'name', 'slug', 'total_price', 'discount_price', 'product_type', 'status', 'category_id', 'eposnow_category_id');
     }
 
     // Get price without tax attribute
@@ -341,16 +343,76 @@ class Product extends Model
     // Get main thumbnail URL attribute
     public function getMainThumbnailUrlAttribute(): string
     {
-        if ($this->relationLoaded('images') && $this->images->isNotEmpty()) {
-            return $this->images->first()->thumbnail_url;
+        $placeholderUrl = asset('assets/images/placeholder.jpg');
+        
+        // Check if images are already loaded (eager loaded)
+        if ($this->relationLoaded('images')) {
+            if ($this->images->isNotEmpty()) {
+                $firstImage = $this->images->first();
+                if ($firstImage && $firstImage->image) {
+                    $thumbnailUrl = $firstImage->thumbnail_url;
+                    if ($thumbnailUrl && $thumbnailUrl !== '') {
+                        return $thumbnailUrl;
+                    }
+                }
+            }
+            // If images relation is loaded but empty, return placeholder
+            return $placeholderUrl;
         }
 
-        $firstImage = $this->images()->first();
-        if ($firstImage) {
-            return $firstImage->thumbnail_url;
-        }
+        // If images not loaded, DON'T query again (causes N+1)
+        // Return placeholder - images should be eager loaded with withFirstImage()
+        return $placeholderUrl;
+    }
 
-        return asset('assets/images/placeholder.jpg');
+    /**
+     * Check if image URL is valid (file exists or is a placeholder)
+     *
+     * @param string $url
+     * @return bool
+     */
+    protected function isValidImageUrl(string $url): bool
+    {
+        if (!$url || $url === '') {
+            return false;
+        }
+        
+        // For asset URLs (placeholder, no-image), always consider them valid
+        if (strpos($url, 'assets/images/') !== false || 
+            strpos($url, '/assets/') !== false ||
+            strpos($url, 'placeholder') !== false ||
+            strpos($url, 'no-image') !== false) {
+            return true;
+        }
+        
+        // If URL contains 'storage/', check if file exists
+        if (strpos($url, '/storage/') !== false || strpos($url, 'storage/') !== false) {
+            // Extract path from URL
+            $path = parse_url($url, PHP_URL_PATH);
+            if ($path) {
+                // Remove /storage/ prefix
+                $path = preg_replace('#^/storage/#', '', $path);
+                $path = ltrim($path, '/');
+                
+                // Check if file exists
+                if ($path && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                    return true;
+                }
+            }
+            
+            // Also try direct path extraction
+            $path = str_replace(asset('storage/'), '', $url);
+            $path = str_replace(url('storage/'), '', $path);
+            $path = preg_replace('/\?.*$/', '', $path); // Remove query strings
+            $path = ltrim($path, '/');
+            
+            if ($path && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                return true;
+            }
+        }
+        
+        // If validation fails, return false (will use placeholder)
+        return false;
     }
 
     // Get image URLs attribute

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin\Contact;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactStatusUpdateMail;
 use App\Models\ContactMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
 class ContactController extends Controller
@@ -78,9 +81,40 @@ class ContactController extends Controller
             'admin_notes' => 'nullable|string|max:5000',
         ]);
 
+        $oldStatus = $contact->status;
+        $newStatus = $validated['status'];
+
         $contact->update($validated);
 
-        return redirect()->route('admin.contacts.show', $contact)
+        // Send email notification to user only when status is changed to "solved"
+        if ($oldStatus !== $newStatus && $newStatus === 'solved') {
+            try {
+                Mail::to($contact->email)->send(new ContactStatusUpdateMail($contact, $oldStatus, $newStatus));
+                
+                Log::info('Contact message status update email sent (solved)', [
+                    'contact_message_id' => $contact->id,
+                    'email' => $contact->email,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send contact status update email', [
+                    'contact_message_id' => $contact->id,
+                    'email' => $contact->email,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't fail the redirect if email fails
+            }
+        }
+
+        Log::info('Contact message updated', [
+            'contact_message_id' => $contact->id,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'updated_by' => auth()->id(),
+        ]);
+
+        return redirect()->route('admin.contacts.index')
             ->with('success', 'Contact message updated successfully!');
     }
 

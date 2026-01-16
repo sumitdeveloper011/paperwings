@@ -27,9 +27,11 @@
             }
         },
 
-        // Error log (always show)
+        // Error log (only in development)
         error: function(...args) {
-            console.error(...args);
+            if (CONFIG.isDevelopment) {
+                console.error(...args);
+            }
         },
 
         // Handle authentication redirect

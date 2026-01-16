@@ -58,15 +58,6 @@
 
 <!-- Product Zoom CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css">
-<style>
-    .product-main-image img {
-        cursor: zoom-in;
-        transition: transform 0.3s;
-    }
-    .product-main-image img:hover {
-        transform: scale(1.05);
-    }
-</style>
 @endpush
 
 @section('content')
@@ -99,12 +90,13 @@
                         @if($hasImages)
                             <div class="product-main-image">
                                 <a href="{{ $productImages->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
-                                    <img src="{{ $productImages->first()->thumbnail_url }}"
+                                    <img src="{{ $productImages->first()->medium_url ?? $productImages->first()->image_url }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
                                          id="mainImage"
                                          data-full-image="{{ $productImages->first()->image_url }}"
-                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Image failed to load: {{ $productImages->first()->thumbnail_url }}');">
+                                         data-medium-image="{{ $productImages->first()->medium_url ?? $productImages->first()->image_url }}"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
                                 </a>
                             </div>
                             @if($productImages->count() > 1)
@@ -112,17 +104,25 @@
                                 @foreach($productImages as $index => $image)
                                     <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
                                          data-image="{{ $image->image_url }}"
+                                         data-medium-image="{{ $image->medium_url ?? $image->image_url }}"
                                          data-thumbnail="{{ $image->thumbnail_url }}">
-                                        <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $index + 1 }}">
-                                            <img src="{{ $image->thumbnail_url }}"
-                                                 alt="{{ $product->name }} - Image {{ $index + 1 }}"
-                                                 loading="lazy"
-                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Thumbnail failed to load: {{ $image->thumbnail_url }}');">
-                                        </a>
+                                        <img src="{{ $image->thumbnail_url }}"
+                                             alt="{{ $product->name }} - Image {{ $index + 1 }}"
+                                             loading="lazy"
+                                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
                                     </div>
                                 @endforeach
                             </div>
                             @endif
+                            {{-- Hidden lightbox links for all images to enable gallery navigation --}}
+                            @foreach($productImages as $loopIndex => $image)
+                                @if($loopIndex > 0)
+                                @php
+                                    $imageNumber = $loopIndex + 1;
+                                @endphp
+                                <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $imageNumber }}" style="display: none;"></a>
+                                @endif
+                            @endforeach
                         @else
                             <!-- Fallback if no images -->
                             <div class="product-main-image">
@@ -131,7 +131,8 @@
                                          alt="{{ $product->name }}"
                                          class="main-img"
                                          id="mainImage"
-                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'; console.error('Fallback image failed to load: {{ $mainImageUrl }}');">
+                                         loading="lazy"
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
                                 </a>
                             </div>
                         @endif
@@ -219,16 +220,18 @@
                             </div>
                         </div>
 
+                        @if(!empty($product->uuid))
                         <div class="product-actions">
-                            <button class="btn btn-primary add-to-cart" data-product-id="{{ $product->id }}" id="addToCartBtn" {{ !$isInStock ? 'disabled' : '' }}>
+                            <button class="btn btn-primary add-to-cart" data-product-uuid="{{ $product->uuid }}" id="addToCartBtn" {{ !$isInStock ? 'disabled' : '' }}>
                                 <i class="fas fa-shopping-cart"></i>
                                 <span class="btn-text">{{ $isInStock ? 'Add to Cart' : 'Out of Stock' }}</span>
                             </button>
-                            <button class="btn btn-outline-primary wishlist-btn" data-product-id="{{ $product->id }}">
+                            <button class="btn btn-outline-primary wishlist-btn" data-product-uuid="{{ $product->uuid }}">
                                 <i class="far fa-heart"></i>
                                 Add to Wishlist
                             </button>
                         </div>
+                        @endif
 
                         <!-- Social Sharing -->
                         <div class="product-social-share">
@@ -307,10 +310,15 @@
                 <div class="col-12">
                     <div class="product-tabs">
                         <ul class="nav nav-tabs" id="productTabs" role="tablist">
+                            @if($product->product_type == 4 && $product->bundleProducts && $product->bundleProducts->count() > 0)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="bundle-contents-tab" data-bs-toggle="tab" data-bs-target="#bundle-contents" type="button" role="tab">What's Included in This Bundle</button>
+                                </li>
+                            @endif
                             @if($product->accordions->count() > 0)
                                 @foreach($product->accordions as $accordion)
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link {{ $loop->first ? 'active' : '' }}" id="accordion-{{ $accordion->id }}-tab" data-bs-toggle="tab" data-bs-target="#accordion-{{ $accordion->id }}" type="button" role="tab">{{ $accordion->heading }}</button>
+                                        <button class="nav-link {{ ($product->product_type == 4 && $product->bundleProducts && $product->bundleProducts->count() > 0) ? '' : ($loop->first ? 'active' : '') }}" id="accordion-{{ $accordion->id }}-tab" data-bs-toggle="tab" data-bs-target="#accordion-{{ $accordion->id }}" type="button" role="tab">{{ $accordion->heading }}</button>
                                     </li>
                                 @endforeach
                             @endif
@@ -326,19 +334,21 @@
                                         }
                                     }
                                 }
+                                $hasBundleContents = $product->product_type == 4 && $product->bundleProducts && $product->bundleProducts->count() > 0;
+                                $firstTabActive = !$hasBundleContents && $product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description;
                             @endphp
                             @if($hasActiveFaqs)
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link {{ $product->accordions->count() == 0 ? 'active' : '' }}" id="faqs-tab" data-bs-toggle="tab" data-bs-target="#faqs" type="button" role="tab">FAQs</button>
+                                    <button class="nav-link {{ $firstTabActive ? 'active' : '' }}" id="faqs-tab" data-bs-toggle="tab" data-bs-target="#faqs" type="button" role="tab">FAQs</button>
                                 </li>
                             @endif
                             @if($product->description)
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'active' : '' }}" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">Product Description</button>
+                                    <button class="nav-link {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$hasBundleContents) ? 'active' : '' }}" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">Product Description</button>
                                 </li>
                             @endif
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description) ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
+                                <button class="nav-link {{ $firstTabActive ? 'active' : '' }}" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">Reviews ({{ $product->reviews_count }})</button>
                             </li>
                             @if($product->approvedQuestions->count() > 0)
                                 <li class="nav-item" role="presentation">
@@ -348,9 +358,36 @@
                         </ul>
 
                         <div class="tab-content" id="productTabsContent">
+                            @if($product->product_type == 4 && $product->bundleProducts && $product->bundleProducts->count() > 0)
+                                <div class="tab-pane fade show active" id="bundle-contents" role="tabpanel">
+                                    <div class="tab-content-body">
+                                        <div class="bundle-products-list">
+                                            @foreach($product->bundleProducts as $bundleProduct)
+                                                <div class="bundle-product-list-item">
+                                                    <div class="bundle-product-list-item__image">
+                                                        <a href="{{ route('product.detail', $bundleProduct->slug) }}">
+                                                            <img src="{{ $bundleProduct->main_thumbnail_url ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $bundleProduct->name }}" class="bundle-product-list-item__img">
+                                                        </a>
+                                                    </div>
+                                                    <div class="bundle-product-list-item__info">
+                                                        <h4 class="bundle-product-list-item__name">
+                                                            <a href="{{ route('product.detail', $bundleProduct->slug) }}">{{ $bundleProduct->name }}</a>
+                                                        </h4>
+                                                        @if($bundleProduct->category)
+                                                            <div class="bundle-product-list-item__category">
+                                                                <a href="{{ route('category.show', $bundleProduct->category->slug) }}">{{ $bundleProduct->category->name }}</a>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                             @if($product->accordions->count() > 0)
                                 @foreach($product->accordions as $accordion)
-                                    <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="accordion-{{ $accordion->id }}" role="tabpanel">
+                                    <div class="tab-pane fade {{ (!$hasBundleContents && $loop->first) ? 'show active' : '' }}" id="accordion-{{ $accordion->id }}" role="tabpanel">
                                         <div class="tab-content-body">
                                             <h3>{{ $accordion->heading }}</h3>
                                             {!! $accordion->content !!}
@@ -378,7 +415,7 @@
                                 $activeFaqsList = $activeFaqsList->sortBy('sort_order');
                             @endphp
                             @if($activeFaqsList->count() > 0)
-                                <div class="tab-pane fade {{ $product->accordions->count() == 0 ? 'show active' : '' }}" id="faqs" role="tabpanel">
+                                <div class="tab-pane fade {{ $firstTabActive ? 'show active' : '' }}" id="faqs" role="tabpanel">
                                     <div class="tab-content-body">
                                         <h3>Frequently Asked Questions</h3>
                                         <div class="accordion" id="productFaqAccordion">
@@ -402,14 +439,14 @@
                             @endif
 
                             @if($product->description)
-                                <div class="tab-pane fade {{ $product->accordions->count() == 0 && !$hasActiveFaqs ? 'show active' : '' }}" id="description" role="tabpanel">
+                                <div class="tab-pane fade {{ (!$hasBundleContents && $product->accordions->count() == 0 && !$hasActiveFaqs) ? 'show active' : '' }}" id="description" role="tabpanel">
                                     <div class="tab-content-body">
                                         <div>{!! $product->description !!}</div>
                                     </div>
                                 </div>
                             @endif
 
-                            <div class="tab-pane fade {{ ($product->accordions->count() == 0 && !$hasActiveFaqs && !$product->description) ? 'show active' : '' }}" id="reviews" role="tabpanel">
+                            <div class="tab-pane fade {{ $firstTabActive ? 'show active' : '' }}" id="reviews" role="tabpanel">
                                 <div class="tab-content-body">
                                     <h3 class="reviews-section-title">Customer Reviews</h3>
 
@@ -483,23 +520,27 @@
                                                         <label for="rating{{ $i }}" class="star-label"><i class="fas fa-star"></i></label>
                                                     @endfor
                                                 </div>
+                                                <div class="invalid-feedback invalid-feedback--review"></div>
                                             </div>
                                             @guest
                                             <div class="review-form__row">
                                                 <div class="review-form__col">
                                                     <label class="review-form__label">Name *</label>
-                                                    <input type="text" name="name" class="review-form__input" required>
+                                                    <input type="text" name="name" class="review-form__input" minlength="2" maxlength="255" required>
+                                                    <div class="invalid-feedback"></div>
                                                 </div>
                                                 <div class="review-form__col">
                                                     <label class="review-form__label">Email *</label>
-                                                    <input type="email" name="email" class="review-form__input" required>
+                                                    <input type="email" name="email" class="review-form__input" maxlength="255" required>
+                                                    <div class="invalid-feedback"></div>
                                                 </div>
                                             </div>
                                             @endguest
                                             <div class="review-form__field">
                                                 <label class="review-form__label">Review *</label>
-                                                <textarea name="review" class="review-form__textarea" rows="4" minlength="10" maxlength="1000" required></textarea>
+                                                <textarea name="review" class="review-form__textarea" rows="2" minlength="10" maxlength="1000" required></textarea>
                                                 <small class="review-form__hint">Minimum 10 characters, maximum 1000 characters</small>
+                                                <div class="invalid-feedback"></div>
                                             </div>
                                             <button type="submit" class="review-form__submit btn btn-primary">Submit Review</button>
                                         </form>
@@ -554,7 +595,7 @@
                                         <!-- Ask Question Form -->
                                         <div class="question-form mt-5">
                                             <h4>Ask a Question</h4>
-                                            <form id="questionForm">
+                                            <form id="questionForm" action="{{ route('question.store', $product->slug) }}" method="POST">
                                                 @csrf
                                                 @guest
                                                 <div class="row mb-3">
@@ -611,6 +652,23 @@
     </section>
 
 @push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.Analytics && window.Analytics.isEnabled()) {
+        @php
+            $productData = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'category' => $product->category->name ?? 'Uncategorized',
+                'brand' => $product->brand->name ?? '',
+                'price' => $product->discount_price ?? $product->total_price ?? 0
+            ];
+        @endphp
+        const product = @json($productData);
+        window.Analytics.trackViewItem(product);
+    }
+});
+</script>
 {{-- Lightbox2 for Product Zoom - Load before other scripts --}}
 <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
 <script>
@@ -621,7 +679,10 @@
                 'resizeDuration': 200,
                 'wrapAround': true,
                 'fadeDuration': 300,
-                'imageFadeDuration': 300
+                'imageFadeDuration': 300,
+                'showImageNumberLabel': true,
+                'alwaysShowNavOnTouchDevices': true,
+                'disableScrolling': true
             });
         }
     });
@@ -636,29 +697,34 @@
 {{-- Product Detail Page Enhancements --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Update main image when thumbnail is clicked (use thumbnail for display, full for lightbox)
+    // Update main image when thumbnail is clicked (use medium for display, original for lightbox)
     document.querySelectorAll('.thumbnail-item').forEach(function(thumbnail) {
         thumbnail.addEventListener('click', function(e) {
             e.preventDefault();
-            const fullImage = this.getAttribute('data-image');
-            const thumbnailImage = this.getAttribute('data-thumbnail');
+            const originalImage = this.getAttribute('data-image');
+            const mediumImage = this.getAttribute('data-medium-image');
             const mainImage = document.getElementById('mainImage');
             const mainImageLink = mainImage ? mainImage.closest('a') : null;
 
-            if (mainImage && fullImage && thumbnailImage) {
+            if (mainImage && originalImage && mediumImage) {
                 // Add fade effect
                 mainImage.style.opacity = '0.5';
 
-                // Update src to thumbnail for fast loading
+                // Update src to medium image for display
                 setTimeout(function() {
-                    mainImage.src = thumbnailImage;
-                    mainImage.setAttribute('data-full-image', fullImage);
+                    mainImage.src = mediumImage;
+                    mainImage.setAttribute('data-full-image', originalImage);
+                    mainImage.setAttribute('data-medium-image', mediumImage);
                     mainImage.classList.add('fade-in');
                     mainImage.style.opacity = '1';
 
-                    // Update lightbox link to full image
+                    // Update lightbox link to original image for zoom
+                    // This ensures lightbox opens the correct image and maintains gallery navigation
                     if (mainImageLink) {
-                        mainImageLink.href = fullImage;
+                        mainImageLink.href = originalImage;
+                        // Update the data-title if needed
+                        const imageIndex = Array.from(document.querySelectorAll('.thumbnail-item')).indexOf(thumbnail) + 1;
+                        mainImageLink.setAttribute('data-title', '{{ $product->name }}' + (imageIndex > 1 ? ' - Image ' + imageIndex : ''));
                     }
                 }, 150);
 

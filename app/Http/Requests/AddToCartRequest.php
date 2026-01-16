@@ -17,10 +17,10 @@ class AddToCartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => [
+            'product_uuid' => [
                 'required',
-                'integer',
-                Rule::exists('products', 'id')->where('status', 1)
+                'uuid',
+                Rule::exists('products', 'uuid')->where('status', 1)
             ],
             'quantity' => [
                 'nullable',
@@ -35,8 +35,9 @@ class AddToCartRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'product_id.required' => 'Product ID is required.',
-            'product_id.exists' => 'The selected product is not available.',
+            'product_uuid.required' => 'Product UUID is required.',
+            'product_uuid.uuid' => 'Invalid product UUID format.',
+            'product_uuid.exists' => 'The selected product is not available.',
             'quantity.integer' => 'Quantity must be a number.',
             'quantity.min' => 'Quantity must be at least 1.',
             'quantity.max' => 'Quantity cannot exceed 99.',

@@ -1,34 +1,34 @@
 @if($orders->count() > 0)
-    <div class="table-responsive">
+    <div class="modern-table-wrapper">
         <table class="modern-table">
-            <thead>
+            <thead class="modern-table__head">
                 <tr>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Payment</th>
-                    <th>Actions</th>
+                    <th class="modern-table__th">Order #</th>
+                    <th class="modern-table__th">Customer</th>
+                    <th class="modern-table__th">Date</th>
+                    <th class="modern-table__th">Items</th>
+                    <th class="modern-table__th">Total</th>
+                    <th class="modern-table__th">Status</th>
+                    <th class="modern-table__th">Payment</th>
+                    <th class="modern-table__th modern-table__th--actions">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="modern-table__body">
                 @foreach($orders as $order)
-                <tr>
-                    <td><strong>{{ $order->order_number }}</strong></td>
-                    <td>
+                <tr class="modern-table__row">
+                    <td class="modern-table__td"><strong>{{ $order->order_number }}</strong></td>
+                    <td class="modern-table__td">
                         <div>
                             <strong>{{ $order->billing_first_name }} {{ $order->billing_last_name }}</strong><br>
                             <small class="text-muted">{{ $order->billing_email }}</small>
                         </div>
                     </td>
-                    <td>{{ $order->created_at->format('M d, Y') }}</td>
-                    <td>
+                    <td class="modern-table__td">{{ $order->created_at->format('M d, Y') }}</td>
+                    <td class="modern-table__td">
                         <span class="badge badge--info">{{ $order->items_count ?? $order->items->count() ?? 0 }} items</span>
                     </td>
-                    <td><strong>${{ number_format($order->total ?? 0, 2) }}</strong></td>
-                    <td>
+                    <td class="modern-table__td"><strong>${{ number_format($order->total ?? 0, 2) }}</strong></td>
+                    <td class="modern-table__td">
                         @php
                             $orderStatus = $order->status ?? null;
                             $statusBadgeClass = 'badge--warning';
@@ -48,7 +48,7 @@
                         <span class="badge badge--secondary">N/A</span>
                         @endif
                     </td>
-                    <td>
+                    <td class="modern-table__td">
                         @php
                             $paymentStatus = $order->payment_status ?? null;
                             $paymentBadgeClass = 'badge--warning';
@@ -68,19 +68,19 @@
                         <span class="badge badge--secondary">N/A</span>
                         @endif
                     </td>
-                    <td>
+                    <td class="modern-table__td modern-table__td--actions">
                         <div class="action-buttons">
                             @can('orders.view')
-                            <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-info" title="View">
+                            <a href="{{ route('admin.orders.show', $order) }}" class="action-btn action-btn--view" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
                             @endcan
                             @can('orders.delete')
                             <form method="POST" action="{{ route('admin.orders.destroy', $order) }}"
-                                  class="delete-form" onsubmit="return confirm('Are you sure you want to delete this order?');">
+                                  class="action-form" onsubmit="return confirm('Are you sure you want to delete this order?');">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>

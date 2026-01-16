@@ -67,7 +67,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="editPhone" class="form-label">Phone Number <span class="required">*</span></label>
-                                    <input type="tel" id="editPhone" name="phone" class="form-input" value="{{ $user->userDetail->phone ?? old('phone') }}" required>
+                                    <input type="tel" id="editPhone" name="phone" class="form-input" value="{{ $user->userDetail->phone ?? old('phone') }}" pattern="[\d\+\s\-]+" inputmode="numeric" maxlength="20" required>
+                                    <div class="invalid-feedback" style="display: none;"></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="editDateOfBirth" class="form-label">Date of Birth</label>
@@ -97,6 +98,7 @@
     </div>
 </section>
 
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const profileImageInput = document.getElementById('profileImageInput');
@@ -156,6 +158,75 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.display = 'none';
         });
     }
+
+    // Initialize native form validation for edit profile form
+    function initEditProfileValidation() {
+        if (typeof window.initFormValidationNative === 'undefined') {
+            setTimeout(initEditProfileValidation, 100);
+            return;
+        }
+
+        const form = document.getElementById('editProfileForm');
+        if (!form) {
+            setTimeout(initEditProfileValidation, 100);
+            return;
+        }
+
+        const validationRules = {
+            'first_name': {
+                required: true,
+                minlength: 2,
+                maxlength: 255
+            },
+            'last_name': {
+                required: true,
+                minlength: 2,
+                maxlength: 255
+            },
+            'email': {
+                required: true,
+                email: true,
+                maxlength: 255
+            },
+            'phone': {
+                required: true,
+                nzPhone: true
+            }
+        };
+
+        const validationMessages = {
+            'first_name': {
+                required: 'Please enter your first name.',
+                minlength: 'First name must be at least 2 characters.',
+                maxlength: 'First name cannot exceed 255 characters.'
+            },
+            'last_name': {
+                required: 'Please enter your last name.',
+                minlength: 'Last name must be at least 2 characters.',
+                maxlength: 'Last name cannot exceed 255 characters.'
+            },
+            'email': {
+                required: 'Please enter your email address.',
+                email: 'Please enter a valid email address.',
+                maxlength: 'Email cannot exceed 255 characters.'
+            },
+            'phone': {
+                required: 'Please enter your phone number.',
+                nzPhone: 'Please enter a valid New Zealand phone number (numbers only, e.g., 0211234567 or 091234567).'
+            }
+        };
+
+        window.initFormValidationNative('#editProfileForm', {
+            rules: validationRules,
+            messages: validationMessages,
+            onInvalid: function(errors, validator) {
+                validator.scrollToFirstError();
+            }
+        });
+    }
+
+    initEditProfileValidation();
 });
 </script>
+@endpush
 @endsection

@@ -175,7 +175,8 @@ class SearchController extends Controller
     // Full search results page
     public function index(Request $request): View
     {
-        $query = trim($request->get('q', ''));
+        $searchQuery = trim($request->get('q', ''));
+        $title = $searchQuery ? 'Search Results for "' . $searchQuery . '"' : 'Search';
         $category = $request->get('category');
         $sort = $request->get('sort', 'relevance');
         $minPrice = $request->get('min_price');
@@ -186,15 +187,15 @@ class SearchController extends Controller
             ->with(['category:id,name,slug'])
             ->selectMinimal();
 
-        if ($query) {
-            $productsQuery->where(function($q) use ($query) {
-                $q->where('name', 'like', "{$query}%")
-                  ->orWhere('name', 'like', "% {$query}%")
-                  ->orWhere('slug', 'like', "{$query}%");
+        if ($searchQuery) {
+            $productsQuery->where(function($q) use ($searchQuery) {
+                $q->where('name', 'like', "{$searchQuery}%")
+                  ->orWhere('name', 'like', "% {$searchQuery}%")
+                  ->orWhere('slug', 'like', "{$searchQuery}%");
                 
-                if (strlen($query) > 3) {
-                    $q->orWhere('description', 'like', "%{$query}%")
-                      ->orWhere('short_description', 'like', "%{$query}%");
+                if (strlen($searchQuery) > 3) {
+                    $q->orWhere('description', 'like', "%{$searchQuery}%")
+                      ->orWhere('short_description', 'like', "%{$searchQuery}%");
                 }
             });
         }
@@ -212,7 +213,18 @@ class SearchController extends Controller
             $productsQuery->where('total_price', '<=', $maxPrice);
         }
 
-        switch ($sort) {
+        // Map category page sort format to search format
+        $sortMap = [
+            'featured' => 'relevance',
+            'price_low_high' => 'price_asc',
+            'price_high_low' => 'price_desc',
+            'name_asc' => 'name_asc',
+            'name_desc' => 'name_desc',
+            'newest' => 'newest'
+        ];
+        $actualSort = $sortMap[$sort] ?? $sort;
+
+        switch ($actualSort) {
             case 'price_asc':
                 $productsQuery->orderBy('total_price', 'asc');
                 break;
@@ -229,7 +241,7 @@ class SearchController extends Controller
                 $productsQuery->orderBy('created_at', 'desc');
                 break;
             default:
-                if ($query) {
+                if ($searchQuery) {
                     $productsQuery->orderByRaw("
                         CASE 
                             WHEN name LIKE ? THEN 1
@@ -237,7 +249,7 @@ class SearchController extends Controller
                             WHEN slug LIKE ? THEN 3
                             ELSE 4
                         END
-                    ", ["{$query}%", "% {$query}%", "{$query}%"]);
+                    ", ["{$searchQuery}%", "% {$searchQuery}%", "{$searchQuery}%"]);
                 }
                 $productsQuery->orderBy('name', 'asc');
                 break;
@@ -245,11 +257,47 @@ class SearchController extends Controller
 
         $products = $productsQuery->paginate(20)->withQueryString();
 
-        $categories = Category::active()
-            ->orderBy('name')
-            ->get();
+        // Calculate price range for filter
+        $priceRange = Product::active()
+            ->selectRaw('
+                MIN(COALESCE(discount_price, total_price)) as min_price,
+                MAX(COALESCE(discount_price, total_price)) as max_price
+            ')
+            ->first();
 
-        return view('frontend.search.index', compact('products', 'query', 'category', 'sort', 'minPrice', 'maxPrice', 'categories'));
+        $priceMin = floor($priceRange->min_price ?? 0);
+        $priceMax = ceil(($priceRange->max_price ?? 0) / 10) * 10;
+
+        // Get categories with product count
+        $categories = Category::where('categories.status', 1)
+            ->select('categories.id', 'categories.name', 'categories.slug')
+            ->leftJoin('products', function($join) {
+                $join->on('products.category_id', '=', 'categories.id')
+                     ->where('products.status', '=', 1);
+            })
+            ->groupBy('categories.id', 'categories.name', 'categories.slug')
+            ->selectRaw('COUNT(products.id) as active_products_count')
+            ->orderBy('categories.name', 'asc')
+            ->get()
+            ->map(function($category) {
+                $category->active_products_count = (int) $category->active_products_count;
+                return $category;
+            });
+
+        // Map sort values to match category page format for display
+        $displaySortMap = [
+            'relevance' => 'featured',
+            'price_asc' => 'price_low_high',
+            'price_desc' => 'price_high_low',
+            'name_asc' => 'name_asc',
+            'name_desc' => 'name_desc',
+            'newest' => 'newest'
+        ];
+        $displaySort = $displaySortMap[$actualSort] ?? 'featured';
+
+        $query = $searchQuery; // Keep 'query' variable for view compatibility
+
+        return view('frontend.search.index', compact('title', 'products', 'query', 'category', 'sort', 'displaySort', 'minPrice', 'maxPrice', 'priceMin', 'priceMax', 'categories'));
     }
 }
 

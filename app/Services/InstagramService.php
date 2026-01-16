@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Helpers\SettingHelper;
+use App\Services\ApiKeyEncryptionService;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
-use App\Models\Setting;
 
 class InstagramService
 {
@@ -17,10 +19,11 @@ class InstagramService
 
     public function __construct()
     {
-        $this->appId = Setting::get('instagram_app_id');
-        $this->appSecret = Setting::get('instagram_app_secret');
-        $this->accessToken = Setting::get('instagram_access_token');
-        $this->userId = Setting::get('instagram_user_id');
+        // Get from database with .env fallback (decryption handled by SettingHelper)
+        $this->appId = SettingHelper::get('instagram_app_id', env('INSTAGRAM_APP_ID'));
+        $this->appSecret = SettingHelper::get('instagram_app_secret', env('INSTAGRAM_APP_SECRET'));
+        $this->accessToken = SettingHelper::get('instagram_access_token', env('INSTAGRAM_ACCESS_TOKEN'));
+        $this->userId = SettingHelper::get('instagram_user_id', env('INSTAGRAM_USER_ID'));
     }
 
     // Check if Instagram API is configured
@@ -161,8 +164,12 @@ class InstagramService
                 $data = $response->json();
                 
                 if (isset($data['access_token'])) {
-                    // Update the access token in settings
-                    Setting::set('instagram_access_token', $data['access_token']);
+                    // Update the access token in settings (with encryption)
+                    $encryptedValue = ApiKeyEncryptionService::encrypt('instagram_access_token', $data['access_token']);
+                    Setting::updateOrCreate(
+                        ['key' => 'instagram_access_token'],
+                        ['value' => $encryptedValue]
+                    );
                     $this->accessToken = $data['access_token'];
                     
                     Cache::forget("instagram_media_{$this->userId}_*");

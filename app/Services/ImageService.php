@@ -40,12 +40,13 @@ class ImageService
                 Storage::disk('public')->makeDirectory($thumbnailsFolderPath, 0755, true);
             }
 
-            // Create medium folder for logo, pages, products, bundles, and special-offers
+            // Create medium folder for logo, pages, products, bundles, special-offers, and galleries
             if (($baseFolder === 'settings' && $uuid === 'logo') || 
                 $baseFolder === 'pages' || 
                 $baseFolder === 'products' || 
                 $baseFolder === 'bundles' || 
-                $baseFolder === 'special-offers') {
+                $baseFolder === 'special-offers' ||
+                $baseFolder === 'galleries') {
                 $mediumFolderPath = $baseFolder . '/' . $folderUuid . '/medium';
                 if (!Storage::disk('public')->exists($mediumFolderPath)) {
                     Storage::disk('public')->makeDirectory($mediumFolderPath, 0755, true);
@@ -106,6 +107,10 @@ class ImageService
                 } elseif ($baseFolder === 'special-offers') {
                     // Generate both medium and thumbnail for special offers
                     $this->generateSpecialOffersMedium($originalImagePath);
+                    $this->generateThumbnail($originalImagePath, $baseFolder);
+                } elseif ($baseFolder === 'galleries') {
+                    // Generate both medium and thumbnail for galleries
+                    $this->generateGalleryMedium($originalImagePath);
                     $this->generateThumbnail($originalImagePath, $baseFolder);
                 } elseif ($baseFolder === 'settings' && ($uuid === 'logo' || strpos($originalImagePath, '/logo/original') !== false)) {
                     // Generate both medium and thumbnail for logo
@@ -866,6 +871,53 @@ class ImageService
             return $mediumPath;
         } catch (\Exception $e) {
             Log::error('Page medium image generation failed: ' . $e->getMessage(), [
+                'original_path' => $originalImagePath,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Generate medium size image for galleries (800x600)
+     *
+     * @param string $originalImagePath Path to original image
+     * @return string|null Medium image path or null on failure
+     */
+    protected function generateGalleryMedium(string $originalImagePath): ?string
+    {
+        try {
+            if (!Storage::disk('public')->exists($originalImagePath)) {
+                Log::warning('Original image not found for gallery medium generation: ' . $originalImagePath);
+                return null;
+            }
+
+            $width = 800;
+            $height = 600;
+            $quality = 85;
+
+            // Generate medium path (replace /original/ with /medium/)
+            $mediumPath = str_replace('/original/', '/medium/', $originalImagePath);
+            $mediumDir = dirname($mediumPath);
+            
+            if (!Storage::disk('public')->exists($mediumDir)) {
+                Storage::disk('public')->makeDirectory($mediumDir, 0755, true);
+            }
+
+            $originalFullPath = Storage::disk('public')->path($originalImagePath);
+            $mediumFullPath = Storage::disk('public')->path($mediumPath);
+
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($originalFullPath);
+
+            $image->scale(width: $width, height: $height);
+            $image->crop($width, $height);
+
+            $image->toJpeg($quality)->save($mediumFullPath);
+
+            return $mediumPath;
+        } catch (\Exception $e) {
+            Log::error('Gallery medium image generation failed: ' . $e->getMessage(), [
                 'original_path' => $originalImagePath,
                 'trace' => $e->getTraceAsString()
             ]);

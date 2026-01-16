@@ -16,14 +16,12 @@ class EposNowService
 
     public function __construct()
     {
-        // Read from database settings, fallback to config/env
-        $settings = SettingHelper::all();
-
+        // Read from database settings with .env fallback
         $this->baseUrl = rtrim(
-            $settings['eposnow_api_base'] ?? config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'),
+            SettingHelper::get('eposnow_api_base', config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/')),
             '/'
         );
-        $this->apiKey = $settings['eposnow_api_key'] ?? config('eposnow.api_key');
+        $this->apiKey = SettingHelper::get('eposnow_api_key', config('eposnow.api_key'));
 
         // If base URL doesn't end with /api/v4/, add it
         if (!str_ends_with($this->baseUrl, '/api/v4')) {

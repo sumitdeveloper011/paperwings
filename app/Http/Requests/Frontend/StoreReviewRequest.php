@@ -14,14 +14,14 @@ class StoreReviewRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'rating' => 'required|integer|min:1|max:5',
-            'review' => 'required|string|min:10|max:1000',
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'review' => ['required', 'string', 'min:10', 'max:1000'],
         ];
 
         // If user is not logged in, require name and email
         if (!auth()->check()) {
-            $rules['name'] = 'required|string|max:255';
-            $rules['email'] = 'required|email|max:255';
+            $rules['name'] = ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'];
+            $rules['email'] = ['required', 'email', 'max:255'];
         }
 
         return $rules;
@@ -37,8 +37,12 @@ class StoreReviewRequest extends FormRequest
             'review.min' => 'Review must be at least 10 characters.',
             'review.max' => 'Review cannot exceed 1000 characters.',
             'name.required' => 'Please enter your name.',
+            'name.min' => 'Name must be at least 2 characters.',
+            'name.max' => 'Name cannot exceed 255 characters.',
+            'name.regex' => 'Name can only contain letters, spaces, hyphens, apostrophes, and periods.',
             'email.required' => 'Please enter your email.',
             'email.email' => 'Please enter a valid email address.',
+            'email.max' => 'Email cannot exceed 255 characters.',
         ];
     }
 }

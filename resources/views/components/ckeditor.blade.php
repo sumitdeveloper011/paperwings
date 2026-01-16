@@ -63,6 +63,15 @@
             'bold', 'italic', '|',
             'bulletedList', 'numberedList', '|',
             'undo', 'redo'
+        ],
+        email: [
+            'heading', '|',
+            'bold', 'italic', 'link', '|',
+            'bulletedList', 'numberedList', '|',
+            'fontSize', 'fontColor', 'fontBackgroundColor', '|',
+            'alignment', '|',
+            'sourceEditing', '|',
+            'undo', 'redo'
         ]
     };
 

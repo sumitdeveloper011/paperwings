@@ -6,28 +6,30 @@
     'use strict';
 
     function initFAQ() {
-        // Wait for jQuery
-        if (typeof jQuery === 'undefined') {
-            setTimeout(initFAQ, 100);
+        const faqQuestions = document.querySelectorAll('.faq-question');
+        
+        if (faqQuestions.length === 0) {
             return;
         }
 
-        const $ = jQuery;
-
-        $(document).ready(function() {
-            $('.faq-question').on('click', function() {
-                const $item = $(this).closest('.faq-item');
+        faqQuestions.forEach(question => {
+            question.addEventListener('click', function() {
+                const item = this.closest('.faq-item');
+                if (!item) return;
                 
-                // Close other items
-                $('.faq-item').not($item).removeClass('active');
+                const allItems = document.querySelectorAll('.faq-item');
                 
-                // Toggle current item
-                $item.toggleClass('active');
+                allItems.forEach(otherItem => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('active');
+                    }
+                });
+                
+                item.classList.toggle('active');
             });
         });
     }
 
-    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initFAQ);
     } else {

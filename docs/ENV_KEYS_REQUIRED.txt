@@ -1,0 +1,50 @@
+REQUIRED .ENV FILE KEYS
+=======================
+
+These are the API keys that should be added to your .env file as fallback
+if they are not stored in the database.
+
+STRIPE PAYMENT:
+---------------
+STRIPE_KEY=pk_test_... or pk_live_...
+STRIPE_SECRET=sk_test_... or sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+GOOGLE OAUTH:
+------------
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+FACEBOOK OAUTH:
+---------------
+FACEBOOK_CLIENT_ID=your_facebook_app_id
+FACEBOOK_CLIENT_SECRET=your_facebook_app_secret
+
+EPOSNOW API:
+------------
+EPOSNOW_API_KEY=your_eposnow_api_key
+EPOSNOW_API_SECRET=your_eposnow_api_secret
+EPOSNOW_API_BASE=https://api.eposnowhq.com/api/v4/
+
+NZ POST API:
+------------
+NZPOST_API_KEY=your_nzpost_api_key
+
+GOOGLE MAPS:
+------------
+GOOGLE_MAP_API_KEY=your_google_maps_api_key
+
+INSTAGRAM API:
+--------------
+INSTAGRAM_APP_ID=your_instagram_app_id
+INSTAGRAM_APP_SECRET=your_instagram_app_secret
+INSTAGRAM_ACCESS_TOKEN=your_instagram_access_token
+INSTAGRAM_USER_ID=your_instagram_user_id
+
+IMPORTANT NOTES:
+----------------
+1. These are FALLBACK values - keys should be stored in database via Admin panel
+2. Secret keys (stripe_secret, oauth secrets, etc.) will be encrypted in database
+3. Publishable keys (stripe_key) can remain unencrypted (they're meant to be public)
+4. Never commit .env file to version control
+5. Use .env.example for documentation

@@ -27,9 +27,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,
             'prevent.admin' => \App\Http\Middleware\PreventAdminAccess::class,
         ]);
+        
+        $middleware->validateCsrfTokens(except: [
+            'api/log-client-error',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Handle 419 - Page Expired (CSRF Token Mismatch)
+        // ============================================
+        // SPECIFIC EXCEPTION HANDLERS (Most Specific First)
+        // ============================================
+
+        // Handle 419 - Page Expired (CSRF Token Mismatch) - Specific Exception
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -39,50 +47,24 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($request->is('admin/*')) {
-                // Always show custom error page, even in development
                 try {
                     return response()->view('admin.errors.419', ['exception' => $e], 419);
                 } catch (\Throwable $viewError) {
-                    // Log error but still try to show custom page
                     Log::error('Failed to render 419 error page: ' . $viewError->getMessage(), [
                         'trace' => $viewError->getTraceAsString()
                     ]);
-                    // Return a simple error response if view completely fails
                     return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please <a href="' . route('admin.login') . '">refresh the page</a> and try again.</p>', 419)
                         ->header('Content-Type', 'text/html');
                 }
             }
 
-            return response()->view('frontend.errors.419', [], 419);
-        });
-
-        // Also catch HTTP exceptions with 419 status code as fallback
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
-            if ($e->getStatusCode() === 419) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'message' => 'Your session has expired. Please refresh the page and try again.',
-                        'error' => 'CSRF token mismatch'
-                    ], 419);
-                }
-
-                if ($request->is('admin/*')) {
-                    try {
-                        return response()->view('admin.errors.419', ['exception' => $e], 419);
-                    } catch (\Throwable $viewError) {
-                        // Log error but still try to show custom page
-                        Log::error('Failed to render 419 error page: ' . $viewError->getMessage(), [
-                            'trace' => $viewError->getTraceAsString()
-                        ]);
-                        // Return a simple error response if view completely fails
-                        return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please <a href="' . route('admin.login') . '">refresh the page</a> and try again.</p>', 419)
-                            ->header('Content-Type', 'text/html');
-                    }
-                }
-
+            try {
                 return response()->view('frontend.errors.419', [], 419);
+            } catch (\Throwable $viewError) {
+                Log::error('Failed to render 419 error page: ' . $viewError->getMessage());
+                return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please refresh the page and try again.</p>', 419)
+                    ->header('Content-Type', 'text/html');
             }
-            return null;
         });
 
         // Handle 401 - Unauthenticated
@@ -105,22 +87,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', 'Please login to continue.');
         });
 
-        // Handle 403 - Forbidden
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, \Illuminate\Http\Request $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'You do not have permission to access this resource.',
-                    'error' => 'Access denied'
-                ], 403);
-            }
-
-            if ($request->is('admin/*')) {
-                return response()->view('admin.errors.403', ['exception' => $e], 403);
-            }
-
-            return response()->view('frontend.errors.403', [], 403);
-        });
-
         // Handle ValidationException - Redirect back with validation errors
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
@@ -136,68 +102,42 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->withErrors($e->errors());
         });
 
-        // Handle 500 - Internal Server Error
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
-            // Don't log AuthenticationException or ValidationException as they're handled above
-            if (!($e instanceof \Illuminate\Auth\AuthenticationException) &&
-                !($e instanceof \Illuminate\Validation\ValidationException)) {
-                // Log the error
-                Log::error('Unhandled exception: ' . $e->getMessage(), [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString(),
-                    'url' => $request->fullUrl(),
-                    'method' => $request->method(),
-                ]);
-            }
-
+        // Handle 403 - Forbidden
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => app()->environment('production')
-                        ? 'An error occurred. Please try again later.'
-                        : $e->getMessage(),
-                    'error' => 'Internal server error'
-                ], 500);
+                    'message' => 'You do not have permission to access this resource.',
+                    'error' => 'Access denied'
+                ], 403);
             }
 
-            // Always show custom error page (even in development)
-            // Error details are shown in the custom page for development environments
             if ($request->is('admin/*')) {
                 try {
-                    return response()->view('admin.errors.500', ['exception' => $e], 500);
+                    return response()->view('admin.errors.403', ['exception' => $e], 403);
                 } catch (\Throwable $viewError) {
-                    // Fallback if view fails
-                    Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
-                    return response('<h1>500 - Internal Server Error</h1><p>An error occurred. Please <a href="' . route('admin.dashboard') . '">go back</a>.</p>', 500)
+                    Log::error('Failed to render 403 error page: ' . $viewError->getMessage());
+                    return response('<h1>403 - Forbidden</h1><p>You do not have permission to access this resource.</p>', 403)
                         ->header('Content-Type', 'text/html');
                 }
             }
 
             try {
-                return response()->view('frontend.errors.500', ['exception' => $e], 500);
+                return response()->view('frontend.errors.403', [], 403);
             } catch (\Throwable $viewError) {
-                Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
-                return response('<h1>500 - Internal Server Error</h1><p>An error occurred. Please try again later.</p>', 500)
+                Log::error('Failed to render 403 error page: ' . $viewError->getMessage());
+                return response('<h1>403 - Forbidden</h1><p>You do not have permission to access this resource.</p>', 403)
                     ->header('Content-Type', 'text/html');
             }
         });
 
         // Handle 404 errors - redirect based on user role and route type
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
-            // Ignore static asset requests (assets/*, favicon.ico, etc.) - return silent 404
-            if ($request->is('assets/*') ||
-                $request->is('*.js') ||
-                $request->is('*.css') ||
-                $request->is('*.ico') ||
-                $request->is('*.png') ||
-                $request->is('*.jpg') ||
-                $request->is('*.jpeg') ||
-                $request->is('*.gif') ||
-                $request->is('*.svg') ||
-                $request->is('*.woff') ||
-                $request->is('*.woff2') ||
-                $request->is('*.ttf') ||
-                $request->is('*.eot')) {
+            // Ignore static asset requests - return silent 404
+            $staticExtensions = ['js', 'css', 'ico', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'woff', 'woff2', 'ttf', 'eot'];
+            $path = $request->path();
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            
+            if (in_array($extension, $staticExtensions) || $request->is('assets/*')) {
                 return response('', 404);
             }
 
@@ -214,10 +154,16 @@ return Application::configure(basePath: dirname(__DIR__))
                     $user = \Illuminate\Support\Facades\Auth::user();
                     if (\App\Helpers\CommonHelper::hasAnyRole($user, ['SuperAdmin', 'Admin'])) {
                         // Admin user trying to access non-existent admin route - show 404 page
-                        return response()->view('admin.errors.404', [
-                            'title' => '404 - Page Not Found',
-                            'message' => 'The requested admin page does not exist.'
-                        ], 404);
+                        try {
+                            return response()->view('admin.errors.404', [
+                                'title' => '404 - Page Not Found',
+                                'message' => 'The requested admin page does not exist.'
+                            ], 404);
+                        } catch (\Throwable $viewError) {
+                            Log::error('Failed to render 404 error page: ' . $viewError->getMessage());
+                            return response('<h1>404 - Page Not Found</h1><p>The requested admin page does not exist.</p>', 404)
+                                ->header('Content-Type', 'text/html');
+                        }
                     } else {
                         // Regular user trying to access admin route - redirect to home
                         return redirect()->route('home')
@@ -230,17 +176,86 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             } else {
                 // User route 404 - show custom 404 page
-                return response()->view('frontend.errors.404', [
-                    'title' => '404 - Page Not Found',
-                    'message' => 'The page you are looking for does not exist.'
-                ], 404);
+                try {
+                    return response()->view('frontend.errors.404', [
+                        'title' => '404 - Page Not Found',
+                        'message' => 'The page you are looking for does not exist.'
+                    ], 404);
+                } catch (\Throwable $viewError) {
+                    Log::error('Failed to render 404 error page: ' . $viewError->getMessage());
+                    return response('<!DOCTYPE html><html><head><title>404 - Not Found</title></head><body><h1>404 - Page Not Found</h1><p>The page you are looking for does not exist.</p></body></html>', 404)
+                        ->header('Content-Type', 'text/html');
+                }
             }
         });
 
-        // Handle 503 - Service Unavailable (Maintenance Mode)
+        // ============================================
+        // HTTP STATUS CODE HANDLERS (Consolidated)
+        // ============================================
+
+        // Consolidated HttpException handler for 419, 429, 503
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
-            // Check if it's a 503 error and app is in maintenance mode
-            if ($e->getStatusCode() === 503 && app()->isDownForMaintenance()) {
+            $statusCode = $e->getStatusCode();
+
+            // Handle 419 - Page Expired (fallback for HttpException with 419 status)
+            if ($statusCode === 419) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Your session has expired. Please refresh the page and try again.',
+                        'error' => 'CSRF token mismatch'
+                    ], 419);
+                }
+
+                if ($request->is('admin/*')) {
+                    try {
+                        return response()->view('admin.errors.419', ['exception' => $e], 419);
+                    } catch (\Throwable $viewError) {
+                        Log::error('Failed to render 419 error page: ' . $viewError->getMessage());
+                        return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please <a href="' . route('admin.login') . '">refresh the page</a> and try again.</p>', 419)
+                            ->header('Content-Type', 'text/html');
+                    }
+                }
+
+                try {
+                    return response()->view('frontend.errors.419', [], 419);
+                } catch (\Throwable $viewError) {
+                    Log::error('Failed to render 419 error page: ' . $viewError->getMessage());
+                    return response('<h1>419 - Page Expired</h1><p>Your session has expired. Please refresh the page and try again.</p>', 419)
+                        ->header('Content-Type', 'text/html');
+                }
+            }
+
+            // Handle 429 - Too Many Requests (Rate Limiting)
+            if ($statusCode === 429) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Too many requests. Please wait a moment before trying again.',
+                        'error' => 'Rate limit exceeded',
+                        'retry_after' => $e->getHeaders()['Retry-After'] ?? 60
+                    ], 429);
+                }
+
+                if ($request->is('admin/*')) {
+                    try {
+                        return response()->view('admin.errors.429', ['exception' => $e], 429);
+                    } catch (\Throwable $viewError) {
+                        Log::error('Failed to render 429 error page: ' . $viewError->getMessage());
+                        return response('<h1>429 - Too Many Requests</h1><p>Please wait a moment before trying again.</p>', 429)
+                            ->header('Content-Type', 'text/html');
+                    }
+                }
+
+                try {
+                    return response()->view('frontend.errors.429', ['exception' => $e], 429);
+                } catch (\Throwable $viewError) {
+                    Log::error('Failed to render 429 error page: ' . $viewError->getMessage());
+                    return response('<h1>429 - Too Many Requests</h1><p>Please wait a moment before trying again.</p>', 429)
+                        ->header('Content-Type', 'text/html');
+                }
+            }
+
+            // Handle 503 - Service Unavailable (Maintenance Mode)
+            if ($statusCode === 503 && app()->isDownForMaintenance()) {
                 if ($request->expectsJson()) {
                     return response()->json([
                         'message' => 'Service is temporarily unavailable. We are performing maintenance.',
@@ -253,13 +268,107 @@ return Application::configure(basePath: dirname(__DIR__))
                     if (app()->environment('local', 'development')) {
                         return null;
                     }
-                    return response()->view('admin.errors.503', ['exception' => $e], 503);
+                    try {
+                        return response()->view('admin.errors.503', ['exception' => $e], 503);
+                    } catch (\Throwable $viewError) {
+                        Log::error('Failed to render 503 error page: ' . $viewError->getMessage());
+                        return response('<h1>503 - Service Unavailable</h1><p>We are performing maintenance. Please check back soon.</p>', 503)
+                            ->header('Content-Type', 'text/html');
+                    }
                 }
 
-                return response()->view('frontend.errors.503', [], 503);
+                try {
+                    return response()->view('frontend.errors.503', [], 503);
+                } catch (\Throwable $viewError) {
+                    Log::error('Failed to render 503 error page: ' . $viewError->getMessage());
+                    return response('<h1>503 - Service Unavailable</h1><p>We are performing maintenance. Please check back soon.</p>', 503)
+                        ->header('Content-Type', 'text/html');
+                }
             }
 
-            // Let other 503 errors be handled by default handler
+            // Let other HttpExceptions be handled by default handler
             return null;
+        });
+
+        // ============================================
+        // CATCH-ALL HANDLER (Least Specific - Last)
+        // ============================================
+
+        // Handle 500 - Internal Server Error (Catch-all for unhandled exceptions)
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            // Skip exceptions that are already handled by specific handlers above
+            if ($e instanceof \Illuminate\Auth\AuthenticationException ||
+                $e instanceof \Illuminate\Validation\ValidationException ||
+                $e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException ||
+                $e instanceof \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException ||
+                $e instanceof \Illuminate\Session\TokenMismatchException) {
+                return null; // Let other handlers process these
+            }
+
+            // Skip HttpExceptions with status codes handled above
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+                $statusCode = $e->getStatusCode();
+                if (in_array($statusCode, [419, 429, 503])) {
+                    return null; // Let specific HttpException handler process these
+                }
+            }
+
+            // Special logging for API error endpoint
+            if ($request->is('api/log-client-error')) {
+                Log::error('=== EXCEPTION in api/log-client-error route ===', [
+                    'exception_message' => $e->getMessage(),
+                    'exception_class' => get_class($e),
+                    'exception_code' => $e->getCode(),
+                    'exception_file' => $e->getFile(),
+                    'exception_line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'url' => $request->fullUrl(),
+                    'method' => $request->method(),
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'request_data' => $request->all(),
+                    'headers' => $request->headers->all(),
+                ]);
+            }
+            
+            // Log the error
+            Log::error('Unhandled exception: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'url' => $request->fullUrl(),
+                'method' => $request->method(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => app()->environment('production')
+                        ? 'An error occurred. Please try again later.'
+                        : $e->getMessage(),
+                    'error' => 'Internal server error'
+                ], 500);
+            }
+
+            // Always show custom error page (even in development)
+            // Error details are shown in the custom page for development environments
+            if ($request->is('admin/*')) {
+                try {
+                    return response()->view('admin.errors.500', ['exception' => $e], 500);
+                } catch (\Throwable $viewError) {
+                    // Fallback if view fails - prevent infinite loop by using simple HTML
+                    Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
+                    return response('<h1>500 - Internal Server Error</h1><p>An error occurred. Please <a href="' . route('admin.dashboard') . '">go back</a>.</p>', 500)
+                        ->header('Content-Type', 'text/html');
+                }
+            }
+
+            try {
+                return response()->view('frontend.errors.500', ['exception' => $e], 500);
+            } catch (\Throwable $viewError) {
+                // Fallback if view fails - prevent infinite loop by using simple HTML without layout
+                Log::error('Failed to render 500 error page: ' . $viewError->getMessage());
+                return response('<!DOCTYPE html><html><head><title>500 - Internal Server Error</title></head><body><h1>500 - Internal Server Error</h1><p>An error occurred. Please try again later.</p></body></html>', 500)
+                    ->header('Content-Type', 'text/html');
+            }
         });
     })->create();

@@ -59,7 +59,7 @@ class WishlistService
             ->where('user_id', $userId)
             ->with([
                 'product' => function($query) {
-                    $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'status')
+                    $query->select('id', 'uuid', 'name', 'slug', 'total_price', 'discount_price', 'status')
                           ->with(['images' => function($q) {
                               $q->select('id', 'product_id', 'image')
                                 ->orderBy('id')
@@ -100,6 +100,58 @@ class WishlistService
             ->where('user_id', $userId)
             ->where('product_id', $productId)
             ->exists();
+    }
+
+    // Remove multiple products from wishlist (batch operation)
+    public function removeMultipleFromWishlist(int $userId, array $productIds): array
+    {
+        $results = [
+            'success' => [],
+            'failed' => []
+        ];
+
+        // Get all wishlist items at once
+        $wishlistItems = $this->wishlist
+            ->where('user_id', $userId)
+            ->whereIn('product_id', $productIds)
+            ->with('product')
+            ->get()
+            ->keyBy('product_id');
+
+        foreach ($productIds as $productId) {
+            try {
+                $wishlistItem = $wishlistItems->get($productId);
+                
+                if (!$wishlistItem) {
+                    $results['failed'][] = [
+                        'product_id' => $productId,
+                        'uuid' => null,
+                        'message' => 'Product not found in wishlist.'
+                    ];
+                    continue;
+                }
+
+                $product = $wishlistItem->product;
+                $productUuid = $product ? $product->uuid : null;
+
+                $wishlistItem->delete();
+
+                $results['success'][] = [
+                    'product_id' => $productId,
+                    'uuid' => $productUuid,
+                    'name' => $product ? $product->name : null
+                ];
+
+            } catch (\Exception $e) {
+                $results['failed'][] = [
+                    'product_id' => $productId,
+                    'uuid' => null,
+                    'message' => $e->getMessage()
+                ];
+            }
+        }
+
+        return $results;
     }
 }
 

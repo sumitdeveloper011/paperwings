@@ -1,7 +1,15 @@
 <div class="cute-stationery__item">
     <div class="cute-stationery__image">
         <a href="{{ route('product.detail', $product->slug) }}" class="cute-stationery__image-link">
-            <img src="{{ $product->main_thumbnail_url }}" alt="{{ $product->name }}" class="cute-stationery__img" loading="lazy">
+            @php
+                $imageUrl = $product->main_thumbnail_url ?? asset('assets/images/placeholder.jpg');
+                $placeholderUrl = asset('assets/images/placeholder.jpg');
+            @endphp
+            <img src="{{ $imageUrl }}" 
+                 alt="{{ $product->name }}" 
+                 class="cute-stationery__img" 
+                 loading="lazy" 
+                 onerror="this.onerror=null; this.src='{{ $placeholderUrl }}';">
         </a>
 
         <!-- Badges Wrapper - Left Side -->
@@ -21,14 +29,16 @@
         </div>
 
         <!-- Desktop Action Buttons (Hover) -->
+        @if(!empty($product->uuid))
         <div class="cute-stationery__actions cute-stationery__actions--desktop">
-            <button class="cute-stationery__action wishlist-btn" data-product-id="{{ $product->id }}" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <button class="cute-stationery__action wishlist-btn" data-product-uuid="{{ $product->uuid }}" title="Add to Wishlist" aria-label="Add to Wishlist">
                 <i class="far fa-heart"></i>
             </button>
-            <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-id="{{ $product->id }}" title="Add to Cart" aria-label="Add to Cart">
+            <button class="cute-stationery__action cute-stationery__add-cart add-to-cart" data-product-uuid="{{ $product->uuid }}" title="Add to Cart" aria-label="Add to Cart">
                 <i class="fas fa-shopping-cart"></i>
             </button>
         </div>
+        @endif
     </div>
     <div class="cute-stationery__info">
         <h3 class="cute-stationery__name">
@@ -42,8 +52,8 @@
             $avgRating = $product->average_rating ?? 0;
             $reviewsCount = $product->reviews_count ?? 0;
         @endphp
-        @if($reviewsCount > 0)
-            <div class="cute-stationery__rating">
+        <div class="cute-stationery__rating">
+            @if($reviewsCount > 0)
                 <div class="cute-stationery__stars">
                     @for($i = 1; $i <= 5; $i++)
                         @if($i <= floor($avgRating))
@@ -56,8 +66,16 @@
                     @endfor
                 </div>
                 <span class="cute-stationery__rating-text">({{ $reviewsCount }})</span>
-            </div>
-        @endif
+            @else
+                <div class="cute-stationery__stars" style="visibility: hidden;">
+                    <i class="far fa-star"></i>
+                    <i class="far fa-star"></i>
+                    <i class="far fa-star"></i>
+                    <i class="far fa-star"></i>
+                    <i class="far fa-star"></i>
+                </div>
+            @endif
+        </div>
 
         <div class="cute-stationery__price">
             @if($product->discount_price)
@@ -70,15 +88,17 @@
     </div>
 
     <!-- Mobile Action Buttons (Always Visible) -->
+    @if(!empty($product->uuid))
     <div class="cute-stationery__actions cute-stationery__actions--mobile">
-        <button class="cute-stationery__action-mobile wishlist-btn" data-product-id="{{ $product->id }}" aria-label="Add to Wishlist">
+        <button class="cute-stationery__action-mobile wishlist-btn" data-product-uuid="{{ $product->uuid }}" aria-label="Add to Wishlist">
             <i class="far fa-heart"></i>
             <span>Wishlist</span>
         </button>
-        <button class="cute-stationery__action-mobile cute-stationery__add-cart-mobile add-to-cart" data-product-id="{{ $product->id }}" aria-label="Add to Cart">
+        <button class="cute-stationery__action-mobile cute-stationery__add-cart-mobile add-to-cart" data-product-uuid="{{ $product->uuid }}" aria-label="Add to Cart">
             <i class="fas fa-shopping-cart"></i>
             <span>Add to Cart</span>
         </button>
     </div>
+    @endif
 </div>
 

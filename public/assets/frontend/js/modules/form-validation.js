@@ -40,7 +40,7 @@
          */
         function initNumericInputRestrictions() {
             // Phone number fields - allow numbers, spaces, +, and hyphens
-            $(document).on('input', 'input[name="billing_phone"], input[name="shipping_phone"]', function(e) {
+            $(document).on('input', 'input[name="billing_phone"], input[name="shipping_phone"], input[name="phone"], input[id="editPhone"], input[id="addressPhone"]', function(e) {
                 let value = $(this).val();
                 // Remove any non-numeric characters except +, spaces, and hyphens
                 value = value.replace(/[^\d\+\s\-]/g, '');
@@ -48,7 +48,7 @@
             });
 
             // Postcode fields - allow numbers only
-            $(document).on('input', 'input[name="billing_zip_code"], input[name="shipping_zip_code"]', function(e) {
+            $(document).on('input', 'input[name="billing_zip_code"], input[name="shipping_zip_code"], input[name="zip_code"], input[id="addressPostcode"]', function(e) {
                 let value = $(this).val();
                 // Remove any non-numeric characters
                 value = value.replace(/\D/g, '');
@@ -60,14 +60,14 @@
             });
 
             // Prevent paste of non-numeric characters
-            $(document).on('paste', 'input[name="billing_phone"], input[name="shipping_phone"]', function(e) {
+            $(document).on('paste', 'input[name="billing_phone"], input[name="shipping_phone"], input[name="phone"], input[id="editPhone"], input[id="addressPhone"]', function(e) {
                 const paste = (e.originalEvent || e).clipboardData.getData('text');
                 if (!/^[\d\+\s\-]*$/.test(paste)) {
                     e.preventDefault();
                 }
             });
 
-            $(document).on('paste', 'input[name="billing_zip_code"], input[name="shipping_zip_code"]', function(e) {
+            $(document).on('paste', 'input[name="billing_zip_code"], input[name="shipping_zip_code"], input[name="zip_code"], input[id="addressPostcode"]', function(e) {
                 const paste = (e.originalEvent || e).clipboardData.getData('text');
                 if (!/^\d*$/.test(paste)) {
                     e.preventDefault();
@@ -95,7 +95,7 @@
         window.initFormValidation = function(formSelector, options = {}) {
             const $form = $(formSelector);
             if (!$form.length) {
-                console.warn('Form not found:', formSelector);
+                // Form not found
                 return null;
             }
 
@@ -155,6 +155,103 @@
             const validator = $form.validate(validationOptions);
 
             return validator;
+        };
+
+        /**
+         * Get reusable NZ address form validation rules (DRY approach)
+         * Can be used for checkout, user addresses, profile forms, etc.
+         */
+        window.getNZAddressFormRules = function(prefix = '') {
+            const fieldPrefix = prefix ? prefix + '_' : '';
+            return {
+                [fieldPrefix + 'first_name']: {
+                    required: true,
+                    minlength: 2,
+                    maxlength: 50
+                },
+                [fieldPrefix + 'last_name']: {
+                    required: true,
+                    minlength: 2,
+                    maxlength: 50
+                },
+                [fieldPrefix + 'phone']: {
+                    required: true,
+                    nzPhone: true
+                },
+                [fieldPrefix + 'email']: {
+                    email: true,
+                    maxlength: 255
+                },
+                [fieldPrefix + 'street_address']: {
+                    required: true,
+                    nzAddress: true,
+                    maxlength: 255
+                },
+                [fieldPrefix + 'city']: {
+                    required: true,
+                    minlength: 2,
+                    maxlength: 100
+                },
+                [fieldPrefix + 'zip_code']: {
+                    required: true,
+                    nzPostcode: true
+                },
+                [fieldPrefix + 'postcode']: {
+                    required: true,
+                    nzPostcode: true
+                },
+                [fieldPrefix + 'region_id']: {
+                    required: true
+                }
+            };
+        };
+
+        /**
+         * Get reusable NZ address form validation messages (DRY approach)
+         */
+        window.getNZAddressFormMessages = function(prefix = '') {
+            const fieldPrefix = prefix ? prefix + '_' : '';
+            return {
+                [fieldPrefix + 'first_name']: {
+                    required: 'Please enter your first name.',
+                    minlength: 'First name must be at least 2 characters.',
+                    maxlength: 'First name cannot exceed 50 characters.'
+                },
+                [fieldPrefix + 'last_name']: {
+                    required: 'Please enter your last name.',
+                    minlength: 'Last name must be at least 2 characters.',
+                    maxlength: 'Last name cannot exceed 50 characters.'
+                },
+                [fieldPrefix + 'phone']: {
+                    required: 'Please enter your phone number.',
+                    nzPhone: 'Please enter a valid New Zealand phone number (numbers only, e.g., 0211234567 or 091234567).'
+                },
+                [fieldPrefix + 'email']: {
+                    email: 'Please enter a valid email address.',
+                    maxlength: 'Email cannot exceed 255 characters.'
+                },
+                [fieldPrefix + 'street_address']: {
+                    required: 'Please enter your street address.',
+                    nzAddress: 'Please enter a valid street address (at least 5 characters).',
+                    maxlength: 'Street address cannot exceed 255 characters.'
+                },
+                [fieldPrefix + 'city']: {
+                    required: 'Please enter your city.',
+                    minlength: 'City must be at least 2 characters.',
+                    maxlength: 'City cannot exceed 100 characters.'
+                },
+                [fieldPrefix + 'zip_code']: {
+                    required: 'Please enter your postcode.',
+                    nzPostcode: 'Please enter a valid 4-digit New Zealand postcode (numbers only).'
+                },
+                [fieldPrefix + 'postcode']: {
+                    required: 'Please enter your postcode.',
+                    nzPostcode: 'Please enter a valid 4-digit New Zealand postcode (numbers only).'
+                },
+                [fieldPrefix + 'region_id']: {
+                    required: 'Please select a region.'
+                }
+            };
         };
 
         /**
@@ -406,7 +503,7 @@
             }, opts.duration);
         };
 
-        console.log('Form validation module initialized');
+        // Form validation module initialized
     }
 
     // Initialize when DOM is ready

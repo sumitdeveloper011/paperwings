@@ -1,167 +1,186 @@
 /**
  * Home Page Carousels Module
- * Handles all Owl Carousel initializations for home page
+ * Handles all Swiper.js carousel initializations for home page
  */
 (function() {
     'use strict';
 
     function initCarousels() {
-        // Wait for jQuery and Owl Carousel
-        if (typeof jQuery === 'undefined' || typeof jQuery.fn.owlCarousel === 'undefined') {
+        if (typeof Swiper === 'undefined') {
             setTimeout(initCarousels, 100);
             return;
         }
 
-        const $ = jQuery;
-
         // Special Offers Banner Carousel
-        if ($('.special-offers-banner-carousel').length) {
-            const bannerCarousel = $('.special-offers-banner-carousel');
-            const bannerItems = bannerCarousel.children().length;
-            $('.special-offers-banner-carousel').owlCarousel({
+        const bannerCarousel = document.querySelector('.special-offers-banner-carousel');
+        if (bannerCarousel) {
+            const bannerItems = bannerCarousel.children.length;
+            new Swiper(bannerCarousel, {
                 loop: bannerItems > 1,
-                margin: 0,
-                nav: false,
-                dots: true,
-                autoplay: bannerItems > 1,
-                autoplayTimeout: 5000,
-                autoplayHoverPause: true,
-                items: 1,
-                animateOut: 'fadeOut',
-                animateIn: 'fadeIn'
+                spaceBetween: 0,
+                effect: 'fade',
+                fadeEffect: {
+                    crossFade: true
+                },
+                autoplay: bannerItems > 1 ? {
+                    delay: 5000,
+                    pauseOnMouseEnter: true,
+                    disableOnInteraction: false
+                } : false,
+                pagination: {
+                    el: bannerCarousel.querySelector('.swiper-pagination') || null,
+                    clickable: true
+                },
+                slidesPerView: 1
             });
         }
 
         // Testimonials Carousel
-        if ($('.testimonials-carousel').length) {
-            const testimonialsCarousel = $('.testimonials-carousel');
-            const testimonialsItems = testimonialsCarousel.children().length;
-            $('.testimonials-carousel').owlCarousel({
-                loop: testimonialsItems > 3,
-                margin: 30,
-                nav: false,
-                dots: true,
-                autoplay: testimonialsItems > 1,
-                autoplayTimeout: 5000,
-                responsive: {
-                    0: { items: 1 },
-                    768: { items: 2 },
-                    992: { items: 3 }
-                }
-            });
+        const testimonialsCarousel = document.querySelector('.testimonials-carousel');
+        if (testimonialsCarousel) {
+            const swiperWrapper = testimonialsCarousel.querySelector('.swiper-wrapper');
+            const testimonialsItems = swiperWrapper ? swiperWrapper.children.length : 0;
+            
+            if (testimonialsItems > 0) {
+                const swiperInstance = new Swiper(testimonialsCarousel, {
+                    loop: false,
+                    spaceBetween: 30,
+                    autoplay: testimonialsItems > 3 ? {
+                        delay: 5000,
+                        pauseOnMouseEnter: true,
+                        disableOnInteraction: false
+                    } : false,
+                    pagination: {
+                        el: testimonialsCarousel.querySelector('.swiper-pagination') || null,
+                        clickable: true
+                    },
+                    breakpoints: {
+                        0: { 
+                            slidesPerView: 1,
+                            spaceBetween: 20
+                        },
+                        768: { 
+                            slidesPerView: 2,
+                            spaceBetween: 25
+                        },
+                        992: { 
+                            slidesPerView: 3,
+                            spaceBetween: 30
+                        }
+                    },
+                    watchOverflow: true,
+                    observer: true,
+                    observeParents: true,
+                    speed: 600
+                });
+            }
         }
 
         // You May Also Like Carousel
-        if ($('.you-may-also-like-carousel').length) {
-            const youMayAlsoLikeCarousel = $('.you-may-also-like-carousel');
-            const youMayAlsoLikeItems = youMayAlsoLikeCarousel.children().length;
-            $('.you-may-also-like-carousel').owlCarousel({
+        const youMayAlsoLikeCarousel = document.querySelector('.you-may-also-like-carousel');
+        if (youMayAlsoLikeCarousel) {
+            const youMayAlsoLikeItems = youMayAlsoLikeCarousel.children.length;
+            new Swiper(youMayAlsoLikeCarousel, {
                 loop: youMayAlsoLikeItems > 5,
-                margin: 20,
-                nav: false,
-                dots: true,
-                autoplay: youMayAlsoLikeItems > 1,
-                autoplayTimeout: 4000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 },
-                    1200: { items: 5 }
+                spaceBetween: 20,
+                autoplay: youMayAlsoLikeItems > 1 ? {
+                    delay: 4000,
+                    pauseOnMouseEnter: true,
+                    disableOnInteraction: false
+                } : false,
+                pagination: {
+                    el: youMayAlsoLikeCarousel.querySelector('.swiper-pagination') || null,
+                    clickable: true
+                },
+                breakpoints: {
+                    0: { slidesPerView: 1 },
+                    576: { slidesPerView: 2 },
+                    768: { slidesPerView: 3 },
+                    992: { slidesPerView: 4 },
+                    1200: { slidesPerView: 5 }
                 }
             });
         }
 
         // New Arrivals Carousel
-        if ($('.new-arrivals-carousel').length) {
-            const newArrivalsCarousel = $('.new-arrivals-carousel');
-            const newArrivalsItems = newArrivalsCarousel.children().length;
-            $('.new-arrivals-carousel').owlCarousel({
+        const newArrivalsCarousel = document.querySelector('.new-arrivals-carousel');
+        if (newArrivalsCarousel) {
+            const newArrivalsItems = newArrivalsCarousel.children.length;
+            new Swiper(newArrivalsCarousel, {
                 loop: newArrivalsItems > 5,
-                margin: 20,
-                nav: false,
-                dots: true,
-                autoplay: newArrivalsItems > 1,
-                autoplayTimeout: 4000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 },
-                    1200: { items: 5 }
+                spaceBetween: 20,
+                autoplay: newArrivalsItems > 1 ? {
+                    delay: 4000,
+                    pauseOnMouseEnter: true,
+                    disableOnInteraction: false
+                } : false,
+                pagination: {
+                    el: newArrivalsCarousel.querySelector('.swiper-pagination') || null,
+                    clickable: true
+                },
+                breakpoints: {
+                    0: { slidesPerView: 1 },
+                    576: { slidesPerView: 2 },
+                    768: { slidesPerView: 3 },
+                    992: { slidesPerView: 4 },
+                    1200: { slidesPerView: 5 }
                 }
             });
         }
 
         // Recently Viewed Carousel
-        if ($('.recently-viewed-carousel').length) {
-            const recentlyViewedCarousel = $('.recently-viewed-carousel');
-            const recentlyViewedItems = recentlyViewedCarousel.children().length;
-            $('.recently-viewed-carousel').owlCarousel({
+        const recentlyViewedCarousel = document.querySelector('.recently-viewed-carousel');
+        if (recentlyViewedCarousel) {
+            const recentlyViewedItems = recentlyViewedCarousel.children.length;
+            new Swiper(recentlyViewedCarousel, {
                 loop: recentlyViewedItems > 5,
-                margin: 20,
-                nav: false,
-                dots: true,
-                autoplay: recentlyViewedItems > 1,
-                autoplayTimeout: 4000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 },
-                    1200: { items: 5 }
+                spaceBetween: 20,
+                autoplay: recentlyViewedItems > 1 ? {
+                    delay: 4000,
+                    pauseOnMouseEnter: true,
+                    disableOnInteraction: false
+                } : false,
+                pagination: {
+                    el: recentlyViewedCarousel.querySelector('.swiper-pagination') || null,
+                    clickable: true
+                },
+                breakpoints: {
+                    0: { slidesPerView: 1 },
+                    576: { slidesPerView: 2 },
+                    768: { slidesPerView: 3 },
+                    992: { slidesPerView: 4 },
+                    1200: { slidesPerView: 5 }
                 }
             });
         }
 
-        // Cute Stationery Carousel
-        $('.cute-stationery-carousel').each(function() {
-            const $carousel = $(this);
-            const items = $carousel.children().length;
-            $carousel.owlCarousel({
-                loop: items > 5,
-                margin: 20,
-                nav: false,
-                dots: true,
-                autoplay: items > 1,
-                autoplayTimeout: 4000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 },
-                    1200: { items: 5 }
-                }
-            });
-        });
-
         // Bundles Carousel
-        if ($('.bundles-carousel').length) {
-            const bundlesCarousel = $('.bundles-carousel');
-            const bundlesItems = bundlesCarousel.children().length;
-            $('.bundles-carousel').owlCarousel({
-                loop: bundlesItems > 4,
-                margin: 20,
-                nav: false,
-                dots: true,
-                autoplay: bundlesItems > 1,
-                autoplayTimeout: 4000,
-                autoplayHoverPause: true,
-                responsive: {
-                    0: { items: 1 },
-                    576: { items: 2 },
-                    768: { items: 3 },
-                    992: { items: 4 }
+        const bundlesCarousel = document.querySelector('.bundles-carousel');
+        if (bundlesCarousel) {
+            const swiperWrapper = bundlesCarousel.querySelector('.swiper-wrapper');
+            const bundlesItems = swiperWrapper ? swiperWrapper.children.length : 0;
+            new Swiper(bundlesCarousel, {
+                loop: bundlesItems > 5,
+                spaceBetween: 20,
+                autoplay: bundlesItems > 1 ? {
+                    delay: 4000,
+                    pauseOnMouseEnter: true,
+                    disableOnInteraction: false
+                } : false,
+                pagination: {
+                    el: bundlesCarousel.querySelector('.swiper-pagination') || null,
+                    clickable: true
+                },
+                breakpoints: {
+                    0: { slidesPerView: 1 },
+                    576: { slidesPerView: 2 },
+                    768: { slidesPerView: 3 },
+                    992: { slidesPerView: 5 }
                 }
             });
         }
     }
 
-    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initCarousels);
     } else {

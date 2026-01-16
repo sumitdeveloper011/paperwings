@@ -32,13 +32,13 @@ class ProductImage extends Model
     // Override fallback image for ProductImage
     protected function getFallbackImage(): string
     {
-        return 'assets/images/no-image.png';
+        return 'assets/images/placeholder.jpg';
     }
 
     // Override thumbnail fallback for ProductImage
     protected function getThumbnailFallback(): ?string
     {
-        return asset('assets/images/no-image.png');
+        return asset('assets/images/placeholder.jpg');
     }
 
     /**

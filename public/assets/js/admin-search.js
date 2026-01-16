@@ -340,9 +340,9 @@
 
             if (searchInput && clearButton) {
                 if (searchInput.value.trim()) {
-                    clearButton.style.display = 'block';
+                    clearButton.classList.remove('d-none');
                 } else {
-                    clearButton.style.display = 'none';
+                    clearButton.classList.add('d-none');
                 }
             }
         },
@@ -359,7 +359,7 @@
             // Hide clear button during loading
             const clearButton = document.querySelector(this.config.clearButton);
             if (clearButton) {
-                clearButton.style.display = 'none';
+                clearButton.classList.add('d-none');
             }
 
             const searchButton = document.querySelector(this.config.searchButton);

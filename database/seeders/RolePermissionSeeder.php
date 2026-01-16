@@ -104,6 +104,17 @@ class RolePermissionSeeder extends Seeder
             'about-sections.create',
             'about-sections.edit',
             'about-sections.delete',
+            'email-templates.view',
+            'email-templates.create',
+            'email-templates.edit',
+            'email-templates.delete',
+            'galleries.view',
+            'galleries.create',
+            'galleries.edit',
+            'galleries.delete',
+            'gallery-items.upload',
+            'gallery-items.edit',
+            'gallery-items.delete',
 
             // Marketing
             'coupons.view',
@@ -208,7 +219,12 @@ class RolePermissionSeeder extends Seeder
                           'products.edit',
                           'categories.edit',
                           'pages.edit',
-                          'sliders.edit'
+                          'sliders.edit',
+                          'email-templates.view',
+                          'galleries.create',
+                          'galleries.edit',
+                          'gallery-items.upload',
+                          'gallery-items.edit'
                       ]);
             })->get();
             $editorRole->syncPermissions($editorPermissions);

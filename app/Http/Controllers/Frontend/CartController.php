@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Wishlist;
 use App\Services\CartService;
 use App\Http\Requests\AddToCartRequest;
+use App\Http\Requests\AddMultipleToCartRequest;
 use App\Http\Requests\UpdateCartRequest;
 use App\Http\Resources\CartItemResource;
 use Illuminate\Http\Request;
@@ -26,22 +27,116 @@ class CartController extends Controller
     public function add(AddToCartRequest $request): JsonResponse
     {
         try {
+            $product = Product::where('uuid', $request->product_uuid)->firstOrFail();
+            
             $cartIdentifier = $this->cartService->getCartIdentifier();
             $this->cartService->addToCart(
-                $request->product_id,
+                $product->id,
                 $request->quantity ?? 1,
                 $cartIdentifier
             );
 
+            $product->load(['category', 'brand']);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Product added to cart successfully.',
-                'cart_count' => $this->cartService->getCartCount($cartIdentifier)
+                'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'product' => $product ? [
+                    'id' => $product->id,
+                    'uuid' => $product->uuid,
+                    'name' => $product->name,
+                    'category' => $product->category->name ?? 'Uncategorized',
+                    'brand' => $product->brand->name ?? '',
+                    'price' => $product->price,
+                    'quantity' => $request->quantity ?? 1
+                ] : null
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    // Add multiple products to cart (batch operation)
+    public function addMultiple(AddMultipleToCartRequest $request): JsonResponse
+    {
+        try {
+            // Get products with UUIDs
+            $products = Product::whereIn('uuid', $request->product_uuids)
+                ->get()
+                ->keyBy('uuid');
+
+            $productIds = [];
+            $quantities = [];
+            $uuidToIdMap = [];
+            
+            foreach ($request->product_uuids as $index => $uuid) {
+                $product = $products->get($uuid);
+                if ($product) {
+                    $productIds[] = $product->id;
+                    $quantities[] = isset($request->quantities[$index]) 
+                        ? (int)$request->quantities[$index] 
+                        : 1;
+                    $uuidToIdMap[$product->id] = $uuid;
+                }
+            }
+
+            if (empty($productIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid products found.',
+                    'results' => [
+                        'success' => [],
+                        'failed' => []
+                    ]
+                ], 400);
+            }
+
+            $cartIdentifier = $this->cartService->getCartIdentifier();
+            $results = $this->cartService->addMultipleToCart(
+                $productIds,
+                $quantities,
+                $cartIdentifier
+            );
+
+            // Add UUIDs to results
+            foreach ($results['success'] as &$item) {
+                if (isset($uuidToIdMap[$item['product_id']])) {
+                    $item['uuid'] = $uuidToIdMap[$item['product_id']];
+                }
+            }
+            foreach ($results['failed'] as &$item) {
+                if (isset($item['product_id']) && isset($uuidToIdMap[$item['product_id']])) {
+                    $item['uuid'] = $uuidToIdMap[$item['product_id']];
+                } elseif (isset($item['uuid'])) {
+                    // UUID already set in service
+                }
+            }
+
+            $successCount = count($results['success']);
+            $failedCount = count($results['failed']);
+
+            return response()->json([
+                'success' => $successCount > 0,
+                'message' => $successCount > 0 
+                    ? ($failedCount > 0 
+                        ? "{$successCount} item(s) added successfully. {$failedCount} item(s) failed."
+                        : "{$successCount} item(s) added to cart successfully.")
+                    : 'Failed to add items to cart.',
+                'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'results' => $results
+            ], $successCount > 0 ? 200 : 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'results' => [
+                    'success' => [],
+                    'failed' => []
+                ]
             ], 400);
         }
     }
@@ -80,12 +175,23 @@ class CartController extends Controller
 
         try {
             $cartIdentifier = $this->cartService->getCartIdentifier();
+            $cartItem = CartItem::with(['product.category', 'product.brand'])->find($request->cart_item_id);
+            
             $this->cartService->removeFromCart($request->cart_item_id, $cartIdentifier);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product removed from cart successfully.',
-                'cart_count' => $this->cartService->getCartCount($cartIdentifier)
+                'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'product' => $cartItem && $cartItem->product ? [
+                    'id' => $cartItem->product->id,
+                    'uuid' => $cartItem->product->uuid,
+                    'name' => $cartItem->product->name,
+                    'category' => $cartItem->product->category->name ?? 'Uncategorized',
+                    'brand' => $cartItem->product->brand->name ?? '',
+                    'price' => $cartItem->product->price,
+                    'quantity' => $cartItem->quantity
+                ] : null
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -190,15 +296,44 @@ class CartController extends Controller
         }
 
         $request->validate([
-            'product_ids' => 'required|array',
-            'product_ids.*' => 'exists:products,id'
+            'product_uuids' => 'required|array|min:1'
+        ], [
+            'product_uuids.required' => 'Product UUIDs are required.',
+            'product_uuids.array' => 'Product UUIDs must be an array.',
+            'product_uuids.min' => 'At least one product UUID is required.'
         ]);
 
+        // Filter and validate UUIDs
+        $validUuids = collect($request->product_uuids)
+            ->filter(function($uuid) {
+                return !empty($uuid) && is_string($uuid) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $uuid);
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($validUuids)) {
+            return response()->json([
+                'success' => true,
+                'status' => []
+            ]);
+        }
+
+        // Convert UUIDs to product IDs
+        $products = Product::whereIn('uuid', $validUuids)->pluck('id', 'uuid');
+        $productIds = $products->values()->toArray();
+
         $cartIdentifier = $this->cartService->getCartIdentifier();
-        $status = $this->cartService->checkProductsInCart(
+        $statusById = $this->cartService->checkProductsInCart(
             $cartIdentifier,
-            $request->product_ids
+            $productIds
         );
+
+        // Convert status back to UUID keys
+        $status = [];
+        foreach ($products as $uuid => $id) {
+            $status[$uuid] = $statusById[$id] ?? false;
+        }
 
         return response()->json([
             'success' => true,

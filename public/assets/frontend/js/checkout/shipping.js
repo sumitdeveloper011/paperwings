@@ -52,7 +52,6 @@ class ShippingCalculator {
                 }
             })
             .catch(error => {
-                console.error('Error calculating shipping:', error);
                 resolve(0);
             });
         });

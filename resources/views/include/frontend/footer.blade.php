@@ -51,6 +51,7 @@
                             <ul class="footer__links">
                                 <li><a href="{{ route('contact') }}" class="footer__link">Contact Us</a></li>
                                 <li><a href="{{ route('faq.index') }}" class="footer__link">FAQs</a></li>
+                                <li><a href="{{ route('galleries.index') }}" class="footer__link">Gallery</a></li>
                                 @if(isset($footerPages) && $footerPages->count() > 0)
                                     @foreach($footerPages as $page)
                                         <li>
@@ -93,7 +94,7 @@
                                 @if(isset($footerPhone) && $footerPhone)
                                     <div class="footer__contact-item">
                                         <i class="fas fa-phone footer__contact-icon"></i>
-                                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $footerPhone) }}" class="footer__contact-text footer__contact-text--highlight">
+                                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $footerPhone) }}" class="footer__contact-text">
                                             {{ $footerPhone }}
                                         </a>
                                     </div>

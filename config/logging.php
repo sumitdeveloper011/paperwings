@@ -135,6 +135,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'client_errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/client-errors.log'),
+            'level' => 'warning',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

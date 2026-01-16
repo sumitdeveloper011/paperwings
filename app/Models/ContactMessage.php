@@ -17,6 +17,7 @@ class ContactMessage extends Model
         'phone',
         'subject',
         'message',
+        'image',
         'status',
         'admin_notes',
         'admin_viewed_at',

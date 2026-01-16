@@ -124,7 +124,7 @@
                             <i class="fas fa-paper-plane"></i>
                             Send us a Message
                         </h2>
-                        <form method="POST" action="{{ route('contact.store') }}" class="contact-form" id="contactForm">
+                        <form method="POST" action="{{ route('contact.store') }}" class="contact-form" id="contactForm" enctype="multipart/form-data">
                             @csrf
 
                             <div class="row">
@@ -138,6 +138,8 @@
                                                id="name"
                                                name="name"
                                                value="{{ old('name') }}"
+                                               minlength="2"
+                                               maxlength="255"
                                                required>
                                         @error('name')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -173,7 +175,10 @@
                                                class="form-control @error('phone') is-invalid @enderror"
                                                id="phone"
                                                name="phone"
-                                               value="{{ old('phone') }}">
+                                               value="{{ old('phone') }}"
+                                               pattern="[\d\+\s\-]+"
+                                               inputmode="numeric"
+                                               maxlength="20">
                                         @error('phone')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -190,6 +195,8 @@
                                                id="subject"
                                                name="subject"
                                                value="{{ old('subject') }}"
+                                               minlength="3"
+                                               maxlength="255"
                                                required>
                                         @error('subject')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -207,11 +214,33 @@
                                               id="message"
                                               name="message"
                                               rows="5"
+                                              minlength="10"
+                                              maxlength="5000"
                                               required>{{ old('message') }}</textarea>
                                     @error('message')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted">Maximum 5000 characters</small>
+                                    <small class="form-text text-muted">Minimum 10 characters, maximum 5000 characters</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-group">
+                                    <label for="image" class="form-label">
+                                        <i class="fas fa-image"></i> Image (Optional)
+                                    </label>
+                                    <input type="file"
+                                           class="form-control @error('image') is-invalid @enderror"
+                                           id="image"
+                                           name="image"
+                                           accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
+                                    @error('image')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="form-text text-muted">Supported formats: JPEG, JPG, PNG, GIF, WEBP. Max size: 2MB</small>
+                                    <div id="imagePreview" class="mt-2" style="display: none;">
+                                        <img id="imagePreviewImg" src="" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 5px; border: 1px solid #ddd;">
+                                    </div>
                                 </div>
                             </div>
 
@@ -233,12 +262,6 @@
     <section class="contact-map-section">
         <div class="container-fluid px-0">
             <div class="contact-map-wrapper">
-                <div class="container">
-                    <h3 class="contact-map__title">
-                        <i class="fas fa-map-marked-alt"></i>
-                        Find Us on Map
-                    </h3>
-                </div>
                 <div class="contact-map-container">
                     @if($googleMap)
                         <div class="contact-map" id="contactMap">
@@ -277,4 +300,133 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Phone number input restrictions - allow numbers, spaces, +, and hyphens only
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            // Restrict input to numbers, spaces, +, and hyphens
+            phoneInput.addEventListener('input', function(e) {
+                let value = this.value;
+                value = value.replace(/[^\d\+\s\-]/g, '');
+                this.value = value;
+            });
+
+            // Prevent paste of invalid characters
+            phoneInput.addEventListener('paste', function(e) {
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                if (!/^[\d\+\s\-]*$/.test(paste)) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Image preview
+        const imageInput = document.getElementById('image');
+        const imagePreview = document.getElementById('imagePreview');
+        const imagePreviewImg = document.getElementById('imagePreviewImg');
+        
+        if (imageInput && imagePreview && imagePreviewImg) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreviewImg.src = e.target.result;
+                        imagePreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    imagePreview.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize native form validation
+        function initContactFormValidation() {
+            if (typeof window.initFormValidationNative === 'undefined') {
+                setTimeout(initContactFormValidation, 100);
+                return;
+            }
+
+            const form = document.getElementById('contactForm');
+            if (!form) {
+                setTimeout(initContactFormValidation, 100);
+                return;
+            }
+
+            const validationRules = {
+                'name': {
+                    required: true,
+                    minlength: 2,
+                    maxlength: 255,
+                    regex: '^[a-zA-Z\\s\\-\\\'\\.]+$'
+                },
+                'email': {
+                    required: true,
+                    email: true,
+                    maxlength: 255
+                },
+                'phone': {
+                    nzPhone: true
+                },
+                'subject': {
+                    required: true,
+                    minlength: 3,
+                    maxlength: 255
+                },
+                'message': {
+                    required: true,
+                    minlength: 10,
+                    maxlength: 5000
+                }
+            };
+
+            const validationMessages = {
+                'name': {
+                    required: 'Please enter your name.',
+                    minlength: 'Name must be at least 2 characters.',
+                    maxlength: 'Name cannot exceed 255 characters.',
+                    regex: 'Name can only contain letters, spaces, hyphens, apostrophes, and periods.'
+                },
+                'email': {
+                    required: 'Please enter your email address.',
+                    email: 'Please enter a valid email address.',
+                    maxlength: 'Email cannot exceed 255 characters.'
+                },
+                'phone': {
+                    nzPhone: 'Please enter a valid New Zealand phone number (numbers only, e.g., 0211234567 or 091234567).'
+                },
+                'subject': {
+                    required: 'Please enter a subject.',
+                    minlength: 'Subject must be at least 3 characters.',
+                    maxlength: 'Subject cannot exceed 255 characters.'
+                },
+                'message': {
+                    required: 'Please enter your message.',
+                    minlength: 'Message must be at least 10 characters.',
+                    maxlength: 'Your message is too long. Maximum 5000 characters allowed.'
+                }
+            };
+
+            window.initFormValidationNative('#contactForm', {
+                rules: validationRules,
+                messages: validationMessages,
+                onInvalid: function(errors, validator) {
+                    validator.scrollToFirstError();
+                },
+                onValid: function() {
+                    if (window.Analytics && window.Analytics.isEnabled()) {
+                        window.Analytics.trackContactFormSubmit();
+                    }
+                }
+            });
+        }
+
+        initContactFormValidation();
+    });
+</script>
+@endpush
 

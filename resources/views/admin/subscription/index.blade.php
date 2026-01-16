@@ -26,18 +26,29 @@
                 <p class="modern-card__subtitle">{{ $subscriptions->total() }} total subscriptions</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="filter-form" id="search-form">
-                    <div class="search-form__wrapper" style="position: relative;">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" id="search-input" class="search-form__input"
-                               placeholder="Search by email..." value="{{ $search }}" autocomplete="off">
-                        @if($search)
-                            <a href="{{ route('admin.subscriptions.index') }}" class="search-form__clear" id="clear-search">
+                <a href="{{ route('admin.subscriptions.create-newsletter') }}" class="btn btn-primary btn-icon" style="margin-right: 1rem;">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Send Newsletter</span>
+                </a>
+                <form method="GET" class="search-form" id="search-form">
+                    <div class="search-form__wrapper">
+                        <div class="search-form__input-wrapper">
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search by email..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
-                        <div id="search-loading" class="search-loading" style="display: none;">
-                            <i class="fas fa-spinner fa-spin"></i>
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -70,88 +81,27 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('search-input');
-    const searchForm = document.getElementById('search-form');
-    const searchLoading = document.getElementById('search-loading');
-
-    function performSearch() {
-        searchLoading.style.display = 'block';
-        
-        const formData = new FormData(searchForm);
-        const params = new URLSearchParams(formData);
-        
-        fetch(`{{ route('admin.subscriptions.index') }}?${params.toString()}`, {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('subscriptions-table-container').innerHTML = data.table;
-            document.getElementById('subscriptions-pagination-container').innerHTML = data.pagination;
-            searchLoading.style.display = 'none';
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            searchLoading.style.display = 'none';
-        });
-    }
-
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    const debouncedSearch = debounce(performSearch, 500);
-
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            debouncedSearch();
-        });
-    }
-
-    // Handle pagination clicks
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.pagination a')) {
-            e.preventDefault();
-            const url = e.target.closest('.pagination a').href;
-            const urlObj = new URL(url);
-            const params = urlObj.searchParams;
-            
-            // Add current search to pagination
-            if (searchInput && searchInput.value) {
-                params.set('search', searchInput.value);
-            }
-            
-            fetch(`${urlObj.pathname}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('subscriptions-table-container').innerHTML = data.table;
-                document.getElementById('subscriptions-pagination-container').innerHTML = data.pagination;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
+    // Initialize Admin Search
+    AdminSearch.init({
+        searchInput: '#search-input',
+        searchForm: '#search-form',
+        searchButton: '#search-button',
+        clearButton: '#clear-search',
+        resultsContainer: '#subscriptions-table-container',
+        paginationContainer: '#subscriptions-pagination-container',
+        loadingIndicator: '#search-loading',
+        searchUrl: '{{ route('admin.subscriptions.index') }}',
+        debounceDelay: 300
     });
+
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
 });
 </script>
+@endpush
 @endsection
 

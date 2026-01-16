@@ -127,9 +127,12 @@
                     </div>
                 </div>
             </div>
+        </div>
 
+        <!-- Right Side: Personal Information, Addresses, and Orders -->
+        <div class="col-lg-8">
             <!-- User Details Card -->
-            <div class="modern-card modern-card--glass" style="margin-top: 1.5rem;">
+            <div class="modern-card modern-card--glass">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
                         <i class="fas fa-info-circle"></i>
@@ -233,11 +236,9 @@
                 </div>
             </div>
             @endif
-        </div>
 
-        <!-- Orders Section -->
-        <div class="col-lg-8">
-            <div class="modern-card modern-card--glass">
+            <!-- Orders Section -->
+            <div class="modern-card modern-card--glass" style="margin-top: 1.5rem;">
                 <div class="modern-card__header">
                     <div class="modern-card__header-content">
                         <h3 class="modern-card__title">

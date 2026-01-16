@@ -1,5 +1,6 @@
 {{-- Cart Sidebar Item Partial --}}
-<div class="cart-sidebar-item" data-cart-item-id="{{ $item->id }}">
+@if(!empty($item->product->uuid))
+<div class="cart-sidebar-item" data-cart-item-id="{{ $item->id }}" data-product-uuid="{{ $item->product->uuid }}">
     <div class="cart-sidebar-item__image">
         <a href="{{ route('product.detail', $item->product->slug) }}">
             @if($item->product->relationLoaded('images') && $item->product->images->isNotEmpty())
@@ -28,8 +29,10 @@
     </div>
     <button class="cart-sidebar-item__remove"
             data-cart-item-id="{{ $item->id }}"
+            data-product-uuid="{{ $item->product->uuid }}"
             title="Remove">
         <i class="fas fa-times"></i>
     </button>
 </div>
+@endif
 

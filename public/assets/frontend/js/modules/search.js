@@ -106,6 +106,9 @@
             searchBtn.addEventListener('click', function() {
                 const query = searchInput.value.trim();
                 if (query) {
+                    if (window.Analytics) {
+                        window.Analytics.trackSearch(query);
+                    }
                     window.location.href = `/search?q=${encodeURIComponent(query)}`;
                 }
             });
@@ -116,6 +119,9 @@
                 e.preventDefault();
                 const query = this.value.trim();
                 if (query) {
+                    if (window.Analytics) {
+                        window.Analytics.trackSearch(query);
+                    }
                     window.location.href = `/search?q=${encodeURIComponent(query)}`;
                 }
             }

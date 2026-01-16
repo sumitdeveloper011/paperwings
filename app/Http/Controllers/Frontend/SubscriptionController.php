@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Services\GoogleAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +71,18 @@ class SubscriptionController extends Controller
                 'subscription_id' => $subscription->id,
                 'ip' => $request->ip(),
             ]);
+
+            try {
+                $analyticsService = app(GoogleAnalyticsService::class);
+                $analyticsService->trackEvent('newsletter_subscribe', [
+                    'method' => 'homepage',
+                    'user_id' => auth()->id() ?? null
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Analytics tracking failed for newsletter subscription', [
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

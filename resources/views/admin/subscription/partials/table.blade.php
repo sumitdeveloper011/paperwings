@@ -1,59 +1,59 @@
 @if($subscriptions->count() > 0)
-    <div class="table-responsive">
+    <div class="modern-table-wrapper">
         <table class="modern-table">
-            <thead>
+            <thead class="modern-table__head">
                 <tr>
-                    <th>ID</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Subscribed At</th>
-                    <th>Unsubscribed At</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
+                    <th class="modern-table__th">ID</th>
+                    <th class="modern-table__th">Email</th>
+                    <th class="modern-table__th">Status</th>
+                    <th class="modern-table__th">Subscribed At</th>
+                    <th class="modern-table__th">Unsubscribed At</th>
+                    <th class="modern-table__th">Created At</th>
+                    <th class="modern-table__th modern-table__th--actions">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="modern-table__body">
                 @foreach($subscriptions as $subscription)
-                <tr>
-                    <td>#{{ $subscription->id }}</td>
-                    <td>
-                        <div class="email-info">
-                            <i class="fas fa-envelope"></i>
+                <tr class="modern-table__row">
+                    <td class="modern-table__td">#{{ $subscription->id }}</td>
+                    <td class="modern-table__td">
+                        <div class="email-info" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-envelope" style="color: #6b7280;"></i>
                             <strong>{{ $subscription->email }}</strong>
                         </div>
                     </td>
-                    <td>
+                    <td class="modern-table__td">
                         @if($subscription->status == 1)
-                            <span class="badge bg-success">Active</span>
+                            <span class="badge badge--success">Active</span>
                         @else
-                            <span class="badge bg-danger">Inactive</span>
+                            <span class="badge badge--danger">Inactive</span>
                         @endif
                     </td>
-                    <td>
+                    <td class="modern-table__td">
                         @if($subscription->subscribed_at)
                             {{ $subscription->subscribed_at->format('M d, Y H:i') }}
                         @else
                             <span class="text-muted">N/A</span>
                         @endif
                     </td>
-                    <td>
+                    <td class="modern-table__td">
                         @if($subscription->unsubscribed_at)
                             {{ $subscription->unsubscribed_at->format('M d, Y H:i') }}
                         @else
                             <span class="text-muted">-</span>
                         @endif
                     </td>
-                    <td>{{ $subscription->created_at->format('M d, Y') }}</td>
-                    <td>
+                    <td class="modern-table__td">{{ $subscription->created_at->format('M d, Y') }}</td>
+                    <td class="modern-table__td modern-table__td--actions">
                         <div class="action-buttons">
-                            <a href="{{ route('admin.subscriptions.show', $subscription) }}" class="btn btn-sm btn-info" title="View">
+                            <a href="{{ route('admin.subscriptions.show', $subscription) }}" class="action-btn action-btn--view" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
                             <form method="POST" action="{{ route('admin.subscriptions.destroy', $subscription) }}" 
-                                  class="delete-form" onsubmit="return confirm('Are you sure you want to delete this subscription?');">
+                                  class="action-form" onsubmit="return confirm('Are you sure you want to delete this subscription?');">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                <button type="submit" class="action-btn action-btn--delete" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>

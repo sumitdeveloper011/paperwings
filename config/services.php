@@ -53,4 +53,9 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI', env('APP_URL') . '/auth/facebook/callback'),
     ],
 
+    'nzpost' => [
+        'api_key' => env('NZPOST_API_KEY'),
+        'api_url' => env('NZPOST_API_URL', 'https://api.nzpost.co.nz/addresschecker/v1'),
+    ],
+
 ];

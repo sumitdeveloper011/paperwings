@@ -34,25 +34,32 @@
                 <p class="modern-card__subtitle">{{ $users->total() }} total customers</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="filter-form" id="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
-                        <i class="fas fa-search search-form__icon"></i>
-                        <input type="text" name="search" id="search-input" class="search-form__input"
-                               placeholder="Search users..." value="{{ $search }}" autocomplete="off">
-                        @if($search)
-                            <a href="{{ route('admin.users.index') }}" class="search-form__clear" id="clear-search">
+                        <div class="search-form__input-wrapper">
+                            <select name="status" id="status-filter" class="search-form__input" style="width: 150px; margin-right: 0.5rem;">
+                                <option value="">All Status</option>
+                                <option value="1" {{ $status === '1' ? 'selected' : '' }}>Active</option>
+                                <option value="0" {{ $status === '0' ? 'selected' : '' }}>Inactive</option>
+                            </select>
+                            <input type="text"
+                                   name="search"
+                                   id="search-input"
+                                   class="search-form__input"
+                                   placeholder="Search users..."
+                                   value="{{ $search }}"
+                                   autocomplete="off">
+                            <button type="button" id="search-button" class="search-form__button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="#" id="clear-search" class="search-form__clear" style="display: {{ $search ? 'flex' : 'none' }};">
                                 <i class="fas fa-times"></i>
                             </a>
-                        @endif
-                        <div id="search-loading" class="search-loading" style="display: none;">
-                            <i class="fas fa-spinner fa-spin"></i>
+                            <div id="search-loading" class="search-form__loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
                         </div>
                     </div>
-                    <select name="status" id="status-filter" class="filter-select">
-                        <option value="">All Status</option>
-                        <option value="1" {{ $status === '1' ? 'selected' : '' }}>Active</option>
-                        <option value="0" {{ $status === '0' ? 'selected' : '' }}>Inactive</option>
-                    </select>
                 </form>
             </div>
         </div>
@@ -116,171 +123,131 @@
     font-size: 0.875rem;
 }
 
-.filter-form {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
+/* Ensure Orders column is visible */
+.modern-table th:nth-child(6),
+.modern-table td:nth-child(6) {
+    min-width: 80px;
+    width: auto;
+    white-space: nowrap;
+    text-align: center;
 }
 
-.filter-select {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    min-width: 150px;
-    height: 38px;
-    background-color: white;
-    cursor: pointer;
+.modern-table th:nth-child(6) {
+    color: #374151;
+    font-weight: 600;
 }
 
-.filter-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-.status-form {
-    display: inline-block;
-}
-
-.status-select {
-    padding: 0.375rem 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    background-color: white;
-    min-width: 100px;
-    transition: all 0.2s ease;
-}
-
-.status-select:hover {
-    border-color: #667eea;
-}
-
-.status-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-@media (max-width: 768px) {
-    .filter-form {
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .filter-form .search-form__wrapper,
-    .filter-form .filter-select {
-        width: 100%;
-    }
-}
-
-.search-loading {
-    position: absolute;
-    right: 40px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #667eea;
-}
-
-.search-form__wrapper {
-    position: relative;
-}
 </style>
 
+@push('scripts')
+<script src="{{ asset('assets/js/admin-search.js') }}"></script>
 <script>
-(function() {
-    const searchInput = document.getElementById('search-input');
-    const searchForm = document.getElementById('search-form');
-    const statusSelect = document.getElementById('status-filter');
-    const tableContainer = document.getElementById('users-table-container');
-    const paginationContainer = document.getElementById('users-pagination-container');
-    const searchLoading = document.getElementById('search-loading');
-    const clearSearch = document.getElementById('clear-search');
-
-    if (!searchInput || !tableContainer) return;
-
-    let searchTimeout;
-    let isSearching = false;
-
-    // Debounced search function
-    function performSearch() {
-        if (isSearching) return;
-
-        const searchTerm = searchInput.value.trim();
-        const status = statusSelect ? statusSelect.value : '';
-
-        // Show loading indicator
-        if (searchLoading) searchLoading.style.display = 'block';
-        isSearching = true;
-
-        // Build URL with current parameters
-        const url = new URL('{{ route("admin.users.index") }}', window.location.origin);
-        if (searchTerm) url.searchParams.set('search', searchTerm);
-        if (status) url.searchParams.set('status', status);
-        url.searchParams.set('ajax', '1');
-
-        fetch(url, {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            tableContainer.innerHTML = data.html;
-            paginationContainer.innerHTML = data.pagination;
-            if (searchLoading) searchLoading.style.display = 'none';
-            isSearching = false;
-
-            // Update URL without page reload
-            const newUrl = url.toString().replace('&ajax=1', '').replace('?ajax=1', '');
-            window.history.pushState({}, '', newUrl);
-        })
-        .catch(error => {
-            console.error('Search error:', error);
-            if (searchLoading) searchLoading.style.display = 'none';
-            isSearching = false;
-        });
-    }
-
-    // Debounce search input
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(performSearch, 300); // 300ms debounce
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Admin Search
+    AdminSearch.init({
+        searchInput: '#search-input',
+        searchForm: '#search-form',
+        searchButton: '#search-button',
+        clearButton: '#clear-search',
+        resultsContainer: '#users-table-container',
+        paginationContainer: '#users-pagination-container',
+        loadingIndicator: '#search-loading',
+        searchUrl: '{{ route('admin.users.index') }}',
+        debounceDelay: 300,
+        additionalParams: function() {
+            const status = document.getElementById('status-filter')?.value || '';
+            const params = {};
+            if (status) params.status = status;
+            return params;
+        }
     });
 
     // Handle status filter change
-    if (statusSelect) {
-        statusSelect.addEventListener('change', function() {
-            clearTimeout(searchTimeout);
-            performSearch();
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            AdminSearch.performSearch();
         });
     }
 
-    // Clear search
-    if (clearSearch) {
-        clearSearch.addEventListener('click', function(e) {
-        e.preventDefault();
-        searchInput.value = '';
-        if (statusSelect) statusSelect.value = '';
-        clearTimeout(searchTimeout);
-        performSearch();
-    });
-    }
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
 
-    // Prevent form submission on Enter (use AJAX instead)
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
+    // Handle status change with AJAX (prevent page freeze)
+    // Use event delegation to handle dynamically added elements
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
             e.preventDefault();
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-    }
-})();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const userId = select.getAttribute('data-user-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            // Disable select during request
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            // Send AJAX request
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Network response was not ok');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Re-enable select
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                // Show success message if available
+                if (data && data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                // Revert to original value on error
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                if (typeof showToast === 'function') {
+                    showToast('Error', error.message || 'Failed to update user status', 'error', 5000);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
+            });
+        }
+    });
+});
 </script>
+@endpush
 @endsection
 

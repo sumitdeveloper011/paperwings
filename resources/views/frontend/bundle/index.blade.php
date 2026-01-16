@@ -28,7 +28,7 @@
 
             <div class="products-grid" id="bundlesGrid">
                 @foreach($bundles as $bundle)
-                    @include('frontend.bundle.partials.bundle-card', ['bundle' => $bundle])
+                    @include('frontend.product.partials.product-card', ['product' => $bundle])
                 @endforeach
             </div>
 
@@ -86,17 +86,6 @@
             });
         }
 
-        // Bundle Add to Cart functionality
-        document.querySelectorAll('.bundle-add-to-cart').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const bundleId = this.getAttribute('data-bundle-id');
-                if (bundleId) {
-                    // Redirect to bundle detail page where user can add to cart
-                    window.location.href = '/bundles/' + bundleId;
-                }
-            });
-        });
     });
 </script>
 @endpush

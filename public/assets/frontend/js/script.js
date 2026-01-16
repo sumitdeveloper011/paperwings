@@ -5,17 +5,21 @@
 (function() {
     'use strict';
 
-    // Wait for jQuery and modules to be ready
+    // Initialize modules when DOM is ready
     function initScripts() {
-        if (typeof jQuery === 'undefined') {
-            const Utils = window.ScriptUtils || { log: () => {} };
-            Utils.log('jQuery is not loaded yet, retrying...');
-            setTimeout(initScripts, 100);
-            return;
-        }
-
-        const $ = jQuery;
-        const Utils = window.ScriptUtils || { log: () => {}, throttle: (fn, delay) => fn };
+        const Utils = window.ScriptUtils || { 
+            log: () => {}, 
+            throttle: (fn, delay) => {
+                let lastCall = 0;
+                return function(...args) {
+                    const now = Date.now();
+                    if (now - lastCall >= delay) {
+                        lastCall = now;
+                        fn.apply(this, args);
+                    }
+                };
+            }
+        };
         const CONFIG = Utils.getConfig ? Utils.getConfig() : { throttleDelay: 100 };
 
         // Initialize remaining modules (smaller ones kept here)
@@ -23,13 +27,15 @@
         Subscription.init();
         ScrollToTop.init(Utils, CONFIG);
         CategoryPage.init(Utils, CONFIG);
+        
+        // Initialize native JS modules
         ShopPage.init();
         AddressForm.init();
-        RegisterPage.init();
         ProductDetails.init();
-        Select2Init.init();
         MegaMenu.init();
         MobileHeader.init();
+        
+        // Select2 removed - using native HTML selects (no jQuery dependency)
     }
 
     // Animations Module
@@ -51,66 +57,75 @@
         }
     };
 
-    // Subscription Module
+    // Subscription Module (Native JS)
     const Subscription = {
         init: function() {
-            const form = $('#subscriptionForm');
-            if (!form.length) return;
+            const form = document.getElementById('subscriptionForm');
+            if (!form) return;
 
-            form.on('submit', (e) => {
+            form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleSubmit(form);
             });
         },
 
         handleSubmit: function(form) {
-            const emailInput = form.find('#subscriptionEmail');
-            const submitBtn = form.find('#subscriptionBtn');
-            const btnText = submitBtn.find('.subscription-btn-text');
-            const btnLoader = submitBtn.find('.subscription-btn-loader');
-            const email = emailInput.val().trim();
-            const csrfToken = $('meta[name="csrf-token"]').attr('content');
+            const emailInput = form.querySelector('#subscriptionEmail');
+            const submitBtn = form.querySelector('#subscriptionBtn');
+            const btnText = submitBtn?.querySelector('.subscription-btn-text');
+            const btnLoader = submitBtn?.querySelector('.subscription-btn-loader');
+            const email = emailInput?.value.trim() || '';
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            $('#subscriptionMessage').hide().removeClass('subscription-message--success subscription-message--error');
+            const messageDiv = document.getElementById('subscriptionMessage');
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+                messageDiv.className = messageDiv.className.replace(/subscription-message--(success|error)/g, '').trim();
+            }
 
             if (!email || !this.isValidEmail(email)) {
                 this.showMessage('Please enter a valid email address.', 'error');
                 return;
             }
 
-            submitBtn.prop('disabled', true);
-            btnText.hide();
-            btnLoader.show();
+            if (submitBtn) submitBtn.disabled = true;
+            if (btnText) btnText.style.display = 'none';
+            if (btnLoader) btnLoader.style.display = 'block';
 
-            $.ajax({
-                url: form.attr('action'),
+            fetch(form.action || form.getAttribute('action'), {
                 method: 'POST',
-                data: { email: email, _token: csrfToken },
-                dataType: 'json',
-                success: (response) => {
-                    if (response.success) {
-                        this.showMessage(response.message || 'Thank you for subscribing! You will receive our latest offers and updates.', 'success');
-                        emailInput.val('');
-                    } else {
-                        this.showMessage(response.message || 'An error occurred. Please try again.', 'error');
-                    }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
                 },
-                error: (xhr) => {
-                    let errorMessage = 'An error occurred. Please try again.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMessage = xhr.responseJSON.message;
-                    } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                        errorMessage = Object.values(xhr.responseJSON.errors)[0][0];
-                    } else if (xhr.status === 409) {
+                body: JSON.stringify({ email: email, _token: csrfToken })
+            })
+            .then(response => response.json().then(data => ({ status: response.status, data })))
+            .then(({ status, data }) => {
+                if (status === 200 && data.success) {
+                    if (window.Analytics) {
+                        window.Analytics.trackNewsletterSubscribe('homepage');
+                    }
+                    this.showMessage(data.message || 'Thank you for subscribing! You will receive our latest offers and updates.', 'success');
+                    if (emailInput) emailInput.value = '';
+                } else {
+                    let errorMessage = data.message || 'An error occurred. Please try again.';
+                    if (status === 422 && data.errors) {
+                        errorMessage = Object.values(data.errors)[0][0];
+                    } else if (status === 409) {
                         errorMessage = 'This email is already subscribed to our newsletter.';
                     }
                     this.showMessage(errorMessage, 'error');
-                },
-                complete: () => {
-                    submitBtn.prop('disabled', false);
-                    btnText.show();
-                    btnLoader.hide();
                 }
+            })
+            .catch(error => {
+                this.showMessage('An error occurred. Please try again.', 'error');
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (btnText) btnText.style.display = '';
+                if (btnLoader) btnLoader.style.display = 'none';
             });
         },
 
@@ -120,36 +135,58 @@
         },
 
         showMessage: function(message, type) {
-            const messageDiv = $('#subscriptionMessage');
-            messageDiv.removeClass('subscription-message--success subscription-message--error')
-                      .addClass('subscription-message--' + type)
-                      .html('<span>' + message + '</span>')
-                      .fadeIn();
+            // Use toast notification if available, otherwise fallback to inline message
+            if (typeof showToast !== 'undefined') {
+                showToast(message, type, 5000);
+            } else {
+                // Fallback to inline message
+                const messageDiv = document.getElementById('subscriptionMessage');
+                if (!messageDiv) return;
 
-            if (type === 'success') {
-                setTimeout(() => messageDiv.fadeOut(), 5000);
+                messageDiv.className = messageDiv.className.replace(/subscription-message--(success|error)/g, '').trim();
+                messageDiv.classList.add('subscription-message--' + type);
+                messageDiv.innerHTML = '<span>' + message + '</span>';
+                messageDiv.style.display = 'block';
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    messageDiv.style.transition = 'opacity 0.3s';
+                    messageDiv.style.opacity = '1';
+                }, 10);
+
+                if (type === 'success') {
+                    setTimeout(() => {
+                        messageDiv.style.transition = 'opacity 0.3s';
+                        messageDiv.style.opacity = '0';
+                        setTimeout(() => {
+                            messageDiv.style.display = 'none';
+                        }, 300);
+                    }, 5000);
+                }
             }
         }
     };
 
-    // Scroll to Top Module
+    // Scroll to Top Module (Native JS)
     const ScrollToTop = {
         init: function(Utils, CONFIG) {
-            const scrollToTopBtn = $('#scrollToTop');
-            if (!scrollToTopBtn.length) return;
+            const scrollToTopBtn = document.getElementById('scrollToTop');
+            if (!scrollToTopBtn) return;
 
             const handleScroll = Utils.throttle(() => {
-                if ($(window).scrollTop() > 300) {
-                    scrollToTopBtn.addClass('show');
+                if (window.scrollY > 300) {
+                    scrollToTopBtn.classList.add('show');
                 } else {
-                    scrollToTopBtn.removeClass('show');
+                    scrollToTopBtn.classList.remove('show');
                 }
             }, CONFIG.throttleDelay);
 
-            $(window).on('scroll', handleScroll);
+            window.addEventListener('scroll', handleScroll);
 
-            scrollToTopBtn.on('click', () => {
-                $('html, body').animate({ scrollTop: 0 }, 800);
+            scrollToTopBtn.addEventListener('click', () => {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
             });
         }
     };
@@ -182,47 +219,78 @@
         },
 
         initViewToggle: function() {
-            $(document).on('click', '.view-btn', function() {
-                const view = $(this).data('view');
-                $('.view-btn').removeClass('active');
-                $(this).addClass('active');
-                $('#productsGrid').removeClass('products-grid--list').addClass('products-grid--' + view);
-                if (view === 'list') {
-                    $('#productsGrid').addClass('products-grid--list');
+            document.addEventListener('click', (e) => {
+                const viewBtn = e.target.closest('.view-btn');
+                if (!viewBtn) return;
+
+                const view = viewBtn.getAttribute('data-view');
+                if (!view) return;
+
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                viewBtn.classList.add('active');
+
+                const productsGrid = document.getElementById('productsGrid');
+                if (productsGrid) {
+                    productsGrid.classList.remove('products-grid--list');
+                    productsGrid.classList.add('products-grid--' + view);
+                    if (view === 'list') {
+                        productsGrid.classList.add('products-grid--list');
+                    }
                 }
             });
         },
 
         initFilters: function(Utils) {
-            $(document).on('click', '.sidebar-subcategory__link', function(e) {
-                e.preventDefault();
-                $('.sidebar-subcategory__link').removeClass('active');
-                $(this).addClass('active');
+            document.addEventListener('click', (e) => {
+                const subcategoryLink = e.target.closest('.sidebar-subcategory__link');
+                if (subcategoryLink) {
+                    e.preventDefault();
+                    document.querySelectorAll('.sidebar-subcategory__link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    subcategoryLink.classList.add('active');
+                }
+
+                const clearBtn = e.target.closest('.clear-filters-btn');
+                if (clearBtn) {
+                    document.querySelectorAll('.brand-checkbox input').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    const priceRange = document.getElementById('priceRange');
+                    if (priceRange) priceRange.value = 100;
+                    const priceMin = document.querySelector('.price-min');
+                    if (priceMin) priceMin.textContent = '$0';
+                    const priceMax = document.querySelector('.price-max');
+                    if (priceMax) priceMax.textContent = '$100';
+                    document.querySelectorAll('.sidebar-category__link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    const firstCategoryLink = document.querySelector('.sidebar-category__link');
+                    if (firstCategoryLink) firstCategoryLink.classList.add('active');
+                }
             });
 
-            $(document).on('change', '.brand-checkbox input', function() {
-                const brand = $(this).parent().text().trim();
-                const isChecked = $(this).is(':checked');
-                Utils.log('Brand filter:', { brand, isChecked });
-            });
+            document.addEventListener('change', (e) => {
+                const brandCheckbox = e.target.closest('.brand-checkbox input');
+                if (brandCheckbox) {
+                    const brand = brandCheckbox.closest('.brand-checkbox')?.textContent.trim() || '';
+                    const isChecked = brandCheckbox.checked;
+                    Utils.log('Brand filter:', { brand, isChecked });
+                }
 
-            $(document).on('click', '.clear-filters-btn', () => {
-                $('.brand-checkbox input').prop('checked', false);
-                $('#priceRange').val(100);
-                $('.price-min').text('$0');
-                $('.price-max').text('$100');
-                $('.sidebar-category__link').removeClass('active');
-                $('.sidebar-category__link:first').addClass('active');
-            });
-
-            $(document).on('change', '.sort-select', function() {
-                const sortBy = $(this).val();
-                Utils.log('Sort by:', sortBy);
+                const sortSelect = e.target.closest('.sort-select');
+                if (sortSelect) {
+                    const sortBy = sortSelect.value;
+                    Utils.log('Sort by:', sortBy);
+                }
             });
         },
 
         applyPriceFilter: function(Utils) {
-            const maxPrice = $('#priceRange').val();
+            const priceRange = document.getElementById('priceRange');
+            const maxPrice = priceRange?.value;
             if (maxPrice) {
                 Utils.log('Price filter applied:', { min: 0, max: maxPrice });
             }
@@ -269,7 +337,7 @@
         }
     };
 
-    // Address Form Module
+    // Address Form Module (Native JS)
     const AddressForm = {
         init: function() {
             this.initAddAddress();
@@ -278,312 +346,111 @@
         },
 
         initAddAddress: function() {
-            $(document).on('click', '#addAddressBtn', function(e) {
-                e.preventDefault();
-                $('#addressFormContainer').slideDown(300);
-                $('html, body').animate({
-                    scrollTop: $('#addressFormContainer').offset().top - 100
-                }, 300);
-            });
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#addAddressBtn')) {
+                    e.preventDefault();
+                    const container = document.getElementById('addressFormContainer');
+                    if (container) {
+                        container.style.display = 'block';
+                        container.style.maxHeight = container.scrollHeight + 'px';
+                        container.style.opacity = '1';
+                        window.scrollTo({
+                            top: container.offsetTop - 100,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
 
-            $(document).on('click', '#cancelAddressBtn', function(e) {
-                e.preventDefault();
-                $('#addressFormContainer').slideUp(300);
-                $('#addAddressForm')[0].reset();
+                if (e.target.closest('#cancelAddressBtn')) {
+                    e.preventDefault();
+                    const container = document.getElementById('addressFormContainer');
+                    const form = document.getElementById('addAddressForm');
+                    if (container) {
+                        container.style.maxHeight = '0';
+                        container.style.opacity = '0';
+                        setTimeout(() => {
+                            container.style.display = 'none';
+                        }, 300);
+                    }
+                    if (form) form.reset();
+                }
             });
         },
 
         initSameAsBilling: function() {
-            $(document).on('change', '#sameAsBilling', function() {
-                if ($(this).is(':checked')) {
-                    $('#shippingFirstName').val($('#billingFirstName').val()).prop('readonly', true);
-                    $('#shippingLastName').val($('#billingLastName').val()).prop('readonly', true);
-                    $('#shippingEmail').val($('#billingEmail').val()).prop('readonly', true);
-                    $('#shippingPhone').val($('#billingPhone').val()).prop('readonly', true);
-                    $('#shippingAddress').val($('#billingAddress').val()).prop('readonly', true);
-                    $('#shippingAddress2').val($('#billingAddress2').val()).prop('readonly', true);
-                    $('#shippingCity').val($('#billingCity').val()).prop('readonly', true);
-                    $('#shippingState').val($('#billingState').val()).prop('readonly', true);
-                    $('#shippingZip').val($('#billingZip').val()).prop('readonly', true);
-                    $('#shippingCountry').val($('#billingCountry').val()).prop('readonly', true);
-                    $('#shippingDetails').slideUp(200);
+            document.addEventListener('change', (e) => {
+                const checkbox = e.target.closest('#sameAsBilling');
+                if (!checkbox) return;
+
+                const shippingDetails = document.getElementById('shippingDetails');
+                if (!shippingDetails) return;
+
+                if (checkbox.checked) {
+                    const fields = ['FirstName', 'LastName', 'Email', 'Phone', 'Address', 'Address2', 'City', 'State', 'Zip', 'Country'];
+                    fields.forEach(field => {
+                        const billingField = document.getElementById('billing' + field);
+                        const shippingField = document.getElementById('shipping' + field);
+                        if (billingField && shippingField) {
+                            shippingField.value = billingField.value;
+                            shippingField.readOnly = true;
+                        }
+                    });
+                    shippingDetails.style.display = 'none';
                 } else {
-                    $('#shippingDetails input, #shippingDetails select').prop('readonly', false);
-                    $('#shippingDetails').slideDown(200);
+                    const inputs = shippingDetails.querySelectorAll('input, select');
+                    inputs.forEach(input => input.readOnly = false);
+                    shippingDetails.style.display = 'block';
                 }
             });
         },
 
         initOrderDetails: function() {
-            $(document).on('click', '.view-order-details', function(e) {
-                e.preventDefault();
-                $('.account-nav__link').removeClass('account-nav__link--active');
-                $('a[href="#my-orders"]').addClass('account-nav__link--active');
-                $('.account-content').addClass('account-content--hidden');
-                $('#order-details').removeClass('account-content--hidden');
-                $('html, body').animate({
-                    scrollTop: $('.account-section').offset().top - 100
-                }, 300);
-            });
-
-            $(document).on('click', '.back-link', function(e) {
-                e.preventDefault();
-                $('.account-nav__link').removeClass('account-nav__link--active');
-                $('a[href="#my-orders"]').addClass('account-nav__link--active');
-                $('.account-content').addClass('account-content--hidden');
-                $('#my-orders').removeClass('account-content--hidden');
-                $('html, body').animate({
-                    scrollTop: $('.account-section').offset().top - 100
-                }, 300);
-            });
-        }
-    };
-
-    // Register Page Module
-    const RegisterPage = {
-        init: function() {
-            this.initPasswordToggle();
-            this.initPasswordStrength();
-            this.initFormFocus();
-            this.initInvalidFeedback();
-        },
-
-        initPasswordToggle: function() {
-            $(document).on('click', '#togglePassword', function() {
-                const passwordInput = $('#registerPassword');
-                const passwordIcon = $('#passwordIcon');
-                if (passwordInput.attr('type') === 'password') {
-                    passwordInput.attr('type', 'text');
-                    passwordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-                } else {
-                    passwordInput.attr('type', 'password');
-                    passwordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-                }
-            });
-
-            $(document).on('click', '#toggleConfirmPassword', function() {
-                const confirmPasswordInput = $('#registerConfirmPassword');
-                const confirmPasswordIcon = $('#confirmPasswordIcon');
-                if (confirmPasswordInput.attr('type') === 'password') {
-                    confirmPasswordInput.attr('type', 'text');
-                    confirmPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-                } else {
-                    confirmPasswordInput.attr('type', 'password');
-                    confirmPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-                }
-            });
-
-            $(document).on('click', '#toggleLoginPassword', function() {
-                const loginPasswordInput = $('#loginPassword');
-                const loginPasswordIcon = $('#loginPasswordIcon');
-                if (loginPasswordInput.attr('type') === 'password') {
-                    loginPasswordInput.attr('type', 'text');
-                    loginPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-                } else {
-                    loginPasswordInput.attr('type', 'password');
-                    loginPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-                }
-            });
-
-            $(document).on('click', '#toggleResetPassword', function() {
-                const resetPasswordInput = $('#resetPassword');
-                const resetPasswordIcon = $('#resetPasswordIcon');
-                if (resetPasswordInput.attr('type') === 'password') {
-                    resetPasswordInput.attr('type', 'text');
-                    resetPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-                } else {
-                    resetPasswordInput.attr('type', 'password');
-                    resetPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-                }
-            });
-
-            $(document).on('click', '#toggleResetConfirmPassword', function() {
-                const resetConfirmPasswordInput = $('#resetConfirmPassword');
-                const resetConfirmPasswordIcon = $('#resetConfirmPasswordIcon');
-                if (resetConfirmPasswordInput.attr('type') === 'password') {
-                    resetConfirmPasswordInput.attr('type', 'text');
-                    resetConfirmPasswordIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-                } else {
-                    resetConfirmPasswordInput.attr('type', 'password');
-                    resetConfirmPasswordIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-                }
-            });
-        },
-
-        initPasswordStrength: function() {
-            // Function to clear server-side validation errors
-            function clearPasswordErrors(input) {
-                const formGroup = input.closest('.form-group');
-                const invalidFeedback = formGroup.find('.invalid-feedback');
-
-                // Remove is-invalid class
-                input.removeClass('is-invalid');
-
-                // Hide error message
-                invalidFeedback.css('display', 'none');
-
-                // Reset border color (remove inline styles that might have been set by validation)
-                // The default styles will be applied from CSS
-                input.css({
-                    'border-color': '',
-                    'background-color': ''
-                });
-            }
-
-            $('#registerPassword').on('input', function() {
-                const password = $(this).val();
-                const strengthBar = $('#passwordStrengthBar');
-                const strengthContainer = $('#passwordStrength');
-                const passwordHint = $('#passwordHint');
-
-                // Clear server-side errors when user starts typing
-                clearPasswordErrors($(this));
-
-                if (password.length === 0) {
-                    strengthContainer.css('display', 'none');
-                    passwordHint.text('');
-                    return;
-                }
-
-                strengthContainer.css('display', 'block');
-                let strength = 0;
-                let hint = [];
-
-                if (password.length >= 8) strength += 1; else hint.push('At least 8 characters');
-                if (/[a-z]/.test(password)) strength += 1; else hint.push('lowercase letter');
-                if (/[A-Z]/.test(password)) strength += 1; else hint.push('uppercase letter');
-                if (/[0-9]/.test(password)) strength += 1; else hint.push('number');
-                if (/[^A-Za-z0-9]/.test(password)) strength += 1; else hint.push('special character');
-
-                strengthBar.removeClass('weak medium strong');
-                if (strength <= 2) {
-                    strengthBar.addClass('weak');
-                    passwordHint.text('Weak password. Add: ' + hint.slice(0, 2).join(', ')).css('color', '#dc3545');
-                } else if (strength <= 3) {
-                    strengthBar.addClass('medium');
-                    passwordHint.text('Medium password. Add: ' + hint.slice(0, 1).join(', ')).css('color', '#ffc107');
-                } else {
-                    strengthBar.addClass('strong');
-                    passwordHint.text('Strong password!').css('color', '#28a745');
-                }
-            });
-
-            $('#registerConfirmPassword').on('input', function() {
-                const password = $('#registerPassword').val();
-                const confirmPassword = $(this).val();
-                const matchMessage = $('#passwordMatch');
-
-                // Clear server-side errors when user starts typing
-                clearPasswordErrors($(this));
-
-                if (confirmPassword.length === 0) {
-                    matchMessage.text('');
-                    $(this).css('border-color', '');
-                    return;
-                }
-
-                if (password === confirmPassword) {
-                    matchMessage.text('✓ Passwords match').css('color', '#28a745');
-                    $(this).css('border-color', '#28a745');
-                } else {
-                    matchMessage.text('✗ Passwords do not match').css('color', '#dc3545');
-                    $(this).css('border-color', '#dc3545');
-                }
-            });
-        },
-
-        initFormFocus: function() {
-            const focusStyles = {
-                'border-color': 'var(--coral-red)',
-                'background': '#ffffff',
-                'box-shadow': '0 0 0 4px rgba(233, 92, 103, 0.1)',
-                'transform': 'translateY(-2px)'
-            };
-
-            const blurStyles = {
-                'border-color': '#e9ecef',
-                'background': '#f8f9fa',
-                'box-shadow': 'none',
-                'transform': 'translateY(0)'
-            };
-
-            // Function to clear server-side validation errors
-            function clearFieldErrors(input) {
-                if (input.hasClass('is-invalid')) {
-                    const formGroup = input.closest('.form-group');
-                    const invalidFeedback = formGroup.find('.invalid-feedback');
-
-                    // Remove is-invalid class
-                    input.removeClass('is-invalid');
-
-                    // Hide error message
-                    invalidFeedback.css('display', 'none');
-                }
-            }
-
-            $(document).on('focus', '.register-form-input, .login-form-input, .forgot-password-form-input', function() {
-                $(this).css(focusStyles);
-
-                // Clear errors when field is focused (for password fields, this happens on input too)
-                if ($(this).hasClass('register-form-input--password')) {
-                    // For password fields, errors are cleared on input, so we don't need to do it here
-                    // But we can still clear on focus for immediate feedback
-                    clearFieldErrors($(this));
-                } else {
-                    clearFieldErrors($(this));
-                }
-            });
-
-            $(document).on('blur', '.register-form-input, .login-form-input, .forgot-password-form-input', function() {
-                if (!$(this).val()) {
-                    $(this).css(blurStyles);
-                }
-            });
-
-            $(document).on('click', '#userDropdownTrigger', function(e) {
-                e.preventDefault();
-                $('#userDropdown').toggleClass('open');
-            });
-
-            $(document).on('click', function(e) {
-                const userDropdown = $('#userDropdown');
-                if (!userDropdown.is(e.target) && userDropdown.has(e.target).length === 0) {
-                    userDropdown.removeClass('open');
-                }
-            });
-        },
-
-        initInvalidFeedback: function() {
-            // Show invalid-feedback for password fields when input has is-invalid class
-            // This handles cases where CSS :has() selector is not supported
-            function showInvalidFeedback() {
-                $('.password-input-wrapper').each(function() {
-                    const wrapper = $(this);
-                    const input = wrapper.find('input.is-invalid');
-
-                    if (input.length > 0) {
-                        // Find the invalid-feedback within the same form-group
-                        const formGroup = wrapper.closest('.form-group');
-                        const invalidFeedback = formGroup.find('.invalid-feedback');
-
-                        if (invalidFeedback.length > 0) {
-                            invalidFeedback.css('display', 'block');
-                        }
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.view-order-details')) {
+                    e.preventDefault();
+                    document.querySelectorAll('.account-nav__link').forEach(link => {
+                        link.classList.remove('account-nav__link--active');
+                    });
+                    const ordersLink = document.querySelector('a[href="#my-orders"]');
+                    if (ordersLink) ordersLink.classList.add('account-nav__link--active');
+                    document.querySelectorAll('.account-content').forEach(content => {
+                        content.classList.add('account-content--hidden');
+                    });
+                    const orderDetails = document.getElementById('order-details');
+                    if (orderDetails) {
+                        orderDetails.classList.remove('account-content--hidden');
+                        window.scrollTo({
+                            top: document.querySelector('.account-section')?.offsetTop - 100 || 0,
+                            behavior: 'smooth'
+                        });
                     }
-                });
-            }
+                }
 
-            // Run on page load
-            showInvalidFeedback();
-
-            // Also check when form is submitted (in case errors are added dynamically)
-            $('#registerForm').on('submit', function() {
-                setTimeout(showInvalidFeedback, 100);
+                if (e.target.closest('.back-link')) {
+                    e.preventDefault();
+                    document.querySelectorAll('.account-nav__link').forEach(link => {
+                        link.classList.remove('account-nav__link--active');
+                    });
+                    const ordersLink = document.querySelector('a[href="#my-orders"]');
+                    if (ordersLink) ordersLink.classList.add('account-nav__link--active');
+                    document.querySelectorAll('.account-content').forEach(content => {
+                        content.classList.add('account-content--hidden');
+                    });
+                    const myOrders = document.getElementById('my-orders');
+                    if (myOrders) {
+                        myOrders.classList.remove('account-content--hidden');
+                        window.scrollTo({
+                            top: document.querySelector('.account-section')?.offsetTop - 100 || 0,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
             });
         }
     };
 
-    // Product Details Module
+
+    // Product Details Module (Native JS)
     const ProductDetails = {
         init: function() {
             this.initThumbnails();
@@ -592,13 +459,18 @@
         },
 
         initThumbnails: function() {
-            $(document).on('click', '.thumbnail-item', function() {
-                const imageUrl = $(this).data('image');
-                const mainImage = $('#mainImage');
-                if (imageUrl && mainImage.length) {
-                    mainImage.attr('src', imageUrl);
-                    $('.thumbnail-item').removeClass('active');
-                    $(this).addClass('active');
+            document.addEventListener('click', (e) => {
+                const thumbnail = e.target.closest('.thumbnail-item');
+                if (!thumbnail) return;
+
+                const imageUrl = thumbnail.getAttribute('data-image');
+                const mainImage = document.getElementById('mainImage');
+                if (imageUrl && mainImage) {
+                    mainImage.src = imageUrl;
+                    document.querySelectorAll('.thumbnail-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    thumbnail.classList.add('active');
                 }
             });
         }
@@ -804,16 +676,8 @@
         }
     };
 
-    // Select2 Initialization
-    const Select2Init = {
-        init: function() {
-            if (typeof $.fn.select2 === 'undefined') return;
-            $('#editCountry, #editRegion, #editDistrict, #editCity').select2({
-                theme: 'bootstrap-5',
-                width: '100%'
-            });
-        }
-    };
+    // Select2 Initialization - REMOVED
+    // Native HTML selects are used instead (no jQuery dependency needed)
 
     // Mega Menu Module
     const MegaMenu = {
@@ -823,17 +687,14 @@
             const megaMenu = document.getElementById('megaMenu');
 
             if (!megaMenuWrapper || !megaMenuTrigger || !megaMenu) {
-                console.log('Mega Menu elements not found');
                 return;
             }
-
-            console.log('Mega Menu initialized');
 
             // Toggle menu on click (works for both desktop and mobile)
             megaMenuTrigger.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Mega menu button clicked');
+                // Mega menu button clicked
                 megaMenu.style.display = 'block';
                 megaMenuWrapper.classList.toggle('active');
             });
@@ -906,144 +767,160 @@
         }
     };
 
-    // Mobile Header Module
+    // Mobile Header Module (Native JS)
     const MobileHeader = {
         init: function() {
-            const $ = jQuery;
 
             // Mobile Search Toggle
-            const mobileSearchToggle = $('#mobileSearchToggle');
-            const mobileSearchRow = $('#mobileSearchRow');
-            const mobileSearchClose = $('#mobileSearchClose');
-            const mobileSearchInput = $('#header-search-input-mobile');
+            const mobileSearchToggle = document.getElementById('mobileSearchToggle');
+            const mobileSearchRow = document.getElementById('mobileSearchRow');
+            const mobileSearchClose = document.getElementById('mobileSearchClose');
+            const mobileSearchInput = document.getElementById('header-search-input-mobile');
 
-            if (mobileSearchToggle.length) {
-                mobileSearchToggle.on('click', function(e) {
+            if (mobileSearchToggle && mobileSearchRow) {
+                mobileSearchToggle.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    mobileSearchRow.slideDown(300);
+                    mobileSearchRow.style.display = 'block';
+                    mobileSearchRow.style.maxHeight = mobileSearchRow.scrollHeight + 'px';
+                    mobileSearchRow.style.opacity = '1';
                     setTimeout(() => {
-                        mobileSearchInput.focus();
+                        if (mobileSearchInput) mobileSearchInput.focus();
                     }, 350);
                 });
             }
 
-            if (mobileSearchClose.length) {
-                mobileSearchClose.on('click', function(e) {
+            if (mobileSearchClose && mobileSearchRow) {
+                mobileSearchClose.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    mobileSearchRow.slideUp(300);
-                    mobileSearchInput.val('');
+                    mobileSearchRow.style.maxHeight = '0';
+                    mobileSearchRow.style.opacity = '0';
+                    setTimeout(() => {
+                        mobileSearchRow.style.display = 'none';
+                    }, 300);
+                    if (mobileSearchInput) mobileSearchInput.value = '';
                 });
             }
 
             // Close search when clicking outside
-            $(document).on('click', function(e) {
-                if (mobileSearchRow.length && mobileSearchRow.is(':visible')) {
-                    if (!$(e.target).closest('#header-search-mobile, #mobileSearchToggle').length) {
-                        mobileSearchRow.slideUp(300);
-                        mobileSearchInput.val('');
+            document.addEventListener('click', function(e) {
+                if (mobileSearchRow && mobileSearchRow.style.display !== 'none') {
+                    const searchContainer = document.getElementById('header-search-mobile');
+                    if (!searchContainer?.contains(e.target) && !mobileSearchToggle?.contains(e.target)) {
+                        mobileSearchRow.style.maxHeight = '0';
+                        mobileSearchRow.style.opacity = '0';
+                        setTimeout(() => {
+                            mobileSearchRow.style.display = 'none';
+                        }, 300);
+                        if (mobileSearchInput) mobileSearchInput.value = '';
                     }
                 }
             });
 
             // Mobile User Login Dropdown
-            const userLoginToggle = $('#userLoginToggleMobile');
-            const userLoginMenu = $('#userLoginMenuMobile');
-            const userLoginDropdown = $('#userLoginDropdownMobile');
+            const userLoginToggle = document.getElementById('userLoginToggleMobile');
+            const userLoginDropdown = document.getElementById('userLoginDropdownMobile');
 
-            if (userLoginToggle.length) {
-                userLoginToggle.on('click', function(e) {
+            if (userLoginToggle && userLoginDropdown) {
+                userLoginToggle.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
 
                     // Close other dropdowns
-                    $('.header__user-dropdown').not(userLoginDropdown).removeClass('open');
+                    document.querySelectorAll('.header__user-dropdown').forEach(dropdown => {
+                        if (dropdown !== userLoginDropdown) {
+                            dropdown.classList.remove('open');
+                        }
+                    });
 
                     // Toggle this dropdown
-                    userLoginDropdown.toggleClass('open');
+                    userLoginDropdown.classList.toggle('open');
                 });
             }
 
             // Close dropdown when clicking outside
-            $(document).on('click', function(e) {
-                if (userLoginDropdown.length) {
-                    if (!$(e.target).closest(userLoginDropdown).length) {
-                        userLoginDropdown.removeClass('open');
-                    }
+            document.addEventListener('click', function(e) {
+                if (userLoginDropdown && !userLoginDropdown.contains(e.target)) {
+                    userLoginDropdown.classList.remove('open');
                 }
             });
 
             // Mobile User Dropdown (for logged in users)
-            const userDropdownMobile = $('#userDropdownMobile');
-            const userDropdownTriggerMobile = $('#userDropdownTriggerMobile');
+            const userDropdownMobile = document.getElementById('userDropdownMobile');
+            const userDropdownTriggerMobile = document.getElementById('userDropdownTriggerMobile');
 
-            if (userDropdownTriggerMobile.length) {
-                userDropdownTriggerMobile.on('click', function(e) {
+            if (userDropdownTriggerMobile && userDropdownMobile) {
+                userDropdownTriggerMobile.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
 
                     // Close other dropdowns
-                    $('.header__user-dropdown').not(userDropdownMobile).removeClass('open');
+                    document.querySelectorAll('.header__user-dropdown').forEach(dropdown => {
+                        if (dropdown !== userDropdownMobile) {
+                            dropdown.classList.remove('open');
+                        }
+                    });
 
                     // Toggle this dropdown
-                    userDropdownMobile.toggleClass('open');
+                    userDropdownMobile.classList.toggle('open');
                 });
             }
 
             // Mobile Navigation Menu Toggle
-            const navMobileMenuToggle = $('#navMobileMenuToggle');
-            const navMobileMenu = $('#navMobileMenu');
-            const navMobileMenuOverlay = $('#navMobileMenuOverlay');
-            const navMobileMenuClose = $('#navMobileMenuClose');
-            const body = $('body');
+            const navMobileMenuToggle = document.getElementById('navMobileMenuToggle');
+            const navMobileMenu = document.getElementById('navMobileMenu');
+            const navMobileMenuOverlay = document.getElementById('navMobileMenuOverlay');
+            const navMobileMenuClose = document.getElementById('navMobileMenuClose');
+            const body = document.body;
 
             function openMobileMenu() {
-                navMobileMenu.addClass('active');
-                navMobileMenuOverlay.addClass('active');
-                body.css('overflow', 'hidden'); // Prevent body scroll
+                if (navMobileMenu) navMobileMenu.classList.add('active');
+                if (navMobileMenuOverlay) navMobileMenuOverlay.classList.add('active');
+                if (body) body.style.overflow = 'hidden';
             }
 
             function closeMobileMenu() {
-                navMobileMenu.removeClass('active');
-                navMobileMenuOverlay.removeClass('active');
-                body.css('overflow', ''); // Restore body scroll
+                if (navMobileMenu) navMobileMenu.classList.remove('active');
+                if (navMobileMenuOverlay) navMobileMenuOverlay.classList.remove('active');
+                if (body) body.style.overflow = '';
             }
 
-            if (navMobileMenuToggle.length) {
-                navMobileMenuToggle.on('click', function(e) {
+            if (navMobileMenuToggle) {
+                navMobileMenuToggle.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     openMobileMenu();
                 });
             }
 
-            if (navMobileMenuClose.length) {
-                navMobileMenuClose.on('click', function(e) {
+            if (navMobileMenuClose) {
+                navMobileMenuClose.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     closeMobileMenu();
                 });
             }
 
-            // Close menu when clicking overlay
-            if (navMobileMenuOverlay.length) {
-                navMobileMenuOverlay.on('click', function(e) {
+            if (navMobileMenuOverlay) {
+                navMobileMenuOverlay.addEventListener('click', function(e) {
                     e.preventDefault();
                     closeMobileMenu();
                 });
             }
 
             // Close menu on escape key
-            $(document).on('keydown', function(e) {
-                if (e.key === 'Escape' && navMobileMenu.hasClass('active')) {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && navMobileMenu?.classList.contains('active')) {
                     closeMobileMenu();
                 }
             });
 
             // Close menu when clicking on a link
-            $('.nav__mobile-menu-link, .nav__mobile-menu-categories-link').on('click', function() {
-                setTimeout(closeMobileMenu, 300); // Small delay for smooth transition
+            document.querySelectorAll('.nav__mobile-menu-link, .nav__mobile-menu-categories-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    setTimeout(closeMobileMenu, 300);
+                });
             });
         }
     };

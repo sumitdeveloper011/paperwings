@@ -3,38 +3,55 @@
 namespace App\Http\Controllers\Admin\Notification;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
+use App\Models\Notification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Carbon\Carbon;
 
 class NotificationController extends Controller
 {
-    // Get unread order notifications
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        // Get unread orders (orders that haven't been viewed by admin)
-        $unreadOrders = Order::whereNull('admin_viewed_at')
-            ->with(['user'])
+        $type = $request->get('type');
+        $priority = $request->get('priority');
+        
+        $query = Notification::unread()
+            ->with('notifiable')
+            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            ->take(20);
 
-        $notifications = $unreadOrders->map(function ($order) {
+        if ($type) {
+            $query->byType($type);
+        }
+
+        if ($priority) {
+            $query->byPriority($priority);
+        }
+
+        $notifications = $query->get()->map(function ($notification) {
+            $data = $notification->data ?? [];
             return [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'customer_name' => $order->user ? $order->user->name : ($order->billing_first_name . ' ' . $order->billing_last_name),
-                'total' => number_format($order->total, 2),
-                'status' => $order->status,
-                'payment_status' => $order->payment_status,
-                'created_at' => $order->created_at->format('M d, Y H:i'),
-                'time_ago' => $order->created_at->diffForHumans(),
-                'url' => route('admin.orders.show', $order),
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'priority' => $notification->priority,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'url' => $data['url'] ?? '#',
+                'created_at' => $notification->created_at->format('M d, Y H:i'),
+                'time_ago' => $notification->created_at->diffForHumans(),
+                'data' => $data,
             ];
         });
 
-        $unreadCount = Order::whereNull('admin_viewed_at')->count();
+        $unreadCount = $this->notificationService->getUnreadCount();
 
         return response()->json([
             'success' => true,
@@ -43,33 +60,17 @@ class NotificationController extends Controller
         ]);
     }
 
-    // Render notifications as HTML (for AJAX)
     public function render(Request $request): JsonResponse
     {
-        // Get unread orders (orders that haven't been viewed by admin)
-        $unreadOrders = Order::whereNull('admin_viewed_at')
-            ->with(['user'])
+        $notifications = Notification::unread()
+            ->with('notifiable')
+            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        $notifications = $unreadOrders->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'customer_name' => $order->user ? $order->user->name : ($order->billing_first_name . ' ' . $order->billing_last_name),
-                'total' => number_format($order->total, 2),
-                'status' => $order->status,
-                'payment_status' => $order->payment_status,
-                'created_at' => $order->created_at->format('M d, Y H:i'),
-                'time_ago' => $order->created_at->diffForHumans(),
-                'url' => route('admin.orders.show', $order),
-            ];
-        });
+        $unreadCount = $this->notificationService->getUnreadCount();
 
-        $unreadCount = Order::whereNull('admin_viewed_at')->count();
-
-        // Render HTML using Blade partial
         $html = view('admin.notifications.partials.items', [
             'notifications' => $notifications
         ])->render();
@@ -81,14 +82,9 @@ class NotificationController extends Controller
         ]);
     }
 
-    // Mark notification as read
-    public function markAsRead(Request $request, Order $order): JsonResponse
+    public function markAsRead(Request $request, Notification $notification): JsonResponse
     {
-        if (!$order->admin_viewed_at) {
-            $order->update([
-                'admin_viewed_at' => now(),
-            ]);
-        }
+        $this->notificationService->markAsRead($notification);
 
         return response()->json([
             'success' => true,
@@ -96,16 +92,39 @@ class NotificationController extends Controller
         ]);
     }
 
-    // Mark all notifications as read
     public function markAllAsRead(Request $request): JsonResponse
     {
-        Order::whereNull('admin_viewed_at')->update([
-            'admin_viewed_at' => now(),
-        ]);
+        $count = $this->notificationService->markAllAsRead();
 
         return response()->json([
             'success' => true,
-            'message' => 'All notifications marked as read',
+            'message' => "{$count} notifications marked as read",
+        ]);
+    }
+
+    public function history(Request $request): JsonResponse
+    {
+        $type = $request->get('type');
+        $priority = $request->get('priority');
+        $perPage = $request->get('per_page', 20);
+
+        $query = Notification::with('notifiable')
+            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+            ->orderBy('created_at', 'desc');
+
+        if ($type) {
+            $query->byType($type);
+        }
+
+        if ($priority) {
+            $query->byPriority($priority);
+        }
+
+        $notifications = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'notifications' => $notifications,
         ]);
     }
 }

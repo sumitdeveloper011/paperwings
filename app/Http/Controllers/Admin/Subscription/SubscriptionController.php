@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Admin\Subscription;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Subscription\SendNewsletterRequest;
+use App\Jobs\SendNewsletterJob;
 use App\Models\Subscription;
+use App\Models\EmailTemplate;
+use App\Services\EmailTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +32,9 @@ class SubscriptionController extends Controller
 
         $subscriptions = $query->orderBy('created_at', 'desc')->paginate(15, ['*'], 'page', $page);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             return response()->json([
-                'table' => view('admin.subscription.partials.table', compact('subscriptions', 'search'))->render(),
+                'html' => view('admin.subscription.partials.table', compact('subscriptions', 'search'))->render(),
                 'pagination' => view('admin.subscription.partials.pagination', compact('subscriptions', 'search'))->render(),
                 'total' => $subscriptions->total()
             ]);
@@ -85,7 +90,7 @@ class SubscriptionController extends Controller
     }
 
     // Export subscriptions to CSV
-    public function export(Request $request): Response
+    public function export(Request $request): BinaryFileResponse|RedirectResponse
     {
         try {
             $subscriptions = Subscription::active()->orderBy('created_at', 'desc')->get();
@@ -126,5 +131,113 @@ class SubscriptionController extends Controller
             return redirect()->route('admin.subscriptions.index')
                 ->with('error', 'Failed to export subscriptions: ' . $e->getMessage());
         }
+    }
+
+    public function createNewsletter(): View
+    {
+        $templates = EmailTemplate::where('category', 'newsletter')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $activeCount = Subscription::active()->count();
+        $totalCount = Subscription::count();
+
+        return view('admin.subscription.create-newsletter', compact('templates', 'activeCount', 'totalCount'));
+    }
+
+    public function sendNewsletter(SendNewsletterRequest $request): RedirectResponse
+    {
+        try {
+            $subject = $request->subject;
+            $body = $request->body;
+
+            if ($request->filled('email_template_id')) {
+                $template = EmailTemplate::find($request->email_template_id);
+                if ($template) {
+                    $subject = $template->subject;
+                    $body = $template->body;
+                }
+            }
+
+            if ($request->filled('test_email')) {
+                SendNewsletterJob::dispatch(
+                    $request->test_email,
+                    $subject,
+                    $body,
+                    null
+                );
+
+                Log::info('Newsletter test email sent', [
+                    'test_email' => $request->test_email,
+                    'sent_by' => auth()->id()
+                ]);
+
+                return redirect()->route('admin.subscriptions.create-newsletter')
+                    ->with('success', 'Test email sent successfully!');
+            }
+
+            $query = Subscription::query();
+            if ($request->send_to === 'active') {
+                $query->where('status', 1);
+            }
+
+            $subscriptions = $query->get();
+            $count = $subscriptions->count();
+
+            if ($count === 0) {
+                return redirect()->route('admin.subscriptions.create-newsletter')
+                    ->with('error', 'No subscribers found for the selected criteria.');
+            }
+
+            foreach ($subscriptions as $subscription) {
+                SendNewsletterJob::dispatch(
+                    $subscription->email,
+                    $subject,
+                    $body,
+                    $subscription->uuid
+                );
+            }
+
+            Log::info('Newsletter queued for sending', [
+                'count' => $count,
+                'send_to' => $request->send_to,
+                'sent_by' => auth()->id()
+            ]);
+
+            return redirect()->route('admin.subscriptions.index')
+                ->with('success', "Newsletter queued successfully! {$count} emails will be sent.");
+
+        } catch (\Exception $e) {
+            Log::error('Newsletter sending error', [
+                'error' => $e->getMessage(),
+                'sent_by' => auth()->id()
+            ]);
+
+            return redirect()->route('admin.subscriptions.create-newsletter')
+                ->with('error', 'Failed to send newsletter: ' . $e->getMessage());
+        }
+    }
+
+    public function previewTemplate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'template_id' => 'required|exists:email_templates,id'
+        ]);
+
+        $template = EmailTemplate::find($request->template_id);
+
+        if (!$template) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Template not found.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'subject' => $template->subject,
+            'body' => $template->body,
+        ]);
     }
 }

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -40,16 +41,18 @@ class AuthController extends Controller
                 session(['url.intended' => $request->intended]);
             }
 
+            $title = 'Login';
             $googleLoginEnabled = Setting::get('google_login_enabled', '0') == '1';
             $facebookLoginEnabled = Setting::get('facebook_login_enabled', '0') == '1';
 
-            return view('include.frontend.login', compact('googleLoginEnabled', 'facebookLoginEnabled'));
+            return view('include.frontend.login', compact('title', 'googleLoginEnabled', 'facebookLoginEnabled'));
         } catch (\Exception $e) {
             Log::error('Login page error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
 
             // Fallback values if settings fail
             return view('include.frontend.login', [
+                'title' => 'Login',
                 'googleLoginEnabled' => false,
                 'facebookLoginEnabled' => false
             ]);
@@ -60,8 +63,8 @@ class AuthController extends Controller
     public function authenticate(LoginRequest $request)
     {
         $key = 'login-attempts:' . $request->ip();
-        $maxAttempts = 5;
-        $decayMinutes = 15;
+        $maxAttempts = config('auth.rate_limiting.max_attempts', 5);
+        $decayMinutes = config('auth.rate_limiting.decay_minutes', 15);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
@@ -77,16 +80,32 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
-        $password = $request->password;
+        // Sanitize all inputs
+        $email = CommonHelper::sanitizeEmail($request->email);
+        $password = $request->password; // Password should not be sanitized (needs to match hash)
+
+        // Security checks - SQL Injection and XSS detection for all inputs
+        $securityViolation = false;
+        $violatedInput = '';
 
         if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
+            $securityViolation = true;
+            $violatedInput = 'email';
+        }
+
+        // Check password for SQL injection (XSS not applicable for passwords)
+        if (CommonHelper::detectSqlInjection($password)) {
+            $securityViolation = true;
+            $violatedInput = 'password';
+        }
+
+        if ($securityViolation) {
             RateLimiter::hit($key, $decayMinutes * 60);
 
             CommonHelper::logSecurityEvent('Malicious input detected in login attempt', null, [
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'input_type' => 'email'
+                'input_type' => $violatedInput
             ]);
 
             return back()->withErrors([
@@ -201,13 +220,15 @@ class AuthController extends Controller
                 $facebookLoginEnabled = false;
             }
 
-            return view('include.frontend.register', compact('googleLoginEnabled', 'facebookLoginEnabled'));
+            $title = 'Register';
+            return view('include.frontend.register', compact('title', 'googleLoginEnabled', 'facebookLoginEnabled'));
         } catch (\Exception $e) {
             Log::error('Register page error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
 
             // Fallback values if anything fails
             return view('include.frontend.register', [
+                'title' => 'Register',
                 'googleLoginEnabled' => false,
                 'facebookLoginEnabled' => false
             ]);
@@ -219,11 +240,54 @@ class AuthController extends Controller
         try {
             $validated = $request->validated();
 
+            // Sanitize all text inputs
+            $firstName = CommonHelper::sanitizeName($validated['first_name']);
+            $lastName = CommonHelper::sanitizeName($validated['last_name']);
+            $email = CommonHelper::sanitizeEmail($validated['email']);
+            $password = $validated['password']; // Don't sanitize password (needs to match hash)
+
+            // Security checks - SQL Injection and XSS detection for all inputs
+            $securityViolation = false;
+            $violatedInput = '';
+
+            if (CommonHelper::detectSqlInjection($firstName) || CommonHelper::detectXss($firstName)) {
+                $securityViolation = true;
+                $violatedInput = 'first_name';
+            }
+
+            if (CommonHelper::detectSqlInjection($lastName) || CommonHelper::detectXss($lastName)) {
+                $securityViolation = true;
+                $violatedInput = 'last_name';
+            }
+
+            if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
+                $securityViolation = true;
+                $violatedInput = 'email';
+            }
+
+            // Check password for SQL injection (XSS not applicable)
+            if (CommonHelper::detectSqlInjection($password)) {
+                $securityViolation = true;
+                $violatedInput = 'password';
+            }
+
+            if ($securityViolation) {
+                CommonHelper::logSecurityEvent('Malicious input detected in registration attempt', null, [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'input_type' => $violatedInput
+                ]);
+
+                return back()->withErrors([
+                    $violatedInput => 'Invalid input detected. Please check your information.'
+                ])->withInput();
+            }
+
             $user = User::create([
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $email,
+                'password' => Hash::make($password),
                 'agree_terms' => $validated['agreeTerms'] ? 1 : 0,
                 'status' => 0,
             ]);
@@ -245,6 +309,13 @@ class AuthController extends Controller
                 Log::error('Stack trace: ' . $e->getTraceAsString());
             }
 
+            // Send welcome email
+            try {
+                Mail::to($user->email)->queue(new \App\Mail\WelcomeEmail($user));
+            } catch (\Exception $e) {
+                Log::error('Welcome email failed: ' . $e->getMessage());
+            }
+
             return redirect()->route('register')->with('success', 'Registration successful! Please check your email to verify your account.');
 
         } catch (\Exception $e) {
@@ -259,14 +330,16 @@ class AuthController extends Controller
 
     public function forgotPassword()
     {
-        return view('include.frontend.forgot-password');
+        $title = 'Forgot Password';
+        return view('include.frontend.forgot-password', compact('title'));
     }
 
-    // Send password reset link
+    // Send password reset link using Laravel's built-in Password facade
     public function sendResetLink(ForgotPasswordRequest $request)
     {
         try {
-            $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
+            // Sanitize and validate input
+            $email = CommonHelper::sanitizeEmail($request->email);
 
             // Security checks - SQL Injection and XSS detection
             if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
@@ -281,34 +354,23 @@ class AuthController extends Controller
                 ])->onlyInput('email');
             }
 
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                // Don't reveal if email exists for security
-                return back()->with('success', 'If that email address exists in our system, we have sent a password reset link.');
-            }
-
-            // Generate password reset token
-            $token = Str::random(64);
-
-            // Store token in password_reset_tokens table
-            DB::table('password_reset_tokens')->updateOrInsert(
-                ['email' => $email],
-                [
-                    'token' => Hash::make($token),
-                    'created_at' => now()
-                ]
+            // Use Laravel's built-in Password facade
+            $status = Password::sendResetLink(
+                ['email' => $email]
             );
 
-            // Send password reset notification
-            $user->notify(new ResetPasswordNotification($token));
+            // Log security event if user exists
+            if ($status === Password::RESET_LINK_SENT) {
+                $user = User::where('email', $email)->first();
+                if ($user) {
+                    CommonHelper::logSecurityEvent('Password reset link requested', $user, [
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ]);
+                }
+            }
 
-            // Log security event
-            CommonHelper::logSecurityEvent('Password reset link requested', $user, [
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-
+            // Always return success message (don't reveal if email exists)
             return back()->with('success', 'If that email address exists in our system, we have sent a password reset link.');
 
         } catch (\Exception $e) {
@@ -328,7 +390,15 @@ class AuthController extends Controller
             return redirect()->route('forgot-password')->with('error', 'Invalid reset link.');
         }
 
-        // Verify token exists and is valid
+        // Sanitize email input
+        $email = CommonHelper::sanitizeEmail($email);
+
+        // Security checks
+        if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
+            return redirect()->route('forgot-password')->with('error', 'Invalid reset link.');
+        }
+
+        // Verify token exists in Laravel's password_reset_tokens table
         $resetRecord = DB::table('password_reset_tokens')
             ->where('email', $email)
             ->first();
@@ -337,37 +407,55 @@ class AuthController extends Controller
             return redirect()->route('forgot-password')->with('error', 'Invalid or expired reset link.');
         }
 
-        // Check if token is expired (60 minutes)
-        if (now()->diffInMinutes($resetRecord->created_at) > 60) {
+        // Laravel's password reset tokens expire after 60 minutes (configurable in config/auth.php)
+        $expirationMinutes = config('auth.passwords.users.expire', 60);
+        if (now()->diffInMinutes($resetRecord->created_at) > $expirationMinutes) {
             DB::table('password_reset_tokens')->where('email', $email)->delete();
             return redirect()->route('forgot-password')->with('error', 'This password reset link has expired. Please request a new one.');
         }
 
-        // Verify token matches
+        // Verify token matches (Laravel stores tokens hashed)
         if (!Hash::check($token, $resetRecord->token)) {
             return redirect()->route('forgot-password')->with('error', 'Invalid reset link.');
         }
 
-        return view('include.frontend.reset-password', [
-            'token' => $token,
-            'email' => $email
-        ]);
+        $title = 'Reset Password';
+        return view('include.frontend.reset-password', compact('title', 'token', 'email'));
     }
 
-    // Handle password reset
+    // Handle password reset using Laravel's built-in Password facade
     public function resetPassword(ResetPasswordRequest $request)
     {
         try {
-            $email = filter_var($request->email, FILTER_SANITIZE_EMAIL);
+            // Sanitize inputs
+            $email = CommonHelper::sanitizeEmail($request->email);
             $token = $request->token;
             $password = $request->password;
 
-            // Security checks
+            // Security checks - SQL Injection and XSS detection for all inputs
+            $securityViolation = false;
+            $violatedInput = '';
+
             if (CommonHelper::detectSqlInjection($email) || CommonHelper::detectXss($email)) {
+                $securityViolation = true;
+                $violatedInput = 'email';
+            }
+
+            if (CommonHelper::detectSqlInjection($token) || CommonHelper::detectXss($token)) {
+                $securityViolation = true;
+                $violatedInput = 'token';
+            }
+
+            if (CommonHelper::detectSqlInjection($password) || CommonHelper::detectXss($password)) {
+                $securityViolation = true;
+                $violatedInput = 'password';
+            }
+
+            if ($securityViolation) {
                 CommonHelper::logSecurityEvent('Malicious input detected in password reset', null, [
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
-                    'input_type' => 'email'
+                    'input_type' => $violatedInput
                 ]);
 
                 return back()->withErrors([
@@ -375,55 +463,47 @@ class AuthController extends Controller
                 ])->withInput();
             }
 
-            // Verify token
-            $resetRecord = DB::table('password_reset_tokens')
-                ->where('email', $email)
-                ->first();
+            // Use Laravel's built-in Password facade for password reset
+            $status = Password::reset(
+                [
+                    'email' => $email,
+                    'password' => $password,
+                    'password_confirmation' => $request->password_confirmation,
+                    'token' => $token
+                ],
+                function ($user, $password) {
+                    $user->password = Hash::make($password);
+                    $user->save();
+                }
+            );
 
-            if (!$resetRecord) {
-                return back()->withErrors([
-                    'email' => 'Invalid or expired reset link.'
-                ])->withInput();
+            if ($status === Password::PASSWORD_RESET) {
+                // Find user for logging
+                $user = User::where('email', $email)->first();
+
+                // Log security event
+                if ($user) {
+                    CommonHelper::logSecurityEvent('Password reset successful', $user, [
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ]);
+                }
+
+                return redirect()->route('login')->with('success', 'Your password has been reset successfully. Please login with your new password.');
             }
 
-            // Check if token is expired (60 minutes)
-            if (now()->diffInMinutes($resetRecord->created_at) > 60) {
-                DB::table('password_reset_tokens')->where('email', $email)->delete();
-                return back()->withErrors([
-                    'email' => 'This password reset link has expired. Please request a new one.'
-                ])->withInput();
-            }
+            // Handle different error statuses
+            $errorMessages = [
+                Password::INVALID_TOKEN => 'Invalid or expired reset token.',
+                Password::INVALID_USER => 'User not found.',
+                Password::THROTTLED => 'Too many reset attempts. Please try again later.',
+            ];
 
-            // Verify token matches
-            if (!Hash::check($token, $resetRecord->token)) {
-                return back()->withErrors([
-                    'email' => 'Invalid reset link.'
-                ])->withInput();
-            }
+            $errorMessage = $errorMessages[$status] ?? 'An error occurred while resetting your password. Please try again.';
 
-            // Find user
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                return back()->withErrors([
-                    'email' => 'User not found.'
-                ])->withInput();
-            }
-
-            // Update password
-            $user->password = Hash::make($password);
-            $user->save();
-
-            // Delete used token
-            DB::table('password_reset_tokens')->where('email', $email)->delete();
-
-            // Log security event
-            CommonHelper::logSecurityEvent('Password reset successful', $user, [
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-
-            return redirect()->route('login')->with('success', 'Your password has been reset successfully. Please login with your new password.');
+            return back()->withErrors([
+                'email' => $errorMessage
+            ])->withInput();
 
         } catch (\Exception $e) {
             Log::error('Password reset error: ' . $e->getMessage());

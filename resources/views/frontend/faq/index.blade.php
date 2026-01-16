@@ -32,16 +32,19 @@
 
                     @if($faqs->count() > 0)
                         <div class="faq-accordion" id="faqAccordion">
-                            @foreach($faqs as $index => $faq)
+                            @foreach($faqs as $faq)
+                                @php
+                                    $faqIndex = ($faqs->currentPage() - 1) * $faqs->perPage() + $loop->iteration;
+                                @endphp
                                 <div class="faq-item">
                                     <div class="faq-question"
                                          data-toggle="collapse"
                                          data-target="#faq{{ $faq->id }}"
-                                         aria-expanded="{{ $index === 0 ? 'true' : 'false' }}"
+                                         aria-expanded="{{ $loop->first ? 'true' : 'false' }}"
                                          aria-controls="faq{{ $faq->id }}"
                                          role="button">
                                         <h3 class="faq-question-text">
-                                            <span class="faq-question-number">{{ $index + 1 }}.</span>
+                                            <span class="faq-question-number">{{ $faqIndex }}.</span>
                                             {{ $faq->question }}
                                         </h3>
                                         <span class="faq-toggle-icon">
@@ -49,7 +52,7 @@
                                         </span>
                                     </div>
                                     <div id="faq{{ $faq->id }}"
-                                         class="collapse {{ $index === 0 ? 'show' : '' }}"
+                                         class="collapse {{ $loop->first ? 'show' : '' }}"
                                          data-parent="#faqAccordion">
                                         <div class="faq-answer">
                                             <div class="faq-answer-content">
@@ -70,6 +73,12 @@
                                 </div>
                             @endforeach
                         </div>
+
+                        @if($faqs->hasPages())
+                            <div class="faq-pagination mt-5">
+                                @include('include.frontend.pagination', ['paginator' => $faqs])
+                            </div>
+                        @endif
                     @else
                         <div class="faq-empty-state text-center py-5">
                             <div class="faq-empty-icon mb-3">
@@ -290,6 +299,12 @@
             .faq-answer-content {
                 font-size: 14px;
             }
+        }
+
+        .faq-pagination {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e9ecef;
         }
     </style>
 

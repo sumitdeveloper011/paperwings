@@ -29,17 +29,23 @@
     @endif
 
     <div class="row">
-        <!-- Order Information -->
+        <!-- Main Content Area (Left Side) -->
         <div class="col-lg-8">
-            <!-- Order Items -->
-            <div class="modern-card">
+            <!-- Order Items Section -->
+            <div class="modern-card order-section">
                 <div class="modern-card__header">
-                    <h3 class="modern-card__title">Order Items</h3>
+                    <div class="modern-card__header-content">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-box"></i>
+                            Order Items
+                        </h3>
+                        <p class="modern-card__subtitle">{{ $order->items->count() }} item(s) in this order</p>
+                    </div>
                 </div>
                 <div class="modern-card__body">
                     <div class="order-items-list">
-                        @foreach($order->items as $item)
-                        <div class="order-item-card">
+                        @foreach($order->items as $index => $item)
+                        <div class="order-item-card" style="animation-delay: {{ $index * 0.05 }}s;">
                             <div class="order-item-card__image">
                                 @if($item->product)
                                     <img src="{{ $item->product->main_image ?? asset('assets/images/placeholder.jpg') }}" alt="{{ $item->product->name ?? $item->product_name }}">
@@ -50,279 +56,366 @@
                             <div class="order-item-card__info">
                                 <h4 class="order-item-card__name">
                                     @if($item->product)
-                                        {{ $item->product->name ?? $item->product_name }}
+                                        <a href="{{ route('admin.products.show', $item->product->uuid ?? $item->product->id) }}" class="order-item-card__link">
+                                            {{ $item->product->name ?? $item->product_name }}
+                                        </a>
                                     @else
                                         {{ $item->product_name }}
                                     @endif
                                 </h4>
                                 <div class="order-item-card__meta">
-                                    <span>Quantity: {{ $item->quantity }}</span>
-                                    <span>Price: ${{ number_format($item->price, 2) }}</span>
+                                    <span class="order-item-card__meta-item">
+                                        <i class="fas fa-hashtag"></i>
+                                        Quantity: <strong>{{ $item->quantity }}</strong>
+                                    </span>
+                                    <span class="order-item-card__meta-item">
+                                        <i class="fas fa-dollar-sign"></i>
+                                        Unit Price: <strong>${{ number_format($item->price, 2) }}</strong>
+                                    </span>
                                 </div>
                             </div>
                             <div class="order-item-card__total">
-                                <strong>${{ number_format($item->subtotal, 2) }}</strong>
+                                <div class="order-item-card__total-label">Subtotal</div>
+                                <div class="order-item-card__total-value">${{ number_format($item->subtotal, 2) }}</div>
                             </div>
                         </div>
+                        @if(!$loop->last)
+                            <div class="order-item-divider"></div>
+                        @endif
                         @endforeach
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Order Summary & Actions -->
-        <div class="col-lg-4">
-            <!-- Order Status -->
-            <div class="modern-card">
+            <!-- Order Details Section (Moved from Sidebar, Styled like Customer Information) -->
+            <div class="modern-card order-section" style="margin-top: 1.5rem;">
                 <div class="modern-card__header">
-                    <h3 class="modern-card__title">Order Status</h3>
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-info-circle"></i>
+                        Order Details
+                    </h3>
                 </div>
                 <div class="modern-card__body">
-                    <form method="POST" action="{{ route('admin.orders.updateStatus', $order) }}" id="statusForm">
-                        @csrf
-                        @method('PATCH')
-                        <div class="form-group">
-                            <label>Order Status</label>
-                            <select name="status" id="orderStatus" class="form-control">
-                                <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>Pending</option>
-                                <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>Processing</option>
-                                <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>Shipped</option>
-                                <option value="delivered" {{ $order->status === 'delivered' ? 'selected' : '' }}>Delivered</option>
-                                <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                            </select>
+                    <div class="customer-info-grid">
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-hashtag"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Order Number</div>
+                                <div class="customer-info-item__value">{{ $order->order_number }}</div>
+                            </div>
                         </div>
-
-                        <!-- Hidden fields for tracking -->
-                        <input type="hidden" name="tracking_id" id="trackingIdInput" value="{{ $order->tracking_id ?? '' }}">
-                        <input type="hidden" name="tracking_url" id="trackingUrlInput" value="{{ $order->tracking_url ?? '' }}">
-                    </form>
-
-                    @if($order->tracking_id)
-                    <div class="mt-3 p-3 bg-light rounded">
-                        <strong>Tracking ID:</strong> {{ $order->tracking_id }}<br>
-                        @if($order->tracking_url)
-                        <strong>Tracking URL:</strong> <a href="{{ $order->tracking_url }}" target="_blank">{{ $order->tracking_url }}</a>
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Order Date</div>
+                                <div class="customer-info-item__value">{{ $order->created_at->format('M d, Y') }}</div>
+                                <div class="customer-info-item__subtext">{{ $order->created_at->format('h:i A') }}</div>
+                            </div>
+                        </div>
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Payment Method</div>
+                                <div class="customer-info-item__value">{{ ucfirst($order->payment_method) }}</div>
+                            </div>
+                        </div>
+                        @if($order->stripe_payment_intent_id)
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fab fa-stripe"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Stripe Payment ID</div>
+                                <div class="customer-info-item__value">
+                                    <code class="payment-id-code">{{ $order->stripe_payment_intent_id }}</code>
+                                </div>
+                            </div>
+                        </div>
                         @endif
                     </div>
-                    @endif
+                </div>
+            </div>
 
-                    <form method="POST" action="{{ route('admin.orders.updatePaymentStatus', $order) }}" class="mt-3">
-                        @csrf
-                        @method('PATCH')
-                        <div class="form-group">
-                            <label>Payment Status</label>
-                            <select name="payment_status" class="form-control" onchange="this.form.submit()">
+            <!-- Customer Information Section -->
+            <div class="modern-card order-section" style="margin-top: 1.5rem;">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-user"></i>
+                        Customer Information
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="customer-info-grid">
+                        @if($order->user)
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Customer</div>
+                                <div class="customer-info-item__value">
+                                    <a href="{{ route('admin.users.show', $order->user) }}">{{ $order->user->name }}</a>
+                                </div>
+                                <div class="customer-info-item__subtext">{{ $order->user->email }}</div>
+                            </div>
+                        </div>
+                        @endif
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Email</div>
+                                <div class="customer-info-item__value">{{ $order->billing_email }}</div>
+                            </div>
+                        </div>
+                        <div class="customer-info-item">
+                            <div class="customer-info-item__icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="customer-info-item__content">
+                                <div class="customer-info-item__label">Phone</div>
+                                <div class="customer-info-item__value">{{ $order->billing_phone }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Addresses Section -->
+            <div class="modern-card order-section" style="margin-top: 1.5rem;">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Addresses
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="addresses-grid">
+                        <!-- Billing Address -->
+                        <div class="address-card">
+                            <div class="address-card__header">
+                                <div class="address-card__icon">
+                                    <i class="fas fa-credit-card"></i>
+                                </div>
+                                <div class="address-card__title">Billing Address</div>
+                            </div>
+                            <div class="address-card__body">
+                                <div class="address-card__name">{{ $order->billing_first_name }} {{ $order->billing_last_name }}</div>
+                                <div class="address-card__address">
+                                    {{ $order->billing_street_address }}<br>
+                                    @if($order->billing_suburb){{ $order->billing_suburb }}, @endif
+                                    {{ $order->billing_city }}<br>
+                                    @if($order->billingRegion){{ $order->billingRegion->name }}, @endif
+                                    {{ $order->billing_zip_code }}<br>
+                                    {{ $order->billing_country }}
+                                </div>
+                                <div class="address-card__contact">
+                                    <div class="address-card__contact-item">
+                                        <i class="fas fa-envelope"></i>
+                                        {{ $order->billing_email }}
+                                    </div>
+                                    <div class="address-card__contact-item">
+                                        <i class="fas fa-phone"></i>
+                                        {{ $order->billing_phone }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shipping Address -->
+                        <div class="address-card">
+                            <div class="address-card__header">
+                                <div class="address-card__icon">
+                                    <i class="fas fa-truck"></i>
+                                </div>
+                                <div class="address-card__title">Shipping Address</div>
+                            </div>
+                            <div class="address-card__body">
+                                <div class="address-card__name">{{ $order->shipping_first_name }} {{ $order->shipping_last_name }}</div>
+                                <div class="address-card__address">
+                                    {{ $order->shipping_street_address }}<br>
+                                    @if($order->shipping_suburb){{ $order->shipping_suburb }}, @endif
+                                    {{ $order->shipping_city }}<br>
+                                    @if($order->shippingRegion){{ $order->shippingRegion->name }}, @endif
+                                    {{ $order->shipping_zip_code }}<br>
+                                    {{ $order->shipping_country }}
+                                </div>
+                                <div class="address-card__contact">
+                                    <div class="address-card__contact-item">
+                                        <i class="fas fa-envelope"></i>
+                                        {{ $order->shipping_email }}
+                                    </div>
+                                    <div class="address-card__contact-item">
+                                        <i class="fas fa-phone"></i>
+                                        {{ $order->shipping_phone }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Notes -->
+            @if($order->notes)
+            <div class="modern-card order-section" style="margin-top: 1.5rem;">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-sticky-note"></i>
+                        Order Notes
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <div class="order-notes">
+                        <p>{{ $order->notes }}</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+        </div>
+
+        <!-- Sidebar: Order Management & Summary (Right Side) -->
+        <div class="col-lg-4">
+            <!-- Order Status & Payment Actions -->
+            <div class="modern-card order-section order-section--actions">
+                <div class="modern-card__header">
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-cog"></i>
+                        Order Management
+                    </h3>
+                </div>
+                <div class="modern-card__body">
+                    <!-- Order Status -->
+                    <div class="order-action-group">
+                        <label class="order-action-label">
+                            <i class="fas fa-truck"></i>
+                            Order Status
+                        </label>
+                        <form method="POST" action="{{ route('admin.orders.updateStatus', $order) }}" id="statusForm">
+                            @csrf
+                            @method('PATCH')
+                            <div class="select-wrapper">
+                                <select name="status" id="orderStatus" class="form-control order-status-select">
+                                    <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>Processing</option>
+                                    <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>Shipped</option>
+                                    <option value="delivered" {{ $order->status === 'delivered' ? 'selected' : '' }}>Delivered</option>
+                                    <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                </select>
+                                <i class="fas fa-chevron-down select-arrow"></i>
+                            </div>
+                            <input type="hidden" name="tracking_id" id="trackingIdInput" value="{{ $order->tracking_id ?? '' }}">
+                            <input type="hidden" name="tracking_url" id="trackingUrlInput" value="{{ $order->tracking_url ?? '' }}">
+                        </form>
+                        @if($order->tracking_id)
+                        <div class="tracking-info">
+                            <div class="tracking-info__item">
+                                <i class="fas fa-barcode"></i>
+                                <div>
+                                    <strong>Tracking ID:</strong>
+                                    <span>{{ $order->tracking_id }}</span>
+                                </div>
+                            </div>
+                            @if($order->tracking_url)
+                            <div class="tracking-info__item">
+                                <i class="fas fa-link"></i>
+                                <div>
+                                    <strong>Tracking URL:</strong>
+                                    <a href="{{ $order->tracking_url }}" target="_blank" class="tracking-link">View Tracking</a>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                        @endif
+                    </div>
+
+                    <!-- Payment Status -->
+                    <div class="order-action-group" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e9ecef;">
+                        <label class="order-action-label">
+                            <i class="fas fa-credit-card"></i>
+                            Payment Status
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="payment_status" class="form-control payment-status-select" disabled>
                                 <option value="pending" {{ $order->payment_status === 'pending' ? 'selected' : '' }}>Pending</option>
                                 <option value="paid" {{ $order->payment_status === 'paid' ? 'selected' : '' }}>Paid</option>
                                 <option value="failed" {{ $order->payment_status === 'failed' ? 'selected' : '' }}>Failed</option>
                                 <option value="refunded" {{ $order->payment_status === 'refunded' ? 'selected' : '' }}>Refunded</option>
                             </select>
+                            <i class="fas fa-chevron-down select-arrow"></i>
                         </div>
-                    </form>
+                        <div class="payment-status-note">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Payment status is managed automatically by the payment gateway.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Order Summary -->
-            <div class="modern-card mt-4">
+            <!-- Order Summary (Moved to Right Side) -->
+            <div class="modern-card order-section" style="margin-top: 1.5rem;">
                 <div class="modern-card__header">
-                    <h3 class="modern-card__title">Order Summary</h3>
+                    <h3 class="modern-card__title">
+                        <i class="fas fa-calculator"></i>
+                        Order Summary
+                    </h3>
                 </div>
                 <div class="modern-card__body">
-                    <div class="order-summary-row">
-                        <span>Subtotal:</span>
-                        <span>${{ number_format($order->subtotal, 2) }}</span>
-                    </div>
+                    <div class="order-summary-list">
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">Subtotal</span>
+                            <span class="order-summary-value">${{ number_format($order->subtotal, 2) }}</span>
+                        </div>
 
-                    @if($order->discount > 0)
-                    <div class="order-summary-row">
-                        <span>Discount ({{ $order->coupon_code ?? 'Coupon' }}):</span>
-                        <span class="text-danger">-${{ number_format($order->discount, 2) }}</span>
-                    </div>
-                    @endif
+                        @if($order->discount > 0)
+                        <div class="order-summary-row order-summary-row--discount">
+                            <span class="order-summary-label">
+                                <i class="fas fa-tag"></i>
+                                Discount ({{ $order->coupon_code ?? 'Coupon' }})
+                            </span>
+                            <span class="order-summary-value order-summary-value--discount">-${{ number_format($order->discount, 2) }}</span>
+                        </div>
+                        @endif
 
-                    @if($order->shipping > 0 || $order->shipping_price > 0)
-                    <div class="order-summary-row">
-                        <span>Shipping:</span>
-                        <span>${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
-                    </div>
-                    @endif
+                        @if($order->shipping > 0 || $order->shipping_price > 0)
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">
+                                <i class="fas fa-shipping-fast"></i>
+                                Shipping
+                            </span>
+                            <span class="order-summary-value">${{ number_format($order->shipping_price ?? $order->shipping, 2) }}</span>
+                        </div>
+                        @endif
 
-                    @if($order->tax > 0)
-                    <div class="order-summary-row">
-                        <span>Tax:</span>
-                        <span>${{ number_format($order->tax, 2) }}</span>
-                    </div>
-                    @endif
+                        @if($order->tax > 0)
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">
+                                <i class="fas fa-receipt"></i>
+                                Tax
+                            </span>
+                            <span class="order-summary-value">${{ number_format($order->tax, 2) }}</span>
+                        </div>
+                        @endif
 
-                    <div class="order-summary-row order-summary-row--total">
-                        <span><strong>Total:</strong></span>
-                        <span><strong>${{ number_format($order->total, 2) }}</strong></span>
+                        <div class="order-summary-divider"></div>
+
+                        <div class="order-summary-row order-summary-row--total">
+                            <span class="order-summary-label">Total</span>
+                            <span class="order-summary-value order-summary-value--total">${{ number_format($order->total, 2) }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Order Information -->
-            <div class="modern-card mt-4">
-                <div class="modern-card__header">
-                    <h3 class="modern-card__title">Order Information</h3>
-                </div>
-                <div class="modern-card__body">
-                    <div class="info-row">
-                        <strong>Order Number:</strong>
-                        <span>{{ $order->order_number }}</span>
-                    </div>
-                    <div class="info-row">
-                        <strong>Order Date:</strong>
-                        <span>{{ $order->created_at->format('F d, Y h:i A') }}</span>
-                    </div>
-                    <div class="info-row">
-                        <strong>Payment Method:</strong>
-                        <span>{{ ucfirst($order->payment_method) }}</span>
-                    </div>
-                    @if($order->stripe_payment_intent_id)
-                    <div class="info-row">
-                        <strong>Stripe Payment ID:</strong>
-                        <span class="text-muted small">{{ $order->stripe_payment_intent_id }}</span>
-                    </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Billing Address -->
-            <div class="modern-card mt-4">
-                <div class="modern-card__header">
-                    <h3 class="modern-card__title">Billing Address</h3>
-                </div>
-                <div class="modern-card__body">
-                    <p>
-                        <strong>{{ $order->billing_first_name }} {{ $order->billing_last_name }}</strong><br>
-                        {{ $order->billing_street_address }}<br>
-                        @if($order->billing_suburb){{ $order->billing_suburb }}, @endif
-                        {{ $order->billing_city }}<br>
-                        @if($order->billingRegion){{ $order->billingRegion->name }}, @endif
-                        {{ $order->billing_zip_code }}<br>
-                        {{ $order->billing_country }}<br>
-                        <strong>Email:</strong> {{ $order->billing_email }}<br>
-                        <strong>Phone:</strong> {{ $order->billing_phone }}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Shipping Address -->
-            <div class="modern-card mt-4">
-                <div class="modern-card__header">
-                    <h3 class="modern-card__title">Shipping Address</h3>
-                </div>
-                <div class="modern-card__body">
-                    <p>
-                        <strong>{{ $order->shipping_first_name }} {{ $order->shipping_last_name }}</strong><br>
-                        {{ $order->shipping_street_address }}<br>
-                        @if($order->shipping_suburb){{ $order->shipping_suburb }}, @endif
-                        {{ $order->shipping_city }}<br>
-                        @if($order->shippingRegion){{ $order->shippingRegion->name }}, @endif
-                        {{ $order->shipping_zip_code }}<br>
-                        {{ $order->shipping_country }}<br>
-                        <strong>Email:</strong> {{ $order->shipping_email }}<br>
-                        <strong>Phone:</strong> {{ $order->shipping_phone }}
-                    </p>
-                </div>
-            </div>
-
-            @if($order->notes)
-            <div class="modern-card mt-4">
-                <div class="modern-card__header">
-                    <h3 class="modern-card__title">Order Notes</h3>
-                </div>
-                <div class="modern-card__body">
-                    <p>{{ $order->notes }}</p>
-                </div>
-            </div>
-            @endif
         </div>
     </div>
 </div>
-
-<style>
-.order-items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.order-item-card {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    align-items: center;
-}
-
-.order-item-card__image {
-    width: 80px;
-    height: 80px;
-    flex-shrink: 0;
-}
-
-.order-item-card__image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 4px;
-}
-
-.order-item-card__info {
-    flex: 1;
-}
-
-.order-item-card__name {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.order-item-card__meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-.order-item-card__total {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.order-summary-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.order-summary-row:last-child {
-    border-bottom: none;
-}
-
-.order-summary-row--total {
-    border-top: 2px solid #e9ecef;
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    font-size: 1.125rem;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.info-row:last-child {
-    border-bottom: none;
-}
-</style>
 
 <!-- Tracking Modal -->
 <div class="modal fade" id="trackingModal" tabindex="-1" role="dialog">

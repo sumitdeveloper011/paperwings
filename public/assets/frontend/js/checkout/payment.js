@@ -22,17 +22,14 @@ class PaymentHandler {
     init() {
         if (!this.stripeKey || typeof this.stripeKey !== 'string' ||
             !this.stripeKey.trim() || !this.stripeKey.startsWith('pk_')) {
-            console.warn('Stripe key not configured');
             this.showError('Payment system is not configured. Please add STRIPE_KEY and STRIPE_SECRET to your .env file.');
             return false;
         }
 
         try {
             this.stripe = Stripe(this.stripeKey);
-            console.log('Stripe initialized successfully');
             return true;
         } catch (error) {
-            console.error('Failed to initialize Stripe:', error);
             this.showError('Failed to initialize payment system: ' + error.message);
             return false;
         }
@@ -46,12 +43,7 @@ class PaymentHandler {
     async createPaymentIntent(amount) {
         const roundedTotal = Math.round(amount * 100) / 100;
 
-        console.log('createPaymentIntent called', {
-            total: roundedTotal
-        });
-
         if (roundedTotal <= 0) {
-            console.warn('Total is 0 or negative, skipping payment intent creation');
             return false;
         }
 
@@ -61,7 +53,7 @@ class PaymentHandler {
                 this.paymentElement.unmount();
                 this.paymentElement = null;
             } catch(e) {
-                console.warn('Error unmounting payment element:', e);
+                // Silent fail
             }
         }
 
@@ -80,16 +72,13 @@ class PaymentHandler {
             });
 
             const data = await response.json();
-            console.log('Payment intent response:', data);
 
             const clientSecret = data.clientSecret || data.client_secret;
 
             if (data.success && clientSecret) {
                 this.paymentIntentClientSecret = clientSecret;
-                console.log('Payment intent created, client secret received');
 
                 // Always create fresh elements instance
-                console.log('Creating Stripe elements...');
                 this.elements = this.stripe.elements({
                     clientSecret: this.paymentIntentClientSecret,
                     appearance: { theme: 'stripe' }
@@ -97,7 +86,6 @@ class PaymentHandler {
 
                 // Create payment element (don't mount yet - will mount in modal when user proceeds to payment)
                 // The element will be created and mounted by the modal when needed
-                console.log('Payment intent created, ready for modal mounting');
 
                 if (this.onPaymentReady) {
                     this.onPaymentReady();
@@ -105,12 +93,10 @@ class PaymentHandler {
 
                 return true;
             } else {
-                console.error('Payment intent creation failed:', data);
                 this.showError(data.message || 'Failed to initialize payment.');
                 return false;
             }
         } catch (error) {
-            console.error('Error creating payment intent:', error);
             this.showError('Failed to initialize payment. Please refresh the page.');
             return false;
         }
@@ -128,7 +114,6 @@ class PaymentHandler {
 
         // Verify payment element is mounted
         if (!this.paymentElement) {
-            console.warn('Payment element not found, recreating...');
             if (!this.elements) {
                 this.elements = this.stripe.elements({
                     clientSecret: this.paymentIntentClientSecret,
@@ -148,7 +133,6 @@ class PaymentHandler {
         const paymentElementContainer = document.getElementById('payment-element');
 
         if (!paymentElementContainer || !paymentElementContainer.children.length) {
-            console.warn('Payment element container empty, checking if element exists...');
             // Only create if element doesn't exist
             if (!this.paymentElement) {
                 try {
@@ -156,10 +140,7 @@ class PaymentHandler {
                     this.paymentElement.mount('#payment-element');
                     await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (error) {
-                    console.error('Error creating payment element:', error);
-                    if (error.message && error.message.includes('one Element')) {
-                        console.log('Payment element already exists, skipping creation');
-                    } else {
+                    if (!error.message || !error.message.includes('one Element')) {
                         throw error;
                     }
                 }
@@ -169,7 +150,7 @@ class PaymentHandler {
                     this.paymentElement.mount('#payment-element');
                     await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (error) {
-                    console.error('Error remounting payment element:', error);
+                    // Silent fail
                 }
             }
         }
@@ -183,18 +164,15 @@ class PaymentHandler {
         });
 
         if (stripeError) {
-            console.error('Stripe payment error:', stripeError);
-
             // Handle payment intent unexpected state
             if (stripeError.code === 'payment_intent_unexpected_state') {
-                console.log('Payment intent in unexpected state, recreating...');
                 this.paymentIntentClientSecret = null;
                 if (this.paymentElement) {
                     try {
                         this.paymentElement.unmount();
                         this.paymentElement = null;
                     } catch(e) {
-                        console.warn('Error unmounting payment element:', e);
+                        // Error unmounting payment element
                     }
                 }
                 // Clear elements instance to allow recreation
@@ -205,7 +183,6 @@ class PaymentHandler {
             }
         }
 
-        console.log('Payment confirmed, processing order...', paymentIntent);
 
         // Process order
         // If "same as billing" is checked, copy billing values to shipping fields before submission
@@ -264,7 +241,7 @@ class PaymentHandler {
         });
 
         const result = await response.json();
-        console.log('Order processing result:', result);
+        // Order processing completed
 
         if (result.success) {
             return {
@@ -303,7 +280,7 @@ class PaymentHandler {
             try {
                 this.paymentElement.unmount();
             } catch(e) {
-                console.warn('Error unmounting payment element:', e);
+                // Silent fail
             }
             this.paymentElement = null;
         }

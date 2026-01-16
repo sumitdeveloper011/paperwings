@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Frontend\StoreCheckoutRequest;
 use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Region;
 use App\Mail\OrderConfirmationMail;
 use App\Services\ShippingService;
+use App\Services\NZPostAddressService;
+use App\Services\CheckoutSessionService;
+use App\Services\GoogleAnalyticsService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Helpers\SettingHelper;
@@ -21,15 +27,23 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
+use Stripe\Charge;
 use Stripe\Exception\ApiErrorException;
+
 
 class CheckoutController extends Controller
 {
     protected $shippingService;
+    protected $nzPostService;
+    protected $checkoutSession;
+    protected $notificationService;
 
-    public function __construct(ShippingService $shippingService)
+    public function __construct(ShippingService $shippingService, NZPostAddressService $nzPostService, CheckoutSessionService $checkoutSession, NotificationService $notificationService)
     {
         $this->shippingService = $shippingService;
+        $this->nzPostService = $nzPostService;
+        $this->checkoutSession = $checkoutSession;
+        $this->notificationService = $notificationService;
     }
 
     // Get the identifier for the current cart (user_id only - authentication required)
@@ -38,76 +52,77 @@ class CheckoutController extends Controller
         return ['user_id' => Auth::id(), 'session_id' => null];
     }
 
+    /**
+     * Legacy route - redirect to new details page
+     */
     public function index()
     {
-        $title = 'Checkout';
-        $cartIdentifier = $this->getCartIdentifier();
+        return redirect()->route('checkout.details');
+    }
 
+    /**
+     * Step 1: Show checkout details form
+     */
+    public function details()
+    {
+        $title = 'Checkout';
         $cartItems = CartItem::with(['product' => function($query) {
                 $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'barcode');
+            }, 'product.images' => function($query) {
+                $query->select('id', 'product_id', 'image')->orderBy('id', 'asc')->limit(1);
             }])
             ->where('user_id', Auth::id())
             ->get();
 
         if ($cartItems->isEmpty()) {
-            return redirect()->route('cart.index')
-                ->with('error', 'Your cart is empty. Please add items to your cart before checkout.');
-        }
-
-        $productIds = $cartItems->pluck('product_id')->unique();
-        if ($productIds->isNotEmpty()) {
-            $images = \App\Services\ProductImageService::getFirstImagesForProducts($productIds);
-
-            $cartItems->each(function($item) use ($images) {
-                if ($item->product) {
-                    $image = $images->get($item->product_id);
-                    $item->product->setAttribute('main_image',
-                        $image ? $image->image_url : asset('assets/images/placeholder.jpg')
-                    );
-                }
-            });
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
         $subtotal = $cartItems->sum(function($item) {
             return $item->subtotal;
         });
 
-        $tax = 0.00;
-
         $appliedCoupon = Session::get('applied_coupon');
-        $discount = 0;
-        if ($appliedCoupon) {
-            $discount = $appliedCoupon['discount'] ?? 0;
-        }
+        $discount = (is_array($appliedCoupon) && isset($appliedCoupon['discount'])) ? (float)$appliedCoupon['discount'] : 0;
 
-        // Get user data if logged in
         $user = Auth::user();
         $billingAddress = null;
         $shippingAddress = null;
+        $billingAddresses = collect();
+        $shippingAddresses = collect();
         $regions = Region::where('status', 1)->orderBy('name')->get();
 
         if ($user) {
             $billingAddress = $user->defaultBillingAddress;
             $shippingAddress = $user->defaultShippingAddress;
+            
+            $billingAddresses = \App\Models\UserAddress::where('user_id', $user->id)
+                ->where('type', 'billing')
+                ->with('region')
+                ->orderBy('is_default', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            $shippingAddresses = \App\Models\UserAddress::where('user_id', $user->id)
+                ->where('type', 'shipping')
+                ->with('region')
+                ->orderBy('is_default', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
         }
 
+        $sessionData = $this->checkoutSession->getCheckoutData();
+        
         $shippingRegionId = $shippingAddress ? $shippingAddress->region_id : ($billingAddress ? $billingAddress->region_id : null);
         $orderAmount = $subtotal - $discount;
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
         $shipping = $shippingInfo['shipping_price'];
-        $shippingPrice = $shippingInfo['shipping_price'];
+        $total = $subtotal - $discount + $shipping;
 
-        $total = $subtotal - $discount + $tax + $shipping;
-
-        // Read Stripe publishable key from database settings
-        $settings = SettingHelper::all();
-        $stripePublishableKey = $settings['stripe_key'] ?? config('services.stripe.key');
-
-        return view('frontend.checkout.checkout', compact(
+        return view('frontend.checkout.details', compact(
             'title',
             'cartItems',
             'subtotal',
-            'tax',
             'shipping',
             'discount',
             'total',
@@ -115,9 +130,326 @@ class CheckoutController extends Controller
             'user',
             'billingAddress',
             'shippingAddress',
+            'billingAddresses',
+            'shippingAddresses',
             'regions',
+            'sessionData'
+        ));
+    }
+
+    /**
+     * Step 1: Store checkout details and redirect to review
+     */
+    public function storeDetails(Request $request)
+    {
+        $validated = $request->validate([
+            'shipping_first_name' => 'required|string|max:255',
+            'shipping_last_name' => 'required|string|max:255',
+            'shipping_email' => 'required|email|max:255',
+            'shipping_phone' => 'required|string|max:20',
+            'shipping_street_address' => 'required|string|max:500',
+            'shipping_city' => 'required|string|max:255',
+            'shipping_suburb' => 'nullable|string|max:255',
+            'shipping_region_id' => 'required|exists:regions,id',
+            'shipping_zip_code' => 'required|string|max:10',
+            'shipping_country' => 'required|string|max:255',
+            'billing_different' => 'nullable|boolean',
+            'billing_first_name' => 'required_if:billing_different,1|string|max:255',
+            'billing_last_name' => 'required_if:billing_different,1|string|max:255',
+            'billing_email' => 'required_if:billing_different,1|email|max:255',
+            'billing_phone' => 'required_if:billing_different,1|string|max:20',
+            'billing_street_address' => 'required_if:billing_different,1|string|max:500',
+            'billing_city' => 'required_if:billing_different,1|string|max:255',
+            'billing_suburb' => 'nullable|string|max:255',
+            'billing_region_id' => 'required_if:billing_different,1|exists:regions,id',
+            'billing_zip_code' => 'required_if:billing_different,1|string|max:10',
+            'billing_country' => 'required_if:billing_different,1|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $billingDifferent = $request->has('billing_different') && $request->billing_different == '1';
+
+        $checkoutData = [
+            'shipping' => [
+                'first_name' => $validated['shipping_first_name'],
+                'last_name' => $validated['shipping_last_name'],
+                'email' => $validated['shipping_email'],
+                'phone' => $validated['shipping_phone'],
+                'street_address' => $validated['shipping_street_address'],
+                'city' => $validated['shipping_city'],
+                'suburb' => $validated['shipping_suburb'] ?? '',
+                'region_id' => $validated['shipping_region_id'],
+                'zip_code' => $validated['shipping_zip_code'],
+                'country' => $validated['shipping_country'],
+            ],
+            'billing' => $billingDifferent ? [
+                'first_name' => $validated['billing_first_name'],
+                'last_name' => $validated['billing_last_name'],
+                'email' => $validated['billing_email'],
+                'phone' => $validated['billing_phone'],
+                'street_address' => $validated['billing_street_address'],
+                'city' => $validated['billing_city'],
+                'suburb' => $validated['billing_suburb'] ?? '',
+                'region_id' => $validated['billing_region_id'],
+                'zip_code' => $validated['billing_zip_code'],
+                'country' => $validated['billing_country'],
+            ] : [],
+            'notes' => $validated['notes'] ?? '',
+            'billing_different' => $billingDifferent,
+        ];
+
+        $this->checkoutSession->storeDetails($checkoutData);
+
+        return redirect()->route('checkout.review');
+    }
+
+    /**
+     * Step 2: Show review page
+     */
+    public function review()
+    {
+        if (!$this->checkoutSession->hasRequiredData()) {
+            return redirect()->route('checkout.details')->with('error', 'Please complete the checkout details first.');
+        }
+
+        $title = 'Review Order';
+
+        $cartItems = CartItem::with(['product' => function($query) {
+                $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'barcode');
+            }, 'product.images' => function($query) {
+                $query->select('id', 'product_id', 'image')->orderBy('id', 'asc')->limit(1);
+            }])
+            ->where('user_id', Auth::id())
+            ->get();
+
+        if ($cartItems->isEmpty()) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+        }
+
+        $subtotal = $cartItems->sum(function($item) {
+            return $item->subtotal;
+        });
+
+        $appliedCoupon = Session::get('applied_coupon');
+        
+        // Debug: Log what we're getting from session
+        Log::info('Review method - appliedCoupon from session', [
+            'appliedCoupon' => $appliedCoupon,
+            'is_array' => is_array($appliedCoupon),
+            'has_discount' => is_array($appliedCoupon) && isset($appliedCoupon['discount']),
+            'discount_type' => is_array($appliedCoupon) && isset($appliedCoupon['discount']) ? gettype($appliedCoupon['discount']) : 'N/A',
+            'discount_value' => is_array($appliedCoupon) && isset($appliedCoupon['discount']) ? $appliedCoupon['discount'] : 'N/A'
+        ]);
+        
+        // Extract discount - ensure it's always a float
+        $discount = 0.0;
+        if (is_array($appliedCoupon) && isset($appliedCoupon['discount'])) {
+            $discountValue = $appliedCoupon['discount'];
+            
+            // Handle if discount is an array (shouldn't happen, but be safe)
+            if (is_array($discountValue)) {
+                Log::warning('Discount value is array in review method', [
+                    'discountValue' => $discountValue,
+                    'appliedCoupon' => $appliedCoupon
+                ]);
+                $discount = isset($discountValue['value']) ? (float)$discountValue['value'] : 0.0;
+            } elseif (is_numeric($discountValue)) {
+                $discount = (float)$discountValue;
+            } else {
+                Log::warning('Discount value is not numeric in review method', [
+                    'discountValue' => $discountValue,
+                    'type' => gettype($discountValue),
+                    'appliedCoupon' => $appliedCoupon
+                ]);
+                $discount = 0.0;
+            }
+        }
+        
+        // Final safety check - ensure it's a float
+        if (!is_numeric($discount) || is_array($discount)) {
+            Log::error('Discount is not numeric after extraction in review method', [
+                'discount' => $discount,
+                'type' => gettype($discount),
+                'appliedCoupon' => $appliedCoupon
+            ]);
+            $discount = 0.0;
+        }
+        
+        $discount = (float)$discount;
+
+        $sessionData = $this->checkoutSession->getCheckoutData();
+        // Ensure region_id is integer, not string
+        $shippingRegionId = isset($sessionData['shipping']['region_id']) ? (int)$sessionData['shipping']['region_id'] : null;
+        $orderAmount = $subtotal - $discount;
+        
+        // Debug logging
+        Log::info('Review method - Shipping calculation', [
+            'shippingRegionId' => $shippingRegionId,
+            'orderAmount' => $orderAmount,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'sessionData' => $sessionData
+        ]);
+        
+        $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
+        
+        // Debug logging
+        Log::info('Review method - Shipping info received', [
+            'shippingInfo' => $shippingInfo,
+            'shipping_price' => $shippingInfo['shipping_price'] ?? 'NOT SET'
+        ]);
+        
+        // Ensure shipping is always a float
+        $shipping = isset($shippingInfo['shipping_price']) ? (float)$shippingInfo['shipping_price'] : 0.0;
+        if (!is_numeric($shipping) || is_array($shipping)) {
+            Log::warning('Shipping is not numeric in review method', [
+                'shipping' => $shipping,
+                'shippingInfo' => $shippingInfo
+            ]);
+            $shipping = 0.0;
+        }
+        $shipping = (float)$shipping;
+        
+        Log::info('Review method - Final shipping value', [
+            'shipping' => $shipping
+        ]);
+        
+        // Ensure total is always a float
+        $total = (float)($subtotal - $discount + $shipping);
+        if (!is_numeric($total) || is_array($total)) {
+            Log::warning('Total is not numeric in review method', [
+                'total' => $total,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'shipping' => $shipping
+            ]);
+            $total = (float)($subtotal + $shipping);
+        }
+        $total = (float)$total;
+
+        $regions = Region::where('status', 1)->orderBy('name')->get()->keyBy('id');
+
+        $this->checkoutSession->storeTotals([
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'shipping' => $shipping,
+            'total' => $total,
+        ]);
+
+        return view('frontend.checkout.review', compact(
+            'title',
+            'cartItems',
+            'subtotal',
+            'shipping',
+            'discount',
+            'total',
+            'appliedCoupon',
+            'sessionData',
+            'regions'
+        ));
+    }
+
+    /**
+     * Step 2: Confirm review and redirect to payment
+     */
+    public function confirmReview(Request $request)
+    {
+        if (!$this->checkoutSession->hasRequiredData()) {
+            return redirect()->route('checkout.details')->with('error', 'Please complete the checkout details first.');
+        }
+
+        return redirect()->route('checkout.payment');
+    }
+
+    /**
+     * Step 3: Show payment page
+     */
+    public function payment()
+    {
+        if (!$this->checkoutSession->hasRequiredData()) {
+            return redirect()->route('checkout.details')->with('error', 'Please complete the checkout details first.');
+        }
+
+        $title = 'Payment';
+
+        $cartItems = CartItem::with(['product' => function($query) {
+                $query->select('id', 'name', 'slug', 'total_price', 'discount_price', 'barcode');
+            }, 'product.images' => function($query) {
+                $query->select('id', 'product_id', 'image')->orderBy('id', 'asc')->limit(1);
+            }])
+            ->where('user_id', Auth::id())
+            ->get();
+
+        if ($cartItems->isEmpty()) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+        }
+
+        $totals = $this->checkoutSession->getTotals();
+        if (empty($totals)) {
+            return redirect()->route('checkout.review');
+        }
+
+        $appliedCoupon = Session::get('applied_coupon');
+        $sessionData = $this->checkoutSession->getCheckoutData();
+
+        $stripePublishableKey = SettingHelper::get('stripe_key', config('services.stripe.key'));
+
+        return view('frontend.checkout.payment', compact(
+            'title',
+            'cartItems',
+            'totals',
+            'appliedCoupon',
+            'sessionData',
             'stripePublishableKey'
         ));
+    }
+
+    /**
+     * Step 3: Process payment
+     */
+    public function processPayment(Request $request)
+    {
+        if (!$this->checkoutSession->hasRequiredData()) {
+            return redirect()->route('checkout.details')->with('error', 'Please complete the checkout details first.');
+        }
+
+        $sessionData = $this->checkoutSession->getCheckoutData();
+        $totals = $this->checkoutSession->getTotals();
+
+        $request->merge([
+            'shipping_first_name' => $sessionData['shipping']['first_name'],
+            'shipping_last_name' => $sessionData['shipping']['last_name'],
+            'shipping_email' => $sessionData['shipping']['email'],
+            'shipping_phone' => $sessionData['shipping']['phone'],
+            'shipping_street_address' => $sessionData['shipping']['street_address'],
+            'shipping_city' => $sessionData['shipping']['city'],
+            'shipping_suburb' => $sessionData['shipping']['suburb'] ?? '',
+            'shipping_region_id' => $sessionData['shipping']['region_id'],
+            'shipping_zip_code' => $sessionData['shipping']['zip_code'],
+            'shipping_country' => $sessionData['shipping']['country'],
+            'billing_first_name' => $sessionData['billing_different'] ? $sessionData['billing']['first_name'] : $sessionData['shipping']['first_name'],
+            'billing_last_name' => $sessionData['billing_different'] ? $sessionData['billing']['last_name'] : $sessionData['shipping']['last_name'],
+            'billing_email' => $sessionData['billing_different'] ? $sessionData['billing']['email'] : $sessionData['shipping']['email'],
+            'billing_phone' => $sessionData['billing_different'] ? $sessionData['billing']['phone'] : $sessionData['shipping']['phone'],
+            'billing_street_address' => $sessionData['billing_different'] ? $sessionData['billing']['street_address'] : $sessionData['shipping']['street_address'],
+            'billing_city' => $sessionData['billing_different'] ? $sessionData['billing']['city'] : $sessionData['shipping']['city'],
+            'billing_suburb' => $sessionData['billing_different'] ? ($sessionData['billing']['suburb'] ?? '') : ($sessionData['shipping']['suburb'] ?? ''),
+            'billing_region_id' => $sessionData['billing_different'] ? $sessionData['billing']['region_id'] : $sessionData['shipping']['region_id'],
+            'billing_zip_code' => $sessionData['billing_different'] ? $sessionData['billing']['zip_code'] : $sessionData['shipping']['zip_code'],
+            'billing_country' => $sessionData['billing_different'] ? $sessionData['billing']['country'] : $sessionData['shipping']['country'],
+            'notes' => $sessionData['notes'] ?? '',
+        ]);
+
+        $storeRequest = new StoreCheckoutRequest();
+        $storeRequest->merge($request->all());
+        
+        $result = $this->processOrder($storeRequest);
+        
+        if ($result instanceof \Illuminate\Http\RedirectResponse && $result->getTargetUrl() !== route('checkout.payment')) {
+            $this->checkoutSession->clear();
+        }
+        
+        return $result;
     }
 
     // Apply coupon code
@@ -142,59 +474,59 @@ class CheckoutController extends Controller
         $coupon = Coupon::where('code', $code)->first();
 
         if (!$coupon) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid coupon code.'
                 ], 404);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'Invalid coupon code.');
         }
 
         // Validate coupon
         if (!$coupon->isActive()) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This coupon is not active.'
                 ], 400);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'This coupon is not active.');
         }
 
         // Check if coupon is not yet active (start date)
         if (now()->lessThan($coupon->start_date)) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.'
                 ], 400);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.');
         }
 
         if ($coupon->isExpired()) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This coupon has expired.'
                 ], 400);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'This coupon has expired.');
         }
 
         if ($coupon->usage_limit && $coupon->usage_count >= $coupon->usage_limit) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This coupon has reached its usage limit.'
                 ], 400);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'This coupon has reached its usage limit.');
         }
 
@@ -206,26 +538,26 @@ class CheckoutController extends Controller
                 ->count();
 
             if ($userCouponUsage >= $coupon->usage_limit_per_user) {
-                if ($request->expectsJson()) {
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                     return response()->json([
                         'success' => false,
                         'message' => 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.'
                     ], 400);
                 }
-                return redirect()->route('checkout.index')
+                return redirect()->route('checkout.details')
                     ->with('error', 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.');
             }
         }
 
         // Check minimum amount
         if ($coupon->minimum_amount && $subtotal < $coupon->minimum_amount) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Minimum order amount of $' . number_format($coupon->minimum_amount, 2) . ' required for this coupon.'
                 ], 400);
             }
-            return redirect()->route('checkout.index')
+            return redirect()->route('checkout.details')
                 ->with('error', 'Minimum order amount of $' . number_format($coupon->minimum_amount, 2) . ' required for this coupon.');
         }
 
@@ -259,8 +591,22 @@ class CheckoutController extends Controller
             'discount' => $discount
         ]);
 
-        // Handle AJAX requests
-        if ($request->expectsJson()) {
+        try {
+            $analyticsService = app(GoogleAnalyticsService::class);
+            $analyticsService->trackEvent('apply_promotion', [
+                'promotion_id' => $coupon->code,
+                'promotion_name' => $coupon->name,
+                'value' => $discount,
+                'currency' => 'NZD'
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Analytics tracking failed for coupon', [
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        // Handle AJAX/JSON requests
+        if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Coupon applied successfully!',
@@ -274,27 +620,47 @@ class CheckoutController extends Controller
             ]);
         }
 
-        // Regular form submission - redirect back
-        return redirect()->route('checkout.index')
+        // Regular form submission - redirect back to details page
+        return redirect()->route('checkout.details')
             ->with('success', 'Coupon applied successfully!');
     }
 
     // Remove coupon
     public function removeCoupon(Request $request)
     {
-        Session::forget('applied_coupon');
+        try {
+            Session::forget('applied_coupon');
 
-        // Handle AJAX requests
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Coupon removed successfully.'
+            // Handle AJAX/JSON requests
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Coupon removed successfully.'
+                ]);
+            }
+
+            // Regular form submission - redirect back to details page
+            return redirect()->route('checkout.details')
+                ->with('success', 'Coupon removed successfully.');
+        } catch (\Exception $e) {
+            Log::error('Remove coupon error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::id(),
             ]);
-        }
 
-        // Regular form submission - redirect back
-        return redirect()->route('checkout.index')
-            ->with('success', 'Coupon removed successfully.');
+            // Handle AJAX/JSON requests
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while removing the coupon. Please try again.'
+                ], 500);
+            }
+
+            // Regular form submission
+            return redirect()->route('checkout.details')
+                ->with('error', 'An error occurred while removing the coupon. Please try again.');
+        }
     }
 
     // Calculate shipping price
@@ -328,9 +694,8 @@ class CheckoutController extends Controller
             'amount' => 'required|numeric|min:0.50'
         ]);
 
-        // Read Stripe secret from database settings
-        $settings = SettingHelper::all();
-        $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
+        // Read Stripe secret from database settings (with .env fallback)
+        $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
 
         if (!$stripeSecret) {
             return response()->json([
@@ -342,12 +707,19 @@ class CheckoutController extends Controller
         try {
             Stripe::setApiKey($stripeSecret);
 
+            // Prepare metadata for PaymentIntent
+            $metadata = [
+                'user_id' => (string)Auth::id(),
+                'user_email' => Auth::user()->email ?? '',
+            ];
+
             $paymentIntent = PaymentIntent::create([
                 'amount' => (int)round($request->amount * 100), // Convert to cents
                 'currency' => 'nzd', // Stripe accepts lowercase currency codes
                 'automatic_payment_methods' => [
                     'enabled' => true,
                 ],
+                'metadata' => $metadata,
             ]);
 
             if (!$paymentIntent->client_secret) {
@@ -387,27 +759,12 @@ class CheckoutController extends Controller
     }
 
     // Process order and payment
-    public function processOrder(Request $request)
+    public function processOrder(StoreCheckoutRequest $request)
     {
-        $request->validate([
-            'billing_first_name' => 'required|string|max:255',
-            'billing_last_name' => 'required|string|max:255',
-            'billing_email' => 'required|email|max:255',
-            'billing_phone' => 'required|string|max:255',
-            'billing_street_address' => 'required|string|max:255',
-            'billing_city' => 'required|string|max:255',
-            'billing_region_id' => 'required|exists:regions,id',
-            'billing_zip_code' => 'required|string|max:255',
-            'shipping_first_name' => 'required|string|max:255',
-            'shipping_last_name' => 'required|string|max:255',
-            'shipping_email' => 'required|email|max:255',
-            'shipping_phone' => 'required|string|max:255',
-            'shipping_street_address' => 'required|string|max:255',
-            'shipping_city' => 'required|string|max:255',
-            'shipping_region_id' => 'required|exists:regions,id',
-            'shipping_zip_code' => 'required|string|max:255',
-            'payment_intent_id' => 'required|string',
-            'notes' => 'nullable|string|max:1000',
+        Log::info('Order processing started', [
+            'user_id' => Auth::id(),
+            'payment_intent_id' => $request->payment_intent_id ?? null,
+            'cart_items_count' => CartItem::where('user_id', Auth::id())->count(),
         ]);
 
         // Get cart items (authentication required)
@@ -416,15 +773,17 @@ class CheckoutController extends Controller
             ->get();
 
         if ($cartItems->isEmpty()) {
+            Log::warning('Order processing attempted with empty cart', [
+                'user_id' => Auth::id(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Your cart is empty.'
             ], 400);
         }
 
-        // Verify payment with Stripe - Read from database settings
-        $settings = SettingHelper::all();
-        $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
+        // Verify payment with Stripe - Read from database settings (with .env fallback)
+        $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
 
         if (!$stripeSecret) {
             Log::error('Stripe secret key not configured');
@@ -432,6 +791,18 @@ class CheckoutController extends Controller
                 'success' => false,
                 'message' => 'Stripe is not configured. Please contact support.'
             ], 500);
+        }
+
+        // Validate payment_intent_id is present
+        if (empty($request->payment_intent_id)) {
+            Log::error('Payment intent ID is missing', [
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment intent ID is missing. Please try again.'
+            ], 400);
         }
 
         try {
@@ -457,7 +828,7 @@ class CheckoutController extends Controller
             }), 2);
 
             $appliedCoupon = Session::get('applied_coupon');
-            $discount = round($appliedCoupon['discount'] ?? 0, 2);
+            $discount = round((is_array($appliedCoupon) && isset($appliedCoupon['discount'])) ? (float)$appliedCoupon['discount'] : 0, 2);
             $couponCode = $appliedCoupon['code'] ?? null;
             $tax = 0.00;
 
@@ -502,12 +873,147 @@ class CheckoutController extends Controller
                 ], 400);
             }
 
+            // Validate stock and prices before creating order
+            $stockValidationErrors = [];
+            $priceValidationErrors = [];
+            
+            Log::info('Validating cart items before order creation', [
+                'user_id' => Auth::id(),
+                'items_count' => $cartItems->count(),
+            ]);
+            
+            foreach ($cartItems as $cartItem) {
+                // Lock product row to prevent race conditions
+                $product = Product::lockForUpdate()->find($cartItem->product_id);
+                
+                if (!$product) {
+                    $errorMsg = "Product '{$cartItem->product->name}' no longer exists.";
+                    $stockValidationErrors[] = $errorMsg;
+                    Log::warning('Product not found during order validation', [
+                        'user_id' => Auth::id(),
+                        'product_id' => $cartItem->product_id,
+                        'cart_item_id' => $cartItem->id,
+                    ]);
+                    continue;
+                }
+                
+                if (!$product->status) {
+                    $errorMsg = "Product '{$product->name}' is no longer available.";
+                    $stockValidationErrors[] = $errorMsg;
+                    Log::warning('Inactive product in cart during order validation', [
+                        'user_id' => Auth::id(),
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                    ]);
+                    continue;
+                }
+                
+                // Check stock availability
+                if ($product->stock < $cartItem->quantity) {
+                    $availableStock = max(0, $product->stock);
+                    $errorMsg = "Product '{$product->name}': Only {$availableStock} item(s) available (requested: {$cartItem->quantity}).";
+                    $stockValidationErrors[] = $errorMsg;
+                    Log::warning('Insufficient stock during order validation', [
+                        'user_id' => Auth::id(),
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'requested_quantity' => $cartItem->quantity,
+                        'available_stock' => $availableStock,
+                    ]);
+                    continue;
+                }
+                
+                // Validate price hasn't changed significantly
+                $currentPrice = $product->discount_price ?? $product->total_price;
+                $priceDifference = abs($currentPrice - $cartItem->price);
+                
+                // Allow small price differences (up to 0.05) due to rounding
+                if ($priceDifference > 0.05) {
+                    $errorMsg = "Product '{$product->name}' price has changed. Please refresh your cart.";
+                    $priceValidationErrors[] = $errorMsg;
+                    Log::warning('Price mismatch during order validation', [
+                        'user_id' => Auth::id(),
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'cart_price' => $cartItem->price,
+                        'current_price' => $currentPrice,
+                        'difference' => $priceDifference,
+                    ]);
+                }
+            }
+            
+            // Return errors if any validation failed
+            if (!empty($stockValidationErrors) || !empty($priceValidationErrors)) {
+                $allErrors = array_merge($stockValidationErrors, $priceValidationErrors);
+                Log::warning('Order validation failed', [
+                    'user_id' => Auth::id(),
+                    'stock_errors_count' => count($stockValidationErrors),
+                    'price_errors_count' => count($priceValidationErrors),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your cart contains items that are no longer available or have changed.',
+                    'errors' => $allErrors
+                ], 400);
+            }
+
             // Create order
             DB::beginTransaction();
 
             try {
+                // Decrement stock for all products atomically
+                foreach ($cartItems as $cartItem) {
+                    $product = Product::lockForUpdate()->find($cartItem->product_id);
+                    
+                    // Double-check stock (in case it changed between validation and decrement)
+                    if ($product->stock < $cartItem->quantity) {
+                        Log::error('Stock insufficient during decrement', [
+                            'user_id' => Auth::id(),
+                            'product_id' => $product->id,
+                            'product_name' => $product->name,
+                            'requested_quantity' => $cartItem->quantity,
+                            'available_stock' => $product->stock,
+                        ]);
+                        throw new \Exception("Insufficient stock for product '{$product->name}'. Please refresh and try again.");
+                    }
+                    
+                    // Decrement stock atomically
+                    $oldStock = $product->stock;
+                    $product->decrement('stock', $cartItem->quantity);
+                    
+                    Log::info('Stock decremented for order', [
+                        'user_id' => Auth::id(),
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'quantity' => $cartItem->quantity,
+                        'old_stock' => $oldStock,
+                        'new_stock' => $product->fresh()->stock,
+                    ]);
+                }
+
+                // Get order number before creating order (for metadata update)
+                $orderNumber = Order::generateOrderNumber();
+                
+                // Extract payment method details from PaymentIntent
+                $paymentMethodType = null;
+                $paymentMethodId = null;
+                $customerId = null;
+                
+                if (isset($paymentIntent->payment_method)) {
+                    $paymentMethodId = $paymentIntent->payment_method;
+                } elseif (isset($paymentIntent->latest_payment_intent_attempt->payment_method)) {
+                    $paymentMethodId = $paymentIntent->latest_payment_intent_attempt->payment_method;
+                }
+                
+                if (isset($paymentIntent->customer)) {
+                    $customerId = $paymentIntent->customer;
+                }
+                
+                // Payment method type will be retrieved from webhook for more reliable data
+                // Webhook has access to complete charge details after payment is confirmed
+
                 $order = Order::create([
-                    'order_number' => Order::generateOrderNumber(),
+                    'order_number' => $orderNumber,
                     'user_id' => Auth::id(),
                     'session_id' => null, // No guest orders - authentication required
                     'billing_first_name' => $request->billing_first_name,
@@ -537,13 +1043,35 @@ class CheckoutController extends Controller
                     'shipping' => $shipping,
                     'shipping_price' => $shippingPrice,
                     'total' => $total,
+                    'currency' => 'NZD',
                     'payment_method' => 'stripe',
                     'payment_status' => 'paid', // Will be confirmed by webhook
+                    'payment_confirmed_at' => now(), // Set when order is created (webhook will confirm)
                     'stripe_payment_intent_id' => $paymentIntent->id,
                     'stripe_charge_id' => $paymentIntent->latest_charge ?? null,
+                    'stripe_customer_id' => $customerId,
+                    'stripe_payment_method_id' => $paymentMethodId,
+                    'stripe_payment_method_type' => $paymentMethodType,
                     'status' => 'processing', // Start as processing when payment succeeded
                     'notes' => $request->notes ?? null,
                 ]);
+                
+                // Update PaymentIntent metadata with order number (for better Stripe dashboard tracking)
+                try {
+                    PaymentIntent::update($paymentIntent->id, [
+                        'metadata' => [
+                            'user_id' => (string)Auth::id(),
+                            'user_email' => Auth::user()->email ?? '',
+                            'order_number' => $orderNumber,
+                            'order_id' => (string)$order->id,
+                        ],
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to update PaymentIntent metadata', [
+                        'payment_intent_id' => $paymentIntent->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
                 // Bulk insert order items for better performance
                 $orderItems = [];
@@ -584,6 +1112,14 @@ class CheckoutController extends Controller
 
                 DB::commit();
 
+                Log::info('Order created successfully', [
+                    'user_id' => Auth::id(),
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'total' => $order->total,
+                    'payment_intent_id' => $paymentIntent->id,
+                ]);
+
                 // Load order with relationships for email
                 $order->load(['items.product', 'billingRegion', 'shippingRegion']);
 
@@ -596,6 +1132,13 @@ class CheckoutController extends Controller
                     Log::error('Failed to send order confirmation email: ' . $e->getMessage());
                 }
 
+                // Create admin notification
+                try {
+                    $this->notificationService->createOrderNotification($order);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create order notification: ' . $e->getMessage());
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Order placed successfully!',
@@ -606,10 +1149,28 @@ class CheckoutController extends Controller
 
             } catch (\Exception $e) {
                 DB::rollBack();
+                
+                Log::error('Order creation failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => Auth::id(),
+                    'payment_intent_id' => $request->payment_intent_id ?? null,
+                ]);
+                
+                // Provide user-friendly error message
+                $errorMessage = 'Failed to process your order. ';
+                if (str_contains($e->getMessage(), 'stock') || str_contains($e->getMessage(), 'available')) {
+                    $errorMessage = $e->getMessage();
+                } elseif (str_contains($e->getMessage(), 'price')) {
+                    $errorMessage = 'Product prices have changed. Please refresh your cart and try again.';
+                } else {
+                    $errorMessage .= 'Please try again or contact support if the problem persists.';
+                }
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create order: ' . $e->getMessage()
-                ], 500);
+                    'message' => $errorMessage
+                ], 400);
             }
 
         } catch (ApiErrorException $e) {
@@ -652,8 +1213,7 @@ class CheckoutController extends Controller
             if ($order->stripe_payment_intent_id) {
                 try {
                     // Read Stripe secret from database settings
-                    $settings = SettingHelper::all();
-                    $stripeSecret = $settings['stripe_secret'] ?? config('services.stripe.secret');
+                    $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
                     if ($stripeSecret) {
                         Stripe::setApiKey($stripeSecret);
                         $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
@@ -711,6 +1271,70 @@ class CheckoutController extends Controller
             ]);
             return redirect()->route('checkout.index')
                 ->with('error', 'An error occurred while loading the order confirmation page. Please try again or contact support.');
+        }
+    }
+
+    /**
+     * Search addresses using NZ Post API
+     */
+    public function searchAddress(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'query' => 'required|string|min:3|max:255',
+        ]);
+
+        $query = (string) $validated['query'];
+
+        try {
+            $results = $this->nzPostService->searchAddresses($query);
+            
+            return response()->json([
+                'success' => true,
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Address search error', [
+                'error' => $e->getMessage(),
+                'query' => $query
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Address search failed. Please try again.',
+                'results' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get address details by ID
+     */
+    public function getAddress(string $id): JsonResponse
+    {
+        try {
+            $address = $this->nzPostService->getAddressDetails($id);
+            
+            if ($address) {
+                return response()->json([
+                    'success' => true,
+                    'address' => $address
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Address not found'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Get address error', [
+                'error' => $e->getMessage(),
+                'address_id' => $id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get address details'
+            ], 500);
         }
     }
 }

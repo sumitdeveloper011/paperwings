@@ -105,6 +105,47 @@
 
                             <x-image-preview inputId="iconInput" previewId="iconPreview" previewImgId="iconPreviewImg" />
                         </div>
+
+                        <!-- Breadcrumb Image Upload -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-image"></i>
+                                Breadcrumb Background Image
+                            </label>
+
+                            <x-image-requirements type="breadcrumb" />
+
+                            @if(!empty($settings['breadcrumb_image']))
+                            <div class="current-image mb-3">
+                                <p class="current-image-label">Current Breadcrumb Image:</p>
+                                <img src="{{ asset('storage/' . $settings['breadcrumb_image']) }}" alt="Current Breadcrumb Image" class="current-image-preview">
+                            </div>
+                            @endif
+
+                            <div class="file-upload-wrapper">
+                                <input type="file"
+                                       class="file-upload-input @error('breadcrumb_image') is-invalid @enderror"
+                                       id="breadcrumbImageInput"
+                                       name="breadcrumb_image"
+                                       accept="image/jpeg, image/png, image/jpg, image/gif, image/webp">
+                                <label for="breadcrumbImageInput" class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose Breadcrumb Image</span>
+                                </label>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                This image will be displayed as background on page headers/breadcrumbs across the site
+                            </div>
+                            @error('breadcrumb_image')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+
+                            <x-image-preview inputId="breadcrumbImageInput" previewId="breadcrumbImagePreview" previewImgId="breadcrumbImagePreviewImg" />
+                        </div>
                     </div>
                 </div>
 
@@ -285,32 +326,6 @@
                                 </div>
                             </div>
                             @endif
-                        </div>
-
-                        <!-- Google Map API Key -->
-                        <div class="form-group-modern">
-                            <label for="google_map_api_key" class="form-label-modern">
-                                <i class="fas fa-key"></i>
-                                Google Map API Key
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="text"
-                                       class="form-input-modern @error('google_map_api_key') is-invalid @enderror"
-                                       id="google_map_api_key"
-                                       name="google_map_api_key"
-                                       value="{{ old('google_map_api_key', $settings['google_map_api_key'] ?? '') }}"
-                                       placeholder="Enter Google Maps API Key">
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Optional: Enter your Google Maps API Key if you want to use dynamic map instead of embed code. Get your API key from <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>
-                            </div>
-                            @error('google_map_api_key')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
                         </div>
 
                         <!-- Email Repeater -->
@@ -551,252 +566,6 @@
                     </div>
                 </div>
 
-                <!-- Instagram API Section -->
-                <div class="modern-card">
-                    <div class="modern-card__header">
-                        <h3 class="modern-card__title">
-                            <i class="fab fa-instagram"></i>
-                            Instagram API Configuration
-                        </h3>
-                        <p class="modern-card__subtitle">Configure Instagram API to display your posts on the website</p>
-                    </div>
-                    <div class="modern-card__body">
-                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
-                            <strong><i class="fas fa-info-circle"></i> Setup Instructions:</strong>
-                            <ol style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-                                <li>Convert your Instagram account to a Business or Creator account</li>
-                                <li>Create a Facebook App at <a href="https://developers.facebook.com/" target="_blank">developers.facebook.com</a></li>
-                                <li>Add Instagram Basic Display product to your app</li>
-                                <li>Generate an Access Token from the Instagram Basic Display settings</li>
-                                <li>Enter your credentials below</li>
-                            </ol>
-                        </div>
-
-                        <!-- App ID -->
-                        <div class="form-group-modern">
-                            <label for="instagram_app_id" class="form-label-modern">
-                                <i class="fas fa-key"></i>
-                                Instagram App ID
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="text"
-                                       class="form-input-modern @error('instagram_app_id') is-invalid @enderror"
-                                       id="instagram_app_id"
-                                       name="instagram_app_id"
-                                       value="{{ old('instagram_app_id', $settings['instagram_app_id'] ?? '') }}"
-                                       placeholder="Enter your Instagram App ID">
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Found in your Facebook App Dashboard → Settings → Basic
-                            </div>
-                            @error('instagram_app_id')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- App Secret -->
-                        <div class="form-group-modern">
-                            <label for="instagram_app_secret" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
-                                Instagram App Secret
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="password"
-                                       class="form-input-modern @error('instagram_app_secret') is-invalid @enderror"
-                                       id="instagram_app_secret"
-                                       name="instagram_app_secret"
-                                       value="{{ old('instagram_app_secret', $settings['instagram_app_secret'] ?? '') }}"
-                                       placeholder="Enter your Instagram App Secret">
-                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_app_secret')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_instagram_app_secret"></i>
-                                </button>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Found in your Facebook App Dashboard → Settings → Basic
-                            </div>
-                            @error('instagram_app_secret')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Access Token -->
-                        <div class="form-group-modern">
-                            <label for="instagram_access_token" class="form-label-modern">
-                                <i class="fas fa-token"></i>
-                                Instagram Access Token
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="password"
-                                       class="form-input-modern @error('instagram_access_token') is-invalid @enderror"
-                                       id="instagram_access_token"
-                                       name="instagram_access_token"
-                                       value="{{ old('instagram_access_token', $settings['instagram_access_token'] ?? '') }}"
-                                       placeholder="Enter your Instagram Access Token">
-                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_access_token')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_instagram_access_token"></i>
-                                </button>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Generated from Instagram Basic Display → User Token Generator (expires in 60 days)
-                            </div>
-                            @error('instagram_access_token')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- User ID -->
-                        <div class="form-group-modern">
-                            <label for="instagram_user_id" class="form-label-modern">
-                                <i class="fas fa-user"></i>
-                                Instagram User ID
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="text"
-                                       class="form-input-modern @error('instagram_user_id') is-invalid @enderror"
-                                       id="instagram_user_id"
-                                       name="instagram_user_id"
-                                       value="{{ old('instagram_user_id', $settings['instagram_user_id'] ?? '') }}"
-                                       placeholder="Enter your Instagram User ID">
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Your Instagram Business/Creator account ID (usually found in the API response)
-                            </div>
-                            @error('instagram_user_id')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Test Connection Button -->
-                        <div class="form-group-modern">
-                            <button type="button" class="btn btn-outline-primary" id="testInstagramConnection">
-                                <i class="fas fa-plug"></i>
-                                Test Connection
-                            </button>
-                            <div id="instagramTestResult" style="margin-top: 1rem; display: none;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- API Keys & Private Keys Section -->
-                <div class="modern-card">
-                    <div class="modern-card__header">
-                        <h3 class="modern-card__title">
-                            <i class="fas fa-key"></i>
-                            API Keys & Private Keys <span class="badge badge-warning">Sensitive</span>
-                        </h3>
-                        <p class="modern-card__subtitle">Manage your API keys and private credentials securely</p>
-                    </div>
-                    <div class="modern-card__body">
-                        <div class="form-hint" style="margin-bottom: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                            <strong><i class="fas fa-exclamation-triangle"></i> Security Notice:</strong>
-                            <p style="margin: 0.5rem 0 0 0;">These keys are sensitive information. Store them securely and never share them publicly.</p>
-                        </div>
-
-                        <!-- Private Key 1 -->
-                        <div class="form-group-modern">
-                            <label for="private_key_1" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
-                                Private Key 1
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="password"
-                                       class="form-input-modern @error('private_key_1') is-invalid @enderror"
-                                       id="private_key_1"
-                                       name="private_key_1"
-                                       value="{{ old('private_key_1', $settings['private_key_1'] ?? '') }}"
-                                       placeholder="Enter private key 1">
-                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_1')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_private_key_1"></i>
-                                </button>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Enter your first private key or API secret
-                            </div>
-                            @error('private_key_1')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Private Key 2 -->
-                        <div class="form-group-modern">
-                            <label for="private_key_2" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
-                                Private Key 2
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="password"
-                                       class="form-input-modern @error('private_key_2') is-invalid @enderror"
-                                       id="private_key_2"
-                                       name="private_key_2"
-                                       value="{{ old('private_key_2', $settings['private_key_2'] ?? '') }}"
-                                       placeholder="Enter private key 2">
-                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_2')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_private_key_2"></i>
-                                </button>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Enter your second private key or API secret
-                            </div>
-                            @error('private_key_2')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Private Key 3 -->
-                        <div class="form-group-modern">
-                            <label for="private_key_3" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
-                                Private Key 3
-                            </label>
-                            <div class="input-wrapper">
-                                <input type="password"
-                                       class="form-input-modern @error('private_key_3') is-invalid @enderror"
-                                       id="private_key_3"
-                                       name="private_key_3"
-                                       value="{{ old('private_key_3', $settings['private_key_3'] ?? '') }}"
-                                       placeholder="Enter private key 3">
-                                <button type="button" class="password-toggle" onclick="togglePassword('private_key_3')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_private_key_3"></i>
-                                </button>
-                            </div>
-                            <div class="form-hint">
-                                <i class="fas fa-info-circle"></i>
-                                Enter your third private key or API secret
-                            </div>
-                            @error('private_key_3')
-                                <div class="form-error">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Google Analytics Section -->
                 <div class="modern-card">
                     <div class="modern-card__header">
@@ -959,6 +728,147 @@
                     </div>
                 </div>
 
+                <!-- Cookie Consent Settings Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-cookie-bite"></i>
+                            Cookie Consent Settings
+                        </h3>
+                        <p class="modern-card__subtitle">Configure cookie consent banner and preferences</p>
+                    </div>
+                    <div class="modern-card__body">
+                        <!-- Enable Cookie Consent -->
+                        <div class="form-group-modern">
+                            <div class="form-check-modern">
+                                <input type="checkbox"
+                                       class="form-check-input-modern"
+                                       id="cookie_consent_enabled"
+                                       name="cookie_consent_enabled"
+                                       value="1"
+                                       {{ old('cookie_consent_enabled', $settings['cookie_consent_enabled'] ?? '1') == '1' ? 'checked' : '' }}>
+                                <label class="form-check-label-modern" for="cookie_consent_enabled">
+                                    <i class="fas fa-toggle-on"></i>
+                                    Enable Cookie Consent Banner
+                                </label>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                When enabled, a cookie consent banner will be displayed to users on their first visit.
+                            </div>
+                            @error('cookie_consent_enabled')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Cookie Consent Banner Text -->
+                        <div class="form-group-modern">
+                            <label for="cookie_consent_banner_text" class="form-label-modern">
+                                <i class="fas fa-align-left"></i>
+                                Banner Message
+                            </label>
+                            <div class="input-wrapper">
+                                <textarea class="form-input-modern @error('cookie_consent_banner_text') is-invalid @enderror"
+                                          id="cookie_consent_banner_text"
+                                          name="cookie_consent_banner_text"
+                                          rows="3"
+                                          placeholder="Enter cookie consent banner message">{{ old('cookie_consent_banner_text', $settings['cookie_consent_banner_text'] ?? 'We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.') }}</textarea>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                This message will be displayed in the cookie consent banner.
+                            </div>
+                            @error('cookie_consent_banner_text')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Cookie Policy URL -->
+                        <div class="form-group-modern">
+                            <label for="cookie_policy_url" class="form-label-modern">
+                                <i class="fas fa-link"></i>
+                                Cookie Policy URL
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="text"
+                                       class="form-input-modern @error('cookie_policy_url') is-invalid @enderror"
+                                       id="cookie_policy_url"
+                                       name="cookie_policy_url"
+                                       value="{{ old('cookie_policy_url', $settings['cookie_policy_url'] ?? route('page.show', 'cookie-policy')) }}"
+                                       placeholder="/cookie-policy">
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                URL to your cookie policy page. Default: /cookie-policy
+                            </div>
+                            @error('cookie_policy_url')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Cookie Consent Position -->
+                        <div class="form-group-modern">
+                            <label for="cookie_consent_position" class="form-label-modern">
+                                <i class="fas fa-arrows-alt-v"></i>
+                                Banner Position
+                            </label>
+                            <div class="input-wrapper">
+                                <select class="form-input-modern @error('cookie_consent_position') is-invalid @enderror"
+                                        id="cookie_consent_position"
+                                        name="cookie_consent_position">
+                                    <option value="bottom" {{ old('cookie_consent_position', $settings['cookie_consent_position'] ?? 'bottom') == 'bottom' ? 'selected' : '' }}>Bottom</option>
+                                    <option value="top" {{ old('cookie_consent_position', $settings['cookie_consent_position'] ?? 'bottom') == 'top' ? 'selected' : '' }}>Top</option>
+                                </select>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Choose where the cookie consent banner should appear on the page.
+                            </div>
+                            @error('cookie_consent_position')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Cookie Consent Theme -->
+                        <div class="form-group-modern">
+                            <label for="cookie_consent_theme" class="form-label-modern">
+                                <i class="fas fa-palette"></i>
+                                Banner Theme
+                            </label>
+                            <div class="input-wrapper">
+                                <select class="form-input-modern @error('cookie_consent_theme') is-invalid @enderror"
+                                        id="cookie_consent_theme"
+                                        name="cookie_consent_theme">
+                                    <option value="light" {{ old('cookie_consent_theme', $settings['cookie_consent_theme'] ?? 'light') == 'light' ? 'selected' : '' }}>Light</option>
+                                    <option value="dark" {{ old('cookie_consent_theme', $settings['cookie_consent_theme'] ?? 'light') == 'dark' ? 'selected' : '' }}>Dark</option>
+                                </select>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Choose the color theme for the cookie consent banner.
+                            </div>
+                            @error('cookie_consent_theme')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Footer Settings Section -->
                 <div class="modern-card">
                     <div class="modern-card__header">
@@ -1043,6 +953,193 @@
                                     {{ $message }}
                                 </div>
                             @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Notification Preferences Section -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-bell"></i>
+                            Email Notification Preferences
+                        </h3>
+                        <p class="modern-card__subtitle">Configure which email notifications to receive</p>
+                    </div>
+                    <div class="modern-card__body">
+                        @php
+                            $emailPreferences = json_decode(\App\Models\Setting::get('notification_email_preferences', '{}'), true);
+                            $emailRecipients = json_decode(\App\Models\Setting::get('notification_email_recipients', '[]'), true);
+                            if (empty($emailRecipients)) {
+                                $settings = \App\Helpers\SettingHelper::all();
+                                $adminEmail = \App\Helpers\SettingHelper::getFirstFromArraySetting($settings, 'emails');
+                                $emailRecipients = $adminEmail ? [$adminEmail] : [];
+                            }
+                        @endphp
+
+                        <!-- Notification Email Recipients -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-envelope"></i>
+                                Notification Email Recipients
+                            </label>
+                            <div class="form-hint" style="margin-bottom: 15px;">
+                                <i class="fas fa-info-circle"></i>
+                                Email addresses that will receive admin notifications. If empty, uses the main contact email.
+                            </div>
+                            <div class="repeater-wrapper" id="notificationEmailRepeater">
+                                <div class="repeater-items">
+                                    @if(!empty($emailRecipients) && is_array($emailRecipients) && count($emailRecipients) > 0)
+                                        @foreach($emailRecipients as $index => $email)
+                                        <div class="repeater-item" data-index="{{ $index }}">
+                                            <div class="input-wrapper">
+                                                <input type="email"
+                                                       class="form-input-modern"
+                                                       name="notification_email_recipients[]"
+                                                       value="{{ $email }}"
+                                                       placeholder="Enter email address">
+                                                <button type="button" class="repeater-remove" onclick="removeRepeaterItem(this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        @endforeach
+                                    @else
+                                        <div class="repeater-item" data-index="0">
+                                            <div class="input-wrapper">
+                                                <input type="email"
+                                                       class="form-input-modern"
+                                                       name="notification_email_recipients[]"
+                                                       value=""
+                                                       placeholder="Enter email address">
+                                                <button type="button" class="repeater-remove" onclick="removeRepeaterItem(this)" style="display: none;">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addNotificationEmailItem()">
+                                    <i class="fas fa-plus"></i>
+                                    Add Email
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Notification Type Toggles -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-toggle-on"></i>
+                                Enable Email Notifications For
+                            </label>
+                            <div class="notification-preferences">
+                                <!-- Order Notifications -->
+                                <div class="preference-item">
+                                    <div class="preference-content">
+                                        <div class="preference-info">
+                                            <h4 class="preference-title">
+                                                <i class="fas fa-shopping-cart"></i>
+                                                New Orders
+                                            </h4>
+                                            <p class="preference-description">Receive email when a new order is placed</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" 
+                                                   name="notification_email_preferences[order]" 
+                                                   value="1"
+                                                   {{ ($emailPreferences['order'] ?? true) ? 'checked' : '' }}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Notifications -->
+                                <div class="preference-item">
+                                    <div class="preference-content">
+                                        <div class="preference-info">
+                                            <h4 class="preference-title">
+                                                <i class="fas fa-envelope"></i>
+                                                Contact Form Submissions
+                                            </h4>
+                                            <p class="preference-description">Receive email when someone submits the contact form</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" 
+                                                   name="notification_email_preferences[contact]" 
+                                                   value="1"
+                                                   {{ ($emailPreferences['contact'] ?? true) ? 'checked' : '' }}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Review Notifications -->
+                                <div class="preference-item">
+                                    <div class="preference-content">
+                                        <div class="preference-info">
+                                            <h4 class="preference-title">
+                                                <i class="fas fa-star"></i>
+                                                Product Reviews
+                                            </h4>
+                                            <p class="preference-description">Receive email when a new product review is submitted</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" 
+                                                   name="notification_email_preferences[review]" 
+                                                   value="1"
+                                                   {{ ($emailPreferences['review'] ?? true) ? 'checked' : '' }}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Stock Notifications -->
+                                <div class="preference-item">
+                                    <div class="preference-content">
+                                        <div class="preference-info">
+                                            <h4 class="preference-title">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                Low Stock Alerts
+                                            </h4>
+                                            <p class="preference-description">Receive email when product stock falls below threshold</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" 
+                                                   name="notification_email_preferences[stock]" 
+                                                   value="1"
+                                                   {{ ($emailPreferences['stock'] ?? true) ? 'checked' : '' }}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- System Notifications -->
+                                <div class="preference-item">
+                                    <div class="preference-content">
+                                        <div class="preference-info">
+                                            <h4 class="preference-title">
+                                                <i class="fas fa-cog"></i>
+                                                System Errors
+                                            </h4>
+                                            <p class="preference-description">Receive email for critical system errors and alerts</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" 
+                                                   name="notification_email_preferences[system]" 
+                                                   value="1"
+                                                   {{ ($emailPreferences['system'] ?? true) ? 'checked' : '' }}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-info" style="margin-top: 20px;">
+                            <div class="info-item">
+                                <i class="fas fa-info-circle"></i>
+                                <span>In-app notifications will still be created regardless of email preferences</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1220,6 +1317,46 @@ function removeRepeaterItem(button) {
 
     if (items.querySelectorAll('.repeater-item').length > 1) {
         item.remove();
+    } else {
+        // Hide remove button if only one item left
+        const removeBtn = items.querySelector('.repeater-remove');
+        if (removeBtn) removeBtn.style.display = 'none';
+    }
+}
+
+// Custom function for notification email recipients
+function addNotificationEmailItem() {
+    const repeater = document.getElementById('notificationEmailRepeater');
+    const items = repeater.querySelector('.repeater-items');
+    const existingItems = items.querySelectorAll('.repeater-item');
+    const newIndex = existingItems.length;
+
+    const newItem = document.createElement('div');
+    newItem.className = 'repeater-item';
+    newItem.setAttribute('data-index', newIndex);
+    newItem.innerHTML = `
+        <div class="input-wrapper">
+            <input type="email"
+                   class="form-input-modern"
+                   name="notification_email_recipients[]"
+                   value=""
+                   placeholder="Enter email address">
+            <button type="button" class="repeater-remove" onclick="removeRepeaterItem(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    items.appendChild(newItem);
+
+    // Show remove buttons if more than one item
+    if (existingItems.length > 0) {
+        existingItems.forEach(item => {
+            const removeBtn = item.querySelector('.repeater-remove');
+            if (removeBtn) removeBtn.style.display = 'flex';
+        });
+        const newRemoveBtn = newItem.querySelector('.repeater-remove');
+        if (newRemoveBtn) newRemoveBtn.style.display = 'flex';
     }
 }
 
@@ -1314,60 +1451,116 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleProviderFields('facebook');
     });
 
-    // Test Instagram Connection
-    document.getElementById('testInstagramConnection')?.addEventListener('click', function() {
-        const button = this;
-        const resultDiv = document.getElementById('instagramTestResult');
-        const originalText = button.innerHTML;
-
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div class="form-hint"><i class="fas fa-spinner fa-spin"></i> Testing connection...</div>';
-
-        // Get form data
-        const formData = new FormData(document.getElementById('settingsForm'));
-        const data = {
-            instagram_app_id: formData.get('instagram_app_id'),
-            instagram_app_secret: formData.get('instagram_app_secret'),
-            instagram_access_token: formData.get('instagram_access_token'),
-            instagram_user_id: formData.get('instagram_user_id'),
-        };
-
-        fetch('{{ route("admin.settings.test-instagram") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                resultDiv.innerHTML = `<div class="form-hint" style="color: #28a745; background: #d4edda; padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
-                    <strong><i class="fas fa-check-circle"></i> Connection Successful!</strong><br>
-                    Username: ${data.data.username || 'N/A'}<br>
-                    Account Type: ${data.data.account_type || 'N/A'}<br>
-                    Media Count: ${data.data.media_count || 0}
-                </div>`;
-            } else {
-                resultDiv.innerHTML = `<div class="form-error" style="padding: 1rem; border-radius: 8px;">
-                    <i class="fas fa-exclamation-circle"></i> ${data.message || 'Connection failed. Please check your credentials.'}
-                </div>`;
-            }
-        })
-        .catch(error => {
-            resultDiv.innerHTML = `<div class="form-error" style="padding: 1rem; border-radius: 8px;">
-                <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
-            </div>`;
-        })
-        .finally(() => {
-            button.disabled = false;
-            button.innerHTML = originalText;
-        });
-    });
 });
 </script>
+
+<style>
+/* Notification Preferences Styles */
+.notification-preferences {
+    margin-top: 20px;
+}
+
+.preference-item {
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.preference-item:hover {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preference-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.preference-info {
+    flex: 1;
+}
+
+.preference-title {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #374E94;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.preference-title i {
+    font-size: 18px;
+}
+
+.preference-description {
+    margin: 0;
+    font-size: 14px;
+    color: #666666;
+    line-height: 1.5;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #374E94;
+}
+
+.toggle-switch input:focus + .toggle-slider {
+    box-shadow: 0 0 1px #374E94;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
 @endsection
 

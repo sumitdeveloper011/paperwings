@@ -9,6 +9,9 @@ use App\Http\Controllers\Admin\Brand\BrandController;
 use App\Http\Controllers\Admin\Product\ProductController;
 use App\Http\Controllers\Admin\Slider\SliderController;
 use App\Http\Controllers\Admin\Page\PageController;
+use App\Http\Controllers\Admin\EmailTemplate\EmailTemplateController;
+use App\Http\Controllers\Admin\Gallery\GalleryController;
+use App\Http\Controllers\Admin\Gallery\GalleryItemController;
 use App\Http\Controllers\Admin\Setting\SettingsController;
 use App\Http\Controllers\Admin\Profile\ProfileController;
 use App\Http\Controllers\Admin\Coupon\CouponController;
@@ -155,6 +158,56 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
     });
 
+    // Email Templates - requires email-templates permissions
+    Route::middleware('permission:email-templates.create')->group(function () {
+        Route::get('email-templates/create', [EmailTemplateController::class, 'create'])->name('email-templates.create');
+        Route::post('email-templates', [EmailTemplateController::class, 'store'])->name('email-templates.store');
+    });
+    Route::middleware('permission:email-templates.view')->group(function () {
+        Route::get('email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');
+        Route::get('email-templates/{emailTemplate}', [EmailTemplateController::class, 'show'])->name('email-templates.show');
+        Route::post('email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+    });
+    Route::middleware('permission:email-templates.edit')->group(function () {
+        Route::get('email-templates/{emailTemplate}/edit', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
+        Route::put('email-templates/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
+        Route::post('email-templates/{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('email-templates.duplicate');
+        Route::post('email-templates/{emailTemplate}/send-test', [EmailTemplateController::class, 'sendTest'])->name('email-templates.sendTest');
+    });
+    Route::middleware('permission:email-templates.delete')->group(function () {
+        Route::delete('email-templates/{emailTemplate}', [EmailTemplateController::class, 'destroy'])->name('email-templates.destroy');
+    });
+
+    // Galleries - requires galleries permissions
+    Route::middleware('permission:galleries.create')->group(function () {
+        Route::get('galleries/create', [GalleryController::class, 'create'])->name('galleries.create');
+        Route::post('galleries', [GalleryController::class, 'store'])->name('galleries.store');
+    });
+    Route::middleware('permission:galleries.view')->group(function () {
+        Route::get('galleries', [GalleryController::class, 'index'])->name('galleries.index');
+        Route::get('galleries/{gallery}', [GalleryController::class, 'show'])->name('galleries.show');
+    });
+    Route::middleware('permission:galleries.edit')->group(function () {
+        Route::get('galleries/{gallery}/edit', [GalleryController::class, 'edit'])->name('galleries.edit');
+        Route::put('galleries/{gallery}', [GalleryController::class, 'update'])->name('galleries.update');
+    });
+    Route::middleware('permission:galleries.delete')->group(function () {
+        Route::delete('galleries/{gallery}', [GalleryController::class, 'destroy'])->name('galleries.destroy');
+    });
+
+    // Gallery Items
+    Route::middleware('permission:gallery-items.upload')->group(function () {
+        Route::post('galleries/{gallery}/items', [GalleryItemController::class, 'store'])->name('gallery-items.store');
+    });
+    Route::middleware('permission:gallery-items.edit')->group(function () {
+        Route::put('galleries/{gallery}/items/{galleryItem}', [GalleryItemController::class, 'update'])->name('gallery-items.update');
+        Route::post('galleries/{gallery}/items/reorder', [GalleryItemController::class, 'reorder'])->name('gallery-items.reorder');
+        Route::post('galleries/{gallery}/items/{galleryItem}/featured', [GalleryItemController::class, 'setFeatured'])->name('gallery-items.setFeatured');
+    });
+    Route::middleware('permission:gallery-items.delete')->group(function () {
+        Route::delete('galleries/{gallery}/items/{galleryItem}', [GalleryItemController::class, 'destroy'])->name('gallery-items.destroy');
+    });
+
     // About Section - requires about-sections permissions (single entry, edit only)
     Route::middleware('permission:about-sections.edit')->group(function () {
         Route::get('about-section', [AboutSectionController::class, 'edit'])->name('about-sections.edit');
@@ -284,13 +337,13 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
     Route::middleware('permission:settings.edit')->group(function () {
         Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
-        Route::post('settings/test-instagram', [SettingsController::class, 'testInstagram'])->name('settings.test-instagram');
     });
 
     // API Settings - Only SuperAdmin can access
     Route::middleware('role:SuperAdmin')->group(function () {
         Route::get('api-settings', [ApiSettingsController::class, 'index'])->name('api-settings.index');
         Route::put('api-settings', [ApiSettingsController::class, 'update'])->name('api-settings.update');
+        Route::post('api-settings/test-instagram', [ApiSettingsController::class, 'testInstagram'])->name('api-settings.test-instagram');
     });
 
     // Roles and Permissions Management - Only SuperAdmin can access
@@ -348,11 +401,15 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::resource('subscriptions', SubscriptionController::class)->except(['create', 'store', 'edit', 'update']);
     Route::patch('subscriptions/{subscription}/status', [SubscriptionController::class, 'updateStatus'])->name('subscriptions.updateStatus');
     Route::get('subscriptions/export', [SubscriptionController::class, 'export'])->name('subscriptions.export');
+    Route::get('subscriptions/newsletter/create', [SubscriptionController::class, 'createNewsletter'])->name('subscriptions.create-newsletter');
+    Route::post('subscriptions/newsletter/send', [SubscriptionController::class, 'sendNewsletter'])->name('subscriptions.send-newsletter');
+    Route::post('subscriptions/newsletter/preview-template', [SubscriptionController::class, 'previewTemplate'])->name('subscriptions.preview-template');
 
     // Notifications - no permissions in seeder, accessible to all admin roles
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/render', [NotificationController::class, 'render'])->name('notifications.render');
-    Route::post('notifications/{order}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::get('notifications/history', [NotificationController::class, 'history'])->name('notifications.history');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 
     // Profile - accessible to all authenticated admin users

@@ -65,6 +65,12 @@
                 'thumbnail' => '32x32 pixels (auto-generated)',
                 'tip' => 'Use high-quality square favicon images (1:1 ratio). Images will be automatically resized to 64x64 (main) and 32x32 (thumbnail).',
             ],
+            'breadcrumb' => [
+                'original' => '1920x400 pixels (Main - 4.8:1 ratio)',
+                'medium' => '960x200 pixels (auto-generated)',
+                'thumbnail' => '480x100 pixels (auto-generated)',
+                'tip' => 'Use high-quality banner images with 1920x400 dimensions (4.8:1 ratio) for breadcrumb backgrounds. Images will be automatically resized to 1920x400 (main), 960x200 (medium), and 480x100 (thumbnail).',
+            ],
             'brand' => [
                 'original' => 'Original size maintained',
                 'thumbnail' => '400x400 pixels (auto-generated)',

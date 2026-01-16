@@ -303,7 +303,9 @@ class ProductController extends Controller
         $categoryUuid = $request->get('category_id'); // Now accepts UUID
 
         // Build query - start fresh to avoid any default ordering
-        $query = Product::query()->with(['category', 'images']);
+        // Exclude bundles (product_type = 4) as they are managed separately
+        $query = Product::products()
+            ->with(['category', 'images']);
 
         // Apply search filter
         if ($search !== '') {
@@ -427,7 +429,7 @@ class ProductController extends Controller
                         ProductImage::create([
                             'uuid' => Str::uuid(),
                             'product_id' => $product->id,
-                            'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                            'eposnow_product_id' => $product->eposnow_product_id ?? null,
                             'image' => $imagePath,
                         ]);
                     }
@@ -441,7 +443,7 @@ class ProductController extends Controller
                     ProductAccordion::create([
                         'uuid' => Str::uuid(),
                         'product_id' => $product->id,
-                        'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                        'eposnow_product_id' => $product->eposnow_product_id ?? null,
                         'heading' => $item['heading'],
                         'content' => $item['content'],
                     ]);
@@ -539,7 +541,7 @@ class ProductController extends Controller
                         ProductImage::create([
                             'uuid' => Str::uuid(),
                             'product_id' => $product->id,
-                            'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                            'eposnow_product_id' => $product->eposnow_product_id ?? null,
                             'image' => $imagePath,
                         ]);
                     }
@@ -555,7 +557,7 @@ class ProductController extends Controller
                     ProductAccordion::create([
                         'uuid' => Str::uuid(),
                         'product_id' => $product->id,
-                        'eposnow_product_id' => $product->eposnow_product_id ?? $product->id,
+                        'eposnow_product_id' => $product->eposnow_product_id ?? null,
                         'heading' => $item['heading'],
                         'content' => $item['content'],
                     ]);
@@ -591,7 +593,10 @@ class ProductController extends Controller
         $search = trim($request->get('search', ''));
 
         // Build query for trashed products
-        $query = Product::onlyTrashed()->with(['category', 'images']);
+        // Exclude bundles (product_type = 4) as they are managed separately
+        $query = Product::onlyTrashed()
+            ->products()
+            ->with(['category', 'images']);
 
         // Apply search filter
         if ($search !== '') {

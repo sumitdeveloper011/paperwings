@@ -6,9 +6,13 @@ use App\Repositories\BrandRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
+use App\Repositories\Interfaces\EmailTemplateRepositoryInterface;
+use App\Repositories\Interfaces\GalleryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Repositories\Interfaces\SliderRepositoryInterface;
 use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
+use App\Repositories\EmailTemplateRepository;
+use App\Repositories\GalleryRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\SliderRepository;
 use App\Repositories\SubCategoryRepository;
@@ -35,6 +39,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BrandRepositoryInterface::class, BrandRepository::class);
         $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
         $this->app->bind(SliderRepositoryInterface::class, SliderRepository::class);
+        $this->app->bind(EmailTemplateRepositoryInterface::class, EmailTemplateRepository::class);
+        $this->app->bind(GalleryRepositoryInterface::class, GalleryRepository::class);
     }
 
     // Bootstrap any application services

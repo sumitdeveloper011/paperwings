@@ -34,9 +34,9 @@
                 const wishlistBtn = e.target.closest('.wishlist-btn');
                 if (wishlistBtn) {
                     e.preventDefault();
-                    const productId = wishlistBtn.getAttribute('data-product-id');
-                    if (productId) {
-                        this.toggleWishlist(productId, wishlistBtn);
+                    const productUuid = wishlistBtn.getAttribute('data-product-uuid');
+                    if (productUuid) {
+                        this.toggleWishlist(productUuid, wishlistBtn);
                     }
                 }
 
@@ -54,6 +54,25 @@
                 if (e.target.id === 'wishlist-sidebar-overlay' || e.target.classList.contains('wishlist-sidebar-overlay')) {
                     this.closeSidebar();
                 }
+
+                // Bulk actions - use event delegation
+                const addSelectedBtn = e.target.closest('#wishlist-add-selected-to-cart');
+                if (addSelectedBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!addSelectedBtn.disabled && !this._addingToCart) {
+                        this.addSelectedToCart();
+                    }
+                }
+
+                const removeSelectedBtn = e.target.closest('#wishlist-remove-selected');
+                if (removeSelectedBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!removeSelectedBtn.disabled && !this._removingFromWishlist) {
+                        this.removeSelected();
+                    }
+                }
             });
 
             document.addEventListener('keydown', (e) => {
@@ -63,7 +82,7 @@
             });
         },
 
-        addToWishlist: function(productId, button) {
+        addToWishlist: function(productUuid, button) {
             if (window.AppUtils) {
                 window.AppUtils.setButtonLoading(button, true, 'fa-heart');
             }
@@ -76,7 +95,7 @@
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ product_id: productId })
+                body: JSON.stringify({ product_uuid: productUuid })
             })
             .then(response => {
                 // Handle authentication errors
@@ -115,16 +134,35 @@
                 }
 
                 if (data.success) {
+                    if (data.product && window.Analytics) {
+                        window.Analytics.trackAddToWishlist({
+                            id: data.product.id,
+                            name: data.product.name,
+                            category: data.product.category || '',
+                            brand: data.product.brand || '',
+                            price: data.product.price || 0
+                        });
+                    }
+
                     if (window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-heart');
                     }
                     if (button) {
                         button.classList.add('in-wishlist');
+                        button.setAttribute('title', 'Remove from Wishlist');
+                        button.setAttribute('aria-label', 'Remove from Wishlist');
+                        const icon = button.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('far', 'fa-heart');
+                            icon.classList.add('fas', 'fa-heart');
+                        }
                     }
                     if (data.wishlist_count !== undefined) {
                         this.updateCount(data.wishlist_count);
                     }
-                    if (window.AppUtils) {
+                    if (typeof showToast !== 'undefined') {
+                        showToast('Product added to wishlist!', 'success');
+                    } else if (window.AppUtils) {
                         window.AppUtils.showNotification('Product added to wishlist!', 'success');
                     }
                     this.loadSidebar();
@@ -132,6 +170,10 @@
                 } else {
                     if (window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-heart');
+                    }
+                    if (typeof showToast !== 'undefined') {
+                        showToast(data.message || 'Failed to add product to wishlist.', 'error');
+                    } else if (window.AppUtils) {
                         window.AppUtils.showNotification(data.message || 'Failed to add product to wishlist.', 'error');
                     }
                 }
@@ -148,25 +190,34 @@
                 // Only log/show errors for unexpected failures
                 if (window.AppUtils) {
                     window.AppUtils.error('Wishlist error:', error);
-                    window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                    if (typeof showToast !== 'undefined') {
+                        showToast('An error occurred. Please try again.', 'error');
+                    } else {
+                        window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                    }
                     window.AppUtils.setButtonLoading(button, false, 'fa-heart');
                 }
             });
         },
 
-        removeFromWishlist: function(productId, button, silent = false) {
+        removeFromWishlist: function(productUuid, button, silent = false) {
+            // Use batch endpoint even for single item (consistent approach)
+            // productUuid can be a single UUID string or an array of UUIDs
+            const productUuids = Array.isArray(productUuid) ? productUuid : [productUuid];
+            const isSingleItem = !Array.isArray(productUuid);
+            
             if (button && window.AppUtils) {
                 window.AppUtils.setButtonLoading(button, true, 'fa-heart');
             }
 
-            fetch('/wishlist/remove', {
+            return fetch('/wishlist/remove-multiple', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': this.csrfToken,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ product_id: productId })
+                body: JSON.stringify({ product_uuids: productUuids })
             })
             .then(response => {
                 if (response.status === 401) {
@@ -180,42 +231,97 @@
                 return response.json();
             })
             .then(data => {
-                if (data.success) {
+                if (data.success !== undefined) {
                     if (button && window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-heart');
-                        button.classList.remove('in-wishlist');
                     }
+
+                    const successCount = data.results?.success?.length || 0;
+                    const failedCount = data.results?.failed?.length || 0;
+
+                    // Update wishlist count
                     if (data.wishlist_count !== undefined) {
                         this.updateCount(data.wishlist_count);
                     }
 
-                    const wishlistItem = document.querySelector(`.wishlist-sidebar-item[data-product-id="${productId}"]`);
-                    if (wishlistItem) {
-                        wishlistItem.style.transition = 'opacity 0.3s';
-                        wishlistItem.style.opacity = '0';
-                        setTimeout(() => {
-                            wishlistItem.remove();
-                            const remainingItems = document.querySelectorAll('.wishlist-sidebar-item');
-                            if (remainingItems.length === 0) {
-                                const sidebarItems = document.getElementById('wishlist-sidebar-items');
-                                const sidebarEmpty = document.getElementById('wishlist-sidebar-empty');
-                                if (sidebarItems) sidebarItems.style.display = 'none';
-                                if (sidebarEmpty) sidebarEmpty.style.display = 'flex';
+                    // Update wishlist buttons for successfully removed products
+                    if (successCount > 0 && data.results?.success) {
+                        data.results.success.forEach(item => {
+                            if (item.uuid) {
+                                const allWishlistButtons = document.querySelectorAll(`.wishlist-btn[data-product-uuid="${item.uuid}"]`);
+                                allWishlistButtons.forEach(btn => {
+                                    btn.classList.remove('in-wishlist');
+                                    btn.setAttribute('title', 'Add to Wishlist');
+                                    btn.setAttribute('aria-label', 'Add to Wishlist');
+                                    const btnIcon = btn.querySelector('i');
+                                    if (btnIcon) {
+                                        btnIcon.classList.remove('fas', 'fa-heart');
+                                        btnIcon.classList.add('far', 'fa-heart');
+                                    }
+                                });
+
+                                // Remove from sidebar
+                                const wishlistItem = document.querySelector(`.wishlist-sidebar-item[data-product-uuid="${item.uuid}"]`);
+                                if (wishlistItem) {
+                                    wishlistItem.style.transition = 'opacity 0.3s';
+                                    wishlistItem.style.opacity = '0';
+                                    setTimeout(() => {
+                                        wishlistItem.remove();
+                                        const remainingItems = document.querySelectorAll('.wishlist-sidebar-item');
+                                        if (remainingItems.length === 0) {
+                                            const sidebarItems = document.getElementById('wishlist-sidebar-items');
+                                            const sidebarEmpty = document.getElementById('wishlist-sidebar-empty');
+                                            if (sidebarItems) sidebarItems.style.display = 'none';
+                                            if (sidebarEmpty) sidebarEmpty.style.display = 'flex';
+                                            this.updateBulkActionsVisibility();
+                                        } else {
+                                            this.updateBulkActionsState();
+                                        }
+                                    }, 300);
+                                }
                             }
-                        }, 300);
+                        });
                     }
 
-                    if (!silent && window.AppUtils) {
-                        window.AppUtils.showNotification('Product removed from wishlist!', 'success');
+                    if (!silent) {
+                        if (typeof showToast !== 'undefined') {
+                            if (successCount > 0) {
+                                const message = isSingleItem && successCount === 1
+                                    ? 'Product removed from wishlist!' 
+                                    : `${successCount} item(s) removed from wishlist!`;
+                                showToast(message, 'success');
+                            }
+                            if (failedCount > 0) {
+                                const firstError = data.results.failed[0];
+                                const errorMsg = firstError?.message || `${failedCount} item(s) failed to remove.`;
+                                showToast(errorMsg, 'error');
+                            }
+                        } else if (window.AppUtils) {
+                            if (successCount > 0) {
+                                const message = isSingleItem && successCount === 1
+                                    ? 'Product removed from wishlist!' 
+                                    : `${successCount} item(s) removed from wishlist!`;
+                                window.AppUtils.showNotification(message, 'success');
+                            }
+                        }
                     }
-                    this.loadSidebar();
+                    if (!silent && isSingleItem) {
+                        // Only reload sidebar for single item removal (bulk removal handles it separately)
+                        this.loadSidebar();
+                    }
+                    return data;
                 } else {
                     if (button && window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-heart');
                     }
-                    if (!silent && window.AppUtils) {
-                        window.AppUtils.showNotification(data.message || 'Failed to remove product from wishlist.', 'error');
+                    if (!silent) {
+                        if (typeof showToast !== 'undefined') {
+                            showToast(data.message || 'Failed to remove product from wishlist.', 'error');
+                        } else if (window.AppUtils) {
+                            window.AppUtils.showNotification(data.message || 'Failed to remove product from wishlist.', 'error');
+                        }
                     }
+                    return Promise.reject(data.message || 'Failed to remove');
                 }
             })
             .catch(error => {
@@ -225,17 +331,22 @@
                 if (button && window.AppUtils) {
                     window.AppUtils.setButtonLoading(button, false, 'fa-heart');
                 }
-                if (!silent && window.AppUtils) {
-                    window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                if (!silent) {
+                    if (typeof showToast !== 'undefined') {
+                        showToast('An error occurred. Please try again.', 'error');
+                    } else if (window.AppUtils) {
+                        window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                    }
                 }
+                return Promise.reject(error);
             });
         },
 
-        toggleWishlist: function(productId, button) {
+        toggleWishlist: function(productUuid, button) {
             if (button && button.classList.contains('in-wishlist')) {
-                this.removeFromWishlist(productId, button);
+                this.removeFromWishlist(productUuid, button);
             } else {
-                this.addToWishlist(productId, button);
+                this.addToWishlist(productUuid, button);
             }
         },
 
@@ -259,7 +370,8 @@
                 }
             })
             .then(response => {
-                if (response.status === 401) {
+                if (!response.ok && response.status === 401) {
+                    // Handle 401 gracefully - show empty wishlist
                     this.updateSidebarEmpty();
                     return Promise.reject('Not authenticated');
                 }
@@ -267,14 +379,22 @@
             })
             .then(data => {
                 if (data.success) {
-                    this.updateSidebarFromHtml(data.html, data.count);
+                    this.updateSidebarFromHtml(data.html, data.count || 0);
                 } else if (data.requires_login) {
-                    if (window.AppUtils) {
-                        window.AppUtils.redirectToLogin();
-                    }
+                    // Show empty state for unauthenticated users
+                    this.updateSidebarEmpty();
+                } else {
+                    // Fallback to empty state
+                    this.updateSidebarEmpty();
                 }
             })
             .catch(error => {
+                // Silently handle authentication errors
+                if (error === 'Not authenticated' || (error && error.message && error.message.includes('authenticated'))) {
+                    this.updateSidebarEmpty();
+                    return;
+                }
+                // Only show error for unexpected errors
                 if (window.AppUtils) {
                     window.AppUtils.error('Error loading wishlist:', error);
                 }
@@ -282,6 +402,18 @@
                     sidebarItems.innerHTML = '<div class="wishlist-sidebar__error" style="text-align: center; padding: 2rem; color: #dc3545;"><p>Error loading wishlist. Please try again.</p></div>';
                 }
             });
+        },
+
+        updateSidebarEmpty: function() {
+            const sidebarItems = document.getElementById('wishlist-sidebar-items');
+            const sidebarEmpty = document.getElementById('wishlist-sidebar-empty');
+
+            if (!sidebarItems || !sidebarEmpty) return;
+
+            this.updateCount(0);
+            sidebarItems.style.display = 'none';
+            sidebarEmpty.style.display = 'flex';
+            sidebarItems.innerHTML = '';
         },
 
         updateSidebarFromHtml: function(html, count) {
@@ -296,6 +428,7 @@
                 sidebarItems.style.display = 'none';
                 sidebarEmpty.style.display = 'flex';
                 sidebarItems.innerHTML = '';
+                this.updateBulkActionsVisibility();
                 return;
             }
 
@@ -305,9 +438,9 @@
 
             document.querySelectorAll('.wishlist-sidebar-item__remove').forEach(button => {
                 button.addEventListener('click', () => {
-                    const productId = button.getAttribute('data-product-id');
+                    const productUuid = button.getAttribute('data-product-uuid');
                     const item = button.closest('.wishlist-sidebar-item');
-                    this.removeFromWishlist(productId, button);
+                    this.removeFromWishlist(productUuid, button);
                     if (item && typeof $ !== 'undefined') {
                         $(item).fadeOut(300, function() {
                             $(this).remove();
@@ -316,6 +449,9 @@
                                 sidebarItems.style.display = 'none';
                                 sidebarEmpty.style.display = 'flex';
                                 Wishlist.updateCount(0);
+                                Wishlist.updateBulkActionsVisibility();
+                            } else {
+                                Wishlist.updateBulkActionsState();
                             }
                         });
                     }
@@ -324,14 +460,18 @@
 
             document.querySelectorAll('.wishlist-sidebar-item__add-cart').forEach(button => {
                 button.addEventListener('click', () => {
-                    const productId = button.getAttribute('data-product-id');
+                    const productUuid = button.getAttribute('data-product-uuid');
                     if (window.CartFunctions && typeof window.CartFunctions.addToCart === 'function') {
-                        window.CartFunctions.addToCart(productId, 1, button);
+                        window.CartFunctions.addToCart(productUuid, 1, button);
                     } else if (window.AppUtils) {
                         window.AppUtils.error('CartFunctions.addToCart is not available');
                     }
                 });
             });
+
+            // Initialize bulk actions
+            this.initBulkActions();
+            this.updateBulkActionsVisibility();
         },
 
         updateCount: function(count) {
@@ -351,14 +491,20 @@
         },
 
         checkWishlistStatus: function() {
-            const wishlistButtons = document.querySelectorAll('.wishlist-btn[data-product-id]');
+            const wishlistButtons = document.querySelectorAll('.wishlist-btn[data-product-uuid]');
             if (wishlistButtons.length === 0) return;
 
             if (!this.isAuthenticated()) {
                 return;
             }
 
-            const productIds = Array.from(wishlistButtons).map(btn => btn.getAttribute('data-product-id'));
+            const productUuids = Array.from(wishlistButtons)
+                .map(btn => btn.getAttribute('data-product-uuid'))
+                .filter(uuid => uuid && uuid.trim() !== '');
+
+            if (productUuids.length === 0) {
+                return;
+            }
 
             fetch('/wishlist/check', {
                 method: 'POST',
@@ -367,29 +513,38 @@
                     'X-CSRF-TOKEN': this.csrfToken,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ product_ids: productIds })
+                body: JSON.stringify({ product_uuids: productUuids })
             })
             .then(response => {
                 if (response.status === 401) {
                     // User not authenticated, don't show wishlist status
                     return Promise.reject('Not authenticated');
                 }
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
                 return response.json();
             })
             .then(data => {
                 if (data.success && data.status) {
                     wishlistButtons.forEach(button => {
-                        const productId = button.getAttribute('data-product-id');
+                        const productUuid = button.getAttribute('data-product-uuid');
+                        if (!productUuid) return; // Skip if no UUID
+                        
                         const icon = button.querySelector('i');
 
-                        if (data.status[productId]) {
+                        if (data.status[productUuid]) {
                             button.classList.add('in-wishlist');
+                            button.setAttribute('title', 'Remove from Wishlist');
+                            button.setAttribute('aria-label', 'Remove from Wishlist');
                             if (icon) {
                                 icon.classList.remove('far', 'fa-heart');
                                 icon.classList.add('fas', 'fa-heart');
                             }
                         } else {
                             button.classList.remove('in-wishlist');
+                            button.setAttribute('title', 'Add to Wishlist');
+                            button.setAttribute('aria-label', 'Add to Wishlist');
                             if (icon) {
                                 icon.classList.remove('fas', 'fa-heart');
                                 icon.classList.add('far', 'fa-heart');
@@ -399,7 +554,12 @@
                 }
             })
             .catch(error => {
-                if (window.AppUtils) {
+                // Don't log validation errors (422) - they're expected if UUIDs are missing
+                if (error && error.errors && error.message) {
+                    // Validation error - silently fail
+                    return;
+                }
+                if (window.AppUtils && error !== 'Not authenticated') {
                     window.AppUtils.error('Error checking wishlist status:', error);
                 }
             });
@@ -497,6 +657,391 @@
             if (sidebar) sidebar.classList.remove('active');
             if (overlay) overlay.classList.remove('active');
             document.body.style.overflow = '';
+        },
+
+        initBulkActions: function() {
+            const selectAllCheckbox = document.getElementById('wishlist-select-all');
+
+            // Remove old listener if it exists
+            if (this._selectAllHandler && selectAllCheckbox) {
+                selectAllCheckbox.removeEventListener('change', this._selectAllHandler);
+            }
+
+            // Select All checkbox
+            if (selectAllCheckbox) {
+                this._selectAllHandler = (e) => {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.wishlist-item-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                    this.updateBulkActionsState();
+                };
+                selectAllCheckbox.addEventListener('change', this._selectAllHandler);
+            }
+
+            // Individual checkbox change - use event delegation (only one listener)
+            if (!this._checkboxChangeHandler) {
+                this._checkboxChangeHandler = (e) => {
+                    if (e.target.classList.contains('wishlist-item-checkbox')) {
+                        this.updateBulkActionsState();
+                    }
+                };
+                document.addEventListener('change', this._checkboxChangeHandler);
+            }
+
+            // Bulk action buttons are now handled via event delegation in attachEventListeners
+            // No need to attach listeners here - they're handled globally
+        },
+
+        getSelectedItems: function() {
+            const checkboxes = document.querySelectorAll('.wishlist-item-checkbox:checked');
+            return Array.from(checkboxes).map(checkbox => checkbox.getAttribute('data-product-uuid'));
+        },
+
+        updateBulkActionsState: function() {
+            const selectedCount = this.getSelectedItems().length;
+            const addSelectedBtn = document.getElementById('wishlist-add-selected-to-cart');
+            const removeSelectedBtn = document.getElementById('wishlist-remove-selected');
+            const selectAllCheckbox = document.getElementById('wishlist-select-all');
+
+            // Enable/disable buttons based on selection
+            if (addSelectedBtn) {
+                addSelectedBtn.disabled = selectedCount === 0;
+            }
+            if (removeSelectedBtn) {
+                removeSelectedBtn.disabled = selectedCount === 0;
+            }
+
+            // Update select all checkbox state
+            if (selectAllCheckbox) {
+                const totalCheckboxes = document.querySelectorAll('.wishlist-item-checkbox').length;
+                selectAllCheckbox.checked = totalCheckboxes > 0 && selectedCount === totalCheckboxes;
+                selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCheckboxes;
+            }
+        },
+
+        updateBulkActionsVisibility: function() {
+            const footer = document.getElementById('wishlist-sidebar-footer');
+            const sidebarItems = document.getElementById('wishlist-sidebar-items');
+            const sidebarEmpty = document.getElementById('wishlist-sidebar-empty');
+
+            if (footer && sidebarItems && sidebarEmpty) {
+                const hasItems = sidebarItems.style.display !== 'none' && 
+                                document.querySelectorAll('.wishlist-sidebar-item').length > 0;
+                footer.style.display = hasItems ? 'block' : 'none';
+            }
+        },
+
+        addSelectedToCart: function() {
+            const addSelectedBtn = document.getElementById('wishlist-add-selected-to-cart');
+            
+            // Prevent multiple simultaneous calls - use a flag
+            if (this._addingToCart) {
+                return;
+            }
+            
+            // Prevent multiple simultaneous calls
+            if (addSelectedBtn && addSelectedBtn.disabled) {
+                return;
+            }
+            
+            const selectedUuids = this.getSelectedItems();
+            if (selectedUuids.length === 0) {
+                if (typeof showToast !== 'undefined') {
+                    showToast('Please select items to add to cart.', 'warning');
+                }
+                return;
+            }
+
+            // Set flag to prevent multiple calls
+            this._addingToCart = true;
+
+            if (addSelectedBtn) {
+                addSelectedBtn.disabled = true;
+                addSelectedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="btn-text">Adding...</span>';
+            }
+
+            // Batch approach: Send all UUIDs in a single API call
+            // This is faster, cleaner, and prevents console errors
+            fetch('/cart/add-multiple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    product_uuids: selectedUuids,
+                    quantities: selectedUuids.map(() => 1) // All quantities are 1
+                })
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
+                        window.AppUtils.redirectToLogin();
+                    } else {
+                        window.location.href = '/login';
+                    }
+                    return Promise.reject('Not authenticated');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Clear flag
+                this._addingToCart = false;
+                
+                if (addSelectedBtn) {
+                    addSelectedBtn.disabled = false;
+                    addSelectedBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> <span class="btn-text">Add to Cart</span>';
+                }
+
+                if (data.success !== undefined) {
+                    const successCount = data.results?.success?.length || 0;
+                    const failedCount = data.results?.failed?.length || 0;
+
+                    // Remove successfully added items from wishlist
+                    if (successCount > 0 && data.results?.success) {
+                        const successUuids = data.results.success
+                            .map(item => item.uuid)
+                            .filter(uuid => uuid);
+                        
+                        // Remove from wishlist in batch
+                        successUuids.forEach((uuid, index) => {
+                            setTimeout(() => {
+                                this.removeFromWishlist(uuid, null, true);
+                            }, index * 50); // Small delay to prevent overload
+                        });
+                    }
+
+                    // Update cart count
+                    if (data.cart_count !== undefined && window.CartFunctions) {
+                        if (typeof window.CartFunctions.updateCartCount === 'function') {
+                            window.CartFunctions.updateCartCount(data.cart_count);
+                        } else if (typeof window.CartFunctions.loadCartCount === 'function') {
+                            window.CartFunctions.loadCartCount();
+                        }
+                    }
+
+                    // Show toast messages
+                    if (typeof showToast !== 'undefined') {
+                        if (successCount > 0) {
+                            showToast(`${successCount} item(s) added to cart successfully.`, 'success');
+                        }
+                        if (failedCount > 0) {
+                            // Show first error message or generic message
+                            const firstError = data.results.failed[0];
+                            const errorMsg = firstError?.message || `${failedCount} item(s) failed to add.`;
+                            showToast(errorMsg, 'error');
+                        }
+                    }
+
+                    setTimeout(() => {
+                        this.loadSidebar();
+                        this.updateBulkActionsState();
+                        // Update cart status
+                        if (window.CartFunctions && typeof window.CartFunctions.checkCartStatus === 'function') {
+                            window.CartFunctions.checkCartStatus();
+                        }
+                    }, 500);
+                } else {
+                    // Fallback error handling
+                    if (typeof showToast !== 'undefined') {
+                        showToast(data.message || 'Failed to add items to cart.', 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                // Clear flag on error
+                this._addingToCart = false;
+                
+                if (addSelectedBtn) {
+                    addSelectedBtn.disabled = false;
+                    addSelectedBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> <span class="btn-text">Add to Cart</span>';
+                }
+
+                // Don't show errors for authentication failures
+                if (error === 'Not authenticated') {
+                    return;
+                }
+
+                // Show error message
+                if (typeof showToast !== 'undefined') {
+                    const errorMsg = (error && typeof error === 'object' && error.message) 
+                        ? error.message 
+                        : 'An error occurred. Please try again.';
+                    showToast(errorMsg, 'error');
+                }
+            });
+        },
+
+        removeSelected: function() {
+            const removeSelectedBtn = document.getElementById('wishlist-remove-selected');
+            
+            // Prevent multiple simultaneous calls - use a flag
+            if (this._removingFromWishlist) {
+                return;
+            }
+            
+            // Prevent multiple simultaneous calls
+            if (removeSelectedBtn && removeSelectedBtn.disabled) {
+                return;
+            }
+            
+            const selectedUuids = this.getSelectedItems();
+            if (selectedUuids.length === 0) {
+                if (typeof showToast !== 'undefined') {
+                    showToast('Please select items to remove.', 'warning');
+                }
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to remove ${selectedUuids.length} item(s) from your wishlist?`)) {
+                return;
+            }
+
+            // Set flag to prevent multiple calls
+            this._removingFromWishlist = true;
+
+            if (removeSelectedBtn) {
+                removeSelectedBtn.disabled = true;
+                removeSelectedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="btn-text">Removing...</span>';
+            }
+
+            // Batch approach: Send all UUIDs in a single API call
+            // This is faster, cleaner, and prevents console errors
+            fetch('/wishlist/remove-multiple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    product_uuids: selectedUuids
+                })
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
+                        window.AppUtils.redirectToLogin();
+                    } else {
+                        window.location.href = '/login';
+                    }
+                    return Promise.reject('Not authenticated');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Clear flag
+                this._removingFromWishlist = false;
+                
+                if (removeSelectedBtn) {
+                    removeSelectedBtn.disabled = false;
+                    removeSelectedBtn.innerHTML = '<i class="fas fa-trash"></i> <span class="btn-text">Remove</span>';
+                }
+
+                if (data.success !== undefined) {
+                    const successCount = data.results?.success?.length || 0;
+                    const failedCount = data.results?.failed?.length || 0;
+
+                    // Update wishlist count
+                    if (data.wishlist_count !== undefined) {
+                        this.updateCount(data.wishlist_count);
+                    }
+
+                    // Remove successfully removed items from sidebar
+                    if (successCount > 0 && data.results?.success) {
+                        data.results.success.forEach(item => {
+                            if (item.uuid) {
+                                const wishlistItem = document.querySelector(`.wishlist-sidebar-item[data-product-uuid="${item.uuid}"]`);
+                                if (wishlistItem) {
+                                    wishlistItem.style.transition = 'opacity 0.3s';
+                                    wishlistItem.style.opacity = '0';
+                                    setTimeout(() => {
+                                        wishlistItem.remove();
+                                    }, 300);
+                                }
+
+                                // Update wishlist buttons
+                                const allWishlistButtons = document.querySelectorAll(`.wishlist-btn[data-product-uuid="${item.uuid}"]`);
+                                allWishlistButtons.forEach(btn => {
+                                    btn.classList.remove('in-wishlist');
+                                    btn.setAttribute('title', 'Add to Wishlist');
+                                    btn.setAttribute('aria-label', 'Add to Wishlist');
+                                    const btnIcon = btn.querySelector('i');
+                                    if (btnIcon) {
+                                        btnIcon.classList.remove('fas', 'fa-heart');
+                                        btnIcon.classList.add('far', 'fa-heart');
+                                    }
+                                });
+                            }
+                        });
+
+                        // Check if sidebar is empty
+                        setTimeout(() => {
+                            const remainingItems = document.querySelectorAll('.wishlist-sidebar-item');
+                            if (remainingItems.length === 0) {
+                                const sidebarItems = document.getElementById('wishlist-sidebar-items');
+                                const sidebarEmpty = document.getElementById('wishlist-sidebar-empty');
+                                if (sidebarItems) sidebarItems.style.display = 'none';
+                                if (sidebarEmpty) sidebarEmpty.style.display = 'flex';
+                                this.updateBulkActionsVisibility();
+                            } else {
+                                this.updateBulkActionsState();
+                            }
+                        }, 350);
+                    }
+
+                    // Show toast messages
+                    if (typeof showToast !== 'undefined') {
+                        if (successCount > 0) {
+                            showToast(`${successCount} item(s) removed from wishlist successfully.`, 'success');
+                        }
+                        if (failedCount > 0) {
+                            // Show first error message or generic message
+                            const firstError = data.results.failed[0];
+                            const errorMsg = firstError?.message || `${failedCount} item(s) failed to remove.`;
+                            showToast(errorMsg, 'error');
+                        }
+                    }
+
+                    setTimeout(() => {
+                        this.loadSidebar();
+                        this.updateBulkActionsState();
+                        // Update wishlist status
+                        if (typeof this.checkWishlistStatus === 'function') {
+                            this.checkWishlistStatus();
+                        }
+                    }, 500);
+                } else {
+                    // Fallback error handling
+                    if (typeof showToast !== 'undefined') {
+                        showToast(data.message || 'Failed to remove items from wishlist.', 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                // Clear flag on error
+                this._removingFromWishlist = false;
+                
+                if (removeSelectedBtn) {
+                    removeSelectedBtn.disabled = false;
+                    removeSelectedBtn.innerHTML = '<i class="fas fa-trash"></i> <span class="btn-text">Remove</span>';
+                }
+
+                // Don't show errors for authentication failures
+                if (error === 'Not authenticated') {
+                    return;
+                }
+
+                // Show error message
+                if (typeof showToast !== 'undefined') {
+                    const errorMsg = (error && typeof error === 'object' && error.message) 
+                        ? error.message 
+                        : 'An error occurred. Please try again.';
+                    showToast(errorMsg, 'error');
+                }
+            });
         }
     };
 

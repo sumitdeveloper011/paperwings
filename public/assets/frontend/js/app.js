@@ -137,7 +137,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Search error:', error);
+                    // Search error handled silently
                 });
             }, this.config.debounceDelay);
 
@@ -274,7 +274,6 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Subscription error:', error);
                     this.showNotification('An error occurred. Please try again.', 'error');
                 })
                 .finally(() => {

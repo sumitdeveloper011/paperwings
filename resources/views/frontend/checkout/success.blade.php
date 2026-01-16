@@ -40,6 +40,12 @@
                     <a href="{{ route('home') }}" class="btn btn-outline-primary">Continue Shopping</a>
                     <a href="{{ route('account.my-orders') }}" class="btn btn-primary">View My Orders</a>
                 </div>
+                
+                <div id="redirect-countdown" style="margin-top: 2rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; border: 1px solid #b3d9ff;">
+                    <p style="margin: 0; color: #0066cc; font-size: 1rem;">
+                        Redirecting to <strong>View My Orders</strong> in <span id="countdown-number" style="font-size: 1.5rem; font-weight: 700; color: #0052a3;">5</span> seconds...
+                    </p>
+                </div>
             </div>
         </div>
     </section>
@@ -126,26 +132,52 @@
     @if($gaEnabled && $gaEcommerce && !empty($gaId) && $order->payment_status === 'paid' && $order->items && $order->items->count() > 0)
     <!-- Google Analytics E-commerce Tracking -->
     <script>
-        // Track purchase event
-        gtag('event', 'purchase', {
-            'transaction_id': '{{ $order->order_number }}',
-            'value': {{ number_format($order->total, 2, '.', '') }},
-            'currency': 'NZD',
-            'tax': {{ number_format($order->tax ?? 0, 2, '.', '') }},
-            'shipping': {{ number_format($order->shipping_price ?? $order->shipping ?? 0, 2, '.', '') }},
-            'coupon': '{{ $order->coupon_code ?? '' }}',
-            'items': [
-                @foreach($order->items as $item)
-                {
-                    'item_id': '{{ $item->product_id }}',
-                    'item_name': '{{ addslashes($item->product_name ?? 'Product') }}',
-                    'item_category': '{{ isset($item->product->category) ? addslashes($item->product->category->name) : "Uncategorized" }}',
-                    'price': {{ number_format($item->price ?? 0, 2, '.', '') }},
-                    'quantity': {{ $item->quantity ?? 1 }}
-                }@if(!$loop->last),@endif
-                @endforeach
-            ]
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.Analytics && window.Analytics.isEnabled()) {
+                const items = [
+                    @foreach($order->items as $item)
+                    {
+                        item_id: '{{ $item->product_id }}',
+                        item_name: '{{ addslashes($item->product_name ?? 'Product') }}',
+                        item_category: '{{ isset($item->product->category) ? addslashes($item->product->category->name) : "Uncategorized" }}',
+                        item_brand: '{{ isset($item->product->brand) ? addslashes($item->product->brand->name) : "" }}',
+                        price: {{ number_format($item->price ?? 0, 2, '.', '') }},
+                        quantity: {{ $item->quantity ?? 1 }}
+                    }@if(!$loop->last),@endif
+                    @endforeach
+                ];
+
+                window.Analytics.trackEvent('purchase', {
+                    transaction_id: '{{ $order->order_number }}',
+                    value: {{ number_format($order->total, 2, '.', '') }},
+                    currency: 'NZD',
+                    tax: {{ number_format($order->tax ?? 0, 2, '.', '') }},
+                    shipping: {{ number_format($order->shipping_price ?? $order->shipping ?? 0, 2, '.', '') }},
+                    coupon: '{{ $order->coupon_code ?? '' }}',
+                    items: items
+                });
+            }
         });
     </script>
     @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let countdown = 5;
+            const countdownElement = document.getElementById('countdown-number');
+            const redirectUrl = '{{ route('account.my-orders') }}';
+            
+            if (countdownElement) {
+                const countdownInterval = setInterval(function() {
+                    countdown--;
+                    countdownElement.textContent = countdown;
+                    
+                    if (countdown <= 0) {
+                        clearInterval(countdownInterval);
+                        window.location.href = redirectUrl;
+                    }
+                }, 1000);
+            }
+        });
+    </script>
 @endsection

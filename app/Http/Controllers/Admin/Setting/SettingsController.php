@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Helpers\SettingHelper;
 use App\Helpers\CacheHelper;
-use App\Services\InstagramService;
 use App\Services\ImageService;
+use App\Services\ApiKeyEncryptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,6 +55,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'logo' => ($logoExists ? 'nullable' : 'required') . '|image|mimes:jpeg,png,jpg,gif|max:2048',
             'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,ico|max:512',
+            'breadcrumb_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'meta_title' => 'required|string|max:60',
             'meta_description' => 'nullable|string|max:160',
             'meta_keywords' => 'required|string|max:255',
@@ -71,19 +72,16 @@ class SettingsController extends Controller
             'social_linkedin' => 'nullable|url|max:255',
             'social_youtube' => 'nullable|url|max:255',
             'social_pinterest' => 'nullable|url|max:255',
-            'instagram_app_id' => 'nullable|string|max:255',
-            'instagram_app_secret' => 'nullable|string|max:255',
-            'instagram_access_token' => 'nullable|string|max:500',
-            'instagram_user_id' => 'nullable|string|max:255',
             'footer_tagline' => 'nullable|string|max:500',
             'working_hours' => 'nullable|string|max:500',
             'copyright_text' => 'nullable|string|max:255',
             'google_analytics_id' => 'nullable|string|max:50',
             'google_analytics_enabled' => 'nullable|in:0,1',
             'google_analytics_ecommerce' => 'nullable|in:0,1',
-            'private_key_1' => 'nullable|string|max:500',
-            'private_key_2' => 'nullable|string|max:500',
-            'private_key_3' => 'nullable|string|max:500',
+            'notification_email_recipients' => 'nullable|array',
+            'notification_email_recipients.*' => 'nullable|email|max:255',
+            'notification_email_preferences' => 'nullable|array',
+            'notification_email_preferences.*' => 'nullable|in:0,1',
         ], [
             'logo.required' => 'Logo is required.',
             'logo.image' => 'Logo must be an image.',
@@ -161,6 +159,24 @@ class SettingsController extends Controller
             }
         }
 
+        // Handle breadcrumb image upload
+        if ($request->hasFile('breadcrumb_image')) {
+            $oldBreadcrumbImage = Setting::where('key', 'breadcrumb_image')->first();
+            $oldBreadcrumbImagePath = $oldBreadcrumbImage && $oldBreadcrumbImage->value ? $oldBreadcrumbImage->value : null;
+
+            // Use 'settings' as baseFolder and 'breadcrumb_image' as UUID
+            $imagePath = $this->imageService->uploadImage(
+                $request->file('breadcrumb_image'),
+                'settings',
+                'breadcrumb_image',
+                $oldBreadcrumbImagePath
+            );
+
+            if ($imagePath) {
+                $this->updateSetting('breadcrumb_image', $imagePath);
+            }
+        }
+
         // Update meta tags (required fields)
         $this->updateSetting('meta_title', $validated['meta_title']);
         $this->updateSetting('meta_description', $validated['meta_description'] ?? '');
@@ -170,7 +186,6 @@ class SettingsController extends Controller
         // Update contact info (required fields)
         $this->updateSetting('address', $validated['address']);
         $this->updateSetting('google_map', $validated['google_map']);
-        $this->updateSetting('google_map_api_key', $request->input('google_map_api_key', ''));
 
         // Update emails (store as JSON array) - use the already filtered arrays
         $this->updateSetting('emails', !empty($emails) ? json_encode($emails) : null);
@@ -185,18 +200,6 @@ class SettingsController extends Controller
         $this->updateSetting('social_linkedin', $validated['social_linkedin'] ?? '');
         $this->updateSetting('social_youtube', $validated['social_youtube'] ?? '');
         $this->updateSetting('social_pinterest', $validated['social_pinterest'] ?? '');
-
-        // Update Instagram API credentials
-        $this->updateSetting('instagram_app_id', $validated['instagram_app_id'] ?? '');
-        $this->updateSetting('instagram_app_secret', $validated['instagram_app_secret'] ?? '');
-        $this->updateSetting('instagram_access_token', $validated['instagram_access_token'] ?? '');
-        $this->updateSetting('instagram_user_id', $validated['instagram_user_id'] ?? '');
-
-        // Clear Instagram cache if credentials were updated
-        if (isset($validated['instagram_access_token']) || isset($validated['instagram_user_id'])) {
-            $instagramService = new InstagramService();
-            $instagramService->clearCache();
-        }
 
         // Update footer settings
         $this->updateSetting('footer_tagline', $validated['footer_tagline'] ?? '');
@@ -214,10 +217,24 @@ class SettingsController extends Controller
         $this->updateSetting('google_analytics_enabled', $validated['google_analytics_enabled'] ?? '0');
         $this->updateSetting('google_analytics_ecommerce', $validated['google_analytics_ecommerce'] ?? '0');
 
+        // Update Notification Email Recipients
+        $notificationRecipients = array_values(array_filter(array_map(function($email) {
+            return trim($email ?? '');
+        }, $validated['notification_email_recipients'] ?? []), function($email) {
+            return !empty($email);
+        }));
+        $this->updateSetting('notification_email_recipients', json_encode($notificationRecipients));
+
+        // Update Notification Email Preferences
+        $emailPreferences = [];
+        $preferences = $validated['notification_email_preferences'] ?? [];
+        $types = ['order', 'contact', 'review', 'stock', 'system'];
+        foreach ($types as $type) {
+            $emailPreferences[$type] = isset($preferences[$type]) && $preferences[$type] == '1';
+        }
+        $this->updateSetting('notification_email_preferences', json_encode($emailPreferences));
+
         // Update Private Keys
-        $this->updateSetting('private_key_1', $validated['private_key_1'] ?? '');
-        $this->updateSetting('private_key_2', $validated['private_key_2'] ?? '');
-        $this->updateSetting('private_key_3', $validated['private_key_3'] ?? '');
 
         // Clear settings cache after update
         CacheHelper::forgetAllSettings();
@@ -226,42 +243,16 @@ class SettingsController extends Controller
             ->with('success', 'Settings updated successfully!');
     }
 
-    // Test Instagram API connection
-    public function testInstagram(Request $request): JsonResponse
-    {
-        $request->validate([
-            'instagram_app_id' => 'nullable|string',
-            'instagram_app_secret' => 'nullable|string',
-            'instagram_access_token' => 'nullable|string',
-            'instagram_user_id' => 'nullable|string',
-        ]);
-
-        // Temporarily update settings for testing
-        if ($request->has('instagram_app_id')) {
-            Setting::updateOrCreate(['key' => 'instagram_app_id'], ['value' => $request->instagram_app_id]);
-        }
-        if ($request->has('instagram_app_secret')) {
-            Setting::updateOrCreate(['key' => 'instagram_app_secret'], ['value' => $request->instagram_app_secret]);
-        }
-        if ($request->has('instagram_access_token')) {
-            Setting::updateOrCreate(['key' => 'instagram_access_token'], ['value' => $request->instagram_access_token]);
-        }
-        if ($request->has('instagram_user_id')) {
-            Setting::updateOrCreate(['key' => 'instagram_user_id'], ['value' => $request->instagram_user_id]);
-        }
-
-        $instagramService = new InstagramService();
-        $result = $instagramService->testConnection();
-
-        return response()->json($result);
-    }
 
     // Update or create a setting
     private function updateSetting(string $key, ?string $value): void
     {
+        // Encrypt sensitive keys before storing
+        $encryptedValue = ApiKeyEncryptionService::encrypt($key, $value);
+        
         Setting::updateOrCreate(
             ['key' => $key],
-            ['value' => $value]
+            ['value' => $encryptedValue]
         );
     }
 }

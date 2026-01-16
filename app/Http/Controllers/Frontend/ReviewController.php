@@ -7,12 +7,20 @@ use App\Http\Requests\Frontend\StoreReviewRequest;
 use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\Order;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ReviewController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     // Store a new product review
     public function store(StoreReviewRequest $request, $productSlug): JsonResponse
     {
@@ -54,6 +62,13 @@ class ReviewController extends Controller
                 'status' => 0,
                 'verified_purchase' => $verifiedPurchase,
             ]);
+
+            // Create admin notification
+            try {
+                $this->notificationService->createReviewNotification($review);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create review notification: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,

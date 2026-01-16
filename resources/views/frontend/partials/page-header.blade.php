@@ -50,19 +50,25 @@
     // Ensure title exists
     $title = $title ?? 'Page Title';
 
-    // Check if image is provided, otherwise use default breadcrumbs.jpg
+    // Check if image is provided, otherwise use setting from database or default
     if (!isset($image) || empty($image)) {
-        // Check in images folder first (where user placed it)
-        $defaultImagePath = 'assets/frontend/images/breadcrumbs.jpg';
-        if (file_exists(public_path($defaultImagePath))) {
-            $image = asset($defaultImagePath);
+        // First check database setting
+        $breadcrumbImageSetting = \App\Helpers\SettingHelper::get('breadcrumb_image');
+        if (!empty($breadcrumbImageSetting)) {
+            $image = asset('storage/' . $breadcrumbImageSetting);
         } else {
-            // Fallback to headers folder
-            $defaultImagePath = 'assets/frontend/images/headers/breadcrumbs.jpg';
+            // Check in images folder first (where user placed it)
+            $defaultImagePath = 'assets/frontend/images/breadcrumbs.jpg';
             if (file_exists(public_path($defaultImagePath))) {
                 $image = asset($defaultImagePath);
             } else {
-                $image = null;
+                // Fallback to headers folder
+                $defaultImagePath = 'assets/frontend/images/headers/breadcrumbs.jpg';
+                if (file_exists(public_path($defaultImagePath))) {
+                    $image = asset($defaultImagePath);
+                } else {
+                    $image = null;
+                }
             }
         }
     }

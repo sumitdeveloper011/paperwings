@@ -23,7 +23,7 @@ class FaqController extends Controller
             $query->where('category', $selectedCategory);
         }
 
-        $faqs = $query->get();
+        $faqs = $query->paginate(10)->appends($request->query());
 
         // Get all unique categories for filter
         $categories = Faq::active()

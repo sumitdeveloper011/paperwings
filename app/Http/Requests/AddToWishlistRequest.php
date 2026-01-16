@@ -18,10 +18,10 @@ class AddToWishlistRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => [
+            'product_uuid' => [
                 'required',
-                'integer',
-                Rule::exists('products', 'id')->where('status', 1)
+                'uuid',
+                Rule::exists('products', 'uuid')->where('status', 1)
             ],
         ];
     }
@@ -30,8 +30,9 @@ class AddToWishlistRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'product_id.required' => 'Product ID is required.',
-            'product_id.exists' => 'The selected product is not available.',
+            'product_uuid.required' => 'Product UUID is required.',
+            'product_uuid.uuid' => 'Invalid product UUID format.',
+            'product_uuid.exists' => 'The selected product is not available.',
         ];
     }
 

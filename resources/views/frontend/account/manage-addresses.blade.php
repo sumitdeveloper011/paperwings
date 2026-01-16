@@ -1,5 +1,41 @@
 @extends('layouts.frontend.main')
 @section('content')
+
+<style>
+    .address-autocomplete-wrapper {
+        position: relative;
+    }
+
+    .address-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        margin-top: 4px;
+    }
+
+    .address-suggestion-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s ease;
+    }
+
+    .address-suggestion-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .address-suggestion-item:last-child {
+        border-bottom: none;
+    }
+</style>
 @include('frontend.partials.page-header', [
     'title' => 'Manage Addresses',
     'breadcrumbs' => [
@@ -149,15 +185,18 @@
                                     <div class="account-form__grid">
                                         <div class="form-group">
                                             <label for="addressFirstName" class="form-label">First Name <span class="required">*</span></label>
-                                            <input type="text" id="addressFirstName" name="first_name" class="form-input" placeholder="Enter first name" value="{{ old('first_name', $user->first_name ?? '') }}" required>
+                                            <input type="text" id="addressFirstName" name="first_name" class="form-input" placeholder="Enter first name" value="{{ old('first_name', $user->first_name ?? '') }}" minlength="2" maxlength="50" required>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="addressLastName" class="form-label">Last Name <span class="required">*</span></label>
-                                            <input type="text" id="addressLastName" name="last_name" class="form-input" placeholder="Enter last name" value="{{ old('last_name', $user->last_name ?? '') }}" required>
+                                            <input type="text" id="addressLastName" name="last_name" class="form-input" placeholder="Enter last name" value="{{ old('last_name', $user->last_name ?? '') }}" minlength="2" maxlength="50" required>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="addressPhone" class="form-label">Phone Number <span class="required">*</span></label>
-                                            <input type="tel" id="addressPhone" name="phone" class="form-input" placeholder="Enter phone number" value="{{ old('phone', $user->userDetail->phone ?? '') }}" required>
+                                            <input type="tel" id="addressPhone" name="phone" class="form-input" placeholder="Enter phone number" value="{{ old('phone', $user->userDetail->phone ?? '') }}" pattern="[\d\+\s\-]+" inputmode="numeric" maxlength="20" required>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="addressEmail" class="form-label">Email Address</label>
@@ -177,14 +216,23 @@
                                                     </option>
                                                 @endforeach
                                             </select>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group form-group--full">
                                             <label for="addressStreet" class="form-label">Street Address <span class="required">*</span></label>
-                                            <input type="text" id="addressStreet" name="street_address" class="form-input" placeholder="Enter street address" value="{{ old('street_address') }}" required>
+                                            <div class="address-autocomplete-wrapper">
+                                                <input type="text" id="addressStreet" name="street_address" class="form-input address-autocomplete" placeholder="Start typing your address (e.g., 123 Queen Street)" value="{{ old('street_address') }}" minlength="5" maxlength="255" autocomplete="off" required>
+                                                <div id="addressStreetSuggestions" class="address-suggestions" style="display: none;"></div>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                <i class="fas fa-info-circle"></i> Start typing to search for your address
+                                            </small>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="addressCity" class="form-label">City <span class="required">*</span></label>
-                                            <input type="text" id="addressCity" name="city" class="form-input" placeholder="Enter city" value="{{ old('city') }}" required>
+                                            <input type="text" id="addressCity" name="city" class="form-input" placeholder="Enter city" value="{{ old('city') }}" minlength="2" maxlength="100" required>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                         <div class="form-group">
                                             <label for="addressSuburb" class="form-label">Suburb</label>
@@ -192,7 +240,8 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="addressPostcode" class="form-label">Postcode <span class="required">*</span></label>
-                                            <input type="text" id="addressPostcode" name="zip_code" class="form-input" placeholder="Enter postcode" value="{{ old('zip_code') }}" required>
+                                            <input type="text" id="addressPostcode" name="zip_code" class="form-input" placeholder="Enter postcode" value="{{ old('zip_code') }}" pattern="[0-9]{4}" inputmode="numeric" maxlength="4" required>
+                                            <div class="invalid-feedback" style="display: none;"></div>
                                         </div>
                                     </div>
 
@@ -313,7 +362,6 @@ function editAddress(addressId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             alert('Error loading address. Please try again.');
         });
 }
@@ -371,5 +419,256 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 @endif
+
+@push('scripts')
+<script>
+// NZ Post Address Autocomplete for Account Address Form
+(function() {
+    'use strict';
+
+    function initAccountAddressAutocomplete() {
+        const addressInput = document.getElementById('addressStreet');
+        const suggestionsContainer = document.getElementById('addressStreetSuggestions');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        if (!addressInput || !suggestionsContainer) return;
+
+        let searchTimeout;
+
+        addressInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchTimeout);
+
+            if (query.length < 3) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                searchAccountAddresses(query, suggestionsContainer, csrfToken);
+            }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!addressInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+    }
+
+    async function searchAccountAddresses(query, container, csrfToken) {
+        try {
+            const response = await fetch('/account/search-address', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.results && data.results.length > 0) {
+                displayAccountSuggestions(data.results, container);
+            } else {
+                container.style.display = 'none';
+            }
+        } catch (error) {
+            container.style.display = 'none';
+        }
+    }
+
+    function displayAccountSuggestions(results, container) {
+        container.innerHTML = '';
+        
+        results.forEach((result) => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.className = 'address-suggestion-item';
+            suggestionItem.textContent = result.display;
+            suggestionItem.addEventListener('click', () => {
+                selectAccountAddress(result);
+                container.style.display = 'none';
+            });
+            container.appendChild(suggestionItem);
+        });
+
+        container.style.display = 'block';
+    }
+
+    async function selectAccountAddress(result) {
+        const addressInput = document.getElementById('addressStreet');
+        const cityInput = document.getElementById('addressCity');
+        const suburbInput = document.getElementById('addressSuburb');
+        const postcodeInput = document.getElementById('addressPostcode');
+        const regionSelect = document.getElementById('addressRegion');
+
+        if (addressInput) addressInput.value = result.street_address || '';
+
+        if (result.id) {
+            try {
+                const response = await fetch(`/account/get-address/${result.id}`);
+                const data = await response.json();
+                
+                if (data.success && data.address) {
+                    if (cityInput) cityInput.value = data.address.city || '';
+                    if (suburbInput) suburbInput.value = data.address.suburb || '';
+                    if (postcodeInput) postcodeInput.value = data.address.postcode || '';
+                    
+                    if (regionSelect && data.address.region) {
+                        const options = Array.from(regionSelect.options);
+                        const regionOption = options.find(opt => 
+                            opt.text.toLowerCase().includes(data.address.region.toLowerCase())
+                        );
+                        if (regionOption) {
+                            regionSelect.value = regionOption.value;
+                        }
+                    }
+                } else {
+                    populateFromResult(result, cityInput, suburbInput, postcodeInput, regionSelect);
+                }
+            } catch (error) {
+                populateFromResult(result, cityInput, suburbInput, postcodeInput, regionSelect);
+            }
+        } else {
+            populateFromResult(result, cityInput, suburbInput, postcodeInput, regionSelect);
+        }
+    }
+
+    function populateFromResult(result, cityInput, suburbInput, postcodeInput, regionSelect) {
+        if (cityInput) cityInput.value = result.city || '';
+        if (suburbInput) suburbInput.value = result.suburb || '';
+        if (postcodeInput) postcodeInput.value = result.postcode || '';
+
+        if (regionSelect && result.region) {
+            const options = Array.from(regionSelect.options);
+            const regionOption = options.find(opt => 
+                opt.text.toLowerCase().includes(result.region.toLowerCase())
+            );
+            if (regionOption) {
+                regionSelect.value = regionOption.value;
+            }
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAccountAddressAutocomplete);
+    } else {
+        initAccountAddressAutocomplete();
+    }
+})();
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize native form validation for address form
+    function initAddressFormValidation() {
+        if (typeof window.initFormValidationNative === 'undefined') {
+            setTimeout(initAddressFormValidation, 100);
+            return;
+        }
+
+        const form = document.getElementById('addAddressForm');
+        if (!form) {
+            setTimeout(initAddressFormValidation, 100);
+            return;
+        }
+
+        const validationRules = {
+            'type': {
+                required: true
+            },
+            'first_name': {
+                required: true,
+                minlength: 2,
+                maxlength: 50
+            },
+            'last_name': {
+                required: true,
+                minlength: 2,
+                maxlength: 50
+            },
+            'phone': {
+                required: true,
+                nzPhone: true
+            },
+            'email': {
+                email: true,
+                maxlength: 255
+            },
+            'street_address': {
+                required: true,
+                minlength: 5,
+                maxlength: 255
+            },
+            'city': {
+                required: true,
+                minlength: 2,
+                maxlength: 100
+            },
+            'zip_code': {
+                required: true,
+                nzPostcode: true
+            },
+            'region_id': {
+                required: true
+            }
+        };
+
+        const validationMessages = {
+            'type': {
+                required: 'Please select an address type.'
+            },
+            'first_name': {
+                required: 'Please enter your first name.',
+                minlength: 'First name must be at least 2 characters.',
+                maxlength: 'First name cannot exceed 50 characters.'
+            },
+            'last_name': {
+                required: 'Please enter your last name.',
+                minlength: 'Last name must be at least 2 characters.',
+                maxlength: 'Last name cannot exceed 50 characters.'
+            },
+            'phone': {
+                required: 'Please enter your phone number.',
+                nzPhone: 'Please enter a valid New Zealand phone number (numbers only, e.g., 0211234567 or 091234567).'
+            },
+            'email': {
+                email: 'Please enter a valid email address.',
+                maxlength: 'Email cannot exceed 255 characters.'
+            },
+            'street_address': {
+                required: 'Please enter your street address.',
+                minlength: 'Street address must be at least 5 characters.',
+                maxlength: 'Street address cannot exceed 255 characters.'
+            },
+            'city': {
+                required: 'Please enter your city.',
+                minlength: 'City must be at least 2 characters.',
+                maxlength: 'City cannot exceed 100 characters.'
+            },
+            'zip_code': {
+                required: 'Please enter your postcode.',
+                nzPostcode: 'Please enter a valid 4-digit New Zealand postcode (numbers only).'
+            },
+            'region_id': {
+                required: 'Please select a region.'
+            }
+        };
+
+        window.initFormValidationNative('#addAddressForm', {
+            rules: validationRules,
+            messages: validationMessages,
+            onInvalid: function(errors, validator) {
+                validator.scrollToFirstError();
+            }
+        });
+    }
+
+    initAddressFormValidation();
+});
+</script>
+@endpush
 @endsection

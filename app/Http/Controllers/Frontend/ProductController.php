@@ -75,13 +75,32 @@ class ProductController extends Controller
     public function show($slug)
     {
         try {
-            $title = 'Product Details';
             $product = Product::where('slug', $slug)
                 ->active()
                 ->with(['images' => function($query) {
                     $query->orderBy('id', 'asc');
                 }, 'category', 'brand', 'tags', 'approvedReviews', 'activeFaqs', 'accordions'])
                 ->firstOrFail();
+            
+            // Set page title using product meta_title or name
+            $title = $product->meta_title ?? $product->name ?? 'Product Details';
+
+            // If product is a bundle (product_type == 4), load bundleProducts
+            if ($product->product_type == 4) {
+                $product->load([
+                    'bundleProducts' => function($query) {
+                        $query->where('status', 1)
+                              ->select('products.id', 'products.uuid', 'products.name', 'products.slug', 'products.total_price', 'products.discount_price', 'products.status', 'products.category_id', 'products.brand_id');
+                    },
+                    'bundleProducts.images' => function($query) {
+                        $query->select('products_images.id', 'products_images.product_id', 'products_images.image')
+                              ->orderBy('products_images.id');
+                    },
+                    'bundleProducts.category' => function($query) {
+                        $query->select('categories.id', 'categories.name', 'categories.slug');
+                    }
+                ]);
+            }
 
             // Track product view
             if (!session()->has('viewed_products')) {
@@ -102,19 +121,44 @@ class ProductController extends Controller
                 ]);
             }
 
-            // Get related products (same category, exclude current product)
+            // Get related products
             $relatedProducts = collect();
-            if ($product->category_id) {
-                $relatedProducts = Product::where('category_id', $product->category_id)
-                    ->where('id', '!=', $product->id)
-                    ->active()
-                    ->with(['images' => function($q) {
-                        $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
-                    }])
-                    ->limit(8)
-                    ->get()
-                    ->shuffle()
-                    ->take(8);
+            
+            if ($product->product_type == 4) {
+                // For bundles: get related products from bundle products' categories
+                if ($product->bundleProducts && $product->bundleProducts->count() > 0) {
+                    $categoryIds = $product->bundleProducts->pluck('category_id')->filter()->unique()->toArray();
+                    $bundleProductIds = $product->bundleProducts->pluck('id')->toArray();
+
+                    if (!empty($categoryIds)) {
+                        $relatedProducts = Product::whereIn('category_id', $categoryIds)
+                            ->whereNotIn('id', $bundleProductIds)
+                            ->where('id', '!=', $product->id)
+                            ->products() // Exclude bundles
+                            ->where('status', 1)
+                            ->with(['images' => function($q) {
+                                $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+                            }])
+                            ->limit(12)
+                            ->get()
+                            ->shuffle()
+                            ->take(8);
+                    }
+                }
+            } else {
+                // For regular products: get related products from same category
+                if ($product->category_id) {
+                    $relatedProducts = Product::where('category_id', $product->category_id)
+                        ->where('id', '!=', $product->id)
+                        ->active()
+                        ->with(['images' => function($q) {
+                            $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+                        }])
+                        ->limit(8)
+                        ->get()
+                        ->shuffle()
+                        ->take(8);
+                }
             }
 
             return view($this->viewPath . 'product-detail', compact('title', 'product', 'relatedProducts'));
@@ -217,7 +261,17 @@ class ProductController extends Controller
                     break;
             }
 
-            $products = $query->paginate(12)->appends($request->query()); // 12 products per page
+            // Eager load images for products
+            $products = $query->with([
+                    'images' => function($q) {
+                        $q->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+                    },
+                    'category:id,name,slug',
+                    'brand:id,name'
+                ])
+                ->selectMinimal()
+                ->paginate(12)
+                ->appends($request->query());
 
             // Optimized: Get categories with product count using category_id
             $cacheKey = 'categories_with_count_all';
@@ -425,5 +479,52 @@ class ProductController extends Controller
                 'message' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Display bundles listing page
+     */
+    public function bundles(Request $request)
+    {
+        $title = 'Product Bundles';
+
+        // Get sort parameter from request
+        $sort = $request->get('sort', 'featured');
+
+        // Query products with product_type = 4 (bundles)
+        $query = Product::bundles()
+            ->where('status', 1)
+            ->with(['images' => function($query) {
+                $query->select('products_images.id', 'products_images.product_id', 'products_images.image')
+                      ->orderBy('products_images.id')
+                      ->limit(1);
+            }]);
+
+        // Apply sorting based on sort parameter
+        switch ($sort) {
+            case 'price_low_high':
+                $query->orderBy('total_price', 'asc');
+                break;
+            case 'price_high_low':
+                $query->orderBy('total_price', 'desc');
+                break;
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'newest':
+                $query->orderBy('created_at', 'desc');
+                break;
+            case 'featured':
+            default:
+                $query->orderBy('sort_order')->orderBy('name');
+                break;
+        }
+
+        $bundles = $query->paginate(12)->appends($request->query());
+
+        return view('frontend.bundle.index', compact('title', 'bundles', 'sort'));
     }
 }

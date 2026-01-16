@@ -25,10 +25,11 @@
                                         $user->can('products.view') ||
                                         $user->can('sliders.view') ||
                                         $user->can('pages.view') ||
-                                        $user->can('about-sections.view'));
+                                        $user->can('about-sections.view') ||
+                                        $user->can('galleries.view'));
             @endphp
             @if($hasContentManagement)
-            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.categories.*') || request()->routeIs('admin.products.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('admin.pages.*') || request()->routeIs('admin.about-sections.*') || request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
+            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.categories.*') || request()->routeIs('admin.products.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('admin.pages.*') || request()->routeIs('admin.about-sections.*') || request()->routeIs('admin.bundles.*') || request()->routeIs('admin.galleries.*') ? 'active' : '' }}">
                 <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Content Management">
                     <i class="fas fa-folder-open"></i>
                     <span>Content Management</span>
@@ -81,6 +82,14 @@
                         </a>
                     </li>
                     @endcan
+                    @can('galleries.view')
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.galleries.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.galleries.*') ? 'active' : '' }}">
+                            <i class="fas fa-images"></i>
+                            <span>Galleries</span>
+                        </a>
+                    </li>
+                    @endcan
                 </ul>
             </li>
             @endif
@@ -89,10 +98,11 @@
                 $user = auth()->user();
                 $hasMarketing = $user && ($user->can('coupons.view') ||
                                 $user->can('testimonials.view') ||
-                                $user->can('special-offers.view'));
+                                $user->can('special-offers.view') ||
+                                $user->can('email-templates.view'));
             @endphp
             @if($hasMarketing)
-            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.coupons.*') || request()->routeIs('admin.testimonials.*') || request()->routeIs('admin.special-offers-banners.*') || request()->routeIs('admin.faqs.*') ? 'active' : '' }}">
+            <li class="sidebar-item sidebar-item--has-submenu {{ request()->routeIs('admin.coupons.*') || request()->routeIs('admin.testimonials.*') || request()->routeIs('admin.special-offers-banners.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
                 <a href="#" class="sidebar-link sidebar-link--has-submenu" data-tooltip="Marketing">
                     <i class="fas fa-bullhorn"></i>
                     <span>Marketing</span>
@@ -120,6 +130,14 @@
                         <a href="{{ route('admin.special-offers-banners.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.special-offers-banners.*') ? 'active' : '' }}">
                             <i class="fas fa-bullhorn"></i>
                             <span>Special Offers</span>
+                        </a>
+                    </li>
+                    @endcan
+                    @can('email-templates.view')
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.email-templates.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
+                            <i class="fas fa-envelope"></i>
+                            <span>Email Templates</span>
                         </a>
                     </li>
                     @endcan

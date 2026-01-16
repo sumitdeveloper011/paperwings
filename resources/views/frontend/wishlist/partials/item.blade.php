@@ -1,8 +1,9 @@
 {{-- Wishlist Item Partial --}}
-<div class="wishlist-sidebar-item" data-product-id="{{ $item->product_id }}">
+@if(!empty($item->product->uuid))
+<div class="wishlist-sidebar-item" data-product-uuid="{{ $item->product->uuid }}">
     <div class="wishlist-sidebar-item__checkbox">
         <label class="checkbox-label">
-            <input type="checkbox" class="wishlist-item-checkbox" data-product-id="{{ $item->product_id }}">
+            <input type="checkbox" class="wishlist-item-checkbox" data-product-uuid="{{ $item->product->uuid }}">
             <span class="checkmark"></span>
         </label>
     </div>
@@ -33,17 +34,22 @@
                 ${{ number_format($item->product->discount_price ?? $item->product->total_price, 2) }}
             </span>
         </div>
+        @if(!empty($item->product->uuid))
         <button class="wishlist-sidebar-item__add-cart btn btn-primary btn-sm" 
-                data-product-id="{{ $item->product_id }}" 
+                data-product-uuid="{{ $item->product->uuid }}" 
                 title="Add to Cart" 
                 style="margin-top: 0.5rem; width: 100%;">
-            <i class="fas fa-shopping-cart"></i> Add to Cart
+            <i class="fas fa-shopping-cart"></i> <span>Add to Cart</span>
         </button>
+        @endif
     </div>
+    @if(!empty($item->product->uuid))
     <button class="wishlist-sidebar-item__remove" 
-            data-product-id="{{ $item->product_id }}" 
+            data-product-uuid="{{ $item->product->uuid }}" 
             title="Remove">
         <i class="fas fa-times"></i>
     </button>
+    @endif
 </div>
+@endif
 

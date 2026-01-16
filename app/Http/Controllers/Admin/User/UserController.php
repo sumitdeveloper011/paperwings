@@ -45,7 +45,7 @@ class UserController extends Controller
         $users = $query->orderBy('created_at', 'desc')->paginate(15);
 
         // Return JSON for AJAX requests
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->expectsJson() || $request->has('ajax')) {
             return response()->json([
                 'html' => view('admin.user.partials.table', compact('users'))->render(),
                 'pagination' => view('admin.user.partials.pagination', compact('users'))->render()
@@ -203,10 +203,16 @@ class UserController extends Controller
     }
 
     // Update user status
-    public function updateStatus(Request $request, User $user): RedirectResponse
+    public function updateStatus(Request $request, User $user): RedirectResponse|JsonResponse
     {
         // Prevent updating admin users
         if ($user->hasAnyRole(['SuperAdmin', 'Admin'])) {
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot update admin user status.'
+                ], 403);
+            }
             return redirect()->route('admin.users.index')
                 ->with('error', 'Cannot update admin user status.');
         }
@@ -222,6 +228,14 @@ class UserController extends Controller
             'status' => $request->status,
             'updated_by' => Auth::id()
         ]);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User status updated successfully.'
+            ]);
+        }
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User status updated successfully.');

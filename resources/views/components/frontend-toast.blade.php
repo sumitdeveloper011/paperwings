@@ -1,13 +1,45 @@
+@php
+    $successMessage = session('success', null);
+    $errorMessage = session('error', null);
+    $warningMessage = session('warning', null);
+    $infoMessage = session('info', null);
+    
+    $successJson = $successMessage ? json_encode($successMessage) : 'null';
+    $errorJson = $errorMessage ? json_encode($errorMessage) : 'null';
+    $warningJson = $warningMessage ? json_encode($warningMessage) : 'null';
+    $infoJson = $infoMessage ? json_encode($infoMessage) : 'null';
+@endphp
+
 <div id="frontend-toast-container" class="frontend-toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 99999; max-width: 400px; pointer-events: none;"></div>
 
 <script>
 (function() {
     'use strict';
 
+    // Toast deduplication - prevent same message showing multiple times
+    const activeToasts = new Map();
+    const TOAST_DEDUP_WINDOW = 2000; // 2 seconds
+
     // Function to show toast
     window.showToast = function(message, type = 'success', duration = 5000) {
         type = type || 'success';
         duration = duration || 5000;
+
+        // Deduplication: Check if same message was shown recently
+        const toastKey = `${type}:${message}`;
+        const now = Date.now();
+        if (activeToasts.has(toastKey)) {
+            const lastShown = activeToasts.get(toastKey);
+            if (now - lastShown < TOAST_DEDUP_WINDOW) {
+                return; // Skip duplicate toast
+            }
+        }
+        activeToasts.set(toastKey, now);
+        
+        // Clean up old entries
+        setTimeout(() => {
+            activeToasts.delete(toastKey);
+        }, TOAST_DEDUP_WINDOW);
 
         let container = document.getElementById('frontend-toast-container');
         if (!container) {
@@ -102,6 +134,8 @@
                 if (toast.parentNode) {
                     toast.parentNode.removeChild(toast);
                 }
+                // Remove from active toasts when removed
+                activeToasts.delete(toastKey);
             }, 300);
         };
 
@@ -125,72 +159,24 @@
     }
 
     // Handle Laravel session messages
-    @if(session('success'))
-        showToast('{{ session('success') }}', 'success');
-    @endif
+    var sessionMessages = {
+        success: {!! $successJson !!},
+        error: {!! $errorJson !!},
+        warning: {!! $warningJson !!},
+        info: {!! $infoJson !!}
+    };
 
-    @if(session('error'))
-        showToast('{{ session('error') }}', 'error');
-    @endif
-
-    @if(session('warning'))
-        showToast('{{ session('warning') }}', 'warning');
-    @endif
-
-    @if(session('info'))
-        showToast('{{ session('info') }}', 'info');
-    @endif
-
-    // Handle validation errors
-    @if($errors->any())
-        @foreach($errors->all() as $error)
-            showToast('{{ $error }}', 'error');
-        @endforeach
-    @endif
+    if (sessionMessages.success) {
+        showToast(sessionMessages.success, 'success');
+    }
+    if (sessionMessages.error) {
+        showToast(sessionMessages.error, 'error');
+    }
+    if (sessionMessages.warning) {
+        showToast(sessionMessages.warning, 'warning');
+    }
+    if (sessionMessages.info) {
+        showToast(sessionMessages.info, 'info');
+    }
 })();
 </script>
-
-<style>
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.frontend-toast-container {
-    pointer-events: none;
-}
-
-.frontend-toast {
-    pointer-events: auto;
-}
-
-@media (max-width: 768px) {
-    #frontend-toast-container {
-        left: 20px;
-        right: 20px;
-        max-width: calc(100% - 40px);
-    }
-    
-    .frontend-toast {
-        min-width: auto;
-        max-width: 100%;
-    }
-}
-</style>

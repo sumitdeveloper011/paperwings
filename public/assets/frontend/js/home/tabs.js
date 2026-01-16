@@ -6,26 +6,38 @@
     'use strict';
 
     function initTabs() {
-        // Wait for jQuery
-        if (typeof jQuery === 'undefined') {
-            setTimeout(initTabs, 100);
+        const navItems = document.querySelectorAll('.cute-stationery__nav-item');
+        
+        if (navItems.length === 0) {
             return;
         }
 
-        const $ = jQuery;
+        navItems.forEach(navItem => {
+            navItem.addEventListener('click', function() {
+                const categorySlug = this.getAttribute('data-category');
+                if (!categorySlug) return;
 
-        $(document).ready(function() {
-            $('.cute-stationery__nav-item').on('click', function() {
-                const categorySlug = $(this).data('category');
-                $('.cute-stationery__nav-item').removeClass('active');
-                $(this).addClass('active');
-                $('.cute-stationery__tab-content').removeClass('active');
-                $('#' + categorySlug + '-content').addClass('active');
+                const allNavItems = document.querySelectorAll('.cute-stationery__nav-item');
+                const allTabContents = document.querySelectorAll('.cute-stationery__tab-content');
+                const targetContent = document.getElementById(categorySlug + '-content');
+
+                allNavItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                allTabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+
+                this.classList.add('active');
+                
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
             });
         });
     }
 
-    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initTabs);
     } else {
