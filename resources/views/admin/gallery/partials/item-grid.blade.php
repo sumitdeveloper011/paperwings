@@ -6,19 +6,10 @@
                  data-item-uuid="{{ $item->uuid }}"
                  draggable="true">
                 <div class="gallery-item-card__header">
-                    <div class="gallery-item-card__drag">
-                        <i class="fas fa-grip-vertical drag-handle" title="Drag to reorder"></i>
+                    <div class="gallery-item-card__drag" draggable="false">
+                        <i class="fas fa-grip-vertical drag-handle" title="Drag to reorder" draggable="false"></i>
                     </div>
                     <div class="gallery-item-card__actions">
-                        @can('gallery-items.edit')
-                        <button type="button" 
-                                class="btn btn-sm btn-outline-primary edit-item-btn" 
-                                data-item-uuid="{{ $item->uuid }}"
-                                data-item-type="{{ $item->type }}"
-                                title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        @endcan
                         @can('gallery-items.delete')
                         <form method="POST" 
                               action="{{ route('admin.gallery-items.destroy', [$gallery, $item]) }}"
@@ -37,18 +28,50 @@
                     @if($item->type === 'image')
                         @if($item->image_path)
                             <div class="gallery-item-card__image">
-                                <x-image-placeholder 
-                                    src="{{ $item->image_path }}" 
-                                    alt="{{ $item->alt_text ?? $item->title ?? 'Gallery Image' }}" />
+                                @php
+                                    $thumbnailPath = str_replace('/original/', '/thumbnails/', $item->image_path);
+                                    $thumbnailUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath) 
+                                        ? asset('storage/' . $thumbnailPath) 
+                                        : asset('storage/' . $item->image_path);
+                                @endphp
+                                <img src="{{ $thumbnailUrl }}" 
+                                     alt="{{ $item->alt_text ?? $item->title ?? 'Gallery Image' }}"
+                                     class="gallery-item-card__thumbnail"
+                                     onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
+                                @if($item->is_featured)
+                                    <div class="gallery-item-card__featured-badge">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                @else
+                                    @can('gallery-items.edit')
+                                    <button type="button" 
+                                            class="gallery-item-card__featured-btn set-featured-btn" 
+                                            data-item-uuid="{{ $item->uuid }}"
+                                            title="Set as Featured">
+                                        <i class="far fa-star"></i>
+                                    </button>
+                                    @endcan
+                                @endif
                             </div>
                         @endif
                     @else
                         <div class="gallery-item-card__video">
                             @if($item->thumbnail_path)
-                                <x-image-placeholder 
-                                    src="{{ $item->thumbnail_path }}" 
-                                    alt="{{ $item->title ?? 'Video Thumbnail' }}"
-                                    fallback="assets/images/video-placeholder.jpg" />
+                                @php
+                                    $thumbnailUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($item->thumbnail_path) 
+                                        ? asset('storage/' . $item->thumbnail_path) 
+                                        : null;
+                                @endphp
+                                @if($thumbnailUrl)
+                                    <img src="{{ $thumbnailUrl }}" 
+                                         alt="{{ $item->title ?? 'Video Thumbnail' }}"
+                                         class="gallery-item-card__thumbnail"
+                                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'gallery-item-card__video-placeholder\'><i class=\'fas fa-video\'></i></div>';">
+                                @else
+                                    <div class="gallery-item-card__video-placeholder">
+                                        <i class="fas fa-video"></i>
+                                    </div>
+                                @endif
                             @else
                                 <div class="gallery-item-card__video-placeholder">
                                     <i class="fas fa-video"></i>
@@ -57,31 +80,21 @@
                             <div class="gallery-item-card__video-badge">
                                 <i class="fas fa-play"></i>
                             </div>
+                            @if($item->is_featured)
+                                <div class="gallery-item-card__featured-badge">
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            @else
+                                @can('gallery-items.edit')
+                                <button type="button" 
+                                        class="gallery-item-card__featured-btn set-featured-btn" 
+                                        data-item-uuid="{{ $item->uuid }}"
+                                        title="Set as Featured">
+                                    <i class="far fa-star"></i>
+                                </button>
+                                @endcan
+                            @endif
                         </div>
-                    @endif
-                </div>
-                <div class="gallery-item-card__footer">
-                    <div class="gallery-item-card__info">
-                        @if($item->title)
-                            <strong class="gallery-item-card__title">{{ $item->title }}</strong>
-                        @endif
-                        <span class="gallery-item-card__type badge badge-{{ $item->type === 'image' ? 'primary' : 'info' }}">
-                            {{ ucfirst($item->type) }}
-                        </span>
-                    </div>
-                    @if($item->is_featured)
-                        <span class="gallery-item-card__featured badge badge-success">
-                            <i class="fas fa-star"></i> Featured
-                        </span>
-                    @else
-                        @can('gallery-items.edit')
-                        <button type="button" 
-                                class="btn btn-sm btn-outline-secondary set-featured-btn" 
-                                data-item-uuid="{{ $item->uuid }}"
-                                title="Set as Featured">
-                            <i class="far fa-star"></i>
-                        </button>
-                        @endcan
                     @endif
                 </div>
             </div>

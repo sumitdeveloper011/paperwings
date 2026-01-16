@@ -29,8 +29,8 @@ class StoreGalleryItemRequest extends FormRequest
         if ($type === 'image') {
             $rules['image'] = 'required|image|mimes:jpeg,jpg,png,gif,webp|max:5120';
         } else {
-            $rules['video_embed_code'] = 'required_without:video_url|string|max:2000';
-            $rules['video_url'] = 'required_without:video_embed_code|url|max:500';
+            $rules['video_embed_code'] = 'required_without:video_url|nullable|string|max:2000';
+            $rules['video_url'] = 'required_without:video_embed_code|nullable|url|max:500';
             $rules['thumbnail'] = 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048';
         }
 

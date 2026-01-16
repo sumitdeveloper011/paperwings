@@ -59,7 +59,11 @@ class GalleryController extends Controller
                 ->withPath($request->url())
                 ->appends($request->except('page'));
         } else {
-            $galleries = $this->galleryRepository->paginate(15);
+            $galleries = Gallery::query()
+                ->with(['creator', 'coverImage'])
+                ->withCount('items')
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
             $galleries->setPath($request->url());
             $galleries->appends($request->except('page'));
         }
@@ -181,5 +185,33 @@ class GalleryController extends Controller
 
         return redirect()->route('admin.galleries.index')
             ->with('success', 'Gallery deleted successfully!');
+    }
+
+    public function updateStatus(Request $request, Gallery $gallery): JsonResponse|RedirectResponse
+    {
+        $gallery = $this->galleryRepository->findByUuid($gallery->uuid);
+        
+        if (!$gallery) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive'
+        ]);
+
+        $gallery->update(['status' => $validated['status']]);
+
+        $statusLabel = ucfirst($validated['status']);
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Gallery set to {$statusLabel}",
+                'status' => $validated['status']
+            ]);
+        }
+
+        return redirect()->back()
+            ->with('success', "Gallery set to {$statusLabel}");
     }
 }

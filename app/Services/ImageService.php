@@ -892,9 +892,12 @@ class ImageService
                 return null;
             }
 
-            $width = 800;
-            $height = 600;
-            $quality = 85;
+            $config = config('images.gallery.medium', []);
+            $width = $config['width'] ?? 1000;
+            $height = $config['height'] ?? 1000;
+            $quality = $config['quality'] ?? 85;
+            $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+            $fit = $config['fit'] ?? 'cover';
 
             // Generate medium path (replace /original/ with /medium/)
             $mediumPath = str_replace('/original/', '/medium/', $originalImagePath);
@@ -910,8 +913,16 @@ class ImageService
             $manager = new ImageManager(new Driver());
             $image = $manager->read($originalFullPath);
 
-            $image->scale(width: $width, height: $height);
-            $image->crop($width, $height);
+            if ($preserveAspectRatio) {
+                $image->scale(width: $width, height: $height);
+            } else {
+                if ($fit === 'cover') {
+                    $image->scale(width: $width, height: $height);
+                    $image->crop($width, $height);
+                } else {
+                    $image->resize($width, $height);
+                }
+            }
 
             $image->toJpeg($quality)->save($mediumFullPath);
 
@@ -934,8 +945,42 @@ class ImageService
      */
     protected function resizeOriginalImage(string $originalImagePath, string $baseFolder): bool
     {
-        // For now, keep original size for other images
-        // Can be extended later if needed
+        if ($baseFolder === 'galleries') {
+            try {
+                if (!Storage::disk('public')->exists($originalImagePath)) {
+                    return false;
+                }
+
+                $config = config('images.gallery.original', []);
+                $width = $config['width'] ?? 2000;
+                $height = $config['height'] ?? 2000;
+                $quality = $config['quality'] ?? 90;
+                $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+                $fit = $config['fit'] ?? 'cover';
+
+                $originalFullPath = Storage::disk('public')->path($originalImagePath);
+                $manager = new ImageManager(new Driver());
+                $image = $manager->read($originalFullPath);
+
+                if ($preserveAspectRatio) {
+                    $image->scale(width: $width, height: $height);
+                } else {
+                    if ($fit === 'cover') {
+                        $image->scale(width: $width, height: $height);
+                        $image->crop($width, $height);
+                    } else {
+                        $image->resize($width, $height);
+                    }
+                }
+
+                $image->toJpeg($quality)->save($originalFullPath);
+                return true;
+            } catch (\Exception $e) {
+                Log::error('Gallery original image resize failed: ' . $e->getMessage());
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -1013,6 +1058,13 @@ class ImageService
                 $config = config('images.special-offers.thumbnail', []);
                 $thumbnailWidth = $config['width'] ?? 480;
                 $thumbnailHeight = $config['height'] ?? 112;
+                $quality = $config['quality'] ?? 85;
+                $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
+                $fit = $config['fit'] ?? 'cover';
+            } elseif ($baseFolder === 'galleries') {
+                $config = config('images.gallery.thumbnail', []);
+                $thumbnailWidth = $config['width'] ?? 300;
+                $thumbnailHeight = $config['height'] ?? 300;
                 $quality = $config['quality'] ?? 85;
                 $preserveAspectRatio = $config['preserve_aspect_ratio'] ?? false;
                 $fit = $config['fit'] ?? 'cover';

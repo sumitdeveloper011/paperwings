@@ -139,21 +139,19 @@ class RegionController extends Controller
             'status' => 'required|in:0,1',
         ]);
 
-        // Cast status to integer
         $status = (int) $validated['status'];
         $region->update(['status' => $status]);
 
-        $statusText = $status == 1 ? 'activated' : 'deactivated';
+        $statusLabel = $status == 1 ? 'Active' : 'Inactive';
 
-        // Return JSON for AJAX requests
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Region {$statusText} successfully!"
+                'message' => "Region set to {$statusLabel}"
             ]);
         }
 
         return redirect()->route('admin.regions.index')
-            ->with('success', "Region {$statusText} successfully!");
+            ->with('success', "Region set to {$statusLabel}");
     }
 }

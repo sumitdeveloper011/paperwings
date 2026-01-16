@@ -2597,7 +2597,7 @@ html.login-page-html {
 
 .form-input-modern {
     width: 100%;
-    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    padding: 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     font-size: 0.875rem;

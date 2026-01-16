@@ -212,15 +212,16 @@ class PageController extends Controller
 
         $page->update(['status' => $validated['status']]);
 
-        // Handle AJAX requests
+        $statusLabel = $validated['status'] == 1 ? 'Active' : 'Inactive';
+
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Page status updated successfully!'
+                'message' => "Page set to {$statusLabel}"
             ]);
         }
 
         return redirect()->back()
-                        ->with('success', 'Page status updated successfully!');
+                        ->with('success', "Page set to {$statusLabel}");
     }
 }

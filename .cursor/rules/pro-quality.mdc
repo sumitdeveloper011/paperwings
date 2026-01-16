@@ -1,0 +1,14 @@
+---
+title: Professional Quality Standards
+description: General professional development quality guidelines
+globs: 
+alwaysApply: true
+---
+
+# GENERAL PRO QUALITY
+
+- Avoid over-engineering
+- Suggest refactoring or architectural improvements when relevant
+- Write code assuming another senior developer will maintain it
+- Optimize for team readability and collaboration
+- Ask clarifying questions only if requirements are unclear

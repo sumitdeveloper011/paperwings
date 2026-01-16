@@ -113,7 +113,7 @@
                                         <form method="POST" action="{{ route('admin.subcategories.updateStatus', $subCategory) }}" class="status-form">
                                             @csrf
                                             @method('PATCH')
-                                            <select name="status" class="status-select" onchange="this.form.submit()">
+                                            <select name="status" class="status-select" data-subcategory-id="{{ $subCategory->id }}">
                                                 <option value="1" {{ $subCategory->status === '1' ? 'selected' : '' }}>Active</option>
                                                 <option value="0" {{ $subCategory->status === '0' ? 'selected' : '' }}>Inactive</option>
                                             </select>
@@ -191,4 +191,74 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const subcategoryId = select.getAttribute('data-subcategory-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                if (data && data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update subcategory status', 'error', 5000);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush
 @endsection

@@ -167,7 +167,7 @@ class SubCategoryController extends Controller
     }
 
     // Update subcategory status
-    public function updateStatus(Request $request, SubCategory $subcategory): RedirectResponse
+    public function updateStatus(Request $request, SubCategory $subcategory): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:1,0'
@@ -175,7 +175,16 @@ class SubCategoryController extends Controller
 
         $this->subCategoryRepository->updateStatus($subcategory, $validated['status']);
 
+        $statusLabel = $validated['status'] == 1 ? 'Active' : 'Inactive';
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "SubCategory set to {$statusLabel}"
+            ]);
+        }
+
         return redirect()->back()
-                        ->with('success', 'SubCategory status updated successfully!');
+                        ->with('success', "SubCategory set to {$statusLabel}");
     }
 }

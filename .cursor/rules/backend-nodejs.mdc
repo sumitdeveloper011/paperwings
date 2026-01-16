@@ -1,0 +1,14 @@
+---
+alwaysApply: true
+---
+# BACKEND – NODE.JS
+
+- Use clean layered architecture (routes, controllers, services)
+- Keep routes thin; logic belongs in services
+- Use async/await consistently
+- Validate and sanitize all inputs
+- Handle errors centrally
+- Avoid duplicated logic (extract helpers / utils)
+- Never block the event loop
+- Use environment variables properly
+- Follow RESTful API standards

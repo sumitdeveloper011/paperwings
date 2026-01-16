@@ -27,6 +27,7 @@ class GalleryRepository implements GalleryRepositoryInterface
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->model->with(['creator', 'coverImage', 'items'])
+            ->withCount('items')
             ->orderBy('category')
             ->orderBy('name')
             ->paginate($perPage);

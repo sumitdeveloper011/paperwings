@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+# CSS / STYLING
+
+- No inline CSS
+- No CSS inside JavaScript / JSX files
+- Reuse styles and avoid duplication
+- Remove unused CSS
+- Follow consistent naming (BEM or similar)
+- Ensure responsive, mobile-first design
+- Maintain design consistency across the application

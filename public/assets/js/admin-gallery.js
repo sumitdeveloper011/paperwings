@@ -57,28 +57,60 @@
 
             let draggedElement = null;
 
-            itemGrid.addEventListener('dragstart', function(e) {
-                if (e.target.closest('.gallery-item-card')) {
-                    draggedElement = e.target.closest('.gallery-item-card');
-                    draggedElement.style.opacity = '0.5';
-                }
-            });
+            // Set up drag handlers on each card individually
+            const cards = itemGrid.querySelectorAll('.gallery-item-card');
+            cards.forEach((card) => {
+                // Make sure card is draggable
+                card.setAttribute('draggable', 'true');
+                
+                // Prevent buttons and forms from starting drag
+                const buttons = card.querySelectorAll('button, form');
+                buttons.forEach(btn => {
+                    btn.setAttribute('draggable', 'false');
+                    btn.addEventListener('mousedown', function(e) {
+                        e.stopPropagation();
+                    });
+                    btn.addEventListener('dragstart', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }, true);
+                });
 
-            itemGrid.addEventListener('dragend', function(e) {
-                if (draggedElement) {
-                    draggedElement.style.opacity = '1';
-                    draggedElement = null;
-                }
+                // Handle drag start - allow drag from anywhere except buttons/forms
+                card.addEventListener('dragstart', function(e) {
+                    // Don't start drag if clicking on button or form
+                    const target = e.target;
+                    if (target.closest('button, form, .gallery-item-card__actions')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                    
+                    draggedElement = this;
+                    this.style.opacity = '0.5';
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', this.dataset.itemId || '');
+                }, false);
+
+                card.addEventListener('dragend', function(e) {
+                    if (draggedElement) {
+                        draggedElement.style.opacity = '1';
+                        draggedElement.classList.remove('dragging');
+                        draggedElement = null;
+                    }
+                });
             });
 
             itemGrid.addEventListener('dragover', function(e) {
                 e.preventDefault();
-                const afterElement = AdminGallery.getDragAfterElement(itemGrid, e.clientY);
-                const dragging = document.querySelector('.gallery-item-card.dragging');
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
                 
-                if (dragging == null && draggedElement) {
-                    draggedElement.classList.add('dragging');
-                }
+                if (!draggedElement) return;
+
+                const afterElement = AdminGallery.getDragAfterElement(itemGrid, e.clientY);
                 
                 if (afterElement == null) {
                     itemGrid.appendChild(draggedElement);
@@ -89,12 +121,11 @@
 
             itemGrid.addEventListener('drop', function(e) {
                 e.preventDefault();
-                const dragging = document.querySelector('.gallery-item-card.dragging');
-                if (dragging) {
-                    dragging.classList.remove('dragging');
-                }
+                e.stopPropagation();
+                
+                if (!draggedElement) return;
 
-                const items = Array.from(itemGrid.children).map((item, index) => ({
+                const items = Array.from(itemGrid.querySelectorAll('.gallery-item-card')).map((item, index) => ({
                     id: parseInt(item.dataset.itemId),
                     order: index + 1
                 }));
@@ -109,6 +140,9 @@
                     })
                     .catch(error => {
                         console.error('Reorder error:', error);
+                        if (typeof showToast !== 'undefined') {
+                            showToast('Failed to reorder items. Please try again.', 'error');
+                        }
                     });
             });
         },
@@ -118,9 +152,15 @@
          */
         getDragAfterElement: function(container, y) {
             const draggableElements = [...container.querySelectorAll('.gallery-item-card:not(.dragging)')];
+            
+            if (draggableElements.length === 0) {
+                return null;
+            }
+
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
+                
                 if (offset < 0 && offset > closest.offset) {
                     return { offset: offset, element: child };
                 } else {

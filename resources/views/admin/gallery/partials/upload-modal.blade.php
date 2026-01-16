@@ -16,17 +16,18 @@
                         <label for="image" class="form-label-modern">
                             Image File <span class="required">*</span>
                         </label>
-                        <div class="input-wrapper">
+                        <x-image-requirements type="gallery" />
+                        <div class="file-upload-wrapper">
                             <input type="file"
-                                   class="form-input-modern @error('image') is-invalid @enderror"
+                                   class="file-upload-input @error('image') is-invalid @enderror"
                                    id="image"
                                    name="image"
                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                                    required>
-                        </div>
-                        <div class="form-hint">
-                            <i class="fas fa-info-circle"></i>
-                            Accepted formats: JPEG, JPG, PNG, GIF, WebP. Max size: 5MB
+                            <label for="image" class="file-upload-label">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Choose Image</span>
+                            </label>
                         </div>
                         @error('image')
                             <div class="form-error">
@@ -36,53 +37,84 @@
                         @enderror
                     </div>
 
+                    <div class="form-group-modern" id="imagePreview" style="display: none;">
+                        <label class="form-label-modern">Image Preview</label>
+                        <div class="image-preview">
+                            <img id="previewImg" src="" alt="Preview" class="image-preview__img">
+                            <button type="button" class="image-preview__remove" onclick="removeImagePreview()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="form-group-modern">
                         <label for="image_title" class="form-label-modern">
                             Title
                         </label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-heading input-icon"></i>
-                            <input type="text"
-                                   class="form-input-modern"
-                                   id="image_title"
-                                   name="title"
-                                   placeholder="Enter image title">
-                        </div>
+                        <input type="text"
+                               class="form-input-modern @error('title') is-invalid @enderror"
+                               id="image_title"
+                               name="title"
+                               value="{{ old('title') }}"
+                               placeholder="Enter image title"
+                               maxlength="255">
+                        @error('title')
+                            <div class="form-error">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ $message }}
+                            </div>
+                        @enderror
                     </div>
 
                     <div class="form-group-modern">
                         <label for="image_description" class="form-label-modern">
                             Description
                         </label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-align-left input-icon"></i>
-                            <textarea class="form-input-modern"
-                                      id="image_description"
-                                      name="description"
-                                      rows="3"
-                                      placeholder="Enter image description"></textarea>
-                        </div>
+                        <textarea class="form-input-modern @error('description') is-invalid @enderror"
+                                  id="image_description"
+                                  name="description"
+                                  rows="3"
+                                  placeholder="Enter image description"
+                                  maxlength="2000">{{ old('description') }}</textarea>
+                        @error('description')
+                            <div class="form-error">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ $message }}
+                            </div>
+                        @enderror
                     </div>
 
                     <div class="form-group-modern">
                         <label for="image_alt_text" class="form-label-modern">
                             Alt Text
                         </label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-tag input-icon"></i>
-                            <input type="text"
-                                   class="form-input-modern"
-                                   id="image_alt_text"
-                                   name="alt_text"
-                                   placeholder="Enter alt text for accessibility">
-                        </div>
+                        <input type="text"
+                               class="form-input-modern @error('alt_text') is-invalid @enderror"
+                               id="image_alt_text"
+                               name="alt_text"
+                               value="{{ old('alt_text') }}"
+                               placeholder="Enter alt text for accessibility"
+                               maxlength="255">
+                        @error('alt_text')
+                            <div class="form-error">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ $message }}
+                            </div>
+                        @enderror
                     </div>
 
                     <div class="form-group-modern">
-                        <label class="form-label-modern">
-                            <input type="checkbox" name="is_featured" value="1" id="image_is_featured">
-                            Set as Featured Image
-                        </label>
+                        <div class="form-check">
+                            <input type="checkbox" 
+                                   name="is_featured" 
+                                   value="1" 
+                                   id="image_is_featured"
+                                   class="form-check-input"
+                                   {{ old('is_featured') ? 'checked' : '' }}>
+                            <label class="form-check-label" for="image_is_featured">
+                                Set as Featured Image
+                            </label>
+                        </div>
                         <div class="form-hint">
                             <i class="fas fa-info-circle"></i>
                             Featured image will be used as gallery cover
@@ -100,3 +132,38 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+
+    if (imageInput && imagePreview && previewImg) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.style.display = 'none';
+            }
+        });
+    }
+});
+
+function removeImagePreview() {
+    const imageInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+    if (imageInput) {
+        imageInput.value = '';
+    }
+    if (imagePreview) {
+        imagePreview.style.display = 'none';
+    }
+}
+</script>

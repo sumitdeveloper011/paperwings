@@ -548,15 +548,16 @@ class BundleController extends Controller
         $request->validate(['status' => 'required|in:1,0']);
         $bundle->update(['status' => $request->status]);
 
-        // Handle AJAX requests
+        $statusLabel = $request->status == 1 ? 'Active' : 'Inactive';
+
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Bundle status updated successfully!',
+                'message' => "Bundle set to {$statusLabel}",
                 'status' => $request->status
             ]);
         }
 
-        return redirect()->back()->with('success', 'Bundle status updated successfully!');
+        return redirect()->back()->with('success', "Bundle set to {$statusLabel}");
     }
 }

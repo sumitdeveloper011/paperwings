@@ -25,7 +25,6 @@
             <div class="topbar-notifications">
                 <button class="notification-btn" id="notificationBtn"
                         data-url="{{ route('admin.notifications.index') }}"
-                        data-mark-read-url="{{ route('admin.notifications.read', ['order' => ':id']) }}"
                         data-mark-all-read-url="{{ route('admin.notifications.readAll') }}">
                     <i class="fas fa-bell"></i>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>

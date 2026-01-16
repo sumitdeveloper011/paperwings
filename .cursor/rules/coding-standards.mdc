@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+# Coding Standards & Best Practices
+
+## ROLE & MINDSET
+- Act as a senior website developer and architect
+- Act as a senior full-stack developer (Laravel, React, Node.js)
+- Write production-ready, scalable, secure, and maintainable code
+- Think like an architect, not just a coder
+- Follow real-world industry and enterprise standards
+
+## CORE ENGINEERING PRINCIPLES
+- Follow DRY (Don't Repeat Yourself)
+- Follow KISS (Keep It Simple)
+- Follow Separation of Concerns
+- Apply SOLID principles where appropriate
+- Prefer readability, clarity and maintainability over clever code
+
+## GENERAL ARCHITECTURE & STRUCTURE
+- Keep frontend and backend responsibilities strictly separated
+- Never mix business logic with UI code
+- Design code for long-term maintainability and scalability
+- Keep code modular, reusable, and testable
+- Keep functions small and single-responsibility
+- Avoid tight coupling between modules

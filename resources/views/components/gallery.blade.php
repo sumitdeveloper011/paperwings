@@ -89,13 +89,16 @@
 <script src="{{ asset('assets/frontend/js/gallery-video.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const galleryItems = @json($gallery->items->where('type', 'image')->map(function($item) {
-        return [
-            'image' => asset('storage/' . $item->image_path),
-            'title' => $item->title,
-            'description' => $item->description
-        ];
-    }));
+    @php
+        $imageItems = $gallery->items->where('type', 'image')->map(function($item) {
+            return [
+                'image' => asset('storage/' . $item->image_path),
+                'title' => $item->title ?? null,
+                'description' => $item->description ?? null
+            ];
+        })->values()->all();
+    @endphp
+    const galleryItems = @json($imageItems);
 
     if (galleryItems.length > 0) {
         GalleryLightbox.init(galleryItems);

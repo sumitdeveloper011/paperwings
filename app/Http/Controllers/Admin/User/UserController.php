@@ -223,22 +223,23 @@ class UserController extends Controller
 
         $user->update(['status' => $request->status]);
 
+        $statusLabel = $request->status == 1 ? 'Active' : 'Inactive';
+
         Log::info('User status updated', [
             'user_id' => $user->id,
             'status' => $request->status,
             'updated_by' => Auth::id()
         ]);
 
-        // Return JSON for AJAX requests
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'User status updated successfully.'
+                'message' => "User set to {$statusLabel}"
             ]);
         }
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'User status updated successfully.');
+            ->with('success', "User set to {$statusLabel}");
     }
 
     // Delete user

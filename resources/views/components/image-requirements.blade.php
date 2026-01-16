@@ -81,6 +81,12 @@
                 'thumbnail' => '400x400 pixels (auto-generated)',
                 'tip' => 'Use square images (1:1 ratio) for best results.',
             ],
+            'gallery' => [
+                'original' => '2000x2000 pixels (square)',
+                'medium' => '1000x1000 pixels (auto-generated)',
+                'thumbnail' => '300x300 pixels (auto-generated)',
+                'tip' => 'Use high-quality square images (1:1 ratio). Images will be automatically resized to 2000x2000 (main), 1000x1000 (medium), and 300x300 (thumbnail).',
+            ],
             'default' => [
                 'original' => 'Original size maintained',
                 'thumbnail' => '400x400 pixels (auto-generated)',
@@ -105,13 +111,13 @@
                     @if(!isset($config['hide_format']) || !$config['hide_format'])
                         @php
                             $formats = ['JPEG', 'PNG', 'JPG', 'GIF'];
-                            if (in_array($type, ['product', 'bundle', 'page', 'about-section', 'testimonial', 'special-offers', 'user', 'logo', 'icon'])) {
+                            if (in_array($type, ['product', 'bundle', 'page', 'about-section', 'testimonial', 'special-offers', 'user', 'logo', 'icon', 'gallery'])) {
                                 $formats[] = 'WEBP';
                             }
                             $formatString = implode(', ', $formats);
                         @endphp
                         <li><strong>Format:</strong> {{ $formatString }} (validated on upload)</li>
-                        <li><strong>Max Size:</strong> 2MB (validated on upload)</li>
+                        <li><strong>Max Size:</strong> {{ $type === 'gallery' ? '5MB' : '2MB' }} (validated on upload)</li>
                     @endif
                     @if(isset($config['tip']))
                         <li><strong>Tip:</strong> {{ $config['tip'] }}</li>

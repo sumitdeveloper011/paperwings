@@ -214,6 +214,39 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Gallery Image Settings
+    |--------------------------------------------------------------------------
+    | Dimensions optimized for gallery display:
+    | - Original (Main): 2000x2000px for gallery images
+    | - Medium: 1000x1000px for medium-sized displays
+    | - Thumbnail: 300x300px for admin listings and thumbnails
+    */
+    'gallery' => [
+        'original' => [
+            'width' => 2000,
+            'height' => 2000,
+            'quality' => 90,
+            'preserve_aspect_ratio' => false, // Force square crop for consistency
+            'fit' => 'cover', // Cover ensures image fills dimensions
+        ],
+        'medium' => [
+            'width' => 1000,
+            'height' => 1000,
+            'quality' => 85,
+            'preserve_aspect_ratio' => false, // Force square crop for consistency
+            'fit' => 'cover', // Cover ensures image fills dimensions
+        ],
+        'thumbnail' => [
+            'width' => 300,
+            'height' => 300,
+            'quality' => 85,
+            'preserve_aspect_ratio' => false, // Force square crop for consistency
+            'fit' => 'cover', // Cover ensures image fills dimensions
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Testimonial Image Settings
     |--------------------------------------------------------------------------
     | Dimensions optimized for testimonial profile images:

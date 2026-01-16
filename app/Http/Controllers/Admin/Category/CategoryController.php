@@ -322,15 +322,17 @@ class CategoryController extends Controller
 
         $this->categoryRepository->updateStatus($category, $validated['status']);
 
+        $statusLabel = $validated['status'] == 1 ? 'Active' : 'Inactive';
+
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Category status updated successfully!',
+                'message' => "Category set to {$statusLabel}",
                 'status' => $validated['status']
             ]);
         }
 
         return redirect()->back()
-            ->with('success', 'Category status updated successfully!');
+            ->with('success', "Category set to {$statusLabel}");
     }
 }

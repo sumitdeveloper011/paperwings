@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+# COMMENTING & DOCUMENTATION (6+ YEARS STYLE)
+
+- Avoid unnecessary inline comments inside functions or methods
+- Never explain obvious code with comments
+- Do not narrate code line-by-line
+- Prefer self-explanatory code with good naming
+- Use DocBlocks (PHPDoc / JSDoc) for functions, methods, and services
+- DocBlocks should describe purpose, parameters, and return values only
+- Do not repeat implementation details in DocBlocks
+- Avoid DocBlocks for simple private helpers unless necessary
+- Comments are allowed only for complex business logic, edge cases, performance decisions, or non-obvious behavior
+- If a comment is required to understand code, refactor the code first
+- Comments should explain "why", not "what"

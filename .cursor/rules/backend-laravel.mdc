@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+# BACKEND – LARAVEL
+
+- Follow MVC strictly
+- Keep controllers thin
+- Move business logic to Services / Actions
+- Use Form Request classes for validation
+- Never write business logic inside routes
+- Use Eloquent relationships and scopes properly
+- Avoid duplicated queries and logic
+- Use config files instead of hardcoded values
+- Follow Laravel naming conventions
+- Handle errors and exceptions gracefully
+- Use migrations, seeders, and policies properly
+- Follow RESTful API standards
+- Always check how other sections implement a feature before creating new code
+- Match existing code patterns and structure
+- Verify consistency with similar sections
+- Always Use DRY Appraoch

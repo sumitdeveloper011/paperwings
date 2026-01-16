@@ -1,0 +1,15 @@
+---
+title: Security Best Practices
+description: Security guidelines and OWASP standards
+globs: 
+alwaysApply: true
+---
+
+# SECURITY
+
+- Never trust user input
+- Always validate and sanitize data
+- Avoid exposing sensitive information
+- Follow OWASP security best practices
+- Protect against XSS, CSRF, SQL/NoSQL injection
+- Secure authentication and authorization flows

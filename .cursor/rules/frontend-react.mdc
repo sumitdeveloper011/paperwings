@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+# FRONTEND – REACT
+
+- Use functional components only
+- Never use inline CSS
+- Never write CSS inside JavaScript / JSX files
+- Always place styles in dedicated .css / .scss files
+- Use class-based styling only
+- Keep components presentational and reusable
+- Move logic into hooks, services, or helper files
+- Avoid duplicated UI logic (strict DRY)
+- Keep state minimal and predictable
+- Avoid unnecessary re-renders
+- Follow a clean folder structure (components, hooks, utils, services)
+- Avoid hardcoded strings and values
+- Follow accessibility (A11Y) best practices

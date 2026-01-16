@@ -165,16 +165,17 @@ class SliderController extends Controller
 
         $this->sliderRepository->updateStatus($slider, $validated['status']);
 
-        // Handle AJAX requests
+        $statusLabel = $validated['status'] == 1 ? 'Active' : 'Inactive';
+
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Slider status updated successfully!'
+                'message' => "Slider set to {$statusLabel}"
             ]);
         }
 
         return redirect()->back()
-                        ->with('success', 'Slider status updated successfully!');
+                        ->with('success', "Slider set to {$statusLabel}");
     }
 
     // Move slider up in order

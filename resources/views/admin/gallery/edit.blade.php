@@ -42,16 +42,13 @@
                             <label for="name" class="form-label-modern">
                                 Gallery Name <span class="required">*</span>
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-heading input-icon"></i>
-                                <input type="text"
-                                       class="form-input-modern @error('name') is-invalid @enderror"
-                                       id="name"
-                                       name="name"
-                                       value="{{ old('name', $gallery->name) }}"
-                                       placeholder="e.g., Product Showcase"
-                                       required>
-                            </div>
+                            <input type="text"
+                                   class="form-input-modern @error('name') is-invalid @enderror"
+                                   id="name"
+                                   name="name"
+                                   value="{{ old('name', $gallery->name) }}"
+                                   placeholder="e.g., Product Showcase"
+                                   required>
                             @error('name')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -64,14 +61,11 @@
                             <label for="description" class="form-label-modern">
                                 Description
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-align-left input-icon"></i>
-                                <textarea class="form-input-modern @error('description') is-invalid @enderror"
-                                          id="description"
-                                          name="description"
-                                          rows="4"
-                                          placeholder="Enter gallery description...">{{ old('description', $gallery->description) }}</textarea>
-                            </div>
+                            <textarea class="form-input-modern @error('description') is-invalid @enderror"
+                                      id="description"
+                                      name="description"
+                                      rows="4"
+                                      placeholder="Enter gallery description...">{{ old('description', $gallery->description) }}</textarea>
                             @error('description')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -84,20 +78,17 @@
                             <label for="category" class="form-label-modern">
                                 Category <span class="required">*</span>
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-folder input-icon"></i>
-                                <select class="form-input-modern @error('category') is-invalid @enderror"
-                                        id="category"
-                                        name="category"
-                                        required>
-                                    <option value="">Select Category</option>
-                                    @foreach($categories as $key => $label)
-                                        <option value="{{ $key }}" {{ old('category', $gallery->category) === $key ? 'selected' : '' }}>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            <select class="form-input-modern @error('category') is-invalid @enderror"
+                                    id="category"
+                                    name="category"
+                                    required>
+                                <option value="">Select Category</option>
+                                @foreach($categories as $key => $label)
+                                    <option value="{{ $key }}" {{ old('category', $gallery->category) === $key ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
                             @error('category')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -110,15 +101,12 @@
                             <label for="status" class="form-label-modern">
                                 Status
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-toggle-on input-icon"></i>
-                                <select class="form-input-modern @error('status') is-invalid @enderror"
-                                        id="status"
-                                        name="status">
-                                    <option value="active" {{ old('status', $gallery->status) === 'active' ? 'selected' : '' }}>Active</option>
-                                    <option value="inactive" {{ old('status', $gallery->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                                </select>
-                            </div>
+                            <select class="form-input-modern @error('status') is-invalid @enderror"
+                                    id="status"
+                                    name="status">
+                                <option value="active" {{ old('status', $gallery->status) === 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="inactive" {{ old('status', $gallery->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                            </select>
                             @error('status')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -147,4 +135,10 @@
         </div>
     </div>
 </div>
+
+<style>
+.form-input-modern {
+    padding-left: 1rem !important;
+}
+</style>
 @endsection

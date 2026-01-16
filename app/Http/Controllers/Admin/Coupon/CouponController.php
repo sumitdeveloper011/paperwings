@@ -130,17 +130,16 @@ class CouponController extends Controller
 
         $coupon->update(['status' => $request->status]);
 
-        $statusText = $request->status == 1 ? 'activated' : 'deactivated';
+        $statusLabel = $request->status == 1 ? 'Active' : 'Inactive';
 
-        // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Coupon {$statusText} successfully!"
+                'message' => "Coupon set to {$statusLabel}"
             ]);
         }
 
         return redirect()->route('admin.coupons.index')
-            ->with('success', "Coupon {$statusText} successfully!");
+            ->with('success', "Coupon set to {$statusLabel}");
     }
 }

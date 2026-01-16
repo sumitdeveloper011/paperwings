@@ -213,6 +213,28 @@ class EmailTemplateController extends Controller
         ]);
     }
 
+    public function updateStatus(Request $request, EmailTemplate $emailTemplate): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'is_active' => 'required|boolean',
+        ]);
+
+        $emailTemplate->update(['is_active' => $validated['is_active']]);
+
+        $statusLabel = $validated['is_active'] ? 'Active' : 'Inactive';
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Email template set to {$statusLabel}",
+                'status' => $validated['is_active']
+            ]);
+        }
+
+        return redirect()->back()
+                        ->with('success', "Email template set to {$statusLabel}");
+    }
+
     public function sendTest(Request $request, EmailTemplate $emailTemplate): RedirectResponse
     {
         $request->validate([

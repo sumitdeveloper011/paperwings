@@ -1,0 +1,14 @@
+---
+title: Response & Summary Control
+description: Guidelines for AI response formatting and summaries
+globs: 
+alwaysApply: true
+---
+
+# SUMMARY & RESPONSE CONTROL
+
+- Do not provide summaries automatically after completing a task
+- Do not add recap or "final summary" sections by default
+- Provide a summary only when explicitly requested by the user
+- Focus on delivering the task output, not explanations
+- Avoid over-explaining unless asked

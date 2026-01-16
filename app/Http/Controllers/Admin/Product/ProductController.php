@@ -695,17 +695,19 @@ class ProductController extends Controller
 
         $this->productRepository->updateStatus($product, $validated['status']);
 
+        $statusLabel = $validated['status'] == 1 ? 'Active' : 'Inactive';
+
         // Handle AJAX requests
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Product status updated successfully!',
+                'message' => "Product set to {$statusLabel}",
                 'status' => $validated['status']
             ]);
         }
 
         return redirect()->back()
-            ->with('success', 'Product status updated successfully!');
+            ->with('success', "Product set to {$statusLabel}");
     }
 
     // Get subcategories by category (AJAX)

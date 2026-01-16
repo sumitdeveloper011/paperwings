@@ -111,21 +111,19 @@ class FaqController extends Controller
             'status' => 'required|in:0,1'
         ]);
 
-        // Cast status to integer
         $status = (int) $validated['status'];
         $faq->update(['status' => $status]);
 
-        $statusText = $status == 1 ? 'activated' : 'deactivated';
+        $statusLabel = $status == 1 ? 'Active' : 'Inactive';
 
-        // Return JSON for AJAX requests
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "FAQ {$statusText} successfully!"
+                'message' => "FAQ set to {$statusLabel}"
             ]);
         }
 
         return redirect()->back()
-            ->with('success', "FAQ {$statusText} successfully!");
+            ->with('success', "FAQ set to {$statusLabel}");
     }
 }

@@ -171,6 +171,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::middleware('permission:email-templates.edit')->group(function () {
         Route::get('email-templates/{emailTemplate}/edit', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
         Route::put('email-templates/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
+        Route::patch('email-templates/{emailTemplate}/status', [EmailTemplateController::class, 'updateStatus'])->name('email-templates.updateStatus');
         Route::post('email-templates/{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('email-templates.duplicate');
         Route::post('email-templates/{emailTemplate}/send-test', [EmailTemplateController::class, 'sendTest'])->name('email-templates.sendTest');
     });
@@ -190,6 +191,7 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     Route::middleware('permission:galleries.edit')->group(function () {
         Route::get('galleries/{gallery}/edit', [GalleryController::class, 'edit'])->name('galleries.edit');
         Route::put('galleries/{gallery}', [GalleryController::class, 'update'])->name('galleries.update');
+        Route::patch('galleries/{gallery}/status', [GalleryController::class, 'updateStatus'])->name('galleries.updateStatus');
     });
     Route::middleware('permission:galleries.delete')->group(function () {
         Route::delete('galleries/{gallery}', [GalleryController::class, 'destroy'])->name('galleries.destroy');

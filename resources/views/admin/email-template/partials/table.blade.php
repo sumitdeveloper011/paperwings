@@ -46,22 +46,27 @@
                             </div>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-{{ $template->category === 'system' ? 'danger' : ($template->category === 'order' ? 'primary' : ($template->category === 'user' ? 'info' : 'warning')) }}">
+                            <span class="badge badge--{{ $template->category === 'system' ? 'danger' : ($template->category === 'order' ? 'primary' : ($template->category === 'user' ? 'info' : 'warning')) }}">
                                 {{ ucfirst($template->category) }}
                             </span>
                         </td>
                         <td class="modern-table__td">
-                            <span class="text-muted" style="max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <span class="text-muted" style="max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: normal; word-wrap: break-word;">
                                 {{ $template->subject }}
                             </span>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-{{ $template->is_active ? 'success' : 'secondary' }}">
-                                {{ $template->is_active ? 'Active' : 'Inactive' }}
-                            </span>
+                            <form method="POST" action="{{ route('admin.email-templates.updateStatus', $template) }}" class="status-form">
+                                @csrf
+                                @method('PATCH')
+                                <select name="is_active" class="status-select" data-template-id="{{ $template->id }}">
+                                    <option value="1" {{ $template->is_active ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ !$template->is_active ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                            </form>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-info">v{{ $template->version }}</span>
+                            <span class="badge badge--info">v{{ $template->version }}</span>
                         </td>
                         <td class="modern-table__td">
                             <div class="category-date">

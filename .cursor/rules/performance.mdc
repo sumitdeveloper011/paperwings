@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+---
+# PERFORMANCE
+
+- Avoid unnecessary database queries
+- Optimize API responses
+- Implement caching where appropriate
+- Lazy-load frontend assets when possible
+- Avoid heavy libraries unless justified
+- Keep bundle size small

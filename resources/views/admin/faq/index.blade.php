@@ -198,35 +198,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // AJAX status update
     document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('status-select') && e.target.hasAttribute('data-faq-id')) {
+        if (e.target && e.target.classList.contains('status-select')) {
             e.preventDefault();
+            e.stopPropagation();
+
             const select = e.target;
-            const form = select.closest('form');
+            const form = select.closest('.status-form');
+            if (!form) return;
+
             const faqId = select.getAttribute('data-faq-id');
-            const status = select.value;
-            const originalValue = select.getAttribute('data-original-value') || (select.querySelector('option[selected]')?.value || select.value);
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
 
-            // Store original value
-            if (!select.hasAttribute('data-original-value')) {
-                select.setAttribute('data-original-value', originalValue);
-            }
-
-            // Disable select during request
             select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
 
-            // Create form data
-            const formData = new FormData();
-            formData.append('status', status);
-            formData.append('_token', form.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
-            formData.append('_method', 'PATCH');
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
 
-            fetch(form.action, {
+            fetch(formAction, {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
                 },
-                body: formData
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'status': newStatus
+                })
             })
             .then(response => {
                 if (!response.ok) {
@@ -235,25 +238,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                // Re-enable select
                 select.disabled = false;
-                select.setAttribute('data-original-value', status);
+                select.options[select.selectedIndex].textContent = originalText;
 
-                // Show success message if available
-                if (typeof showToast === 'function') {
-                    showToast('Success', data.message || 'FAQ status updated successfully', 'success', 3000);
+                if (data && data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
                 }
             })
             .catch(error => {
-                // Revert select value on error
+                console.error('Error updating status:', error);
                 select.value = originalValue;
                 select.disabled = false;
-
-                console.error('Error updating status:', error);
+                select.options[select.selectedIndex].textContent = originalText;
                 if (typeof showToast === 'function') {
                     showToast('Error', 'Failed to update FAQ status', 'error', 5000);
                 } else {
-                    alert('Failed to update FAQ status. Please try again.');
+                    alert('Error updating status. Please try again.');
                 }
             });
         }

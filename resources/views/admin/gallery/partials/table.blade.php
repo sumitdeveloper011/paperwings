@@ -43,19 +43,24 @@
                             </div>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-primary">
+                            <span class="badge badge--primary">
                                 {{ ucfirst($gallery->category) }}
                             </span>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-info">
+                            <span class="badge badge--info">
                                 {{ $gallery->items_count ?? $gallery->items()->count() }} items
                             </span>
                         </td>
                         <td class="modern-table__td">
-                            <span class="badge badge-{{ $gallery->status === 'active' ? 'success' : 'secondary' }}">
-                                {{ ucfirst($gallery->status) }}
-                            </span>
+                            <form method="POST" action="{{ route('admin.galleries.updateStatus', $gallery) }}" class="status-form">
+                                @csrf
+                                @method('PATCH')
+                                <select name="status" class="status-select" data-gallery-id="{{ $gallery->id }}">
+                                    <option value="active" {{ $gallery->status === 'active' ? 'selected' : '' }}>Active</option>
+                                    <option value="inactive" {{ $gallery->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                            </form>
                         </td>
                         <td class="modern-table__td">
                             <div class="category-date">

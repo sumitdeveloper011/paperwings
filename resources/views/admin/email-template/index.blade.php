@@ -89,6 +89,92 @@ document.addEventListener('DOMContentLoaded', function() {
         searchUrl: '{{ route('admin.email-templates.index') }}',
         debounceDelay: 300
     });
+
+    AdminSearch.interceptPaginationLinks();
+
+    // AJAX status update
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('status-select') && e.target.hasAttribute('data-template-id')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const select = e.target;
+            const form = select.closest('.status-form');
+            if (!form) return;
+
+            const templateId = select.getAttribute('data-template-id');
+            const newStatus = select.value;
+            const originalValue = select.value === '1' ? '0' : '1';
+
+            select.disabled = true;
+            const originalText = select.options[select.selectedIndex].textContent;
+            select.options[select.selectedIndex].textContent = 'Updating...';
+
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            const formAction = form.getAttribute('action');
+
+            fetch(formAction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    '_token': csrfToken,
+                    '_method': 'PATCH',
+                    'is_active': newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+
+                if (data && data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('Success', data.message, 'success', 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                select.value = originalValue;
+                select.disabled = false;
+                select.options[select.selectedIndex].textContent = originalText;
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to update email template status', 'error', 5000);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
+            });
+        }
+    });
+
+    // AJAX filter for category
+    document.querySelectorAll('.gallery-search-select').forEach(filter => {
+        filter.addEventListener('change', function() {
+            const searchInput = document.getElementById('search-input');
+            const categoryFilter = document.querySelector('.gallery-search-select');
+
+            const searchValue = searchInput ? searchInput.value : '';
+            const categoryValue = categoryFilter ? categoryFilter.value : '';
+
+            const url = new URL('{{ route('admin.email-templates.index') }}');
+            if (searchValue) url.searchParams.append('search', searchValue);
+            if (categoryValue) url.searchParams.append('category', categoryValue);
+            url.searchParams.append('ajax', '1');
+
+            // Trigger AdminSearch to handle the AJAX request
+            AdminSearch.performSearch(url.search);
+        });
+    });
 });
 </script>
 @endpush
