@@ -94,10 +94,10 @@ class ContactController extends Controller
         }
 
         try {
-            // Send confirmation email to client
-            Mail::to($contactMessage->email)->send(new ContactNotificationMail($contactMessage));
+            // Queue confirmation email to client (ContactNotificationMail implements ShouldQueue)
+            Mail::to($contactMessage->email)->queue(new ContactNotificationMail($contactMessage));
         } catch (\Exception $e) {
-            Log::error('Failed to send contact confirmation email', [
+            Log::error('Failed to queue contact confirmation email', [
                 'error' => $e->getMessage(),
                 'contact_message_id' => $contactMessage->id
             ]);
@@ -111,6 +111,6 @@ class ContactController extends Controller
         }
 
         return redirect()->route('contact')
-            ->with('success', 'Thank you for contacting us! We will get back to you soon.');
+            ->with('success', 'Thank you for contacting us! We will get back to you soon. A confirmation email has been sent to your email address - please check your inbox and spam folder.');
     }
 }

@@ -195,6 +195,16 @@
             if (window.Analytics && window.Analytics.isEnabled()) {
                 window.Analytics.trackCheckoutStep('review', 2);
             }
+
+            if (window.FormSubmissionHandler) {
+                const reviewForm = document.querySelector('form[action*="confirm-review"]');
+                if (reviewForm) {
+                    window.FormSubmissionHandler.init(reviewForm, {
+                        loadingText: 'Processing...',
+                        timeout: 15000
+                    });
+                }
+            }
         });
     </script>
 @endsection

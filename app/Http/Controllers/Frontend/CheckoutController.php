@@ -16,6 +16,7 @@ use App\Services\NZPostAddressService;
 use App\Services\CheckoutSessionService;
 use App\Services\GoogleAnalyticsService;
 use App\Services\NotificationService;
+use App\Services\PriceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Helpers\SettingHelper;
@@ -37,13 +38,20 @@ class CheckoutController extends Controller
     protected $nzPostService;
     protected $checkoutSession;
     protected $notificationService;
+    protected $priceService;
 
-    public function __construct(ShippingService $shippingService, NZPostAddressService $nzPostService, CheckoutSessionService $checkoutSession, NotificationService $notificationService)
-    {
+    public function __construct(
+        ShippingService $shippingService,
+        NZPostAddressService $nzPostService,
+        CheckoutSessionService $checkoutSession,
+        NotificationService $notificationService,
+        PriceCalculationService $priceService
+    ) {
         $this->shippingService = $shippingService;
         $this->nzPostService = $nzPostService;
         $this->checkoutSession = $checkoutSession;
         $this->notificationService = $notificationService;
+        $this->priceService = $priceService;
     }
 
     // Get the identifier for the current cart (user_id only - authentication required)
@@ -78,9 +86,7 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
-        $subtotal = $cartItems->sum(function($item) {
-            return $item->subtotal;
-        });
+        $subtotal = $this->priceService->calculateSubtotal($cartItems);
 
         $appliedCoupon = Session::get('applied_coupon');
         $discount = (is_array($appliedCoupon) && isset($appliedCoupon['discount'])) ? (float)$appliedCoupon['discount'] : 0;
@@ -114,10 +120,12 @@ class CheckoutController extends Controller
         $sessionData = $this->checkoutSession->getCheckoutData();
         
         $shippingRegionId = $shippingAddress ? $shippingAddress->region_id : ($billingAddress ? $billingAddress->region_id : null);
+        // Calculate order amount for shipping (intermediate value, acceptable to calculate directly)
         $orderAmount = $subtotal - $discount;
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
         $shipping = $shippingInfo['shipping_price'];
-        $total = $subtotal - $discount + $shipping;
+        // Calculate total using PriceCalculationService
+        $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
 
         return view('frontend.checkout.details', compact(
             'title',
@@ -226,20 +234,9 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
-        $subtotal = $cartItems->sum(function($item) {
-            return $item->subtotal;
-        });
+        $subtotal = $this->priceService->calculateSubtotal($cartItems);
 
         $appliedCoupon = Session::get('applied_coupon');
-        
-        // Debug: Log what we're getting from session
-        Log::info('Review method - appliedCoupon from session', [
-            'appliedCoupon' => $appliedCoupon,
-            'is_array' => is_array($appliedCoupon),
-            'has_discount' => is_array($appliedCoupon) && isset($appliedCoupon['discount']),
-            'discount_type' => is_array($appliedCoupon) && isset($appliedCoupon['discount']) ? gettype($appliedCoupon['discount']) : 'N/A',
-            'discount_value' => is_array($appliedCoupon) && isset($appliedCoupon['discount']) ? $appliedCoupon['discount'] : 'N/A'
-        ]);
         
         // Extract discount - ensure it's always a float
         $discount = 0.0;
@@ -248,30 +245,16 @@ class CheckoutController extends Controller
             
             // Handle if discount is an array (shouldn't happen, but be safe)
             if (is_array($discountValue)) {
-                Log::warning('Discount value is array in review method', [
-                    'discountValue' => $discountValue,
-                    'appliedCoupon' => $appliedCoupon
-                ]);
                 $discount = isset($discountValue['value']) ? (float)$discountValue['value'] : 0.0;
             } elseif (is_numeric($discountValue)) {
                 $discount = (float)$discountValue;
             } else {
-                Log::warning('Discount value is not numeric in review method', [
-                    'discountValue' => $discountValue,
-                    'type' => gettype($discountValue),
-                    'appliedCoupon' => $appliedCoupon
-                ]);
                 $discount = 0.0;
             }
         }
         
         // Final safety check - ensure it's a float
         if (!is_numeric($discount) || is_array($discount)) {
-            Log::error('Discount is not numeric after extraction in review method', [
-                'discount' => $discount,
-                'type' => gettype($discount),
-                'appliedCoupon' => $appliedCoupon
-            ]);
             $discount = 0.0;
         }
         
@@ -282,22 +265,7 @@ class CheckoutController extends Controller
         $shippingRegionId = isset($sessionData['shipping']['region_id']) ? (int)$sessionData['shipping']['region_id'] : null;
         $orderAmount = $subtotal - $discount;
         
-        // Debug logging
-        Log::info('Review method - Shipping calculation', [
-            'shippingRegionId' => $shippingRegionId,
-            'orderAmount' => $orderAmount,
-            'subtotal' => $subtotal,
-            'discount' => $discount,
-            'sessionData' => $sessionData
-        ]);
-        
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
-        
-        // Debug logging
-        Log::info('Review method - Shipping info received', [
-            'shippingInfo' => $shippingInfo,
-            'shipping_price' => $shippingInfo['shipping_price'] ?? 'NOT SET'
-        ]);
         
         // Ensure shipping is always a float
         $shipping = isset($shippingInfo['shipping_price']) ? (float)$shippingInfo['shipping_price'] : 0.0;
@@ -310,22 +278,14 @@ class CheckoutController extends Controller
         }
         $shipping = (float)$shipping;
         
-        Log::info('Review method - Final shipping value', [
-            'shipping' => $shipping
-        ]);
-        
-        // Ensure total is always a float
-        $total = (float)($subtotal - $discount + $shipping);
-        if (!is_numeric($total) || is_array($total)) {
-            Log::warning('Total is not numeric in review method', [
-                'total' => $total,
-                'subtotal' => $subtotal,
-                'discount' => $discount,
+        if (app()->environment('local')) {
+            Log::info('Review method - Final shipping value', [
                 'shipping' => $shipping
             ]);
-            $total = (float)($subtotal + $shipping);
         }
-        $total = (float)$total;
+        
+        // Calculate total using PriceCalculationService
+        $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
 
         $regions = Region::where('status', 1)->orderBy('name')->get()->keyBy('id');
 
@@ -466,19 +426,14 @@ class CheckoutController extends Controller
             ->where('user_id', Auth::id())
             ->get();
 
-        $subtotal = $cartItems->sum(function($item) {
-            return $item->subtotal;
-        });
+        $subtotal = $this->priceService->calculateSubtotal($cartItems);
 
         // Find coupon
         $coupon = Coupon::where('code', $code)->first();
 
         if (!$coupon) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid coupon code.'
-                ], 404);
+                return $this->jsonError('Invalid coupon code.', 'COUPON_NOT_FOUND', null, 404);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'Invalid coupon code.');
@@ -487,10 +442,7 @@ class CheckoutController extends Controller
         // Validate coupon
         if (!$coupon->isActive()) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This coupon is not active.'
-                ], 400);
+                return $this->jsonError('This coupon is not active.', 'COUPON_INACTIVE', null, 400);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'This coupon is not active.');
@@ -499,10 +451,7 @@ class CheckoutController extends Controller
         // Check if coupon is not yet active (start date)
         if (now()->lessThan($coupon->start_date)) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.'
-                ], 400);
+                return $this->jsonError('This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.', 'COUPON_NOT_STARTED', null, 400);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'This coupon is not yet active. Valid from ' . $coupon->start_date->format('M d, Y') . '.');
@@ -510,10 +459,7 @@ class CheckoutController extends Controller
 
         if ($coupon->isExpired()) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This coupon has expired.'
-                ], 400);
+                return $this->jsonError('This coupon has expired.', 'COUPON_EXPIRED', null, 400);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'This coupon has expired.');
@@ -521,10 +467,7 @@ class CheckoutController extends Controller
 
         if ($coupon->usage_limit && $coupon->usage_count >= $coupon->usage_limit) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This coupon has reached its usage limit.'
-                ], 400);
+                return $this->jsonError('This coupon has reached its usage limit.', 'COUPON_USAGE_LIMIT_REACHED', null, 400);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'This coupon has reached its usage limit.');
@@ -539,10 +482,7 @@ class CheckoutController extends Controller
 
             if ($userCouponUsage >= $coupon->usage_limit_per_user) {
                 if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.'
-                    ], 400);
+                    return $this->jsonError('You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.', 'COUPON_USER_LIMIT_REACHED', null, 400);
                 }
                 return redirect()->route('checkout.details')
                     ->with('error', 'You have reached the maximum usage limit for this coupon. You can use this coupon ' . $coupon->usage_limit_per_user . ' time(s) only.');
@@ -552,34 +492,33 @@ class CheckoutController extends Controller
         // Check minimum amount
         if ($coupon->minimum_amount && $subtotal < $coupon->minimum_amount) {
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Minimum order amount of $' . number_format($coupon->minimum_amount, 2) . ' required for this coupon.'
-                ], 400);
+                return $this->jsonError('Minimum order amount of $' . number_format($coupon->minimum_amount, 2) . ' required for this coupon.', 'COUPON_MINIMUM_AMOUNT', null, 400);
             }
             return redirect()->route('checkout.details')
                 ->with('error', 'Minimum order amount of $' . number_format($coupon->minimum_amount, 2) . ' required for this coupon.');
         }
 
-        // Calculate discount
-        $discount = 0;
-        if ($coupon->type === 'percentage') {
-            $discount = ($subtotal * $coupon->value) / 100;
-            // Apply maximum discount if set
-            if ($coupon->maximum_discount && $discount > $coupon->maximum_discount) {
-                $discount = $coupon->maximum_discount;
-            }
-        } else {
-            // Fixed discount
-            $discount = $coupon->value;
-            // Don't allow discount to exceed subtotal
-            if ($discount > $subtotal) {
-                $discount = $subtotal;
-            }
+        // Calculate discount using PriceCalculationService
+        $discountType = $coupon->type === 'percentage' ? 'percentage' : 'fixed';
+        $discount = $this->priceService->calculateDiscountAmount(
+            $subtotal,
+            $discountType,
+            $coupon->value
+        );
+        
+        // Apply maximum discount if set (for percentage coupons)
+        if ($coupon->type === 'percentage' && $coupon->maximum_discount && $discount > $coupon->maximum_discount) {
+            $discount = round($coupon->maximum_discount, 2);
         }
-
+        
+        // Don't allow discount to exceed subtotal (for fixed coupons)
+        if ($coupon->type === 'fixed' && $discount > $subtotal) {
+            $discount = round($subtotal, 2);
+        }
+        
         $discount = round($discount, 2);
-        $total = $subtotal - $discount;
+        // Calculate total using PriceCalculationService (no shipping in coupon calculation)
+        $total = $this->priceService->calculateTotal($subtotal, $discount, 0);
 
         // Store coupon in session
         Session::put('applied_coupon', [
@@ -607,9 +546,7 @@ class CheckoutController extends Controller
 
         // Handle AJAX/JSON requests
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Coupon applied successfully!',
+            return $this->jsonSuccess('Coupon applied successfully!', [
                 'coupon' => [
                     'code' => $coupon->code,
                     'name' => $coupon->name,
@@ -633,10 +570,7 @@ class CheckoutController extends Controller
 
             // Handle AJAX/JSON requests
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Coupon removed successfully.'
-                ]);
+                return $this->jsonSuccess('Coupon removed successfully.');
             }
 
             // Regular form submission - redirect back to details page
@@ -651,10 +585,7 @@ class CheckoutController extends Controller
 
             // Handle AJAX/JSON requests
             if ($request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An error occurred while removing the coupon. Please try again.'
-                ], 500);
+                return $this->jsonError('An error occurred while removing the coupon. Please try again.', 'COUPON_REMOVE_ERROR', null, 500);
             }
 
             // Regular form submission
@@ -675,8 +606,7 @@ class CheckoutController extends Controller
         $orderAmount = $request->subtotal - ($request->discount ?? 0);
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->region_id, $orderAmount);
 
-        return response()->json([
-            'success' => true,
+        return $this->jsonSuccess('Shipping calculated.', [
             'shipping' => $shippingInfo['shipping_price'],
             'shipping_price' => $shippingInfo['shipping_price'],
             'free_shipping_minimum' => $shippingInfo['free_shipping_minimum'],
@@ -698,10 +628,7 @@ class CheckoutController extends Controller
         $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
 
         if (!$stripeSecret) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe is not configured. Please contact support.'
-            ], 500);
+            return $this->jsonError('Stripe is not configured. Please contact support.', 'STRIPE_NOT_CONFIGURED', null, 500);
         }
 
         try {
@@ -723,14 +650,10 @@ class CheckoutController extends Controller
             ]);
 
             if (!$paymentIntent->client_secret) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create payment intent. Please try again.'
-                ], 500);
+                return $this->jsonError('Failed to create payment intent. Please try again.', 'PAYMENT_INTENT_CREATION_FAILED', null, 500);
             }
 
-            return response()->json([
-                'success' => true,
+            return $this->jsonSuccess('Payment intent created successfully.', [
                 'clientSecret' => $paymentIntent->client_secret,
                 'payment_intent_id' => $paymentIntent->id
             ]);
@@ -741,31 +664,27 @@ class CheckoutController extends Controller
                 'stripe_error_code' => $e->getStripeCode(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment initialization failed: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('Payment initialization failed. Please try again.', 'STRIPE_ERROR', null, 500);
         } catch (\Exception $e) {
             Log::error('PaymentIntent creation exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('An error occurred while initializing payment. Please try again.', 'PAYMENT_INIT_ERROR', null, 500);
         }
     }
 
     // Process order and payment
     public function processOrder(StoreCheckoutRequest $request)
     {
-        Log::info('Order processing started', [
-            'user_id' => Auth::id(),
-            'payment_intent_id' => $request->payment_intent_id ?? null,
-            'cart_items_count' => CartItem::where('user_id', Auth::id())->count(),
-        ]);
+        if (app()->environment('local')) {
+            Log::info('Order processing started', [
+                'user_id' => Auth::id(),
+                'payment_intent_id' => $request->payment_intent_id ?? null,
+                'cart_items_count' => CartItem::where('user_id', Auth::id())->count(),
+            ]);
+        }
 
         // Get cart items (authentication required)
         $cartItems = CartItem::with(['product'])
@@ -776,10 +695,7 @@ class CheckoutController extends Controller
             Log::warning('Order processing attempted with empty cart', [
                 'user_id' => Auth::id(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Your cart is empty.'
-            ], 400);
+            return $this->jsonError('Your cart is empty. Please add items to your cart before checkout.', 'CART_EMPTY', null, 400);
         }
 
         // Verify payment with Stripe - Read from database settings (with .env fallback)
@@ -787,10 +703,7 @@ class CheckoutController extends Controller
 
         if (!$stripeSecret) {
             Log::error('Stripe secret key not configured');
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe is not configured. Please contact support.'
-            ], 500);
+            return $this->jsonError('Stripe is not configured. Please contact support.', 'STRIPE_NOT_CONFIGURED', null, 500);
         }
 
         // Validate payment_intent_id is present
@@ -799,10 +712,7 @@ class CheckoutController extends Controller
                 'user_id' => Auth::id(),
                 'request_data' => $request->all()
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment intent ID is missing. Please try again.'
-            ], 400);
+            return $this->jsonError('Payment intent ID is missing. Please try again.', 'PAYMENT_INTENT_MISSING', null, 400);
         }
 
         try {
@@ -816,16 +726,11 @@ class CheckoutController extends Controller
                     'status' => $paymentIntent->status,
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment not completed. Status: ' . $paymentIntent->status . '. Please try again.'
-                ], 400);
+                return $this->jsonError('Payment not completed. Please try again.', 'PAYMENT_NOT_COMPLETED', ['status' => $paymentIntent->status], 400);
             }
 
-            // Calculate totals
-            $subtotal = round($cartItems->sum(function($item) {
-                return $item->subtotal;
-            }), 2);
+            // Calculate totals using PriceCalculationService
+            $subtotal = $this->priceService->calculateSubtotal($cartItems);
 
             $appliedCoupon = Session::get('applied_coupon');
             $discount = round((is_array($appliedCoupon) && isset($appliedCoupon['discount'])) ? (float)$appliedCoupon['discount'] : 0, 2);
@@ -838,15 +743,15 @@ class CheckoutController extends Controller
             $shipping = round($shippingInfo['shipping_price'], 2);
             $shippingPrice = round($shippingInfo['shipping_price'], 2);
 
-            // Round total to avoid floating point precision issues
-            $total = round($subtotal - $discount + $tax + $shipping, 2);
+            // Calculate total using PriceCalculationService
+            $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
 
             // Verify total matches payment amount
             $paymentAmount = $paymentIntent->amount / 100; // Convert from cents
             $difference = abs($total - $paymentAmount);
 
-            // Log the mismatch for debugging
-            if ($difference > 0.01) {
+            // Log the mismatch for debugging (only in local environment)
+            if ($difference > 0.01 && app()->environment('local')) {
                 Log::warning('Payment amount mismatch detected', [
                     'calculated_total' => $total,
                     'payment_amount' => $paymentAmount,
@@ -862,32 +767,41 @@ class CheckoutController extends Controller
 
             // Allow small rounding differences (up to 0.05 cents) due to floating point precision
             if ($difference > 0.05) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment amount mismatch. Please refresh and try again.',
-                    'debug' => app()->environment('local') ? [
+                $data = null;
+                if (app()->environment('local')) {
+                    $data = [
                         'calculated_total' => round($total, 2),
                         'payment_amount' => round($paymentAmount, 2),
                         'difference' => round($difference, 2)
-                    ] : null
-                ], 400);
+                    ];
+                }
+                return $this->jsonError('Payment amount mismatch. Please refresh and try again.', 'PAYMENT_AMOUNT_MISMATCH', null, 400);
             }
 
             // Validate stock and prices before creating order
             $stockValidationErrors = [];
             $priceValidationErrors = [];
             
-            Log::info('Validating cart items before order creation', [
-                'user_id' => Auth::id(),
-                'items_count' => $cartItems->count(),
-            ]);
+            if (app()->environment('local')) {
+                Log::info('Validating cart items before order creation', [
+                    'user_id' => Auth::id(),
+                    'items_count' => $cartItems->count(),
+                ]);
+            }
+            
+            // Pre-load all products with lock to avoid N+1 queries during validation
+            $productIds = $cartItems->pluck('product_id')->unique()->toArray();
+            $products = Product::lockForUpdate()
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
             
             foreach ($cartItems as $cartItem) {
-                // Lock product row to prevent race conditions
-                $product = Product::lockForUpdate()->find($cartItem->product_id);
+                // Get product from pre-loaded collection
+                $product = $products->get($cartItem->product_id);
                 
                 if (!$product) {
-                    $errorMsg = "Product '{$cartItem->product->name}' no longer exists.";
+                    $errorMsg = "Product no longer exists (ID: {$cartItem->product_id}).";
                     $stockValidationErrors[] = $errorMsg;
                     Log::warning('Product not found during order validation', [
                         'user_id' => Auth::id(),
@@ -950,20 +864,27 @@ class CheckoutController extends Controller
                     'stock_errors_count' => count($stockValidationErrors),
                     'price_errors_count' => count($priceValidationErrors),
                 ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your cart contains items that are no longer available or have changed.',
-                    'errors' => $allErrors
-                ], 400);
+                return $this->jsonError('Your cart contains items that are no longer available or have changed.', 'CART_VALIDATION_FAILED', ['errors' => $allErrors], 400);
             }
 
             // Create order
             DB::beginTransaction();
 
             try {
+                // Re-lock products for stock decrement (products already loaded above, but need fresh lock)
+                // Use the same product IDs from validation
+                $productsForDecrement = Product::lockForUpdate()
+                    ->whereIn('id', $productIds)
+                    ->get()
+                    ->keyBy('id');
+                
                 // Decrement stock for all products atomically
                 foreach ($cartItems as $cartItem) {
-                    $product = Product::lockForUpdate()->find($cartItem->product_id);
+                    $product = $productsForDecrement->get($cartItem->product_id);
+                    
+                    if (!$product) {
+                        throw new \Exception("Product not found: {$cartItem->product_id}");
+                    }
                     
                     // Double-check stock (in case it changed between validation and decrement)
                     if ($product->stock < $cartItem->quantity) {
@@ -981,14 +902,16 @@ class CheckoutController extends Controller
                     $oldStock = $product->stock;
                     $product->decrement('stock', $cartItem->quantity);
                     
-                    Log::info('Stock decremented for order', [
-                        'user_id' => Auth::id(),
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'quantity' => $cartItem->quantity,
-                        'old_stock' => $oldStock,
-                        'new_stock' => $product->fresh()->stock,
-                    ]);
+                    if (app()->environment('local')) {
+                        Log::info('Stock decremented for order', [
+                            'user_id' => Auth::id(),
+                            'product_id' => $product->id,
+                            'product_name' => $product->name,
+                            'quantity' => $cartItem->quantity,
+                            'old_stock' => $oldStock,
+                            'new_stock' => $product->fresh()->stock,
+                        ]);
+                    }
                 }
 
                 // Get order number before creating order (for metadata update)
@@ -1112,13 +1035,15 @@ class CheckoutController extends Controller
 
                 DB::commit();
 
-                Log::info('Order created successfully', [
-                    'user_id' => Auth::id(),
-                    'order_id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'total' => $order->total,
-                    'payment_intent_id' => $paymentIntent->id,
-                ]);
+                if (app()->environment('local')) {
+                    Log::info('Order created successfully', [
+                        'user_id' => Auth::id(),
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'total' => $order->total,
+                        'payment_intent_id' => $paymentIntent->id,
+                    ]);
+                }
 
                 // Load order with relationships for email
                 $order->load(['items.product', 'billingRegion', 'shippingRegion']);
@@ -1139,9 +1064,7 @@ class CheckoutController extends Controller
                     Log::error('Failed to create order notification: ' . $e->getMessage());
                 }
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Order placed successfully!',
+                return $this->jsonSuccess('Order placed successfully!', [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'redirect_url' => route('checkout.success', ['order' => $order->order_number])
@@ -1167,10 +1090,7 @@ class CheckoutController extends Controller
                     $errorMessage .= 'Please try again or contact support if the problem persists.';
                 }
                 
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage
-                ], 400);
+                return $this->jsonError($errorMessage, 'ORDER_PROCESSING_ERROR', null, 400);
             }
 
         } catch (ApiErrorException $e) {
@@ -1180,20 +1100,14 @@ class CheckoutController extends Controller
                 'stripe_error_code' => $e->getStripeCode(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment verification failed: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('Payment verification failed. Please try again.', 'PAYMENT_VERIFICATION_ERROR', null, 500);
         } catch (\Exception $e) {
             Log::error('Payment verification exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred. Please try again.'
-            ], 500);
+            return $this->jsonError('An unexpected error occurred. Please try again.', 'PAYMENT_VERIFICATION_EXCEPTION', null, 500);
         }
     }
 
@@ -1288,21 +1202,14 @@ class CheckoutController extends Controller
         try {
             $results = $this->nzPostService->searchAddresses($query);
             
-            return response()->json([
-                'success' => true,
-                'results' => $results
-            ]);
+            return $this->jsonSuccess('Address search completed.', ['results' => $results]);
         } catch (\Exception $e) {
             Log::error('Address search error', [
                 'error' => $e->getMessage(),
                 'query' => $query
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Address search failed. Please try again.',
-                'results' => []
-            ], 500);
+            return $this->jsonError('Address search failed. Please try again.', 'ADDRESS_SEARCH_ERROR', ['results' => []], 500);
         }
     }
 
@@ -1315,26 +1222,17 @@ class CheckoutController extends Controller
             $address = $this->nzPostService->getAddressDetails($id);
             
             if ($address) {
-                return response()->json([
-                    'success' => true,
-                    'address' => $address
-                ]);
+                return $this->jsonSuccess('Address details retrieved.', ['address' => $address]);
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Address not found'
-            ], 404);
+            return $this->jsonError('Address not found', 'ADDRESS_NOT_FOUND', null, 404);
         } catch (\Exception $e) {
             Log::error('Get address error', [
                 'error' => $e->getMessage(),
                 'address_id' => $id
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get address details'
-            ], 500);
+            return $this->jsonError('Failed to get address details', 'ADDRESS_GET_ERROR', null, 500);
         }
     }
 }

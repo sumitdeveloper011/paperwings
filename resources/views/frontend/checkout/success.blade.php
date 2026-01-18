@@ -16,6 +16,15 @@
                 </div>
                 <h1 class="success-title">Order Confirmed!</h1>
                 <p class="success-message">Thank you for your order. We've sent a confirmation email to <strong>{{ $order->billing_email }}</strong> with your order details and invoice.</p>
+                
+                <div class="alert alert-info" style="margin: 1.5rem 0; padding: 1rem; background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 8px; text-align: left;">
+                    <i class="fas fa-info-circle" style="color: #0066cc; margin-right: 0.5rem;"></i>
+                    <div style="display: inline-block;">
+                        <p style="margin: 0; color: #0066cc; font-size: 0.95rem;">
+                            <strong>Email Confirmation:</strong> The confirmation email may take a few minutes to arrive. Please check your inbox and spam folder. If you don't receive it within 10 minutes, you can view your order details in <a href="{{ route('account.my-orders') }}" style="color: #0052a3; text-decoration: underline;">My Orders</a>.
+                        </p>
+                    </div>
+                </div>
 
                 <div class="order-summary-box">
                     <div class="order-info-row">

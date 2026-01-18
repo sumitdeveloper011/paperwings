@@ -153,6 +153,26 @@
                                     </p>
                                 </div>
                             </form>
+
+                            @if(session('resend_available') || session('info'))
+                            <div class="resend-verification-section mt-4">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div>
+                                        <p class="mb-2">{{ session('info') ?? session('success') }}</p>
+                                        @if(session('resend_available') && session('user_email'))
+                                        <form action="{{ route('verification.resend') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="email" value="{{ session('user_email') }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-paper-plane"></i> Resend Verification Email
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

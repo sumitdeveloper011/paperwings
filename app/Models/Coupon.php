@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasUuid;
+use App\Helpers\CacheHelper;
 
 class Coupon extends Model
 {
@@ -39,6 +40,30 @@ class Coupon extends Model
         'status' => 'integer',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::updating(function ($coupon) {
+            // Clear relevant caches when coupon status, dates, or limits change
+            // Note: Coupons are typically checked in real-time, but clearing cache ensures consistency
+            if ($coupon->isDirty(['status', 'start_date', 'end_date', 'usage_limit', 'value', 'type'])) {
+                // If coupons are cached anywhere, they should be cleared
+                // For now, we'll clear dashboard stats as coupons affect order statistics
+                CacheHelper::clearDashboardStats();
+            }
+        });
+
+        static::created(function ($coupon) {
+            // Clear dashboard stats when new coupon is created
+            CacheHelper::clearDashboardStats();
+        });
+
+        static::deleted(function ($coupon) {
+            // Clear dashboard stats when coupon is deleted
+            CacheHelper::clearDashboardStats();
+        });
+    }
 
     // Get the route key name - use uuid for admin routes
     public function getRouteKeyName()

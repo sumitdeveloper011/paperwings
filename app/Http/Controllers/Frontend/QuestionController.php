@@ -35,17 +35,12 @@ class QuestionController extends Controller
                 'status' => 0,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Question submitted successfully. It will be published after admin approval.',
+            return $this->jsonSuccess('Question submitted successfully. It will be published after admin approval.', [
                 'question' => $question
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit question: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('Failed to submit question. Please try again.', 'QUESTION_SUBMIT_ERROR', null, 500);
         }
     }
 
@@ -68,17 +63,12 @@ class QuestionController extends Controller
                 'status' => 1,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Answer submitted successfully.',
+            return $this->jsonSuccess('Answer submitted successfully.', [
                 'answer' => $answer
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit answer: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('Failed to submit answer. Please try again.', 'ANSWER_SUBMIT_ERROR', null, 500);
         }
     }
 
@@ -89,16 +79,12 @@ class QuestionController extends Controller
             $answer = ProductAnswer::findOrFail($answerId);
             $answer->increment('helpful_count');
 
-            return response()->json([
-                'success' => true,
+            return $this->jsonSuccess('Helpful count updated.', [
                 'helpful_count' => $answer->helpful_count
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update helpful count.'
-            ], 500);
+            return $this->jsonError('Failed to update helpful count.', 'ANSWER_HELPFUL_ERROR', null, 500);
         }
     }
 }

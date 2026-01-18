@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\HasUuid;
+use App\Helpers\CacheHelper;
 
 class ProductReview extends Model
 {
@@ -32,6 +33,42 @@ class ProductReview extends Model
         'helpful_count' => 'integer',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::updating(function ($review) {
+            // Clear product caches when review status changes (affects product ratings)
+            if ($review->isDirty('status')) {
+                // Get product's category ID to clear specific caches
+                $product = $review->product;
+                if ($product && $product->category_id) {
+                    CacheHelper::clearProductCaches($product->category_id);
+                } else {
+                    // Fallback: clear all product caches if product not found
+                    CacheHelper::clearProductCaches();
+                }
+            }
+        });
+
+        static::created(function ($review) {
+            // Clear product caches when new review is created
+            $product = $review->product;
+            if ($product && $product->category_id) {
+                CacheHelper::clearProductCaches($product->category_id);
+            } else {
+                // Fallback: clear all product caches if product not found
+                CacheHelper::clearProductCaches();
+            }
+        });
+
+        static::deleted(function ($review) {
+            // Clear product caches when review is deleted
+            // Note: product relationship may not be available after deletion
+            // So we clear all product caches to be safe
+            CacheHelper::clearProductCaches();
+        });
+    }
 
     // Get the product relationship
     public function product(): BelongsTo

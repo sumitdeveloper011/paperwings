@@ -123,20 +123,25 @@
                 }
 
                 // Fetch rendered HTML from Laravel
-                fetch(`/search/autocomplete/render?q=${encodeURIComponent(value)}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Use Laravel rendered HTML (already escaped and safe)
-                        this.updateAutocompleteFromHtml(data.html);
-                    }
-                })
-                .catch(error => {
+                const url = `/search/autocomplete/render?q=${encodeURIComponent(value)}`;
+                const fetchPromise = window.AjaxUtils
+                    ? window.AjaxUtils.get(url, { showMessage: false, silentAuth: true })
+                    : fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    }).then(response => response.json());
+
+                fetchPromise
+                    .then(data => {
+                        if (data.success) {
+                            // Use Laravel rendered HTML (already escaped and safe)
+                            const html = data.data?.html ?? data.html ?? '';
+                            this.updateAutocompleteFromHtml(html);
+                        }
+                    })
+                    .catch(error => {
                     // Search error handled silently
                 });
             }, this.config.debounceDelay);
@@ -256,23 +261,37 @@
                     submitBtn.textContent = 'Subscribing...';
                 }
 
-                fetch('/subscription', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        subscriptionForm.reset();
-                        this.showNotification('Successfully subscribed!', 'success');
-                    } else {
-                        this.showNotification(data.message || 'Subscription failed', 'error');
-                    }
-                })
+                // Use AjaxUtils for FormData (needs special handling)
+                const subscriptionPromise = window.AjaxUtils
+                    ? window.AjaxUtils.request('/subscription', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            // Don't set Content-Type for FormData, browser will set it with boundary
+                            'X-CSRF-TOKEN': window.AjaxUtils.getCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    }, { showMessage: false })
+                    : fetch('/subscription', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    }).then(response => response.json());
+
+                subscriptionPromise
+                    .then(data => {
+                        const message = data.data?.message ?? data.message ?? '';
+                        if (data.success) {
+                            subscriptionForm.reset();
+                            this.showNotification(message || 'Successfully subscribed!', 'success');
+                        } else {
+                            this.showNotification(message || 'Subscription failed', 'error');
+                        }
+                    })
                 .catch(error => {
                     this.showNotification('An error occurred. Please try again.', 'error');
                 })

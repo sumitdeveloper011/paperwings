@@ -24,7 +24,7 @@ class CartTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->postJson(route('cart.add'), [
-            'product_id' => $product->id,
+            'product_uuid' => $product->uuid,
             'quantity' => 2
         ]);
 
@@ -170,7 +170,9 @@ class CartTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'count' => 3
+                'data' => [
+                    'count' => 3
+                ]
             ]);
     }
 
@@ -183,7 +185,7 @@ class CartTest extends TestCase
 
         // Cart now requires authentication
         $response = $this->postJson(route('cart.add'), [
-            'product_id' => $product->id,
+            'product_uuid' => $product->uuid,
             'quantity' => 1
         ]);
 

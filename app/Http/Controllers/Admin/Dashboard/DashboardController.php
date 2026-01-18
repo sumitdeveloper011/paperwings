@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Helpers\CacheHelper;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -22,7 +23,7 @@ class DashboardController extends Controller
         $startDate = $request->get('start_date', Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         
-        $stats = Cache::remember('dashboard_stats', 300, function () {
+        $stats = Cache::remember(CacheHelper::DASHBOARD_STATS, 300, function () {
             return [
                 'total_products' => Product::count(),
                 'active_products' => Product::where('status', 1)->count(),

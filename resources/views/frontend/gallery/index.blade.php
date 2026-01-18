@@ -14,21 +14,36 @@
         <div class="container">
             <div class="row">
                 <div class="col-12">
-                    @if($category || request()->has('category'))
-                    <div class="gallery-filters mb-4">
+                    <div class="gallery-filters">
                         <div class="filter-buttons">
-                            <a href="{{ route('galleries.index') }}" class="btn btn-outline-primary {{ !$category ? 'active' : '' }}">
-                                All Galleries
+                            <a href="{{ route('galleries.index') }}" class="btn {{ !$category ? 'active' : '' }}">
+                                <i class="fas fa-th"></i>
+                                <span>All Galleries</span>
                             </a>
                             @foreach($categories as $key => $label)
                                 <a href="{{ route('galleries.index', ['category' => $key]) }}" 
-                                   class="btn btn-outline-primary {{ $category === $key ? 'active' : '' }}">
-                                    {{ $label }}
+                                   class="btn {{ $category === $key ? 'active' : '' }}">
+                                    @switch($key)
+                                        @case('general')
+                                            <i class="fas fa-images"></i>
+                                            @break
+                                        @case('products')
+                                            <i class="fas fa-box"></i>
+                                            @break
+                                        @case('events')
+                                            <i class="fas fa-calendar-alt"></i>
+                                            @break
+                                        @case('portfolio')
+                                            <i class="fas fa-briefcase"></i>
+                                            @break
+                                        @default
+                                            <i class="fas fa-folder"></i>
+                                    @endswitch
+                                    <span>{{ $label }}</span>
                                 </a>
                             @endforeach
                         </div>
                     </div>
-                    @endif
 
                     @if($galleries->count() > 0)
                         <div class="galleries-grid">
@@ -39,6 +54,7 @@
                                             <div class="gallery-card__image">
                                                 <img src="{{ asset('storage/' . $gallery->coverImage->image_path) }}" 
                                                      alt="{{ $gallery->name }}"
+                                                     loading="lazy"
                                                      onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                             </div>
                                         @elseif($gallery->items->count() > 0)
@@ -49,10 +65,12 @@
                                                 @if($firstItem->type === 'image' && $firstItem->image_path)
                                                     <img src="{{ asset('storage/' . $firstItem->image_path) }}" 
                                                          alt="{{ $gallery->name }}"
+                                                         loading="lazy"
                                                          onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
                                                 @elseif($firstItem->type === 'video' && $firstItem->thumbnail_path)
                                                     <img src="{{ asset('storage/' . $firstItem->thumbnail_path) }}" 
                                                          alt="{{ $gallery->name }}"
+                                                         loading="lazy"
                                                          onerror="this.src='{{ asset('assets/images/video-placeholder.jpg') }}'">
                                                     <div class="gallery-card__video-badge">
                                                         <i class="fas fa-play"></i>
@@ -85,7 +103,7 @@
                         </div>
 
                         @if($galleries->hasPages())
-                            <div class="pagination-wrapper mt-4">
+                            <div class="pagination-wrapper">
                                 {{ $galleries->links('components.pagination') }}
                             </div>
                         @endif
@@ -97,9 +115,9 @@
                             <h3 class="empty-state__title">No Galleries Found</h3>
                             <p class="empty-state__text">
                                 @if($category)
-                                    No galleries found in this category.
+                                    No galleries found in this category. Try browsing all galleries or select a different category.
                                 @else
-                                    No galleries available at the moment.
+                                    No galleries available at the moment. Please check back later.
                                 @endif
                             </p>
                         </div>

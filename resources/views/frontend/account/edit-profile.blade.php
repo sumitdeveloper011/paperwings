@@ -101,6 +101,13 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('editProfileForm', {
+            loadingText: 'Saving Changes...',
+            timeout: 10000
+        });
+    }
+
     const profileImageInput = document.getElementById('profileImageInput');
     const profileImagePreview = document.getElementById('profileImagePreview');
     const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');

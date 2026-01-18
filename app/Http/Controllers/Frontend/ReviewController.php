@@ -35,10 +35,7 @@ class ReviewController extends Controller
                     ->first();
                 
                 if ($existingReview) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You have already reviewed this product.'
-                    ], 400);
+                    return $this->jsonError('You have already reviewed this product.', 'REVIEW_ALREADY_EXISTS', null, 400);
                 }
             }
 
@@ -70,17 +67,12 @@ class ReviewController extends Controller
                 \Illuminate\Support\Facades\Log::error('Failed to create review notification: ' . $e->getMessage());
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Review submitted successfully. It will be published after admin approval.',
+            return $this->jsonSuccess('Review submitted successfully. It will be published after admin approval.', [
                 'review' => $review
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit review: ' . $e->getMessage()
-            ], 500);
+            return $this->jsonError('Failed to submit review. Please try again.', 'REVIEW_SUBMIT_ERROR', null, 500);
         }
     }
 
@@ -91,16 +83,12 @@ class ReviewController extends Controller
             $review = ProductReview::findOrFail($reviewId);
             $review->increment('helpful_count');
 
-            return response()->json([
-                'success' => true,
+            return $this->jsonSuccess('Helpful count updated.', [
                 'helpful_count' => $review->helpful_count
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update helpful count.'
-            ], 500);
+            return $this->jsonError('Failed to update helpful count.', 'REVIEW_HELPFUL_ERROR', null, 500);
         }
     }
 }

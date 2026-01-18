@@ -11,6 +11,7 @@ use App\Traits\HasUuid;
 use App\Traits\HasImageUrl;
 use App\Traits\HasThumbnail;
 use App\Traits\HasUniqueSlug;
+use App\Helpers\CacheHelper;
 
 class Brand extends Model
 {
@@ -39,6 +40,21 @@ class Brand extends Model
             if ($brand->isDirty('name') && !$brand->isDirty('slug')) {
                 $brand->slug = static::makeUniqueSlug($brand->name, $brand->id);
             }
+
+            // Clear product-related caches when brand status changes
+            if ($brand->isDirty('status')) {
+                CacheHelper::clearProductCaches();
+            }
+        });
+
+        static::created(function ($brand) {
+            // Clear product caches when new brand is created
+            CacheHelper::clearProductCaches();
+        });
+
+        static::deleted(function ($brand) {
+            // Clear product caches when brand is deleted
+            CacheHelper::clearProductCaches();
         });
     }
 

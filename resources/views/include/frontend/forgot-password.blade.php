@@ -18,6 +18,16 @@
                                 <p class="forgot-password-subtitle">Enter your email address and we'll send you a link to reset your password.</p>
                             </div>
 
+                            @if(session('success'))
+                            <div class="alert alert-info mb-4">
+                                <i class="fas fa-info-circle"></i>
+                                <div>
+                                    <p class="mb-2"><strong>{{ session('success') }}</strong></p>
+                                    <p class="mb-0 small">Please check your inbox and spam folder. The reset link may take a few minutes to arrive. If you don't receive it within 10 minutes, please try again.</p>
+                                </div>
+                            </div>
+                            @endif
+
                             <form id="forgotPasswordForm" class="forgot-password-form" action="{{ route('password.email') }}" method="POST" novalidate>
                                 @csrf
                                 <div class="form-group mb-4">
@@ -48,4 +58,17 @@
             </div>
         </div>
     </section>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('forgotPasswordForm', {
+            loadingText: 'Sending Reset Link...',
+            timeout: 10000
+        });
+    }
+});
+</script>
+@endpush
 @endsection

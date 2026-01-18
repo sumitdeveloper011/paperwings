@@ -422,6 +422,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('addAddressForm', {
+            loadingText: 'Saving Address...',
+            timeout: 10000
+        });
+    }
+});
+
 // NZ Post Address Autocomplete for Account Address Form
 (function() {
     'use strict';

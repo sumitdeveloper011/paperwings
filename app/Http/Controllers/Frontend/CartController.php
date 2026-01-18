@@ -38,9 +38,7 @@ class CartController extends Controller
 
             $product->load(['category', 'brand']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Product added to cart successfully.',
+            return $this->jsonSuccess('Product added to cart successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
                 'product' => $product ? [
                     'id' => $product->id,
@@ -53,10 +51,7 @@ class CartController extends Controller
                 ] : null
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+            return $this->jsonError($e->getMessage(), 'CART_ADD_ERROR', null, 400);
         }
     }
 
@@ -85,9 +80,7 @@ class CartController extends Controller
             }
 
             if (empty($productIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No valid products found.',
+                return $this->jsonError('No valid products found.', 'NO_PRODUCTS', [
                     'results' => [
                         'success' => [],
                         'failed' => []
@@ -119,20 +112,27 @@ class CartController extends Controller
             $successCount = count($results['success']);
             $failedCount = count($results['failed']);
 
-            return response()->json([
-                'success' => $successCount > 0,
-                'message' => $successCount > 0 
-                    ? ($failedCount > 0 
-                        ? "{$successCount} item(s) added successfully. {$failedCount} item(s) failed."
-                        : "{$successCount} item(s) added to cart successfully.")
-                    : 'Failed to add items to cart.',
-                'cart_count' => $this->cartService->getCartCount($cartIdentifier),
-                'results' => $results
-            ], $successCount > 0 ? 200 : 400);
+            $message = $successCount > 0 
+                ? ($failedCount > 0 
+                    ? "{$successCount} item(s) added successfully. {$failedCount} item(s) failed."
+                    : "{$successCount} item(s) added to cart successfully.")
+                : 'Failed to add items to cart.';
+            
+            if ($successCount > 0) {
+                return $this->jsonSuccess($message, [
+                    'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                    'results' => $results
+                ]);
+            } else {
+                return $this->jsonError($message, 'CART_ADD_MULTIPLE_FAILED', [
+                    'results' => [
+                        'success' => [],
+                        'failed' => []
+                    ]
+                ], 400);
+            }
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
+            return $this->jsonError($e->getMessage(), 'CART_ADD_MULTIPLE_ERROR', [
                 'results' => [
                     'success' => [],
                     'failed' => []
@@ -152,17 +152,12 @@ class CartController extends Controller
                 $cartIdentifier
             );
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Cart updated successfully.',
+            return $this->jsonSuccess('Cart updated successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
                 'subtotal' => $cartItem->subtotal
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 404);
+            return $this->jsonError($e->getMessage(), 'CART_UPDATE_ERROR', null, 404);
         }
     }
 
@@ -179,9 +174,7 @@ class CartController extends Controller
             
             $this->cartService->removeFromCart($request->cart_item_id, $cartIdentifier);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Product removed from cart successfully.',
+            return $this->jsonSuccess('Product removed from cart successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
                 'product' => $cartItem && $cartItem->product ? [
                     'id' => $cartItem->product->id,
@@ -194,10 +187,7 @@ class CartController extends Controller
                 ] : null
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 404);
+            return $this->jsonError($e->getMessage(), 'CART_REMOVE_ERROR', null, 404);
         }
     }
 
@@ -226,7 +216,9 @@ class CartController extends Controller
 
         $subtotal = $this->cartService->getCartSubtotal($cartIdentifier);
         $shipping = 0.00; // Shipping commented out for now
-        $total = $subtotal + $shipping;
+        // Calculate total using PriceCalculationService
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        $total = $priceService->calculateTotal($subtotal, 0, $shipping);
 
         return view('frontend.cart.cart', compact('title', 'cartItems', 'subtotal', 'shipping', 'total'));
     }
@@ -239,7 +231,9 @@ class CartController extends Controller
 
         // Use API Resource for consistent response format
         $cartItemsArray = CartItemResource::collection($cartItems)->resolve();
-        $total = collect($cartItemsArray)->sum('subtotal');
+        // Calculate total using PriceCalculationService
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        $total = $priceService->calculateSubtotal($cartItems);
 
         return response()->json([
             'success' => true,
@@ -255,10 +249,7 @@ class CartController extends Controller
         $cartIdentifier = $this->cartService->getCartIdentifier();
         $count = $this->cartService->getCartCount($cartIdentifier);
 
-        return response()->json([
-            'success' => true,
-            'count' => $count
-        ]);
+        return $this->jsonSuccess('Cart count retrieved.', ['count' => $count]);
     }
 
     // Render cart items as HTML (for AJAX)
@@ -275,7 +266,9 @@ class CartController extends Controller
             'items' => $cartItems
         ])->render();
 
-        $total = $cartItems->sum(fn($item) => $item->subtotal);
+        // Calculate total using PriceCalculationService
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        $total = $priceService->calculateSubtotal($cartItems);
 
         return response()->json([
             'success' => true,

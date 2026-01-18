@@ -22,11 +22,12 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.api-settings.update') }}" class="settings-form" id="apiSettingsForm">
-        @csrf
-        @method('PUT')
+    <div class="content-body">
+        <form method="POST" action="{{ route('admin.api-settings.update') }}" id="apiSettingsForm">
+            @csrf
+            @method('PUT')
 
-        <div class="row">
+            <div class="row">
             <!-- Left Column - API Keys -->
             <div class="col-lg-8">
                 <!-- EPOSNOW API Keys Section -->
@@ -47,20 +48,23 @@
                         <!-- EPOSNOW API Key -->
                         <div class="form-group-modern">
                             <label for="eposnow_api_key" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 EPOSNOW API Key
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('eposnow_api_key') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('eposnow_api_key') is-invalid @enderror"
                                        id="eposnow_api_key"
                                        name="eposnow_api_key"
-                                       value="{{ old('eposnow_api_key', \App\Helpers\SettingHelper::get('eposnow_api_key', env('EPOSNOW_API_KEY', ''))) }}"
-                                       placeholder="Enter EPOSNOW API Key">
-                                <button type="button" class="password-toggle" onclick="togglePassword('eposnow_api_key')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_eposnow_api_key"></i>
-                                </button>
+                                       value="{{ old('eposnow_api_key', $maskedSettings['eposnow_api_key'] ?? '') }}"
+                                       placeholder="Enter EPOSNOW API Key"
+                                       {{ !empty($maskedSettings['eposnow_api_key']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['eposnow_api_key']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['eposnow_api_key']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('eposnow_api_key')" title="Change API Key">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             @error('eposnow_api_key')
                                 <div class="form-error">
@@ -73,20 +77,23 @@
                         <!-- EPOSNOW API Secret -->
                         <div class="form-group-modern">
                             <label for="eposnow_api_secret" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
                                 EPOSNOW API Secret
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('eposnow_api_secret') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('eposnow_api_secret') is-invalid @enderror"
                                        id="eposnow_api_secret"
                                        name="eposnow_api_secret"
-                                       value="{{ old('eposnow_api_secret', \App\Helpers\SettingHelper::get('eposnow_api_secret', env('EPOSNOW_API_SECRET', ''))) }}"
-                                       placeholder="Enter EPOSNOW API Secret">
-                                <button type="button" class="password-toggle" onclick="togglePassword('eposnow_api_secret')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_eposnow_api_secret"></i>
-                                </button>
+                                       value="{{ old('eposnow_api_secret', $maskedSettings['eposnow_api_secret'] ?? '') }}"
+                                       placeholder="Enter EPOSNOW API Secret"
+                                       {{ !empty($maskedSettings['eposnow_api_secret']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['eposnow_api_secret']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['eposnow_api_secret']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('eposnow_api_secret')" title="Change API Secret">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             @error('eposnow_api_secret')
                                 <div class="form-error">
@@ -99,11 +106,9 @@
                         <!-- EPOSNOW API Base URL -->
                         <div class="form-group-modern">
                             <label for="eposnow_api_base" class="form-label-modern">
-                                <i class="fas fa-link"></i>
                                 EPOSNOW API Base URL
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-link input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('eposnow_api_base') is-invalid @enderror"
                                        id="eposnow_api_base"
@@ -143,20 +148,23 @@
                         <!-- Stripe Publishable Key -->
                         <div class="form-group-modern">
                             <label for="stripe_key" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 Stripe Publishable Key
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('stripe_key') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('stripe_key') is-invalid @enderror"
                                        id="stripe_key"
                                        name="stripe_key"
-                                       value="{{ old('stripe_key', \App\Helpers\SettingHelper::get('stripe_key', env('STRIPE_KEY', ''))) }}"
-                                       placeholder="pk_test_... or pk_live_...">
-                                <button type="button" class="password-toggle" onclick="togglePassword('stripe_key')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_stripe_key"></i>
-                                </button>
+                                       value="{{ old('stripe_key', $maskedSettings['stripe_key'] ?? '') }}"
+                                       placeholder="pk_test_... or pk_live_..."
+                                       {{ !empty($maskedSettings['stripe_key']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['stripe_key']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['stripe_key']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('stripe_key')" title="Change Publishable Key">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -173,20 +181,23 @@
                         <!-- Stripe Secret Key -->
                         <div class="form-group-modern">
                             <label for="stripe_secret" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
                                 Stripe Secret Key
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('stripe_secret') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('stripe_secret') is-invalid @enderror"
                                        id="stripe_secret"
                                        name="stripe_secret"
-                                       value="{{ old('stripe_secret', $settings['stripe_secret'] ?? env('STRIPE_SECRET', '')) }}"
-                                       placeholder="sk_test_... or sk_live_...">
-                                <button type="button" class="password-toggle" onclick="togglePassword('stripe_secret')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_stripe_secret"></i>
-                                </button>
+                                       value="{{ old('stripe_secret', $maskedSettings['stripe_secret'] ?? '') }}"
+                                       placeholder="sk_test_... or sk_live_..."
+                                       {{ !empty($maskedSettings['stripe_secret']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['stripe_secret']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['stripe_secret']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('stripe_secret')" title="Change Secret Key">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -203,20 +214,23 @@
                         <!-- Stripe Webhook Secret -->
                         <div class="form-group-modern">
                             <label for="stripe_webhook_secret" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 Stripe Webhook Secret
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('stripe_webhook_secret') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('stripe_webhook_secret') is-invalid @enderror"
                                        id="stripe_webhook_secret"
                                        name="stripe_webhook_secret"
-                                       value="{{ old('stripe_webhook_secret', \App\Helpers\SettingHelper::get('stripe_webhook_secret', env('STRIPE_WEBHOOK_SECRET', ''))) }}"
-                                       placeholder="whsec_...">
-                                <button type="button" class="password-toggle" onclick="togglePassword('stripe_webhook_secret')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_stripe_webhook_secret"></i>
-                                </button>
+                                       value="{{ old('stripe_webhook_secret', $maskedSettings['stripe_webhook_secret'] ?? '') }}"
+                                       placeholder="whsec_..."
+                                       {{ !empty($maskedSettings['stripe_webhook_secret']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['stripe_webhook_secret']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['stripe_webhook_secret']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('stripe_webhook_secret')" title="Change Webhook Secret">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -254,20 +268,23 @@
                         <div id="googleFields" style="display: {{ old('google_login_enabled', $settings['google_login_enabled'] ?? '0') == '1' ? 'block' : 'none' }};">
                             <div class="form-group-modern">
                                 <label for="google_client_id" class="form-label-modern">
-                                    <i class="fab fa-google"></i>
                                     Google Client ID
                                 </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-key input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('google_client_id') is-invalid @enderror"
+                                <div class="input-wrapper input-wrapper--with-action">
+                                    <input type="text"
+                                           class="form-input-modern api-key-input @error('google_client_id') is-invalid @enderror"
                                            id="google_client_id"
                                            name="google_client_id"
-                                           value="{{ old('google_client_id', \App\Helpers\SettingHelper::get('google_client_id', env('GOOGLE_CLIENT_ID', ''))) }}"
-                                           placeholder="Enter Google Client ID">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('google_client_id')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_google_client_id"></i>
-                                    </button>
+                                           value="{{ old('google_client_id', $maskedSettings['google_client_id'] ?? '') }}"
+                                           placeholder="Enter Google Client ID"
+                                           {{ !empty($maskedSettings['google_client_id']) ? 'readonly' : '' }}
+                                           data-masked="{{ !empty($maskedSettings['google_client_id']) ? 'true' : 'false' }}">
+                                    @if(!empty($maskedSettings['google_client_id']))
+                                        <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('google_client_id')" title="Change Client ID">
+                                            <i class="fas fa-edit"></i>
+                                            Change
+                                        </button>
+                                    @endif
                                 </div>
                                 <div class="form-hint">
                                     <i class="fas fa-info-circle"></i>
@@ -283,20 +300,23 @@
 
                             <div class="form-group-modern">
                                 <label for="google_client_secret" class="form-label-modern">
-                                    <i class="fas fa-lock"></i>
                                     Google Client Secret
                                 </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-lock input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('google_client_secret') is-invalid @enderror"
+                                <div class="input-wrapper input-wrapper--with-action">
+                                    <input type="text"
+                                           class="form-input-modern api-key-input @error('google_client_secret') is-invalid @enderror"
                                            id="google_client_secret"
                                            name="google_client_secret"
-                                           value="{{ old('google_client_secret', \App\Helpers\SettingHelper::get('google_client_secret', env('GOOGLE_CLIENT_SECRET', ''))) }}"
-                                           placeholder="Enter Google Client Secret">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('google_client_secret')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_google_client_secret"></i>
-                                    </button>
+                                           value="{{ old('google_client_secret', $maskedSettings['google_client_secret'] ?? '') }}"
+                                           placeholder="Enter Google Client Secret"
+                                           {{ !empty($maskedSettings['google_client_secret']) ? 'readonly' : '' }}
+                                           data-masked="{{ !empty($maskedSettings['google_client_secret']) ? 'true' : 'false' }}">
+                                    @if(!empty($maskedSettings['google_client_secret']))
+                                        <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('google_client_secret')" title="Change Client Secret">
+                                            <i class="fas fa-edit"></i>
+                                            Change
+                                        </button>
+                                    @endif
                                 </div>
                                 @error('google_client_secret')
                                     <div class="form-error">
@@ -319,20 +339,23 @@
                         <div id="facebookFields" style="display: {{ old('facebook_login_enabled', $settings['facebook_login_enabled'] ?? '0') == '1' ? 'block' : 'none' }};">
                             <div class="form-group-modern">
                                 <label for="facebook_client_id" class="form-label-modern">
-                                    <i class="fab fa-facebook"></i>
                                     Facebook App ID
                                 </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-key input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('facebook_client_id') is-invalid @enderror"
+                                <div class="input-wrapper input-wrapper--with-action">
+                                    <input type="text"
+                                           class="form-input-modern api-key-input @error('facebook_client_id') is-invalid @enderror"
                                            id="facebook_client_id"
                                            name="facebook_client_id"
-                                           value="{{ old('facebook_client_id', $settings['facebook_client_id'] ?? env('FACEBOOK_CLIENT_ID', '')) }}"
-                                           placeholder="Enter Facebook App ID">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('facebook_client_id')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_facebook_client_id"></i>
-                                    </button>
+                                           value="{{ old('facebook_client_id', $maskedSettings['facebook_client_id'] ?? '') }}"
+                                           placeholder="Enter Facebook App ID"
+                                           {{ !empty($maskedSettings['facebook_client_id']) ? 'readonly' : '' }}
+                                           data-masked="{{ !empty($maskedSettings['facebook_client_id']) ? 'true' : 'false' }}">
+                                    @if(!empty($maskedSettings['facebook_client_id']))
+                                        <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('facebook_client_id')" title="Change App ID">
+                                            <i class="fas fa-edit"></i>
+                                            Change
+                                        </button>
+                                    @endif
                                 </div>
                                 <div class="form-hint">
                                     <i class="fas fa-info-circle"></i>
@@ -348,20 +371,23 @@
 
                             <div class="form-group-modern">
                                 <label for="facebook_client_secret" class="form-label-modern">
-                                    <i class="fas fa-lock"></i>
                                     Facebook App Secret
                                 </label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-lock input-icon"></i>
-                                    <input type="password"
-                                           class="form-input-modern @error('facebook_client_secret') is-invalid @enderror"
+                                <div class="input-wrapper input-wrapper--with-action">
+                                    <input type="text"
+                                           class="form-input-modern api-key-input @error('facebook_client_secret') is-invalid @enderror"
                                            id="facebook_client_secret"
                                            name="facebook_client_secret"
-                                           value="{{ old('facebook_client_secret', \App\Helpers\SettingHelper::get('facebook_client_secret', env('FACEBOOK_CLIENT_SECRET', ''))) }}"
-                                           placeholder="Enter Facebook App Secret">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('facebook_client_secret')" title="Show/Hide">
-                                        <i class="fas fa-eye" id="toggle_facebook_client_secret"></i>
-                                    </button>
+                                           value="{{ old('facebook_client_secret', $maskedSettings['facebook_client_secret'] ?? '') }}"
+                                           placeholder="Enter Facebook App Secret"
+                                           {{ !empty($maskedSettings['facebook_client_secret']) ? 'readonly' : '' }}
+                                           data-masked="{{ !empty($maskedSettings['facebook_client_secret']) ? 'true' : 'false' }}">
+                                    @if(!empty($maskedSettings['facebook_client_secret']))
+                                        <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('facebook_client_secret')" title="Change App Secret">
+                                            <i class="fas fa-edit"></i>
+                                            Change
+                                        </button>
+                                    @endif
                                 </div>
                                 @error('facebook_client_secret')
                                     <div class="form-error">
@@ -391,20 +417,23 @@
 
                         <div class="form-group-modern">
                             <label for="nzpost_api_key" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 NZ Post API Key
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('nzpost_api_key') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('nzpost_api_key') is-invalid @enderror"
                                        id="nzpost_api_key"
                                        name="nzpost_api_key"
-                                       value="{{ old('nzpost_api_key', \App\Helpers\SettingHelper::get('nzpost_api_key', env('NZPOST_API_KEY', ''))) }}"
-                                       placeholder="Enter NZ Post API Key">
-                                <button type="button" class="password-toggle" onclick="togglePassword('nzpost_api_key')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_nzpost_api_key"></i>
-                                </button>
+                                       value="{{ old('nzpost_api_key', $maskedSettings['nzpost_api_key'] ?? '') }}"
+                                       placeholder="Enter NZ Post API Key"
+                                       {{ !empty($maskedSettings['nzpost_api_key']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['nzpost_api_key']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['nzpost_api_key']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('nzpost_api_key')" title="Change API Key">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -437,20 +466,23 @@
 
                         <div class="form-group-modern">
                             <label for="google_map_api_key" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 Google Maps API Key
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('google_map_api_key') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('google_map_api_key') is-invalid @enderror"
                                        id="google_map_api_key"
                                        name="google_map_api_key"
-                                       value="{{ old('google_map_api_key', \App\Helpers\SettingHelper::get('google_map_api_key', env('GOOGLE_MAP_API_KEY', ''))) }}"
-                                       placeholder="Enter Google Maps API Key">
-                                <button type="button" class="password-toggle" onclick="togglePassword('google_map_api_key')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_google_map_api_key"></i>
-                                </button>
+                                       value="{{ old('google_map_api_key', $maskedSettings['google_map_api_key'] ?? '') }}"
+                                       placeholder="Enter Google Maps API Key"
+                                       {{ !empty($maskedSettings['google_map_api_key']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['google_map_api_key']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['google_map_api_key']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('google_map_api_key')" title="Change API Key">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -490,20 +522,23 @@
                         <!-- App ID -->
                         <div class="form-group-modern">
                             <label for="instagram_app_id" class="form-label-modern">
-                                <i class="fas fa-key"></i>
                                 Instagram App ID
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('instagram_app_id') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('instagram_app_id') is-invalid @enderror"
                                        id="instagram_app_id"
                                        name="instagram_app_id"
-                                       value="{{ old('instagram_app_id', \App\Helpers\SettingHelper::get('instagram_app_id', env('INSTAGRAM_APP_ID', ''))) }}"
-                                       placeholder="Enter your Instagram App ID">
-                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_app_id')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_instagram_app_id"></i>
-                                </button>
+                                       value="{{ old('instagram_app_id', $maskedSettings['instagram_app_id'] ?? '') }}"
+                                       placeholder="Enter your Instagram App ID"
+                                       {{ !empty($maskedSettings['instagram_app_id']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['instagram_app_id']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['instagram_app_id']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('instagram_app_id')" title="Change App ID">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -520,20 +555,23 @@
                         <!-- App Secret -->
                         <div class="form-group-modern">
                             <label for="instagram_app_secret" class="form-label-modern">
-                                <i class="fas fa-lock"></i>
                                 Instagram App Secret
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('instagram_app_secret') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('instagram_app_secret') is-invalid @enderror"
                                        id="instagram_app_secret"
                                        name="instagram_app_secret"
-                                       value="{{ old('instagram_app_secret', \App\Helpers\SettingHelper::get('instagram_app_secret', env('INSTAGRAM_APP_SECRET', ''))) }}"
-                                       placeholder="Enter your Instagram App Secret">
-                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_app_secret')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_instagram_app_secret"></i>
-                                </button>
+                                       value="{{ old('instagram_app_secret', $maskedSettings['instagram_app_secret'] ?? '') }}"
+                                       placeholder="Enter your Instagram App Secret"
+                                       {{ !empty($maskedSettings['instagram_app_secret']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['instagram_app_secret']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['instagram_app_secret']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('instagram_app_secret')" title="Change App Secret">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -550,20 +588,23 @@
                         <!-- Access Token -->
                         <div class="form-group-modern">
                             <label for="instagram_access_token" class="form-label-modern">
-                                <i class="fas fa-token"></i>
                                 Instagram Access Token
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-token input-icon"></i>
-                                <input type="password"
-                                       class="form-input-modern @error('instagram_access_token') is-invalid @enderror"
+                            <div class="input-wrapper input-wrapper--with-action">
+                                <input type="text"
+                                       class="form-input-modern api-key-input @error('instagram_access_token') is-invalid @enderror"
                                        id="instagram_access_token"
                                        name="instagram_access_token"
-                                       value="{{ old('instagram_access_token', \App\Helpers\SettingHelper::get('instagram_access_token', env('INSTAGRAM_ACCESS_TOKEN', ''))) }}"
-                                       placeholder="Enter your Instagram Access Token">
-                                <button type="button" class="password-toggle" onclick="togglePassword('instagram_access_token')" title="Show/Hide">
-                                    <i class="fas fa-eye" id="toggle_instagram_access_token"></i>
-                                </button>
+                                       value="{{ old('instagram_access_token', $maskedSettings['instagram_access_token'] ?? '') }}"
+                                       placeholder="Enter your Instagram Access Token"
+                                       {{ !empty($maskedSettings['instagram_access_token']) ? 'readonly' : '' }}
+                                       data-masked="{{ !empty($maskedSettings['instagram_access_token']) ? 'true' : 'false' }}">
+                                @if(!empty($maskedSettings['instagram_access_token']))
+                                    <button type="button" class="api-key-change-btn" onclick="enableKeyEdit('instagram_access_token')" title="Change Access Token">
+                                        <i class="fas fa-edit api-key-change-btn__icon"></i>
+                                        Change
+                                    </button>
+                                @endif
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
@@ -580,11 +621,9 @@
                         <!-- User ID -->
                         <div class="form-group-modern">
                             <label for="instagram_user_id" class="form-label-modern">
-                                <i class="fas fa-user"></i>
                                 Instagram User ID
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-user input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('instagram_user_id') is-invalid @enderror"
                                        id="instagram_user_id"
@@ -616,67 +655,227 @@
                 </div>
             </div>
 
-            <!-- Right Column - Actions -->
+            <!-- Right Column - Sidebar -->
             <div class="col-lg-4">
-                <!-- Save Card -->
-                <div class="modern-card modern-card--sticky">
+                <!-- Tips Card -->
+                <div class="modern-card mb-4">
                     <div class="modern-card__header">
                         <h3 class="modern-card__title">
-                            <i class="fas fa-save"></i>
-                            Save Settings
+                            <i class="fas fa-lightbulb"></i>
+                            Tips
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary btn-block btn-lg">
-                                <i class="fas fa-save"></i>
-                                Save API Settings
-                            </button>
-                            <button type="reset" class="btn btn-outline-secondary btn-block">
-                                <i class="fas fa-undo"></i>
-                                Reset Changes
-                            </button>
-                        </div>
-                        <div class="form-info">
-                            <div class="info-item">
-                                <i class="fas fa-shield-alt"></i>
-                                <span>All keys are stored securely</span>
+                        <ul class="tips-list">
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>API Key Security</strong>
+                                    <p>Keys are masked by default showing only first 4 and last 4 characters. Click "Change" button to edit existing keys</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Encrypted Storage</strong>
+                                    <p>All sensitive API keys are encrypted in the database using Laravel's encryption</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Test vs Production</strong>
+                                    <p>Use test/sandbox keys (pk_test_, sk_test_) during development. Switch to live keys (pk_live_, sk_live_) only in production</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Never Share Publicly</strong>
+                                    <p>Never commit API keys to version control or share them in public forums, emails, or screenshots</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Regular Rotation</strong>
+                                    <p>Change your API keys periodically (every 3-6 months) for enhanced security, especially after team member changes</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Monitor API Usage</strong>
+                                    <p>Regularly check your API dashboards (Stripe, Instagram, etc.) for unusual activity or unauthorized access</p>
+                                </div>
+                            </li>
+                            <li class="tips-list__item">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Required vs Optional</strong>
+                                    <p>Stripe is required for payments. Other services (Google OAuth, Instagram, NZ Post) are optional features</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Configuration Status Card -->
+                <div class="modern-card mb-4">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-info-circle"></i>
+                            Configuration Status
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="api-config-status">
+                            <div class="api-config-status__item">
+                                <div class="api-config-status__label">
+                                    <i class="fab fa-stripe api-config-status__label-icon"></i>
+                                    Stripe
+                                </div>
+                                <div class="api-config-status__value">
+                                    @if(!empty($settings['stripe_key']) && !empty($settings['stripe_secret']))
+                                        <span class="api-status-badge api-status-badge--success">Configured</span>
+                                    @else
+                                        <span class="api-status-badge api-status-badge--warning">Required</span>
+                                    @endif
+                                </div>
                             </div>
-                            <div class="info-item">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Changes apply immediately</span>
+                            
+                            <div class="api-config-status__item">
+                                <div class="api-config-status__label">
+                                    <i class="fas fa-shopping-cart api-config-status__label-icon"></i>
+                                    EPOSNOW
+                                </div>
+                                <div class="api-config-status__value">
+                                    @if(!empty($settings['eposnow_api_key']) && !empty($settings['eposnow_api_secret']))
+                                        <span class="api-status-badge api-status-badge--success">Configured</span>
+                                    @else
+                                        <span class="api-status-badge api-status-badge--secondary">Optional</span>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            <div class="api-config-status__item">
+                                <div class="api-config-status__label">
+                                    <i class="fab fa-google api-config-status__label-icon"></i>
+                                    Google OAuth
+                                </div>
+                                <div class="api-config-status__value">
+                                    @if(!empty($settings['google_client_id']) && !empty($settings['google_client_secret']))
+                                        <span class="api-status-badge api-status-badge--success">Configured</span>
+                                    @else
+                                        <span class="api-status-badge api-status-badge--secondary">Optional</span>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            <div class="api-config-status__item">
+                                <div class="api-config-status__label">
+                                    <i class="fab fa-instagram api-config-status__label-icon"></i>
+                                    Instagram
+                                </div>
+                                <div class="api-config-status__value">
+                                    @if(!empty($settings['instagram_access_token']))
+                                        <span class="api-status-badge api-status-badge--success">Configured</span>
+                                    @else
+                                        <span class="api-status-badge api-status-badge--secondary">Optional</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="api-config-status__item">
+                                <div class="api-config-status__label">
+                                    <i class="fas fa-map-marker-alt api-config-status__label-icon"></i>
+                                    NZ Post
+                                </div>
+                                <div class="api-config-status__value">
+                                    @if(!empty($settings['nzpost_api_key']))
+                                        <span class="api-status-badge api-status-badge--success">Configured</span>
+                                    @else
+                                        <span class="api-status-badge api-status-badge--secondary">Optional</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Security Tips -->
-                <div class="modern-card">
+                <!-- API Services Overview Card -->
+                <div class="modern-card mb-4">
                     <div class="modern-card__header">
                         <h3 class="modern-card__title">
-                            <i class="fas fa-shield-alt"></i>
-                            Security Tips
+                            <i class="fas fa-question-circle"></i>
+                            What Each API Does
                         </h3>
                     </div>
                     <div class="modern-card__body">
-                        <ul class="tips-list">
-                            <li>
-                                <i class="fas fa-check-circle"></i>
-                                <span>Never share your API keys publicly</span>
+                        <ul class="api-services-list">
+                            <li class="api-services-list__item">
+                                <i class="fab fa-stripe api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">Stripe</div>
+                                    <p class="api-services-list__description">Payment processing for customer orders and subscription management</p>
+                                </div>
                             </li>
-                            <li>
-                                <i class="fas fa-check-circle"></i>
-                                <span>Use test keys for development</span>
+                            <li class="api-services-list__item">
+                                <i class="fas fa-shopping-cart api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">EPOSNOW</div>
+                                    <p class="api-services-list__description">Product and inventory synchronization from POS system</p>
+                                </div>
                             </li>
-                            <li>
-                                <i class="fas fa-check-circle"></i>
-                                <span>Rotate keys regularly for security</span>
+                            <li class="api-services-list__item">
+                                <i class="fab fa-google api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">Google Services</div>
+                                    <p class="api-services-list__description">OAuth login and Google Maps integration for store location</p>
+                                </div>
                             </li>
-                            <li>
-                                <i class="fas fa-check-circle"></i>
-                                <span>Keep secret keys confidential</span>
+                            <li class="api-services-list__item">
+                                <i class="fab fa-facebook api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">Facebook Login</div>
+                                    <p class="api-services-list__description">Social authentication allowing users to sign in with Facebook</p>
+                                </div>
+                            </li>
+                            <li class="api-services-list__item">
+                                <i class="fab fa-instagram api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">Instagram</div>
+                                    <p class="api-services-list__description">Display Instagram feed and posts directly on your website</p>
+                                </div>
+                            </li>
+                            <li class="api-services-list__item">
+                                <i class="fas fa-map-marker-alt api-services-list__icon"></i>
+                                <div class="api-services-list__content">
+                                    <div class="api-services-list__title">NZ Post</div>
+                                    <p class="api-services-list__description">Address validation and autocomplete for checkout process</p>
+                                </div>
                             </li>
                         </ul>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Card -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-save"></i>
+                            Actions
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save API Settings
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo me-2"></i>Reset Changes
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -685,20 +884,31 @@
 </div>
 
 <script>
-// Password toggle function
-function togglePassword(inputId) {
+/**
+ * Enable editing for a masked API key
+ */
+function enableKeyEdit(inputId) {
     const input = document.getElementById(inputId);
-    const toggle = document.getElementById('toggle_' + inputId);
-
-    if (input.type === 'password') {
-        input.type = 'text';
-        toggle.classList.remove('fa-eye');
-        toggle.classList.add('fa-eye-slash');
-    } else {
-        input.type = 'password';
-        toggle.classList.remove('fa-eye-slash');
-        toggle.classList.add('fa-eye');
-    }
+    const button = input.parentElement.querySelector('.api-key-change-btn');
+    
+    if (!input || !button) return;
+    
+    // Remove readonly and clear masked value
+    input.removeAttribute('readonly');
+    input.value = '';
+    input.focus();
+    input.setAttribute('data-masked', 'false');
+    
+    // Add visual feedback
+    input.classList.add('api-key-input--changed');
+    input.placeholder = 'Enter new ' + input.getAttribute('name').replace(/_/g, ' ');
+    
+    // Hide the change button
+    button.style.display = 'none';
+    
+    // Update background color
+    input.style.backgroundColor = '#ffffff';
+    input.style.cursor = 'text';
 }
 
 // Toggle provider fields visibility
@@ -797,5 +1007,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endsection
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/admin-api-settings.css') }}">
+@endpush
+@endsection

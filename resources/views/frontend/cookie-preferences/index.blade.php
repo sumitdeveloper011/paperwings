@@ -132,12 +132,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const rejectAllBtn = document.getElementById('rejectAllPage');
     const acceptAllBtn = document.getElementById('acceptAllPage');
 
+    if (window.FormSubmissionHandler && form) {
+        window.FormSubmissionHandler.init('cookiePreferencesForm', {
+            loadingText: 'Saving Preferences...',
+            timeout: 10000
+        });
+    }
+
     if (rejectAllBtn) {
         rejectAllBtn.addEventListener('click', function() {
             document.getElementById('analyticsCookiesPage').checked = false;
             document.getElementById('marketingCookiesPage').checked = false;
             document.getElementById('functionalityCookiesPage').checked = false;
-            form.dispatchEvent(new Event('submit'));
+            if (form) form.dispatchEvent(new Event('submit'));
         });
     }
 
@@ -146,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('analyticsCookiesPage').checked = true;
             document.getElementById('marketingCookiesPage').checked = true;
             document.getElementById('functionalityCookiesPage').checked = true;
-            form.dispatchEvent(new Event('submit'));
+            if (form) form.dispatchEvent(new Event('submit'));
         });
     }
 

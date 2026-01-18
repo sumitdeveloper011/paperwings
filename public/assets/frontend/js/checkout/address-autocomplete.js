@@ -45,22 +45,27 @@ class AddressAutocomplete {
         }, 300);
     }
 
+    /**
+     * Search for address suggestions
+     * @param {string} query - Search query
+     */
     async searchAddress(query) {
         try {
-            const response = await fetch(this.searchUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ query })
-            });
+            const data = window.AjaxUtils
+                ? await window.AjaxUtils.post(this.searchUrl, { query }, { showMessage: false, silentAuth: true })
+                : await fetch(this.searchUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                }).then(response => response.json());
 
-            const data = await response.json();
-
-            if (data.success && data.results && data.results.length > 0) {
-                this.displaySuggestions(data.results);
+            const results = data.data?.results ?? data.results ?? [];
+            if (data.success && results && results.length > 0) {
+                this.displaySuggestions(results);
             } else {
                 this.hideSuggestions();
             }

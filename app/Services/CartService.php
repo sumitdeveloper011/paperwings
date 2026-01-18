@@ -167,12 +167,16 @@ class CartService
     {
         return $this->cartItem
             ->with(['product' => function($query) {
-                $query->select('id', 'uuid', 'name', 'slug', 'total_price', 'discount_price', 'barcode', 'status')
-                      ->with(['images' => function($q) {
-                          $q->select('id', 'product_id', 'image')
-                            ->orderBy('id')
-                            ->limit(1);
-                      }]);
+                $query->select('id', 'uuid', 'name', 'slug', 'total_price', 'discount_price', 'barcode', 'status', 'category_id', 'brand_id')
+                      ->with([
+                          'images' => function($q) {
+                              $q->select('id', 'product_id', 'image')
+                                ->orderBy('id')
+                                ->limit(1);
+                          },
+                          'category:id,name,slug',
+                          'brand:id,name'
+                      ]);
             }])
             ->where('user_id', $cartIdentifier['user_id'])
             ->get();

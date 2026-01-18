@@ -8,15 +8,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('contact_messages', function (Blueprint $table) {
-            $table->string('image')->nullable()->after('message');
-        });
+        if (Schema::hasTable('contact_messages')) {
+            Schema::table('contact_messages', function (Blueprint $table) {
+                if (!Schema::hasColumn('contact_messages', 'image')) {
+                    $table->string('image')->nullable()->after('message');
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('contact_messages', function (Blueprint $table) {
-            $table->dropColumn('image');
-        });
+        if (Schema::hasTable('contact_messages')) {
+            Schema::table('contact_messages', function (Blueprint $table) {
+                if (Schema::hasColumn('contact_messages', 'image')) {
+                    $table->dropColumn('image');
+                }
+            });
+        }
     }
 };

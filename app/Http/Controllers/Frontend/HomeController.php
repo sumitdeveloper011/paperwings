@@ -26,12 +26,23 @@ class HomeController extends Controller
         $title = $settings['meta_title'] ?? config('app.name', 'Paper Wings');
         $sliders = Slider::active()->ordered()->get();
 
-        $categories = Category::active()
-            ->whereHas('activeProducts')
-            ->withCount('activeProducts')
-            ->ordered()
+        $categories = Category::where('categories.status', 1)
+            ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+            ->leftJoin('products', function($join) {
+                $join->on('products.category_id', '=', 'categories.id')
+                     ->where('products.status', '=', 1)
+                     ->whereNull('products.deleted_at');
+            })
+            ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+            ->havingRaw('COUNT(products.id) > 0')
+            ->selectRaw('COUNT(products.id) as active_products_count')
+            ->orderBy('categories.name', 'asc')
             ->take(6)
-            ->get();
+            ->get()
+            ->map(function($category) {
+                $category->active_products_count = (int) $category->active_products_count;
+                return $category;
+            });
 
         // Featured Products - Show latest products (product_type 2) for testing
         $featuredProducts = Product::active()
@@ -116,12 +127,22 @@ class HomeController extends Controller
             ->shuffle()
             ->take(18);
 
-        // Optimized: Use activeProducts relationship with whereHas
-        $randomCategories = Category::active()
-            ->whereHas('activeProducts')
-            ->withCount('activeProducts')
+        $randomCategories = Category::where('categories.status', 1)
+            ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+            ->leftJoin('products', function($join) {
+                $join->on('products.category_id', '=', 'categories.id')
+                     ->where('products.status', '=', 1)
+                     ->whereNull('products.deleted_at');
+            })
+            ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+            ->havingRaw('COUNT(products.id) > 0')
+            ->selectRaw('COUNT(products.id) as active_products_count')
             ->take(10)
             ->get()
+            ->map(function($category) {
+                $category->active_products_count = (int) $category->active_products_count;
+                return $category;
+            })
             ->shuffle()
             ->take(4);
 
@@ -143,16 +164,23 @@ class HomeController extends Controller
         }
 
         if ($randomCategories->isEmpty()) {
-            $randomCategories = Category::where('status', 1)
-                ->whereHas('products', function($query) {
-                    $query->where('status', 1);
+            $randomCategories = Category::where('categories.status', 1)
+                ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+                ->leftJoin('products', function($join) {
+                    $join->on('products.category_id', '=', 'categories.id')
+                         ->where('products.status', '=', 1)
+                         ->whereNull('products.deleted_at');
                 })
-                ->withCount(['products' => function($query) {
-                    $query->where('status', 1);
-                }])
-                ->orderBy('name')
+                ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+                ->havingRaw('COUNT(products.id) > 0')
+                ->selectRaw('COUNT(products.id) as active_products_count')
+                ->orderBy('categories.name')
                 ->take(4)
-                ->get();
+                ->get()
+                ->map(function($category) {
+                    $category->active_products_count = (int) $category->active_products_count;
+                    return $category;
+                });
 
             if ($randomCategories->isNotEmpty()) {
                 $allCategoryProducts = Product::active()

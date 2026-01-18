@@ -18,9 +18,9 @@ use App\Repositories\SliderRepository;
 use App\Repositories\SubCategoryRepository;
 use App\Models\Category;
 use App\Models\Page;
+use App\Helpers\CacheHelper;
 use App\Models\Setting;
 use App\Helpers\SettingHelper;
-use App\Helpers\CacheHelper;
 use App\Helpers\ViewComposerHelper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -80,7 +80,7 @@ class AppServiceProvider extends ServiceProvider
                 $socialLinks = SettingHelper::extractSocialLinks($settings);
 
                 // Optimized: Use activeProducts relationship with whereHas (fetch all for mega menu)
-                $categories = Cache::remember('header_categories', 1800, function() {
+                $categories = Cache::remember(CacheHelper::HEADER_CATEGORIES, 1800, function() {
                     try {
                         return Category::active()
                             ->withCount(['products' => function($query) {
@@ -143,7 +143,7 @@ class AppServiceProvider extends ServiceProvider
 
         view()->composer('include.frontend.footer', function ($view) {
             try {
-                $settings = Cache::remember('footer_settings', 3600, function() {
+                $settings = Cache::remember(CacheHelper::FOOTER_SETTINGS, 3600, function() {
                     try {
                         return SettingHelper::all();
                     } catch (\Exception $e) {
@@ -158,7 +158,7 @@ class AppServiceProvider extends ServiceProvider
 
                 $footerSocialLinks = SettingHelper::extractSocialLinks($settings);
 
-                $footerPages = Cache::remember('footer_pages', 1800, function() {
+                $footerPages = Cache::remember(CacheHelper::FOOTER_PAGES, 1800, function() {
                     try {
                         $pageSlugs = ['about-us', 'return-policy', 'privacy-policy', 'delivery-policy', 'terms-and-conditions', 'cookie-policy'];
                         $pages = Page::select('id', 'title', 'slug')
@@ -184,15 +184,25 @@ class AppServiceProvider extends ServiceProvider
                     }
                 });
 
-                $footerCategories = Cache::remember('footer_categories', 1800, function() {
+                $footerCategories = Cache::remember(CacheHelper::FOOTER_CATEGORIES, 1800, function() {
                     try {
-                        return Category::active()
-                            ->whereHas('activeProducts')
-                            ->withCount('activeProducts')
-                            ->select('id', 'name', 'slug')
-                            ->ordered()
+                        return Category::where('categories.status', 1)
+                            ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+                            ->leftJoin('products', function($join) {
+                                $join->on('products.category_id', '=', 'categories.id')
+                                     ->where('products.status', '=', 1)
+                                     ->whereNull('products.deleted_at');
+                            })
+                            ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
+                            ->havingRaw('COUNT(products.id) > 0')
+                            ->selectRaw('COUNT(products.id) as active_products_count')
+                            ->orderBy('categories.name', 'asc')
                             ->take(5)
-                            ->get();
+                            ->get()
+                            ->map(function($category) {
+                                $category->active_products_count = (int) $category->active_products_count;
+                                return $category;
+                            });
                     } catch (\Exception $e) {
                         Log::warning('Failed to fetch footer categories: ' . $e->getMessage());
                         return collect([]);
@@ -256,7 +266,7 @@ class AppServiceProvider extends ServiceProvider
 
         view()->composer(['layouts.admin.*', 'include.admin.*'], function ($view) use ($adminSettingsCallback) {
             try {
-                $settings = Cache::remember('admin_settings', 3600, $adminSettingsCallback);
+                $settings = Cache::remember(CacheHelper::ADMIN_SETTINGS, 3600, $adminSettingsCallback);
 
                 $view->with([
                     'settings' => $settings,

@@ -1,6 +1,8 @@
 /**
  * Cookie Consent Module
  * Handles cookie consent banner and preferences
+ * 
+ * @module CookieConsent
  */
 (function() {
     'use strict';
@@ -11,6 +13,9 @@
         csrfToken: null,
         preferences: null,
 
+        /**
+         * Initialize cookie consent module
+         */
         init: function() {
             this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             this.preferences = this.getPreferences();
@@ -42,6 +47,11 @@
             }
         },
 
+        /**
+         * Check if user has consented to a specific cookie category
+         * @param {string} category - Cookie category ('essential', 'analytics', 'marketing', 'functionality')
+         * @returns {boolean} Whether user has consented
+         */
         hasConsent: function(category) {
             switch(category) {
                 case 'essential':
@@ -57,6 +67,11 @@
             }
         },
 
+        /**
+         * Save cookie preferences to cookie and server
+         * @param {Object} preferences - Preferences object
+         * @param {Function} callback - Optional callback function
+         */
         savePreferences: function(preferences, callback) {
             preferences.essential_cookies = true;
             preferences.preferences_saved_at = new Date().toISOString();
@@ -64,31 +79,39 @@
             this.setCookie(this.cookieName, JSON.stringify(preferences), this.cookieExpiry);
             this.preferences = preferences;
 
-            fetch('/cookie-preferences/update', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(preferences)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            // Use AjaxUtils if available, fallback to direct fetch
+            const savePromise = window.AjaxUtils
+                ? window.AjaxUtils.post('/cookie-preferences/update', preferences, { 
+                    showMessage: false, 
+                    silentAuth: true 
+                })
+                : fetch('/cookie-preferences/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(preferences)
+                }).then(response => response.json());
+
+            savePromise
+                .then(data => {
+                    if (data.success) {
+                        this.hideBanner();
+                        this.hideModal();
+                        this.loadScriptsBasedOnConsent();
+                        if (callback) callback();
+                    }
+                })
+                .catch(error => {
+                    // Failed to save preferences to server (silent fail)
+                    // Still update local cookie and UI
                     this.hideBanner();
                     this.hideModal();
                     this.loadScriptsBasedOnConsent();
                     if (callback) callback();
-                }
-            })
-            .catch(error => {
-                // Failed to save preferences to server (silent fail)
-                this.hideBanner();
-                this.hideModal();
-                this.loadScriptsBasedOnConsent();
-                if (callback) callback();
-            });
+                });
         },
 
         acceptAll: function() {

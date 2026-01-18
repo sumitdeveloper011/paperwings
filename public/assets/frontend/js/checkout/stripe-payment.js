@@ -11,6 +11,7 @@ class StripePaymentHandler {
         this.stripe = null;
         this.elements = null;
         this.paymentElement = null;
+        this.isProcessing = false;
         this.init();
     }
 
@@ -40,15 +41,20 @@ class StripePaymentHandler {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ amount: this.total })
             });
 
+            if (!response.ok) {
+                throw new Error('Failed to create payment intent. Please try again.');
+            }
+
             const data = await response.json();
 
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to create payment intent');
+            if (!data.success || !data.clientSecret) {
+                throw new Error(data.message || 'Failed to create payment intent. Please try again.');
             }
 
             this.elements = this.stripe.elements({
@@ -68,6 +74,7 @@ class StripePaymentHandler {
             this.attachFormHandler();
         } catch (error) {
             this.showLoading(false);
+            this.setPaymentReady(false);
             this.showError(error.message || 'Failed to initialize payment. Please refresh the page.');
         }
     }
@@ -104,16 +111,28 @@ class StripePaymentHandler {
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // Prevent double submission
+            if (this.isProcessing) {
+                return;
+            }
+            
             await this.processPayment();
         });
     }
 
     async processPayment() {
+        if (this.isProcessing) {
+            return;
+        }
+
         const submitButton = document.getElementById('placeOrderBtn');
         const buttonText = document.getElementById('placeOrderBtnText');
         const spinner = document.getElementById('placeOrderSpinner');
 
+        this.isProcessing = true;
         this.setButtonLoading(submitButton, buttonText, spinner, true);
+        this.clearError();
 
         try {
             const { error, paymentIntent } = await this.stripe.confirmPayment({
@@ -125,15 +144,21 @@ class StripePaymentHandler {
             });
 
             if (error) {
-                this.showError(error.message);
+                this.showError(error.message || 'Payment failed. Please try again.');
                 this.setButtonLoading(submitButton, buttonText, spinner, false);
+                this.isProcessing = false;
             } else if (paymentIntent && paymentIntent.status === 'succeeded') {
                 // Submit form via AJAX to handle JSON response and redirect
                 await this.submitOrderForm(paymentIntent.id, submitButton, buttonText, spinner);
+            } else {
+                this.showError('Payment status is unexpected. Please try again.');
+                this.setButtonLoading(submitButton, buttonText, spinner, false);
+                this.isProcessing = false;
             }
         } catch (err) {
-            this.showError('An error occurred. Please try again.');
+            this.showError('An error occurred while processing payment. Please try again.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
+            this.isProcessing = false;
         }
     }
 
@@ -148,6 +173,7 @@ class StripePaymentHandler {
         if (!form || !paymentIntentId) {
             this.showError('Payment succeeded but payment intent ID is missing. Please contact support.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
+            this.isProcessing = false;
             return;
         }
 
@@ -155,8 +181,6 @@ class StripePaymentHandler {
             // Create FormData from form
             const formData = new FormData(form);
             formData.append('payment_intent_id', paymentIntentId);
-
-            console.log('[StripePaymentHandler] Submitting order form with payment_intent_id:', paymentIntentId);
 
             const response = await fetch(form.action, {
                 method: 'POST',
@@ -168,20 +192,24 @@ class StripePaymentHandler {
                 body: formData
             });
 
+            if (!response.ok) {
+                throw new Error('Failed to process order. Please try again.');
+            }
+
             const data = await response.json();
 
             if (data.success && data.redirect_url) {
-                console.log('[StripePaymentHandler] Order placed successfully, redirecting to:', data.redirect_url);
                 // Redirect to success page
                 window.location.href = data.redirect_url;
             } else {
                 this.showError(data.message || 'Failed to place order. Please try again.');
                 this.setButtonLoading(submitButton, buttonText, spinner, false);
+                this.isProcessing = false;
             }
         } catch (error) {
-            console.error('[StripePaymentHandler] Error submitting order:', error);
             this.showError('An error occurred while placing your order. Please try again.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
+            this.isProcessing = false;
         }
     }
 
@@ -190,6 +218,17 @@ class StripePaymentHandler {
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            
+            // Scroll to error if needed
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    clearError() {
+        const errorElement = document.getElementById('payment-errors');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
         }
     }
 }

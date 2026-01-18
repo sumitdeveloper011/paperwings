@@ -127,10 +127,12 @@
             </a>
         @else
             <p class="empty-state__text">Start by creating your first category</p>
+            @can('categories.create')
             <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i>
                 Add Category
             </a>
+            @endcan
         @endif
     </div>
 @endif

@@ -30,9 +30,7 @@ class WishlistController extends Controller
 
             $product->load(['category', 'brand']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Product added to wishlist successfully.',
+            return $this->jsonSuccess('Product added to wishlist successfully.', [
                 'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id()),
                 'product' => $product ? [
                     'id' => $product->id,
@@ -44,10 +42,7 @@ class WishlistController extends Controller
                 ] : null
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+            return $this->jsonError($e->getMessage(), 'WISHLIST_ADD_ERROR', null, 400);
         }
     }
 
@@ -72,9 +67,7 @@ class WishlistController extends Controller
             
             $this->wishlistService->removeFromWishlist(Auth::id(), $product->id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Product removed from wishlist successfully.',
+            return $this->jsonSuccess('Product removed from wishlist successfully.', [
                 'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id()),
                 'product' => $product ? [
                     'id' => $product->id,
@@ -86,10 +79,7 @@ class WishlistController extends Controller
                 ] : null
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 404);
+            return $this->jsonError($e->getMessage(), 'WISHLIST_REMOVE_ERROR', null, 404);
         }
     }
 
@@ -97,11 +87,7 @@ class WishlistController extends Controller
     public function list(): JsonResponse
     {
         if (!Auth::check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Please login to view wishlist.',
-                'requires_login' => true
-            ], 401);
+            return $this->jsonError('Please login to view wishlist.', 'UNAUTHENTICATED', ['requires_login' => true], 401);
         }
 
         // Use API Resource for consistent response format
@@ -112,8 +98,7 @@ class WishlistController extends Controller
             ->values()
             ->toArray();
 
-        return response()->json([
-            'success' => true,
+        return $this->jsonSuccess('Wishlist items retrieved.', [
             'items' => $itemsArray,
             'count' => count($itemsArray)
         ]);
@@ -168,28 +153,28 @@ class WishlistController extends Controller
             $status[$uuid] = $statusById[$id] ?? false;
         }
 
-        return response()->json([
-            'success' => true,
-            'status' => $status
-        ]);
+        return $this->jsonSuccess('Wishlist status checked.', ['status' => $status]);
     }
 
     // Get wishlist count
     public function count(): JsonResponse
     {
-        if (!Auth::check()) {
-            return response()->json([
-                'success' => true,
-                'count' => 0
-            ]);
+        try {
+            if (!Auth::check()) {
+                return $this->jsonSuccess('Wishlist count retrieved.', ['count' => 0]);
+            }
+
+            $userId = Auth::id();
+            if (!$userId) {
+                return $this->jsonError('User ID not found.', 'USER_ID_MISSING', null, 400);
+            }
+
+            $count = $this->wishlistService->getWishlistCount($userId);
+
+            return $this->jsonSuccess('Wishlist count retrieved.', ['count' => $count]);
+        } catch (\Exception $e) {
+            return $this->jsonError('An error occurred while retrieving wishlist count.', 'INTERNAL_SERVER_ERROR', null, 500);
         }
-
-        $count = $this->wishlistService->getWishlistCount(Auth::id());
-
-        return response()->json([
-            'success' => true,
-            'count' => $count
-        ]);
     }
 
     // Render wishlist items as HTML (for AJAX)
@@ -197,11 +182,9 @@ class WishlistController extends Controller
     {
         if (!Auth::check()) {
             // Return empty wishlist for unauthenticated users (no 401 error)
-            return response()->json([
-                'success' => true,
+            return $this->jsonSuccess('Please login to view wishlist.', [
                 'html' => '',
-                'count' => 0,
-                'message' => 'Please login to view wishlist.'
+                'count' => 0
             ]);
         }
 
@@ -214,8 +197,7 @@ class WishlistController extends Controller
             'items' => $wishlistItems
         ])->render();
 
-        return response()->json([
-            'success' => true,
+        return $this->jsonSuccess('Wishlist rendered.', [
             'html' => $html,
             'count' => $wishlistItems->count()
         ]);
@@ -250,9 +232,7 @@ class WishlistController extends Controller
             }
 
             if (empty($productIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No valid products found.',
+                return $this->jsonError('No valid products found.', 'NO_PRODUCTS', [
                     'results' => [
                         'success' => [],
                         'failed' => []
@@ -280,20 +260,27 @@ class WishlistController extends Controller
             $successCount = count($results['success']);
             $failedCount = count($results['failed']);
 
-            return response()->json([
-                'success' => $successCount > 0,
-                'message' => $successCount > 0 
-                    ? ($failedCount > 0 
-                        ? "{$successCount} item(s) removed successfully. {$failedCount} item(s) failed."
-                        : "{$successCount} item(s) removed from wishlist successfully.")
-                    : 'Failed to remove items from wishlist.',
-                'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id()),
-                'results' => $results
-            ], $successCount > 0 ? 200 : 400);
+            $message = $successCount > 0 
+                ? ($failedCount > 0 
+                    ? "{$successCount} item(s) removed successfully. {$failedCount} item(s) failed."
+                    : "{$successCount} item(s) removed from wishlist successfully.")
+                : 'Failed to remove items from wishlist.';
+
+            if ($successCount > 0) {
+                return $this->jsonSuccess($message, [
+                    'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id()),
+                    'results' => $results
+                ]);
+            } else {
+                return $this->jsonError($message, 'WISHLIST_REMOVE_MULTIPLE_FAILED', [
+                    'results' => [
+                        'success' => [],
+                        'failed' => []
+                    ]
+                ], 400);
+            }
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
+            return $this->jsonError($e->getMessage(), 'WISHLIST_REMOVE_MULTIPLE_ERROR', [
                 'results' => [
                     'success' => [],
                     'failed' => []

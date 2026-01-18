@@ -92,10 +92,41 @@
                                     </p>
                                 </div>
                             </form>
+
+                            @if(session('unverified_email') || ($errors->has('email') && session('unverified_email')))
+                            <div class="resend-verification-section mt-4">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div>
+                                        <p class="mb-2">Your email address is not verified. Please check your inbox or resend the verification email.</p>
+                                        <form action="{{ route('verification.resend') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="email" value="{{ session('unverified_email') ?? old('email') }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-paper-plane"></i> Resend Verification Email
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('loginForm', {
+            loadingText: 'Logging in...',
+            timeout: 10000
+        });
+    }
+});
+</script>
+@endpush
 @endsection

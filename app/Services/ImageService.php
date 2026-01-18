@@ -24,6 +24,14 @@ class ImageService
     public function uploadImage(UploadedFile $file, string $baseFolder, ?string $uuid = null, ?string $oldImagePath = null, bool $generateThumbnail = true): ?string
     {
         try {
+            // Validate MIME type (not just file extension)
+            $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            $mimeType = $file->getMimeType();
+            
+            if (!in_array($mimeType, $allowedMimeTypes)) {
+                throw new \Exception('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+            }
+            
             if ($oldImagePath) {
                 $this->deleteImage($oldImagePath);
             }
@@ -58,14 +66,16 @@ class ImageService
             // Use Storage::putFileAs to ensure correct path handling
             $originalImagePath = Storage::disk('public')->putFileAs($originalFolderPath, $file, $imageName);
             
-            // Log for debugging
-            Log::info('Image uploaded', [
-                'baseFolder' => $baseFolder,
-                'folderUuid' => $folderUuid,
-                'originalFolderPath' => $originalFolderPath,
-                'finalImagePath' => $originalImagePath,
-                'expectedPath' => $originalFolderPath . '/' . $imageName
-            ]);
+            // Log for debugging (only in local environment)
+            if (app()->environment('local')) {
+                Log::info('Image uploaded', [
+                    'baseFolder' => $baseFolder,
+                    'folderUuid' => $folderUuid,
+                    'originalFolderPath' => $originalFolderPath,
+                    'finalImagePath' => $originalImagePath,
+                    'expectedPath' => $originalFolderPath . '/' . $imageName
+                ]);
+            }
 
             // Process category, subcategory, slider, product, bundle, page, about-section, testimonial, special-offers, user, logo, and icon images with specific dimensions
             if ($baseFolder === 'categories' || $baseFolder === 'subcategories') {

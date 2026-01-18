@@ -370,7 +370,7 @@ class AccountController extends Controller
     {
         if (!Auth::check()) {
             if (request()->expectsJson()) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return $this->jsonError('Unauthorized', 'UNAUTHENTICATED', null, 401);
             }
             return redirect()->route('login')->with('error', 'Please login to access your account.');
         }
@@ -382,8 +382,7 @@ class AccountController extends Controller
             ->firstOrFail();
 
         if (request()->expectsJson() || request()->ajax()) {
-            return response()->json([
-                'success' => true,
+            return $this->jsonSuccess('Address retrieved.', [
                 'address' => [
                     'id' => $address->id,
                     'type' => $address->type,

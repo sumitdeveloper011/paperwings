@@ -21,7 +21,20 @@ class ApiSettingsController extends Controller
     {
         $settings = SettingHelper::all();
 
-        return view('admin.api-settings.index', compact('settings'));
+        // Mask sensitive API keys for display
+        $maskedSettings = [];
+        foreach ($settings as $key => $value) {
+            if (ApiKeyEncryptionService::shouldEncrypt($key) && !empty($value)) {
+                $maskedSettings[$key] = ApiKeyEncryptionService::mask($value);
+            } else {
+                $maskedSettings[$key] = $value;
+            }
+        }
+
+        return view('admin.api-settings.index', [
+            'settings' => $settings,
+            'maskedSettings' => $maskedSettings
+        ]);
     }
 
     // Update API settings
@@ -142,6 +155,11 @@ class ApiSettingsController extends Controller
     // Update or create a setting
     private function updateSetting(string $key, ?string $value): void
     {
+        // If value is masked (unchanged), don't update it
+        if (ApiKeyEncryptionService::isMasked($value)) {
+            return;
+        }
+
         // Encrypt sensitive keys before storing
         $encryptedValue = ApiKeyEncryptionService::encrypt($key, $value);
         

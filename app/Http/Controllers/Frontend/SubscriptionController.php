@@ -24,10 +24,7 @@ class SubscriptionController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => $validator->errors()->first('email'),
-            ], 422);
+            return $this->jsonValidationError($validator->errors(), $validator->errors()->first('email'));
         }
 
         try {
@@ -37,10 +34,7 @@ class SubscriptionController extends Controller
 
             if ($existingSubscription) {
                 if ($existingSubscription->status == 1) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This email is already subscribed to our newsletter.',
-                    ], 409);
+                    return $this->jsonError('This email is already subscribed to our newsletter.', 'SUBSCRIPTION_ALREADY_EXISTS', null, 409);
                 } else {
                     $existingSubscription->update([
                         'status' => 1,
@@ -53,10 +47,7 @@ class SubscriptionController extends Controller
                         'ip' => $request->ip(),
                     ]);
 
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Thank you for subscribing! You will receive our latest offers and updates.',
-                    ]);
+                    return $this->jsonSuccess('Thank you for subscribing! You will receive our latest offers and updates.');
                 }
             }
 
@@ -84,10 +75,7 @@ class SubscriptionController extends Controller
                 ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Thank you for subscribing! You will receive our latest offers and updates.',
-            ]);
+            return $this->jsonSuccess('Thank you for subscribing! You will receive our latest offers and updates.');
 
         } catch (\Exception $e) {
             Log::error('Subscription error', [
@@ -96,10 +84,7 @@ class SubscriptionController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred. Please try again later.',
-            ], 500);
+            return $this->jsonError('An error occurred. Please try again later.', 'SUBSCRIPTION_ERROR', null, 500);
         }
     }
 
@@ -110,10 +95,7 @@ class SubscriptionController extends Controller
             $subscription = Subscription::where('uuid', $uuid)->first();
 
             if (!$subscription) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Subscription not found.',
-                ], 404);
+                return $this->jsonError('Subscription not found.', 'SUBSCRIPTION_NOT_FOUND', null, 404);
             }
 
             $subscription->update([
@@ -126,10 +108,7 @@ class SubscriptionController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'You have been successfully unsubscribed from our newsletter.',
-            ]);
+            return $this->jsonSuccess('You have been successfully unsubscribed from our newsletter.');
 
         } catch (\Exception $e) {
             Log::error('Unsubscribe error', [
@@ -138,10 +117,7 @@ class SubscriptionController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred. Please try again later.',
-            ], 500);
+            return $this->jsonError('An error occurred. Please try again later.', 'UNSUBSCRIBE_ERROR', null, 500);
         }
     }
 }

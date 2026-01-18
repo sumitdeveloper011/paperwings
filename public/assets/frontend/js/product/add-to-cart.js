@@ -1,40 +1,54 @@
 /**
  * Product Add to Cart Module
  * Handles add to cart functionality on product detail page
+ * 
+ * @module AddToCart
  */
 (function() {
     'use strict';
 
+    /**
+     * Initialize add to cart functionality
+     */
     function initAddToCart() {
         const addToCartBtn = document.getElementById('addToCartBtn');
         const quantityInput = document.getElementById('quantity');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
         if (!addToCartBtn) {
             return;
         }
 
-        // Show notification function
-        function showNotification(message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.className = `cart-notification cart-notification--${type}`;
-            notification.textContent = message;
-            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: ' + (type === 'success' ? '#10b981' : '#ef4444') + '; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-
-            document.body.appendChild(notification);
-
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.style.transition = 'opacity 0.3s';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        document.body.removeChild(notification);
-                    }
-                }, 300);
-            }, 3000);
+        /**
+         * Reset button to normal state
+         * @param {HTMLElement} button - Button element
+         * @param {HTMLElement} btnText - Button text element
+         * @param {HTMLElement} btnIcon - Button icon element
+         */
+        function resetButton(button, btnText, btnIcon) {
+            button.disabled = false;
+            if (btnText) btnText.textContent = 'Add to Cart';
+            if (btnIcon) {
+                btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                btnIcon.classList.add('fa-shopping-cart');
+            }
         }
 
-        addToCartBtn.addEventListener('click', function() {
+        /**
+         * Set button to loading state
+         * @param {HTMLElement} button - Button element
+         * @param {HTMLElement} btnText - Button text element
+         * @param {HTMLElement} btnIcon - Button icon element
+         */
+        function setButtonLoading(button, btnText, btnIcon) {
+            button.disabled = true;
+            if (btnText) btnText.textContent = 'Adding...';
+            if (btnIcon) {
+                btnIcon.classList.remove('fa-shopping-cart');
+                btnIcon.classList.add('fa-spinner', 'fa-spin');
+            }
+        }
+
+        addToCartBtn.addEventListener('click', async function() {
             const productUuid = this.getAttribute('data-product-uuid');
             const quantity = parseInt(quantityInput?.value) || 1;
             const btnText = this.querySelector('.btn-text');
@@ -42,72 +56,91 @@
 
             // Validate product UUID
             if (!productUuid) {
-                showNotification('Product UUID is missing. Please refresh the page.', 'error');
+                if (window.AjaxUtils) {
+                    window.AjaxUtils.showMessage('Product UUID is missing. Please refresh the page.', 'error');
+                } else if (window.AppUtils) {
+                    window.AppUtils.showNotification('Product UUID is missing. Please refresh the page.', 'error');
+                }
                 return;
             }
 
-            // Disable button and show loading state
-            this.disabled = true;
-            if (btnText) btnText.textContent = 'Adding...';
-            if (btnIcon) {
-                btnIcon.classList.remove('fa-shopping-cart');
-                btnIcon.classList.add('fa-spinner', 'fa-spin');
-            }
+            // Set loading state
+            setButtonLoading(this, btnText, btnIcon);
 
-            fetch('/cart/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    product_uuid: productUuid,
-                    quantity: quantity
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                // Use AjaxUtils if available, fallback to direct fetch
+                const data = window.AjaxUtils 
+                    ? await window.AjaxUtils.post('/cart/add', {
+                        product_uuid: productUuid,
+                        quantity: quantity
+                    }, { showMessage: false }) // We'll show custom messages
+                    : await fetch('/cart/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            product_uuid: productUuid,
+                            quantity: quantity
+                        })
+                    }).then(response => {
+                        if (!response.ok) {
+                            return response.json().then(errorData => {
+                                return Promise.reject({
+                                    message: errorData.message || 'Failed to add product to cart.',
+                                    isApiError: true,
+                                    status: response.status
+                                });
+                            });
+                        }
+                        return response.json();
+                    });
+
                 if (data.success) {
-                    showNotification('Product added to cart successfully!', 'success');
+                    // Show success message
+                    if (window.AjaxUtils) {
+                        window.AjaxUtils.showMessage('Product added to cart successfully!', 'success');
+                    } else if (window.AppUtils) {
+                        window.AppUtils.showNotification('Product added to cart successfully!', 'success');
+                    }
 
-                    // Update cart count in header if function exists
-                    if (window.CartFunctions && window.CartFunctions.loadCartCount) {
+                    // Update cart count in header
+                    const cartCount = data.data?.cart_count ?? data.cart_count;
+                    if (window.CartModule && typeof window.CartModule.loadCartCount === 'function') {
+                        window.CartModule.loadCartCount();
+                    } else if (window.CartFunctions && window.CartFunctions.loadCartCount) {
                         window.CartFunctions.loadCartCount();
-                    } else if (window.updateCartCount) {
-                        window.updateCartCount(data.cart_count);
+                    } else if (window.updateCartCount && cartCount !== undefined) {
+                        window.updateCartCount(cartCount);
                     }
 
-                    // Reset button state
-                    this.disabled = false;
-                    if (btnText) btnText.textContent = 'Add to Cart';
-                    if (btnIcon) {
-                        btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                        btnIcon.classList.add('fa-shopping-cart');
-                    }
+                    resetButton(this, btnText, btnIcon);
                 } else {
-                    showNotification(data.message || 'Failed to add product to cart.', 'error');
-
-                    // Reset button state
-                    this.disabled = false;
-                    if (btnText) btnText.textContent = 'Add to Cart';
-                    if (btnIcon) {
-                        btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                        btnIcon.classList.add('fa-shopping-cart');
+                    // Show error message
+                    const errorMsg = data.message || 'Failed to add product to cart.';
+                    if (window.AjaxUtils) {
+                        window.AjaxUtils.showMessage(errorMsg, 'error');
+                    } else if (window.AppUtils) {
+                        window.AppUtils.showNotification(errorMsg, 'error');
+                    }
+                    resetButton(this, btnText, btnIcon);
+                }
+            } catch (error) {
+                // Error handling is done by AjaxUtils, but we still need to reset button
+                resetButton(this, btnText, btnIcon);
+                
+                // Show error if not already shown by AjaxUtils
+                if (!window.AjaxUtils || (error && !error.isAuthError)) {
+                    const errorMsg = error && error.message ? error.message : 'An error occurred. Please try again.';
+                    if (window.AjaxUtils) {
+                        window.AjaxUtils.showMessage(errorMsg, 'error');
+                    } else if (window.AppUtils) {
+                        window.AppUtils.showNotification(errorMsg, 'error');
                     }
                 }
-            })
-            .catch(error => {
-                showNotification('An error occurred. Please try again.', 'error');
-
-                // Reset button state
-                this.disabled = false;
-                if (btnText) btnText.textContent = 'Add to Cart';
-                if (btnIcon) {
-                    btnIcon.classList.remove('fa-spinner', 'fa-spin');
-                    btnIcon.classList.add('fa-shopping-cart');
-                }
-            });
+            }
         });
     }
 

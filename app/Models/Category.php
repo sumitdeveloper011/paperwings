@@ -49,6 +49,8 @@ class Category extends Model
             // Clear categories cache when status changes
             if ($category->isDirty('status')) {
                 CacheHelper::clearCategoryCaches();
+                // Clear price range caches for all products in this category
+                CacheHelper::clearPriceRangeCacheForCategory($category->id);
             }
         });
 
@@ -60,6 +62,10 @@ class Category extends Model
         static::deleted(function ($category) {
             // Clear categories cache when category is deleted
             CacheHelper::clearCategoryCaches();
+            // Clear price range cache for this category
+            CacheHelper::clearPriceRangeCacheForCategory($category->id);
+            // Also clear all products price range (category deletion affects product counts)
+            CacheHelper::clearPriceRangeCaches();
         });
     }
 

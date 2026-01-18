@@ -13,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use App\Helpers\SettingHelper;
 use App\Services\ProductImageService;
+use App\Services\EmailTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class OrderConfirmationMail extends Mailable
@@ -62,24 +63,59 @@ class OrderConfirmationMail extends Mailable
     // Get the message envelope
     public function envelope(): Envelope
     {
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_confirmation');
+
+        if ($template) {
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'order_total' => '$' . number_format($this->order->total, 2),
+                'app_name' => config('app.name'),
+            ];
+            $subject = $emailTemplateService->getSubject('order_confirmation', $variables);
+        } else {
+            $subject = 'Order Confirmation - Order #' . $this->order->order_number;
+        }
+
         return new Envelope(
-            subject: 'Order Confirmation - Order #' . $this->order->order_number,
+            subject: $subject,
         );
     }
 
     // Get the message content definition
     public function content(): Content
     {
-        // Fetch settings from database (same pattern as AppServiceProvider)
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_confirmation');
+
+        if ($template) {
+            $settings = SettingHelper::all();
+            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'order_total' => '$' . number_format($this->order->total, 2),
+                'app_name' => config('app.name'),
+            ];
+
+            $body = $emailTemplateService->getBody('order_confirmation', $variables);
+
+            return new Content(
+                htmlString: $body,
+            );
+        }
+
+        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
 
-        // Get logo URL
         $logoUrl = url('assets/frontend/images/logo.png');
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        // Get social links from database
         $socialLinks = [];
         if (!empty($settings['social_facebook'])) {
             $socialLinks['facebook'] = $settings['social_facebook'];
@@ -94,31 +130,9 @@ class OrderConfirmationMail extends Mailable
             $socialLinks['linkedin'] = $settings['social_linkedin'];
         }
 
-        // Get contact phone from database
-        $contactPhone = null;
-        if (isset($settings['phones']) && is_string($settings['phones'])) {
-            $phones = json_decode($settings['phones'], true) ?? [];
-            $contactPhone = !empty($phones) ? $phones[0] : null;
-        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
-            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
-        }
-        if (empty($contactPhone)) {
-            $contactPhone = '+880 123 4567';
-        }
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
 
-        // Get contact email from database
-        $contactEmail = null;
-        if (isset($settings['emails']) && is_string($settings['emails'])) {
-            $emails = json_decode($settings['emails'], true) ?? [];
-            $contactEmail = !empty($emails) ? $emails[0] : null;
-        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
-            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
-        }
-        if (empty($contactEmail)) {
-            $contactEmail = 'info@paperwings.com';
-        }
-
-        // Get order view URL
         $orderViewUrl = route('account.order-details', $this->order->order_number);
 
         return new Content(

@@ -291,19 +291,21 @@ class Product extends Model
     // Get price without tax attribute
     public function getPriceWithoutTaxAttribute()
     {
-        return round($this->total_price / 1.15, 2);
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        return $priceService->removeGst($this->total_price);
     }
 
     // Get tax amount attribute
     public function getTaxAmountAttribute()
     {
-        return round($this->total_price - $this->price_without_tax, 2);
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        return $priceService->calculateGstAmount($this->total_price);
     }
 
     // Get tax percentage attribute
     public function getTaxPercentageAttribute()
     {
-        return 15;
+        return config('tax.gst_rate');
     }
 
     // Get status badge attribute
@@ -466,37 +468,30 @@ class Product extends Model
     // Get final price attribute (with discount applied)
     public function getFinalPriceAttribute()
     {
-        // Use new discount_type system
-        if ($this->discount_type === 'none' || !$this->discount_type) {
-            return $this->total_price;
-        }
-
-        if ($this->discount_type === 'percentage' && $this->discount_value) {
-            return max(0, $this->total_price - ($this->total_price * $this->discount_value / 100));
-        }
-
-        if ($this->discount_type === 'direct' && $this->discount_price && $this->discount_price < $this->total_price) {
-            return $this->discount_price;
-        }
-
-        // Backward compatibility: if discount_price exists but discount_type not set
-        if ($this->discount_price && $this->discount_price < $this->total_price && !$this->discount_type) {
-            return $this->discount_price;
-        }
-
-        return $this->total_price;
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        
+        return $priceService->calculateFinalPrice(
+            $this->total_price,
+            $this->discount_type ?? 'none',
+            $this->discount_value,
+            $this->discount_price
+        );
     }
 
     // Get discount percentage attribute (calculated)
     public function getDiscountPercentageAttribute()
     {
+        $priceService = app(\App\Services\PriceCalculationService::class);
+        
         // Use new discount_type system
         if ($this->discount_type === 'percentage' && $this->discount_value) {
             return round($this->discount_value, 2);
         }
 
-        if ($this->discount_type === 'direct' && $this->total_price > 0 && $this->discount_price && $this->discount_price < $this->total_price) {
-            return round((($this->total_price - $this->discount_price) / $this->total_price) * 100, 2);
+        // Calculate from final price using service
+        $finalPrice = $this->final_price;
+        if ($finalPrice < $this->total_price && $this->total_price > 0) {
+            return $priceService->calculateDiscountPercentage($this->total_price, $finalPrice);
         }
 
         // Backward compatibility: if discount_percentage exists but discount_type not set

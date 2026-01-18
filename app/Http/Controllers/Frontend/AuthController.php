@@ -154,9 +154,12 @@ class AuthController extends Controller
                     'user_agent' => $request->userAgent()
                 ]);
 
-                return back()->withErrors([
-                    'email' => 'Please verify your email address before logging in. Check your inbox for the verification link.'
-                ])->onlyInput('email');
+                return back()
+                    ->withErrors([
+                        'email' => 'Please verify your email address before logging in. Check your inbox for the verification link.'
+                    ])
+                    ->with('unverified_email', $user->email)
+                    ->onlyInput('email');
             }
 
             // Clear rate limiter on successful login
@@ -283,6 +286,39 @@ class AuthController extends Controller
                 ])->withInput();
             }
 
+            $existingUser = User::where('email', $email)->first();
+
+            if ($existingUser) {
+                if ($existingUser->hasVerifiedEmail()) {
+                    return back()->withErrors([
+                        'email' => 'This email address is already registered. Please log in instead.'
+                    ])->withInput();
+                }
+
+                try {
+                    $existingUser->sendEmailVerificationNotification();
+                    
+                    Log::info('Resent verification email for unverified user during registration attempt', [
+                        'user_id' => $existingUser->id,
+                        'email' => $existingUser->email
+                    ]);
+
+                    return redirect()->route('register')->with([
+                        'info' => 'This email address (' . $existingUser->email . ') is already registered but not verified. We have sent a new verification email. Please check your inbox and spam folder. If you don\'t receive it, you can resend it below.',
+                        'resend_available' => true,
+                        'user_email' => $existingUser->email
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to resend verification during registration, deleting old unverified user', [
+                        'user_id' => $existingUser->id,
+                        'email' => $existingUser->email,
+                        'error' => $e->getMessage()
+                    ]);
+
+                    $existingUser->delete();
+                }
+            }
+
             $user = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
@@ -316,7 +352,11 @@ class AuthController extends Controller
                 Log::error('Welcome email failed: ' . $e->getMessage());
             }
 
-            return redirect()->route('register')->with('success', 'Registration successful! Please check your email to verify your account.');
+            return redirect()->route('register')->with([
+                'success' => 'Registration successful! We have sent a verification email to ' . $email . '. Please check your inbox and spam folder to verify your account.',
+                'resend_available' => true,
+                'user_email' => $email
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
@@ -547,9 +587,46 @@ class AuthController extends Controller
             $user->status = 1;
             $user->save();
 
-            return redirect()->route('login')->with('success', 'Your email has been verified successfully! You can now log in.');
+            return redirect()->route('login')->with('success', 'Your email has been verified successfully! You can now log in to your account.');
         }
 
         return redirect()->route('login')->with('error', 'Email verification failed. Please try again.');
+    }
+
+    public function resendVerification(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return back()->with('error', 'No account found with this email address.');
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return back()->with('info', 'Your email is already verified. You can log in now.');
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+            
+            Log::info('Verification email resent', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
+
+            return back()->with('success', 'Verification email has been resent to ' . $user->email . '. Please check your inbox and spam folder. The link will expire in 60 minutes.');
+        } catch (\Exception $e) {
+            Log::error('Resend verification failed', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->with('error', 'Failed to resend verification email. Please try again later or contact support.');
+        }
     }
 }

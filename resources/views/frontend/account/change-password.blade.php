@@ -58,4 +58,17 @@
         </div>
     </div>
 </section>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('changePasswordForm', {
+            loadingText: 'Updating Password...',
+            timeout: 10000
+        });
+    }
+});
+</script>
+@endpush
 @endsection

@@ -28,6 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'prevent.admin' => \App\Http\Middleware\PreventAdminAccess::class,
         ]);
         
+        // Add security headers to all web requests
+        $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeadersMiddleware::class);
+        
         $middleware->validateCsrfTokens(except: [
             'api/log-client-error',
         ]);
@@ -40,10 +43,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle 419 - Page Expired (CSRF Token Mismatch) - Specific Exception
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Your session has expired. Please refresh the page and try again.',
-                    'error' => 'CSRF token mismatch'
-                ], 419);
+                return \App\Helpers\JsonResponseHelper::error(
+                    'Your session has expired. Please refresh the page and try again.',
+                    'CSRF_TOKEN_MISMATCH',
+                    null,
+                    419
+                );
             }
 
             if ($request->is('admin/*')) {
@@ -70,12 +75,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle 401 - Unauthenticated
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->wantsJson() || $request->is('api/*') || $request->is('cart/*') || $request->is('wishlist/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please login to continue.',
-                    'error' => 'Unauthenticated',
-                    'redirect' => '/login?intended=' . urlencode($request->fullUrl())
-                ], 401);
+                return \App\Helpers\JsonResponseHelper::error(
+                    'Please login to continue.',
+                    'UNAUTHENTICATED',
+                    ['redirect' => '/login?intended=' . urlencode($request->fullUrl())],
+                    401
+                );
             }
 
             if ($request->is('admin/*')) {
@@ -90,10 +95,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle ValidationException - Redirect back with validation errors
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'The given data was invalid.',
-                    'errors' => $e->errors(),
-                ], 422);
+                return \App\Helpers\JsonResponseHelper::validationError(
+                    $e->errors(),
+                    'The given data was invalid.'
+                );
             }
 
             // For web requests, redirect back with errors
@@ -105,10 +110,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle 403 - Forbidden
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'You do not have permission to access this resource.',
-                    'error' => 'Access denied'
-                ], 403);
+                return \App\Helpers\JsonResponseHelper::error(
+                    'You do not have permission to access this resource.',
+                    'ACCESS_DENIED',
+                    null,
+                    403
+                );
             }
 
             if ($request->is('admin/*')) {
@@ -142,10 +149,12 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'The requested resource was not found.',
-                    'error' => 'Not found'
-                ], 404);
+                return \App\Helpers\JsonResponseHelper::error(
+                    'The requested resource was not found.',
+                    'NOT_FOUND',
+                    null,
+                    404
+                );
             }
 
             if ($request->is('admin/*')) {
@@ -228,11 +237,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // Handle 429 - Too Many Requests (Rate Limiting)
             if ($statusCode === 429) {
                 if ($request->expectsJson()) {
-                    return response()->json([
-                        'message' => 'Too many requests. Please wait a moment before trying again.',
-                        'error' => 'Rate limit exceeded',
-                        'retry_after' => $e->getHeaders()['Retry-After'] ?? 60
-                    ], 429);
+                    return \App\Helpers\JsonResponseHelper::error(
+                        'Too many requests. Please wait a moment before trying again.',
+                        'RATE_LIMIT_EXCEEDED',
+                        ['retry_after' => $e->getHeaders()['Retry-After'] ?? 60],
+                        429
+                    );
                 }
 
                 if ($request->is('admin/*')) {
@@ -257,10 +267,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // Handle 503 - Service Unavailable (Maintenance Mode)
             if ($statusCode === 503 && app()->isDownForMaintenance()) {
                 if ($request->expectsJson()) {
-                    return response()->json([
-                        'message' => 'Service is temporarily unavailable. We are performing maintenance.',
-                        'error' => 'Service unavailable'
-                    ], 503);
+                    return \App\Helpers\JsonResponseHelper::error(
+                        'Service is temporarily unavailable. We are performing maintenance.',
+                        'SERVICE_UNAVAILABLE',
+                        null,
+                        503
+                    );
                 }
 
                 if ($request->is('admin/*')) {
@@ -341,12 +353,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ]);
 
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => app()->environment('production')
+                return \App\Helpers\JsonResponseHelper::error(
+                    app()->environment('production')
                         ? 'An error occurred. Please try again later.'
                         : $e->getMessage(),
-                    'error' => 'Internal server error'
-                ], 500);
+                    'INTERNAL_SERVER_ERROR',
+                    null,
+                    500
+                );
             }
 
             // Always show custom error page (even in development)

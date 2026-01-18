@@ -1,18 +1,30 @@
 /**
  * Product Forms Module
  * Handles review, question, and answer form submissions
+ * 
+ * @module ProductForms
  */
 (function() {
     'use strict';
 
+    /**
+     * Initialize product forms functionality
+     */
     function initForms() {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-        // Show notification function - use toast if available
+        /**
+         * Show notification function - use toast if available, fallback to AjaxUtils or AppUtils
+         * @param {string} message - Notification message
+         * @param {string} type - Notification type (success, error, warning)
+         */
         function showNotification(message, type = 'success') {
             if (typeof showToast !== 'undefined') {
                 showToast(message, type, 5000);
+            } else if (window.AjaxUtils && typeof window.AjaxUtils.showMessage === 'function') {
+                window.AjaxUtils.showMessage(message, type);
+            } else if (window.AppUtils && typeof window.AppUtils.showNotification === 'function') {
+                window.AppUtils.showNotification(message, type);
             } else {
+                // Fallback notification
                 const notification = document.createElement('div');
                 notification.className = `cart-notification cart-notification--${type}`;
                 notification.textContent = message;
@@ -143,8 +155,11 @@
                 submitReviewForm(this);
             });
 
-            // Submit function
-            function submitReviewForm(form) {
+            /**
+             * Submit review form
+             * @param {HTMLFormElement} form - Review form element
+             */
+            async function submitReviewForm(form) {
                 const reviewUrl = form.getAttribute('data-review-url') || form.action;
                 const formData = new FormData(form);
                 const data = Object.fromEntries(formData);
@@ -155,50 +170,47 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
 
-                fetch(reviewUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => {
-                    return response.json().then(data => ({
-                        status: response.status,
-                        data: data
-                    }));
-                })
-                .then(({status, data}) => {
+                try {
+                    const response = window.AjaxUtils
+                        ? await window.AjaxUtils.post(reviewUrl, data, { showMessage: false })
+                        : await fetch(reviewUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        }).then(response => response.json());
+
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalText;
 
-                    if (status === 422) {
-                        // Validation errors
-                        if (data.errors) {
-                            Object.keys(data.errors).forEach(field => {
-                                const input = form.querySelector(`[name="${field}"]`);
-                                if (input) {
-                                    const errorMsg = data.errors[field][0];
-                                    const formGroup = input.closest('.review-form__field, .review-form__col');
-                                    if (formGroup) {
-                                        let errorDiv = formGroup.querySelector('.invalid-feedback');
-                                        if (!errorDiv) {
-                                            errorDiv = document.createElement('div');
-                                            errorDiv.className = 'invalid-feedback';
-                                            formGroup.appendChild(errorDiv);
-                                        }
-                                        errorDiv.textContent = errorMsg;
-                                        errorDiv.style.display = 'block';
-                                        input.classList.add('is-invalid');
+                    // Handle validation errors (422)
+                    if (response.isValidationError && response.errors) {
+                        Object.keys(response.errors).forEach(field => {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                const errorMsg = Array.isArray(response.errors[field]) 
+                                    ? response.errors[field][0] 
+                                    : response.errors[field];
+                                const formGroup = input.closest('.review-form__field, .review-form__col');
+                                if (formGroup) {
+                                    let errorDiv = formGroup.querySelector('.invalid-feedback');
+                                    if (!errorDiv) {
+                                        errorDiv = document.createElement('div');
+                                        errorDiv.className = 'invalid-feedback';
+                                        formGroup.appendChild(errorDiv);
                                     }
+                                    errorDiv.textContent = errorMsg;
+                                    errorDiv.style.display = 'block';
+                                    input.classList.add('is-invalid');
                                 }
-                            });
-                        }
-                        showNotification(data.message || 'Please correct the errors and try again.', 'error');
-                    } else if (data.success) {
-                        showNotification(data.message, 'success');
+                            }
+                        });
+                        showNotification(response.message || 'Please correct the errors and try again.', 'error');
+                    } else if (response.success) {
+                        showNotification(response.message, 'success');
                         form.reset();
                         // Clear validation errors
                         form.querySelectorAll('.is-invalid').forEach(el => {
@@ -209,15 +221,39 @@
                         });
                         setTimeout(() => location.reload(), 2000);
                     } else {
-                        showNotification(data.message || 'Failed to submit review.', 'error');
+                        showNotification(response.message || 'Failed to submit review.', 'error');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
+                } catch (error) {
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalText;
-                    showNotification('An error occurred. Please try again.', 'error');
-                });
+                    
+                    // Handle validation errors from AjaxUtils
+                    if (error.isValidationError && error.errors) {
+                        Object.keys(error.errors).forEach(field => {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                const errorMsg = Array.isArray(error.errors[field]) 
+                                    ? error.errors[field][0] 
+                                    : error.errors[field];
+                                const formGroup = input.closest('.review-form__field, .review-form__col');
+                                if (formGroup) {
+                                    let errorDiv = formGroup.querySelector('.invalid-feedback');
+                                    if (!errorDiv) {
+                                        errorDiv = document.createElement('div');
+                                        errorDiv.className = 'invalid-feedback';
+                                        formGroup.appendChild(errorDiv);
+                                    }
+                                    errorDiv.textContent = errorMsg;
+                                    errorDiv.style.display = 'block';
+                                    input.classList.add('is-invalid');
+                                }
+                            }
+                        });
+                        showNotification(error.message || 'Please correct the errors and try again.', 'error');
+                    } else {
+                        showNotification('An error occurred. Please try again.', 'error');
+                    }
+                }
             }
 
         }
@@ -285,7 +321,9 @@
             
             // Validate URL is set
             if (!questionUrl) {
-                console.error('Question form URL is not set');
+                if (window.AppUtils) {
+                    window.AppUtils.error('Question form URL is not set');
+                }
                 return;
             }
             
@@ -313,32 +351,31 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
 
-                fetch(questionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => {
-                    return response.json().then(data => ({
-                        status: response.status,
-                        data: data
-                    }));
-                })
-                .then(({status, data}) => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
+                (async () => {
+                    try {
+                        const response = window.AjaxUtils
+                            ? await window.AjaxUtils.post(questionUrl, data, { showMessage: false })
+                            : await fetch(questionUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            }).then(response => response.json());
 
-                    if (status === 422) {
-                        // Validation errors
-                        if (data.errors) {
-                            Object.keys(data.errors).forEach(field => {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+
+                        // Handle validation errors (422)
+                        if (response.isValidationError && response.errors) {
+                            Object.keys(response.errors).forEach(field => {
                                 const input = questionForm.querySelector(`[name="${field}"]`);
                                 if (input) {
-                                    const errorMsg = data.errors[field][0];
+                                    const errorMsg = Array.isArray(response.errors[field]) 
+                                        ? response.errors[field][0] 
+                                        : response.errors[field];
                                     const formGroup = input.closest('.mb-3, .form-group');
                                     if (formGroup) {
                                         let errorDiv = formGroup.querySelector('.invalid-feedback');
@@ -353,86 +390,114 @@
                                     }
                                 }
                             });
+                            showNotification(response.message || 'Please correct the errors and try again.', 'error');
+                        } else if (response.success) {
+                            showNotification(response.message, 'success');
+                            questionForm.reset();
+                            // Clear validation errors
+                            questionForm.querySelectorAll('.is-invalid').forEach(el => {
+                                el.classList.remove('is-invalid');
+                            });
+                            questionForm.querySelectorAll('.invalid-feedback').forEach(el => {
+                                el.style.display = 'none';
+                            });
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showNotification(response.message || 'Failed to submit question.', 'error');
                         }
-                        showNotification(data.message || 'Please correct the errors and try again.', 'error');
-                    } else if (data.success) {
-                        showNotification(data.message, 'success');
-                        questionForm.reset();
-                        // Clear validation errors
-                        questionForm.querySelectorAll('.is-invalid').forEach(el => {
-                            el.classList.remove('is-invalid');
-                        });
-                        questionForm.querySelectorAll('.invalid-feedback').forEach(el => {
-                            el.style.display = 'none';
-                        });
-                        setTimeout(() => location.reload(), 2000);
-                    } else {
-                        showNotification(data.message || 'Failed to submit question.', 'error');
+                    } catch (error) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                        
+                        // Handle validation errors from AjaxUtils
+                        if (error.isValidationError && error.errors) {
+                            Object.keys(error.errors).forEach(field => {
+                                const input = questionForm.querySelector(`[name="${field}"]`);
+                                if (input) {
+                                    const errorMsg = Array.isArray(error.errors[field]) 
+                                        ? error.errors[field][0] 
+                                        : error.errors[field];
+                                    const formGroup = input.closest('.mb-3, .form-group');
+                                    if (formGroup) {
+                                        let errorDiv = formGroup.querySelector('.invalid-feedback');
+                                        if (!errorDiv) {
+                                            errorDiv = document.createElement('div');
+                                            errorDiv.className = 'invalid-feedback';
+                                            formGroup.appendChild(errorDiv);
+                                        }
+                                        errorDiv.textContent = errorMsg;
+                                        errorDiv.style.display = 'block';
+                                        input.classList.add('is-invalid');
+                                    }
+                                }
+                            });
+                            showNotification(error.message || 'Please correct the errors and try again.', 'error');
+                        } else {
+                            showNotification('An error occurred. Please try again.', 'error');
+                        }
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                    showNotification('An error occurred. Please try again.', 'error');
-                });
+                })();
             });
         }
 
         // Answer Form Submissions
         document.querySelectorAll('.answer-form-inline').forEach(form => {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const questionId = this.getAttribute('data-question-id');
                 const formData = new FormData(this);
                 const data = Object.fromEntries(formData);
 
-                fetch(`/question/${questionId}/answer`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification(data.message, 'success');
+                try {
+                    const response = window.AjaxUtils
+                        ? await window.AjaxUtils.post(`/question/${questionId}/answer`, data, { showMessage: false })
+                        : await fetch(`/question/${questionId}/answer`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        }).then(response => response.json());
+
+                    if (response.success) {
+                        showNotification(response.message, 'success');
                         this.reset();
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        showNotification(data.message || 'Failed to submit answer.', 'error');
+                        showNotification(response.message || 'Failed to submit answer.', 'error');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
+                } catch (error) {
                     showNotification('An error occurred. Please try again.', 'error');
-                });
+                }
             });
         });
 
         // Helpful Button
         document.querySelectorAll('.helpful-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 const answerId = this.getAttribute('data-answer-id');
-                fetch(`/answer/${answerId}/helpful`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        this.innerHTML = `<i class="fas fa-thumbs-up"></i> Helpful (${data.helpful_count})`;
+                try {
+                    const response = window.AjaxUtils
+                        ? await window.AjaxUtils.post(`/answer/${answerId}/helpful`, {}, { showMessage: false, silentAuth: true })
+                        : await fetch(`/answer/${answerId}/helpful`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                'Accept': 'application/json'
+                            }
+                        }).then(response => response.json());
+
+                    const helpfulCount = response.data?.helpful_count ?? response.helpful_count ?? 0;
+                    if (response.success) {
+                        this.innerHTML = `<i class="fas fa-thumbs-up"></i> Helpful (${helpfulCount})`;
                         this.disabled = true;
                     }
-                })
-                .catch(error => console.error('Error:', error));
+                } catch (error) {
+                    // Silently fail for helpful button
+                }
             });
         });
     }

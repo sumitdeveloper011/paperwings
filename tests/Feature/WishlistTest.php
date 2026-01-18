@@ -23,7 +23,7 @@ class WishlistTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->postJson(route('wishlist.add'), [
-            'product_id' => $product->id
+            'product_uuid' => $product->uuid
         ]);
 
         $response->assertStatus(200)
@@ -51,7 +51,7 @@ class WishlistTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->postJson(route('wishlist.remove'), [
-            'product_id' => $product->id
+            'product_uuid' => $product->uuid
         ]);
 
         $response->assertStatus(200)
@@ -81,7 +81,7 @@ class WishlistTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->postJson(route('wishlist.add'), [
-            'product_id' => $product->id
+            'product_uuid' => $product->uuid
         ]);
 
         // Should return error for duplicate
@@ -111,8 +111,10 @@ class WishlistTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
-                'items',
-                'count'
+                'data' => [
+                    'items',
+                    'count'
+                ]
             ]);
     }
 
@@ -136,7 +138,9 @@ class WishlistTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'count' => 5
+                'data' => [
+                    'count' => 5
+                ]
             ]);
     }
 
@@ -146,7 +150,7 @@ class WishlistTest extends TestCase
         $product = Product::factory()->create();
 
         $response = $this->postJson(route('wishlist.add'), [
-            'product_id' => $product->id
+            'product_uuid' => $product->uuid
         ]);
 
         $response->assertStatus(401); // Unauthorized or redirect
@@ -166,16 +170,18 @@ class WishlistTest extends TestCase
 
         $this->actingAs($user);
 
-        $productIds = $products->pluck('id')->toArray();
+        $productUuids = $products->pluck('uuid')->toArray();
 
         $response = $this->postJson(route('wishlist.check'), [
-            'product_ids' => $productIds
+            'product_uuids' => $productUuids
         ]);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
-                'status'
+                'data' => [
+                    'status'
+                ]
             ]);
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 use App\Traits\HasUuid;
 use App\Traits\HasUniqueSlug;
+use App\Helpers\CacheHelper;
 
 class Tag extends Model
 {
@@ -27,6 +28,19 @@ class Tag extends Model
             if ($tag->isDirty('name') && !$tag->isDirty('slug')) {
                 $tag->slug = static::makeUniqueSlug($tag->name, $tag->id);
             }
+
+            // Clear product-related caches when tag changes (affects product filters)
+            CacheHelper::clearProductCaches();
+        });
+
+        static::created(function ($tag) {
+            // Clear product caches when new tag is created
+            CacheHelper::clearProductCaches();
+        });
+
+        static::deleted(function ($tag) {
+            // Clear product caches when tag is deleted
+            CacheHelper::clearProductCaches();
         });
     }
 

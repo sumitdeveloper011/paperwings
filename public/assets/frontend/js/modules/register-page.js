@@ -226,6 +226,13 @@
             registerForm.addEventListener('submit', function() {
                 setTimeout(showInvalidFeedback, 100);
             });
+
+            if (window.FormSubmissionHandler) {
+                window.FormSubmissionHandler.init('registerForm', {
+                    loadingText: 'Creating Account...',
+                    timeout: 10000
+                });
+            }
         }
     }
 

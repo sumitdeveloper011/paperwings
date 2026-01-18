@@ -1,6 +1,8 @@
 /**
  * Utility Functions Module
  * Shared utilities for wishlist, cart, and other modules
+ * 
+ * @module AppUtils
  */
 (function() {
     'use strict';
@@ -14,49 +16,73 @@
 
     // Utility Functions
     window.AppUtils = {
-        // Get CSRF Token
+        /**
+         * Get CSRF token from meta tag
+         * @returns {string} CSRF token
+         */
         getCsrfToken: function() {
             const meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.getAttribute('content') : '';
         },
 
-        // Log function (only in development)
+        /**
+         * Log function (only in development mode)
+         * @param {...*} args - Arguments to log
+         */
         log: function(...args) {
             if (CONFIG.isDevelopment) {
                 console.log(...args);
             }
         },
 
-        // Error log (only in development)
+        /**
+         * Error log function (only in development mode)
+         * @param {...*} args - Arguments to log as error
+         */
         error: function(...args) {
             if (CONFIG.isDevelopment) {
                 console.error(...args);
             }
         },
 
-        // Handle authentication redirect
-        redirectToLogin: function() {
-            const currentUrl = window.location.href;
-            window.location.href = '/login?intended=' + encodeURIComponent(currentUrl);
+        /**
+         * Handle authentication redirect to login page
+         * @param {string} currentUrl - Optional current URL to redirect back after login
+         */
+        redirectToLogin: function(currentUrl = null) {
+            const url = currentUrl || window.location.href;
+            window.location.href = '/login?intended=' + encodeURIComponent(url);
         },
 
-        // Update button loading state
+        /**
+         * Update button loading state with spinner icon
+         * @param {HTMLElement} button - Button element
+         * @param {boolean} isLoading - Whether button is in loading state
+         * @param {string} iconClass - Icon class to restore when not loading (default: 'fa-heart')
+         */
         setButtonLoading: function(button, isLoading, iconClass = 'fa-heart') {
             if (!button) return;
+            
             const icon = button.querySelector('i');
             if (icon) {
                 if (isLoading) {
-                    icon.classList.remove('fas', iconClass);
+                    icon.classList.remove('fas', iconClass, 'fa-check');
                     icon.classList.add('fas', 'fa-spinner', 'fa-spin');
                 } else {
-                    icon.classList.remove('fa-spinner', 'fa-spin');
+                    icon.classList.remove('fa-spinner', 'fa-spin', 'fa-check');
                     icon.classList.add('fas', iconClass);
                 }
             }
+            
             button.disabled = isLoading;
         },
 
-        // Show notification
+        /**
+         * Show notification message
+         * @param {string} message - Notification message
+         * @param {string} type - Notification type ('success', 'error', 'warning')
+         * @param {string} container - Container selector (default: 'body')
+         */
         showNotification: function(message, type = 'success', container = 'body') {
             const notification = document.createElement('div');
             notification.className = `app-notification app-notification--${type}`;

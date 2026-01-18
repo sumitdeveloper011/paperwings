@@ -325,6 +325,23 @@
                 });
             }
             
+            if (window.FormSubmissionHandler && checkoutForm) {
+                const reviewButton = document.querySelector('button[form="checkoutForm"]');
+                if (reviewButton) {
+                    window.FormSubmissionHandler.init('checkoutForm', {
+                        loadingText: 'Processing...',
+                        timeout: 15000,
+                        onSubmit: function(e, form) {
+                            const reviewBtn = document.querySelector('button[form="checkoutForm"]');
+                            if (reviewBtn) {
+                                reviewBtn.disabled = true;
+                                reviewBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                            }
+                        }
+                    });
+                }
+            }
+            
             if (checkoutForm) {
                 checkoutForm.addEventListener('submit', function(e) {
                     console.log('[Checkout] Form submit event triggered');

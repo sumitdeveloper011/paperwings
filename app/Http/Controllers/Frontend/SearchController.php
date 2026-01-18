@@ -18,7 +18,7 @@ class SearchController extends Controller
         $query = trim($request->get('q', ''));
         
         if (strlen($query) < 2) {
-            return response()->json(['products' => []]);
+            return $this->jsonSuccess('Search autocomplete completed.', ['products' => []]);
         }
 
         // Cache key based on query (short TTL for search results)
@@ -59,7 +59,7 @@ class SearchController extends Controller
                 });
         });
 
-        return response()->json(['products' => $products]);
+        return $this->jsonSuccess('Search autocomplete completed.', ['products' => $products]);
     }
 
     // Render autocomplete results as HTML (for AJAX)
@@ -68,10 +68,7 @@ class SearchController extends Controller
         $query = trim($request->get('q', ''));
         
         if (strlen($query) < 2) {
-            return response()->json([
-                'success' => true,
-                'html' => ''
-            ]);
+            return $this->jsonSuccess('Search autocomplete rendered.', ['html' => '']);
         }
 
         // Cache key based on query (short TTL for search results)
@@ -110,8 +107,7 @@ class SearchController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
+        return $this->jsonSuccess('Search autocomplete rendered.', [
             'html' => $result['html'],
             'count' => $result['count']
         ]);
@@ -123,10 +119,7 @@ class SearchController extends Controller
         $query = trim($request->get('q', ''));
         
         if (strlen($query) < 2) {
-            return response()->json([
-                'success' => true,
-                'html' => ''
-            ]);
+            return $this->jsonSuccess('Search autocomplete rendered.', ['html' => '']);
         }
 
         // Cache key based on query (short TTL for search results)
@@ -165,8 +158,7 @@ class SearchController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
+        return $this->jsonSuccess('Search autocomplete rendered.', [
             'html' => $result['html'],
             'count' => $result['count']
         ]);

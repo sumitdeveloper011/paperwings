@@ -108,8 +108,6 @@ class CheckoutFormHandler {
             setTimeout(() => {
                 if (typeof window.updateShipping === 'function') {
                     window.updateShipping(fields.region_id);
-                } else if (window.shippingCalculator && typeof window.shippingCalculator.calculate === 'function') {
-                    window.shippingCalculator.calculate(fields.region_id);
                 }
             }, 100);
         }
@@ -165,11 +163,7 @@ class CheckoutFormHandler {
 
     clearShipping() {
         // Clear shipping price when "Use New Address" is selected
-        if (window.shippingCalculator && typeof window.shippingCalculator.updateDisplay === 'function') {
-            window.shippingCalculator.updateDisplay(0, false);
-            window.shippingCalculator.updateTotal(0);
-        } else if (typeof window.updateShipping === 'function') {
-            // Fallback: call with null/0 to clear shipping
+        if (typeof window.updateShipping === 'function') {
             window.updateShipping(null);
         }
     }
@@ -195,28 +189,12 @@ class CheckoutFormHandler {
         if (!form) return;
 
         form.addEventListener('submit', (e) => {
-            console.log('[CheckoutFormHandler] Form submit event triggered');
-            console.log('[CheckoutFormHandler] Form validity:', form.checkValidity());
-            
             if (!form.checkValidity()) {
-                console.warn('[CheckoutFormHandler] Form validation failed, preventing submission');
                 e.preventDefault();
                 e.stopPropagation();
-            } else {
-                console.log('[CheckoutFormHandler] Form is valid, allowing submission');
             }
             form.classList.add('was-validated');
         }, false);
-        
-        // Also handle the review button click directly
-        const reviewButton = document.querySelector('button[form="checkoutForm"]');
-        if (reviewButton) {
-            reviewButton.addEventListener('click', (e) => {
-                console.log('[CheckoutFormHandler] Review button clicked');
-                // Don't prevent default - let the form submit naturally
-                // The button has form="checkoutForm" attribute, so it will submit the form
-            });
-        }
     }
 }
 

@@ -1,10 +1,15 @@
 /**
  * Header Search Module
- * Handles search functionality
+ * Handles search functionality with autocomplete dropdown
+ * 
+ * @module Search
  */
 (function() {
     'use strict';
 
+    /**
+     * Initialize search functionality for desktop and mobile
+     */
     function initSearch() {
         // Desktop search elements
         const searchInput = document.getElementById('header-search-input');
@@ -35,6 +40,17 @@
         }
     }
 
+    /**
+     * Initialize search for a specific input element
+     * @param {HTMLElement} searchInput - Search input element
+     * @param {HTMLElement} searchBtn - Search button element
+     * @param {HTMLElement} searchDropdown - Dropdown container element
+     * @param {HTMLElement} searchResultsList - Results list container
+     * @param {HTMLElement} searchLoading - Loading indicator element
+     * @param {HTMLElement} searchFooter - Footer element
+     * @param {HTMLElement} viewAllResults - View all results link
+     * @param {string} containerId - Container ID for click outside detection
+     */
     function initSearchForInput(searchInput, searchBtn, searchDropdown, searchResultsList, searchLoading, searchFooter, viewAllResults, containerId) {
         if (!searchInput || !searchDropdown) return;
 
@@ -61,35 +77,40 @@
             const url = new URL('/search/results/render', window.location.origin);
             url.searchParams.set('q', query);
 
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                searchLoading.style.display = 'none';
-                isSearching = false;
-
-                if (data.success && data.html && data.html.trim() !== '') {
-                    searchResultsList.innerHTML = data.html;
-                    searchFooter.style.display = 'block';
-                    if (viewAllResults) {
-                        viewAllResults.href = `/search?q=${encodeURIComponent(query)}`;
+            // Use AjaxUtils if available, fallback to direct fetch
+            const fetchPromise = window.AjaxUtils
+                ? window.AjaxUtils.get(url.toString(), { showMessage: false, silentAuth: true })
+                : fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
                     }
-                } else {
-                    searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #6c757d;">No products found</div>';
-                    searchFooter.style.display = 'none';
-                }
-            })
-            .catch(error => {
-                Utils.error('Search error:', error);
-                searchLoading.style.display = 'none';
-                isSearching = false;
-                searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #dc3545;">Error loading results</div>';
-            });
+                }).then(response => response.json());
+
+            fetchPromise
+                .then(data => {
+                    searchLoading.style.display = 'none';
+                    isSearching = false;
+
+                    const html = data.data?.html ?? data.html ?? '';
+                    if (data.success && html && html.trim() !== '') {
+                        searchResultsList.innerHTML = html;
+                        searchFooter.style.display = 'block';
+                        if (viewAllResults) {
+                            viewAllResults.href = `/search?q=${encodeURIComponent(query)}`;
+                        }
+                    } else {
+                        searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #6c757d;">No products found</div>';
+                        searchFooter.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    Utils.error('Search error:', error);
+                    searchLoading.style.display = 'none';
+                    isSearching = false;
+                    searchResultsList.innerHTML = '<div class="search-result-item" style="text-align: center; color: #dc3545;">Error loading results</div>';
+                });
         }, CONFIG.debounceDelay);
 
         searchInput.addEventListener('input', function() {

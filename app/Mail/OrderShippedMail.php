@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use App\Helpers\SettingHelper;
 use App\Services\ProductImageService;
+use App\Services\EmailTemplateService;
 
 class OrderShippedMail extends Mailable
 {
@@ -53,13 +54,53 @@ class OrderShippedMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_shipped');
+
+        if ($template) {
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'tracking_id' => $this->order->tracking_id ?? 'N/A',
+                'tracking_url' => $this->order->tracking_url ?? '#',
+                'app_name' => config('app.name'),
+            ];
+            $subject = $emailTemplateService->getSubject('order_shipped', $variables);
+        } else {
+            $subject = 'Order Shipped - Order #' . $this->order->order_number;
+        }
+
         return new Envelope(
-            subject: 'Order Shipped - Order #' . $this->order->order_number,
+            subject: $subject,
         );
     }
 
     public function content(): Content
     {
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_shipped');
+
+        if ($template) {
+            $settings = SettingHelper::all();
+            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'tracking_id' => $this->order->tracking_id ?? 'N/A',
+                'tracking_url' => $this->order->tracking_url ?? '#',
+                'app_name' => config('app.name'),
+            ];
+
+            $body = $emailTemplateService->getBody('order_shipped', $variables);
+
+            return new Content(
+                htmlString: $body,
+            );
+        }
+
+        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
 
         $logoUrl = url('assets/frontend/images/logo.png');

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\CacheHelper;
 
 class ProductController extends Controller
 {
@@ -211,7 +212,7 @@ class ProductController extends Controller
             $maxPrice = $request->get('max_price');
 
             // Optimized: Use cached database aggregation for price range
-            $cacheKey = 'price_range_category_' . $category->id;
+            $cacheKey = CacheHelper::getPriceRangeCacheKey($category->id);
             $priceRange = Cache::remember($cacheKey, 3600, function () use ($category) {
                 return Product::where('category_id', $category->id)
                     ->active()
@@ -274,15 +275,16 @@ class ProductController extends Controller
                 ->appends($request->query());
 
             // Optimized: Get categories with product count using category_id
-            $cacheKey = 'categories_with_count_all';
+            $cacheKey = CacheHelper::CATEGORIES_WITH_COUNT_ALL;
             $categories = Cache::remember($cacheKey, 3600, function () {
                 $categories = Category::where('categories.status', 1)
-                    ->select('categories.id', 'categories.name', 'categories.slug')
+                    ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
                     ->leftJoin('products', function($join) {
                         $join->on('products.category_id', '=', 'categories.id')
-                             ->where('products.status', '=', 1);
+                             ->where('products.status', '=', 1)
+                             ->whereNull('products.deleted_at');
                     })
-                    ->groupBy('categories.id', 'categories.name', 'categories.slug')
+                    ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
                     ->selectRaw('COUNT(products.id) as active_products_count')
                     ->orderBy('categories.name', 'asc')
                     ->get();
@@ -327,9 +329,27 @@ class ProductController extends Controller
             // Get tags filter (support multiple tags)
             $tagsFilter = $request->get('tags', []); // Array of tag IDs
 
+            // Validate array inputs to ensure they contain only integers (security: prevent injection)
+            if (!empty($categoriesFilter) && is_array($categoriesFilter)) {
+                $categoriesFilter = array_filter(array_map('intval', $categoriesFilter), function($id) {
+                    return $id > 0;
+                });
+            }
+
+            if (!empty($brandsFilter) && is_array($brandsFilter)) {
+                $brandsFilter = array_filter(array_map('intval', $brandsFilter), function($id) {
+                    return $id > 0;
+                });
+            }
+
+            if (!empty($tagsFilter) && is_array($tagsFilter)) {
+                $tagsFilter = array_filter(array_map('intval', $tagsFilter), function($id) {
+                    return $id > 0;
+                });
+            }
 
             // Optimized: Use cached database aggregation for price range
-            $cacheKey = 'price_range_all_products';
+            $cacheKey = CacheHelper::getPriceRangeCacheKey();
             $priceRange = Cache::remember($cacheKey, 3600, function () {
                 return Product::active()
                     ->selectRaw('
@@ -417,17 +437,16 @@ class ProductController extends Controller
                 ->appends($request->query());
 
             // Optimized: Get categories with product count using LEFT JOIN
-            $cacheKey = 'categories_with_count_sidebar';
-            // Clear cache temporarily for testing
-            Cache::forget($cacheKey);
+            $cacheKey = CacheHelper::CATEGORIES_WITH_COUNT_SIDEBAR;
             $categories = Cache::remember($cacheKey, 3600, function () {
                 $categories = Category::where('categories.status', 1)
-                    ->select('categories.id', 'categories.name', 'categories.slug')
+                    ->select('categories.id', 'categories.name', 'categories.slug', 'categories.image')
                     ->leftJoin('products', function($join) {
                         $join->on('products.category_id', '=', 'categories.id')
-                             ->where('products.status', '=', 1);
+                             ->where('products.status', '=', 1)
+                             ->whereNull('products.deleted_at');
                     })
-                    ->groupBy('categories.id', 'categories.name', 'categories.slug')
+                    ->groupBy('categories.id', 'categories.name', 'categories.slug', 'categories.image')
                     ->selectRaw('COUNT(products.id) as active_products_count')
                     ->orderBy('categories.name', 'asc')
                     ->get();

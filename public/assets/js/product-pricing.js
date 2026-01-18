@@ -67,7 +67,9 @@
             }
 
             // Calculate price without tax and tax amount from final price (discounted or original)
-            const priceWithoutTax = finalPrice / 1.15;
+            // Use GST multiplier from config (default: 1.15 for 15% GST)
+            const gstMultiplier = window.GST_MULTIPLIER || 1.15;
+            const priceWithoutTax = finalPrice / gstMultiplier;
             const taxAmount = finalPrice - priceWithoutTax;
 
             if (priceWithoutTaxInput) {

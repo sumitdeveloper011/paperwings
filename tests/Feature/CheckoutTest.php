@@ -44,10 +44,10 @@ class CheckoutTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->get(route('checkout.index'));
+        $response = $this->get(route('checkout.details'));
 
         $response->assertStatus(200)
-            ->assertViewIs('frontend.checkout.checkout');
+            ->assertViewIs('frontend.checkout.details');
     }
 
     // Test: Cannot access checkout with empty cart
@@ -56,7 +56,8 @@ class CheckoutTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $response = $this->get(route('checkout.index'));
+        // checkout.index redirects to checkout.details, which redirects to cart.index if empty
+        $response = $this->get(route('checkout.details'));
 
         $response->assertRedirect(route('cart.index'))
             ->assertSessionHas('error');
@@ -96,8 +97,10 @@ class CheckoutTest extends TestCase
             ])
             ->assertJsonStructure([
                 'success',
-                'discount',
-                'total'
+                'data' => [
+                    'discount',
+                    'total'
+                ]
             ]);
     }
 
@@ -163,8 +166,10 @@ class CheckoutTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
-                'shipping',
-                'shipping_price'
+                'data' => [
+                    'shipping',
+                    'shipping_price'
+                ]
             ]);
     }
 

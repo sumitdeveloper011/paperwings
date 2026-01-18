@@ -70,17 +70,21 @@ class EposNowService
                 // If empty page, increment empty counter
                 if (empty($products) || count($products) === 0) {
                     $emptyPageCount++;
-                    Log::info('EPOSNOW Products Import: Empty page detected', [
-                        'page' => $page,
-                        'empty_page_count' => $emptyPageCount,
-                        'total_products_so_far' => count($allProducts)
-                    ]);
+                    if (app()->environment('local')) {
+                        Log::info('EPOSNOW Products Import: Empty page detected', [
+                            'page' => $page,
+                            'empty_page_count' => $emptyPageCount,
+                            'total_products_so_far' => count($allProducts)
+                        ]);
+                    }
 
                     if ($emptyPageCount >= $maxEmptyPages) {
-                        Log::info('EPOSNOW Products Import: Reached end of pagination (empty pages)', [
-                            'pages_fetched' => $page - 1,
-                            'total_products' => count($allProducts)
-                        ]);
+                        if (app()->environment('local')) {
+                            Log::info('EPOSNOW Products Import: Reached end of pagination (empty pages)', [
+                                'pages_fetched' => $page - 1,
+                                'total_products' => count($allProducts)
+                            ]);
+                        }
                         break;
                     }
                     $page++;
@@ -115,8 +119,8 @@ class EposNowService
                 // Merge products
                 $allProducts = array_merge($allProducts, $products);
 
-                // Log progress for debugging (every page for first 10, then every 5)
-                if ($page <= 10 || $page % 5 == 0) {
+                // Log progress for debugging (every page for first 10, then every 5) - only in local environment
+                if (app()->environment('local') && ($page <= 10 || $page % 5 == 0)) {
                     Log::info('EPOSNOW Products Import Progress', [
                         'page' => $page,
                         'products_on_page' => count($products),
@@ -185,12 +189,14 @@ class EposNowService
             }
         }
 
-        Log::info('EPOSNOW Products Import: Completed fetching', [
-            'total_pages' => $page - 1,
-            'total_products_fetched' => count($allProducts),
-            'unique_products' => count($uniqueProducts),
-            'duplicates_removed' => count($allProducts) - count($uniqueProducts)
-        ]);
+        if (app()->environment('local')) {
+            Log::info('EPOSNOW Products Import: Completed fetching', [
+                'total_pages' => $page - 1,
+                'total_products_fetched' => count($allProducts),
+                'unique_products' => count($uniqueProducts),
+                'duplicates_removed' => count($allProducts) - count($uniqueProducts)
+            ]);
+        }
 
         return $uniqueProducts;
     }
@@ -277,8 +283,8 @@ class EposNowService
                 // Merge categories
                 $allCategories = array_merge($allCategories, $categories);
 
-                // Log progress for debugging (every page for first 10, then every 5)
-                if ($page <= 10 || $page % 5 == 0) {
+                // Log progress for debugging (every page for first 10, then every 5) - only in local environment
+                if (app()->environment('local') && ($page <= 10 || $page % 5 == 0)) {
                     Log::info('EPOSNOW Categories Import Progress', [
                         'page' => $page,
                         'categories_on_page' => count($categories),
@@ -346,12 +352,14 @@ class EposNowService
             }
         }
 
-        Log::info('EPOSNOW Categories Import: Completed fetching', [
-            'total_pages' => $page - 1,
-            'total_categories_fetched' => count($allCategories),
-            'unique_categories' => count($uniqueCategories),
-            'duplicates_removed' => count($allCategories) - count($uniqueCategories)
-        ]);
+        if (app()->environment('local')) {
+            Log::info('EPOSNOW Categories Import: Completed fetching', [
+                'total_pages' => $page - 1,
+                'total_categories_fetched' => count($allCategories),
+                'unique_categories' => count($uniqueCategories),
+                'duplicates_removed' => count($allCategories) - count($uniqueCategories)
+            ]);
+        }
 
         return $uniqueCategories;
     }
@@ -600,10 +608,12 @@ class EposNowService
                     $attempt++;
                     if ($attempt < $retries) {
                         $waitTime = $delay * pow(2, $attempt - 1);
-                        Log::info('Retrying after rate limit error', [
-                            'attempt' => $attempt,
-                            'wait_time' => $waitTime
-                        ]);
+                        if (app()->environment('local')) {
+                            Log::info('Retrying after rate limit error', [
+                                'attempt' => $attempt,
+                                'wait_time' => $waitTime
+                            ]);
+                        }
                         sleep(min($waitTime, 60));
                         continue;
                     }
@@ -707,11 +717,13 @@ class EposNowService
                 ]);
 
                 if ($duplicatePageCount >= $maxDuplicatePages) {
-                    Log::info("EPOSNOW {$type} Import: Stopping due to duplicate pages", [
-                        'pages_fetched' => $page - 1,
-                        'total_items' => $totalItems,
-                        'last_page' => $page - 1
-                    ]);
+                    if (app()->environment('local')) {
+                        Log::info("EPOSNOW {$type} Import: Stopping due to duplicate pages", [
+                            'pages_fetched' => $page - 1,
+                            'total_items' => $totalItems,
+                            'last_page' => $page - 1
+                        ]);
+                    }
                     return 'stop';
                 }
                 return 'skip';

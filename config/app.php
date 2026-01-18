@@ -123,4 +123,18 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Asset Version for Cache Busting
+    |--------------------------------------------------------------------------
+    |
+    | This version string is appended to CSS and JS files to force browser
+    | cache refresh when assets are updated. Increment this version number
+    | whenever you update your CSS/JS files to ensure users get the latest
+    | version without having to clear their browser cache manually.
+    |
+    */
+
+    'asset_version' => env('ASSET_VERSION', '1.0.0'),
+
 ];

@@ -34,6 +34,8 @@ Route::middleware('prevent.admin')->group(function () {
 
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
         ->name('verification.verify');
+    Route::post('/email/verification/resend', [AuthController::class, 'resendVerification'])
+        ->name('verification.resend');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
@@ -42,7 +44,7 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/auth/facebook/callback', [SocialAuthController::class, 'handleFacebookCallback'])->name('auth.facebook.callback');
 });
 
-Route::middleware('prevent.admin')->group(function () {
+Route::middleware(['prevent.admin', 'throttle:60,1'])->group(function () {
     Route::get('/search', [\App\Http\Controllers\Frontend\SearchController::class, 'index'])->name('search');
     Route::get('/search/autocomplete', [\App\Http\Controllers\Frontend\SearchController::class, 'autocomplete'])->name('search.autocomplete');
     Route::get('/search/autocomplete/render', [\App\Http\Controllers\Frontend\SearchController::class, 'renderAutocomplete'])->name('search.autocomplete.render');
@@ -132,10 +134,13 @@ Route::middleware('prevent.admin')->group(function () {
 
 Route::middleware('prevent.admin')->group(function () {
     Route::get('/contact', [ContactController::class, 'index'])->name('contact');
-    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+    // Contact form with rate limiting - 5 submissions per minute to prevent spam
+    Route::post('/contact', [ContactController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('contact.store');
 });
 
-Route::middleware('prevent.admin')->group(function () {
+Route::middleware(['prevent.admin', 'throttle:30,1'])->group(function () {
     Route::post('/wishlist/add', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/wishlist/remove', [WishlistController::class, 'remove'])->name('wishlist.remove');
     Route::post('/wishlist/remove-multiple', [WishlistController::class, 'removeMultiple'])->name('wishlist.remove-multiple');
@@ -170,23 +175,31 @@ Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function ()
     });
 });
 
-Route::middleware(['auth', 'prevent.admin', 'throttle:20,1'])->group(function () {
+// Checkout endpoints with rate limiting
+Route::middleware(['auth', 'prevent.admin', 'throttle:30,1'])->group(function () {
     Route::prefix('checkout')->name('checkout.')->group(function () {
+        // General checkout actions - 30 requests per minute
         Route::post('/details', [CheckoutController::class, 'storeDetails'])->name('store-details');
         Route::post('/review', [CheckoutController::class, 'confirmReview'])->name('confirm-review');
         Route::post('/payment', [CheckoutController::class, 'processPayment'])->name('process-payment');
-        
         Route::post('/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('apply-coupon');
         Route::post('/remove-coupon', [CheckoutController::class, 'removeCoupon'])->name('remove-coupon');
         Route::post('/calculate-shipping', [CheckoutController::class, 'calculateShipping'])->name('calculate-shipping');
-        Route::post('/create-payment-intent', [CheckoutController::class, 'createPaymentIntent'])->name('create-payment-intent');
-        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
         Route::post('/search-address', [CheckoutController::class, 'searchAddress'])->name('search-address');
         Route::get('/get-address/{id}', [CheckoutController::class, 'getAddress'])->name('get-address');
+        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
     });
 });
 
+// Payment intent creation - more restrictive (10 per minute)
 Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::post('/create-payment-intent', [CheckoutController::class, 'createPaymentIntent'])->name('create-payment-intent');
+    });
+});
+
+// Order processing - most restrictive (5 per minute to prevent abuse)
+Route::middleware(['auth', 'prevent.admin', 'throttle:5,1'])->group(function () {
     Route::prefix('checkout')->name('checkout.')->group(function () {
         Route::post('/process-order', [CheckoutController::class, 'processOrder'])->name('process-order');
     });

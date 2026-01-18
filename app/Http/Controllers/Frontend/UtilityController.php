@@ -21,10 +21,7 @@ class UtilityController extends Controller
                            isset($errorData['lineno']);
             
             if (!$hasErrorInfo) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Skipped - no error information'
-                ], 200);
+                return $this->jsonSuccess('Skipped - no error information');
             }
             
             $logData = [
@@ -66,10 +63,7 @@ class UtilityController extends Controller
                 Log::warning('Client-side error (fallback)', $logData);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Error logged successfully'
-            ], 200);
+            return $this->jsonSuccess('Error logged successfully');
         } catch (\Exception $e) {
             Log::error('Failed to log client error', [
                 'exception' => $e->getMessage(),
@@ -77,10 +71,7 @@ class UtilityController extends Controller
                 'request_data' => $request->all()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to log error'
-            ], 200);
+            return $this->jsonError('Failed to log error', 'ERROR_LOG_FAILED', null, 200);
         }
     }
 }

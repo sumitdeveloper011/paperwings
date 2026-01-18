@@ -251,6 +251,19 @@
                                 </button>
                             </div>
                         </form>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('contactForm', {
+            loadingText: 'Sending Message...',
+            timeout: 15000
+        });
+    }
+});
+</script>
+@endpush
                     </div>
                 </div>
             </div>

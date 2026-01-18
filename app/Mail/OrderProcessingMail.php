@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use App\Helpers\SettingHelper;
 use App\Services\ProductImageService;
+use App\Services\EmailTemplateService;
 
 class OrderProcessingMail extends Mailable
 {
@@ -53,13 +54,51 @@ class OrderProcessingMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_processing');
+
+        if ($template) {
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'order_total' => '$' . number_format($this->order->total, 2),
+                'app_name' => config('app.name'),
+            ];
+            $subject = $emailTemplateService->getSubject('order_processing', $variables);
+        } else {
+            $subject = 'Order Processing - Order #' . $this->order->order_number;
+        }
+
         return new Envelope(
-            subject: 'Order Processing - Order #' . $this->order->order_number,
+            subject: $subject,
         );
     }
 
     public function content(): Content
     {
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('order_processing');
+
+        if ($template) {
+            $settings = SettingHelper::all();
+            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+
+            $variables = [
+                'order_number' => $this->order->order_number,
+                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+                'order_total' => '$' . number_format($this->order->total, 2),
+                'app_name' => config('app.name'),
+            ];
+
+            $body = $emailTemplateService->getBody('order_processing', $variables);
+
+            return new Content(
+                htmlString: $body,
+            );
+        }
+
+        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
 
         $logoUrl = url('assets/frontend/images/logo.png');

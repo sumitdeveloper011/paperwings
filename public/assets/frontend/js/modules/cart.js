@@ -1,6 +1,8 @@
 /**
  * Cart Module
- * Handles all cart functionality
+ * Handles all cart functionality including add, remove, update, and sidebar management
+ * 
+ * @module CartModule
  */
 (function() {
     'use strict';
@@ -8,6 +10,9 @@
     const Cart = {
         csrfToken: null,
 
+        /**
+         * Initialize cart module
+         */
         init: function() {
             this.csrfToken = window.AppUtils ? window.AppUtils.getCsrfToken() : '';
             this.attachEventListeners();
@@ -19,6 +24,10 @@
             }
         },
 
+        /**
+         * Check if user is authenticated
+         * @returns {boolean} Whether user is authenticated
+         */
         isAuthenticated: function() {
             const body = document.body;
             if (body && body.hasAttribute('data-authenticated')) {
@@ -29,6 +38,9 @@
             return userDropdown !== null && loginLink === null;
         },
 
+        /**
+         * Attach event listeners for cart interactions
+         */
         attachEventListeners: function() {
             document.addEventListener('click', (e) => {
                 const addToCartBtn = e.target.closest('.add-to-cart, .product__add-cart, .cute-stationery__add-cart, .cute-stationery__add-cart-mobile, .wishlist-sidebar-item__add-cart');
@@ -69,8 +81,14 @@
             });
         },
 
+        /**
+         * Add product to cart
+         * @param {string} productUuid - Product UUID
+         * @param {number} quantity - Quantity to add (default: 1)
+         * @param {HTMLElement} button - Button element for loading state
+         * @returns {Promise} Promise that resolves with cart data
+         */
         addToCart: function(productUuid, quantity = 1, button = null) {
-            // Validate product UUID
             if (!productUuid) {
                 if (typeof showToast !== 'undefined') {
                     showToast('Product UUID is missing. Please refresh the page.', 'error');
@@ -84,94 +102,98 @@
                 window.AppUtils.setButtonLoading(button, true, 'fa-shopping-cart');
             }
 
-            return fetch('/cart/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.post === 'function'
+                ? window.AjaxUtils.post('/cart/add', {
                     product_uuid: productUuid,
                     quantity: quantity
-                })
-            })
-            .then(response => {
-                // Handle authentication errors
-                if (response.status === 401) {
-                    // Stop button loading
-                    if (window.AppUtils) {
-                        window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
+                }, { silentAuth: true })
+                : fetch('/cart/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        product_uuid: productUuid,
+                        quantity: quantity
+                    })
+                }).then(response => {
+                    if (response.status === 401) {
+                        if (window.AppUtils) {
+                            window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
+                        }
+                        if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
+                            window.AppUtils.redirectToLogin();
+                        } else {
+                            window.location.href = '/login?intended=' + encodeURIComponent(window.location.href);
+                        }
+                        return Promise.reject({ success: false, auth_required: true });
                     }
-                    // Redirect to login (don't continue promise chain)
-                    if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
-                        window.AppUtils.redirectToLogin();
-                    } else {
-                        const currentUrl = window.location.href;
-                        window.location.href = '/login?intended=' + encodeURIComponent(currentUrl);
+                    if (response.status === 400) {
+                        return response.json().then(data => {
+                            return Promise.reject({ 
+                                isValidationError: true, 
+                                message: data.message || 'Invalid request. Please check your input.',
+                                errors: data.errors || {}
+                            });
+                        });
                     }
-                    // Return a resolved promise to stop the chain
-                    return Promise.resolve({ success: false, auth_required: true });
-                }
-                
-                // Handle validation errors (400)
-                if (response.status === 400) {
-                    return response.json().then(data => {
-                        return Promise.reject({ 
-                            isValidationError: true, 
-                            message: data.message || 'Invalid request. Please check your input.',
-                            errors: data.errors || {}
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            return Promise.reject({ 
+                                message: data.message || 'An error occurred. Please try again.',
+                                status: response.status
+                            });
+                        }).catch(() => {
+                            return Promise.reject({ 
+                                message: 'An error occurred. Please try again.',
+                                status: response.status
+                            });
                         });
-                    });
-                }
-                
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        return Promise.reject({ 
-                            message: data.message || 'An error occurred. Please try again.',
-                            status: response.status
-                        });
-                    }).catch(() => {
-                        return Promise.reject({ 
-                            message: 'An error occurred. Please try again.',
-                            status: response.status
-                        });
-                    });
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                // Skip processing if authentication was required
-                if (data && data.auth_required) {
-                    return;
-                }
+                    }
+                    return response.json();
+                });
 
-                if (data && data.success) {
-                    if (data.cart_count !== undefined) {
-                        this.updateCount(data.cart_count);
+            return requestPromise
+                .then(data => {
+                    if (data && data.auth_required) {
+                        return;
                     }
-                    // Update button state immediately
+
+                    const cartCount = data.data?.cart_count ?? data.cart_count;
+                    const productData = data.data?.product ?? data.product;
+
+                    if (data && data.success) {
+                        if (cartCount !== undefined) {
+                            this.updateCount(cartCount);
+                        }
+                    
                     if (button) {
+                        if (window.AppUtils) {
+                            window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
+                        }
+                        
                         button.classList.add('in-cart');
                         button.setAttribute('title', 'Remove from Cart');
                         button.setAttribute('aria-label', 'Remove from Cart');
                         const icon = button.querySelector('i');
                         if (icon) {
-                            icon.classList.remove('fa-shopping-cart');
-                            icon.classList.add('fa-check');
+                            icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                            icon.classList.add('fas', 'fa-check');
+                            button.disabled = false;
                         }
                     }
                     this.checkCartStatus();
 
-                    if (data.product && window.Analytics) {
+                    if (productData && window.Analytics) {
                         window.Analytics.trackAddToCart({
-                            id: data.product.id || productUuid,
-                            name: data.product.name || '',
-                            category: data.product.category || '',
-                            brand: data.product.brand || '',
-                            price: data.product.price || 0
-                        }, data.product.quantity || quantity);
+                            id: productData.id || productUuid,
+                            name: productData.name || '',
+                            category: productData.category || '',
+                            brand: productData.brand || '',
+                            price: productData.price || 0
+                        }, productData.quantity || quantity);
                     }
 
                     const wishlistItem = button?.closest('.wishlist-sidebar-item');
@@ -230,143 +252,150 @@
                     isApiError: false
                 });
             })
-            .catch(error => {
-                // Stop button loading
-                if (window.AppUtils) {
-                    window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
-                }
-                
-                // Don't show errors for authentication failures (they're expected)
-                if (error === 'Not authenticated' || (error && typeof error === 'object' && error.message && error.message.includes('authenticated'))) {
-                    return Promise.reject({
-                        message: 'Not authenticated',
-                        isApiError: false
-                    });
-                }
-                
-                // Handle validation errors - show user-friendly message
-                if (error && error.isValidationError) {
-                    const errorMessage = error.message || 'Invalid request. Please check your input.';
-                    // Don't show toast if button is null (bulk operation)
-                    if (button && typeof showToast !== 'undefined') {
-                        showToast(errorMessage, 'error');
-                    } else if (button && window.AppUtils) {
-                        window.AppUtils.showNotification(errorMessage, 'error');
+                .catch(error => {
+                    if (window.AppUtils) {
+                        window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
                     }
-                    return Promise.reject({
-                        message: errorMessage,
-                        isApiError: true
-                    });
-                }
-
-                // Handle API errors (400, 422, etc.) - extract message from response
-                if (error && error.status && (error.status >= 400 && error.status < 500)) {
-                    // Extract message from error object
+                    
+                    if (error && (error.isAuthError || error.auth_required || error.message === 'Not authenticated')) {
+                        return Promise.resolve({
+                            success: false,
+                            message: 'Not authenticated',
+                            isApiError: false,
+                            auth_required: true
+                        });
+                    }
+                    
+                    if (error && error.name === 'TypeError' && error.message && error.message.includes('fetch')) {
+                        if (button && typeof showToast !== 'undefined') {
+                            showToast('Network error. Please check your connection and try again.', 'error');
+                        } else if (button && window.AppUtils) {
+                            window.AppUtils.showNotification('Network error. Please check your connection and try again.', 'error');
+                        }
+                        return Promise.resolve({
+                            success: false,
+                            message: 'Network error',
+                            isApiError: false
+                        });
+                    }
+                    
                     const errorMessage = error.message || 'Failed to add product to cart.';
-                    // Don't show toast if button is null (bulk operation)
+
+                    if (error && error.isValidationError) {
+                        if (button && typeof showToast !== 'undefined') {
+                            showToast(errorMessage, 'error');
+                        } else if (button && window.AppUtils) {
+                            window.AppUtils.showNotification(errorMessage, 'error');
+                        }
+                        return Promise.resolve({
+                            success: false,
+                            message: errorMessage,
+                            isApiError: true
+                        });
+                    }
+
                     if (button && typeof showToast !== 'undefined') {
                         showToast(errorMessage, 'error');
                     } else if (button && window.AppUtils) {
                         window.AppUtils.showNotification(errorMessage, 'error');
                     }
-                    return Promise.reject({
+                    return Promise.resolve({
+                        success: false,
                         message: errorMessage,
                         isApiError: true
                     });
-                }
-
-                // Only log/show errors for unexpected failures (network errors, 500, etc.)
-                if (window.AppUtils) {
-                    window.AppUtils.error('Cart error:', error);
-                    // Don't show toast if button is null (bulk operation)
-                    if (button && typeof showToast !== 'undefined') {
-                        showToast(error.message || 'An error occurred. Please try again.', 'error');
-                    } else if (button) {
-                        window.AppUtils.showNotification(error.message || 'An error occurred. Please try again.', 'error');
-                    }
-                }
-                return Promise.reject({
-                    message: error.message || 'An error occurred. Please try again.',
-                    isApiError: false
                 });
-            });
         },
 
         updateCartItem: function(cartItemId, quantity) {
-            fetch('/cart/update', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.put === 'function'
+                ? window.AjaxUtils.put('/cart/update', {
                     cart_item_id: cartItemId,
                     quantity: quantity
+                }, { silentAuth: true })
+                : fetch('/cart/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        cart_item_id: cartItemId,
+                        quantity: quantity
+                    })
+                }).then(response => {
+                    if (response.status === 401) {
+                        if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
+                            window.AppUtils.redirectToLogin();
+                        } else {
+                            window.location.href = '/login';
+                        }
+                        return Promise.reject('Not authenticated');
+                    }
+                    return response.json();
+                });
+
+            requestPromise
+                .then(data => {
+                    const cartCount = data.data?.cart_count ?? data.cart_count;
+                    if (data.success) {
+                        this.loadSidebar();
+                        if (cartCount !== undefined) {
+                            this.updateCount(cartCount);
+                        }
+                    }
                 })
-            })
-            .then(response => {
-                if (response.status === 401) {
-                    if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
-                        window.AppUtils.redirectToLogin();
-                    } else {
-                        window.location.href = '/login';
+                .catch(error => {
+                    if (error && (error.isAuthError || error.message === 'Not authenticated')) {
+                        return;
                     }
-                    return Promise.reject('Not authenticated');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    this.loadSidebar();
-                    if (data.cart_count !== undefined) {
-                        this.updateCount(data.cart_count);
+                    if (window.AppUtils) {
+                        window.AppUtils.error('Error updating cart:', error);
                     }
-                }
-            })
-            .catch(error => {
-                // Don't log authentication errors (expected behavior)
-                if (error === 'Not authenticated' || (error && error.message && error.message.includes('authenticated'))) {
-                    return;
-                }
-                if (window.AppUtils) {
-                    window.AppUtils.error('Error updating cart:', error);
-                }
-            });
+                });
         },
 
         removeFromCart: function(cartItemId, button) {
-            fetch('/cart/remove', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ cart_item_id: cartItemId })
-            })
-            .then(response => {
-                if (response.status === 401) {
-                    if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
-                        window.AppUtils.redirectToLogin();
-                    } else {
-                        window.location.href = '/login';
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.post === 'function'
+                ? window.AjaxUtils.post('/cart/remove', {
+                    cart_item_id: cartItemId
+                }, { silentAuth: true })
+                : fetch('/cart/remove', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ cart_item_id: cartItemId })
+                }).then(response => {
+                    if (response.status === 401) {
+                        if (window.AppUtils && typeof window.AppUtils.redirectToLogin === 'function') {
+                            window.AppUtils.redirectToLogin();
+                        } else {
+                            window.location.href = '/login';
+                        }
+                        return Promise.reject('Not authenticated');
                     }
-                    return Promise.reject('Not authenticated');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    if (data.product && window.Analytics) {
-                        window.Analytics.trackRemoveFromCart({
-                            id: data.product.id,
-                            name: data.product.name,
-                            category: data.product.category || '',
-                            brand: data.product.brand || '',
-                            price: data.product.price || 0
-                        }, data.product.quantity || 1);
-                    }
+                    return response.json();
+                });
+
+            requestPromise
+                .then(data => {
+                    const productData = data.data?.product ?? data.product;
+                    const cartCount = data.data?.cart_count ?? data.cart_count;
+
+                    if (data.success) {
+                        if (productData && window.Analytics) {
+                            window.Analytics.trackRemoveFromCart({
+                                id: productData.id,
+                                name: productData.name,
+                                category: productData.category || '',
+                                brand: productData.brand || '',
+                                price: productData.price || 0
+                            }, productData.quantity || 1);
+                        }
 
                     if (button) {
                         const cartItem = button.closest('.cart-sidebar-item');
@@ -384,12 +413,12 @@
                             }, 300);
                         }
                     }
-                    if (data.cart_count !== undefined) {
-                        this.updateCount(data.cart_count);
+                    if (cartCount !== undefined) {
+                        this.updateCount(cartCount);
                     }
                     // Update button state immediately using product UUID from response
-                    if (data.product && data.product.uuid) {
-                        const productUuid = data.product.uuid;
+                    if (productData && productData.uuid) {
+                        const productUuid = productData.uuid;
                         const allCartButtons = document.querySelectorAll(`.add-to-cart[data-product-uuid="${productUuid}"], .product__add-cart[data-product-uuid="${productUuid}"], .cute-stationery__add-cart[data-product-uuid="${productUuid}"], .cute-stationery__add-cart-mobile[data-product-uuid="${productUuid}"]`);
                         allCartButtons.forEach(btn => {
                             btn.classList.remove('in-cart');
@@ -410,20 +439,19 @@
                     }
                 }
             })
-            .catch(error => {
-                // Don't log authentication errors (expected behavior)
-                if (error === 'Not authenticated' || (error && error.message && error.message.includes('authenticated'))) {
-                    return;
-                }
-                if (window.AppUtils) {
-                    window.AppUtils.error('Error removing from cart:', error);
-                    if (typeof showToast !== 'undefined') {
-                        showToast('An error occurred. Please try again.', 'error');
-                    } else {
-                        window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                .catch(error => {
+                    if (error && (error.isAuthError || error.message === 'Not authenticated')) {
+                        return;
                     }
-                }
-            });
+                    if (window.AppUtils) {
+                        window.AppUtils.error('Error removing from cart:', error);
+                        if (typeof showToast !== 'undefined') {
+                            showToast('An error occurred. Please try again.', 'error');
+                        } else {
+                            window.AppUtils.showNotification('An error occurred. Please try again.', 'error');
+                        }
+                    }
+                });
         },
 
         loadSidebar: function() {
@@ -448,46 +476,48 @@
             if (sidebarEmpty) sidebarEmpty.style.display = 'none';
             if (sidebarSummary) sidebarSummary.style.display = 'none';
 
-            fetch('/cart/render', {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok && response.status === 401) {
-                    // Handle 401 gracefully - show empty cart
-                    this.updateSidebarEmpty();
-                    return Promise.reject('Not authenticated');
-                }
-                if (!response.ok) {
-                    throw new Error('Failed to load cart: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    this.updateSidebarFromHtml(data.html, data.total, data.count);
-                } else {
-                    // Fallback to empty state
-                    this.updateSidebarEmpty();
-                }
-            })
-            .catch(error => {
-                // Silently handle authentication errors
-                if (error === 'Not authenticated' || (error && error.message && error.message.includes('authenticated'))) {
-                    this.updateSidebarEmpty();
-                    return;
-                }
-                // Only show error for unexpected errors
-                if (window.AppUtils) {
-                    window.AppUtils.error('Error loading cart:', error);
-                }
-                if (sidebarItems) {
-                    sidebarItems.innerHTML = '<div class="cart-sidebar__error" style="text-align: center; padding: 2rem; color: #dc3545;"><p>Error loading cart. Please try again.</p></div>';
-                }
-            });
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.get === 'function'
+                ? window.AjaxUtils.get('/cart/render', { silentAuth: true })
+                : fetch('/cart/render', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    }
+                }).then(response => {
+                    if (!response.ok && response.status === 401) {
+                        this.updateSidebarEmpty();
+                        return Promise.reject('Not authenticated');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Failed to load cart: ' + response.status);
+                    }
+                    return response.json();
+                });
+
+            requestPromise
+                .then(data => {
+                    if (data.success) {
+                        const html = data.data?.html ?? data.html ?? '';
+                        const total = data.data?.total ?? data.total ?? 0;
+                        const count = data.data?.count ?? data.count ?? 0;
+                        this.updateSidebarFromHtml(html, total, count);
+                    } else {
+                        this.updateSidebarEmpty();
+                    }
+                })
+                .catch(error => {
+                    if (error && (error.isAuthError || error.message === 'Not authenticated')) {
+                        this.updateSidebarEmpty();
+                        return;
+                    }
+                    if (window.AppUtils) {
+                        window.AppUtils.error('Error loading cart:', error);
+                    }
+                    if (sidebarItems) {
+                        sidebarItems.innerHTML = '<div class="cart-sidebar__error" style="text-align: center; padding: 2rem; color: #dc3545;"><p>Error loading cart. Please try again.</p></div>';
+                    }
+                });
         },
 
         updateSidebarFromHtml: function(html, total = 0, count = 0) {
@@ -539,11 +569,20 @@
         },
 
         updateCount: function(count) {
+            count = count !== null && count !== undefined ? Number(count) : 0;
+            if (isNaN(count)) count = 0;
+            
             const headerBadge = document.getElementById('cart-header-badge');
+            const headerBadgeMobile = document.getElementById('cart-header-badge-mobile');
+            
             if (headerBadge) {
                 headerBadge.textContent = count;
-                // Hide badge when count is 0, show when count > 0
-                headerBadge.style.display = count > 0 ? 'absolute' : 'absolute';
+                headerBadge.style.display = 'flex';
+            }
+            
+            if (headerBadgeMobile) {
+                headerBadgeMobile.textContent = count;
+                headerBadgeMobile.style.display = 'flex';
             }
         },
 
@@ -563,128 +602,127 @@
                 return;
             }
 
-            fetch('/cart/check', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ product_uuids: productUuids })
-            })
-            .then(response => {
-                if (response.status === 401) {
-                    // User not authenticated, don't show cart status
-                    return Promise.reject('Not authenticated');
-                }
-                if (!response.ok) {
-                    return response.json().then(err => Promise.reject(err));
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.status) {
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.post === 'function'
+                ? window.AjaxUtils.post('/cart/check', {
+                    product_uuids: productUuids
+                }, { silentAuth: true })
+                : fetch('/cart/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ product_uuids: productUuids })
+                }).then(response => {
+                    if (response.status === 401) {
+                        return Promise.reject('Not authenticated');
+                    }
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    return response.json();
+                });
+
+            requestPromise
+                .then(data => {
+                    const statusData = data.data?.status ?? data.status;
+                    if (data.success && statusData) {
                     cartButtons.forEach(button => {
                         const productUuid = button.getAttribute('data-product-uuid');
-                        if (!productUuid) return; // Skip if no UUID
+                        if (!productUuid) return;
                         
                         const icon = button.querySelector('i');
 
-                        if (data.status[productUuid]) {
+                        if (statusData[productUuid]) {
                             button.classList.add('in-cart');
                             button.setAttribute('title', 'Remove from Cart');
                             button.setAttribute('aria-label', 'Remove from Cart');
+                            button.disabled = false;
                             if (icon) {
-                                icon.classList.remove('fa-shopping-cart');
-                                icon.classList.add('fa-check');
+                                icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                                icon.classList.add('fas', 'fa-check');
                             }
                         } else {
                             button.classList.remove('in-cart');
                             button.setAttribute('title', 'Add to Cart');
                             button.setAttribute('aria-label', 'Add to Cart');
+                            button.disabled = false;
                             if (icon) {
-                                icon.classList.remove('fa-check');
-                                icon.classList.add('fa-shopping-cart');
+                                icon.classList.remove('fa-check', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                                icon.classList.add('fas', 'fa-shopping-cart');
                             }
                         }
                     });
                 }
             })
-            .catch(error => {
-                // Don't log validation errors (422) - they're expected if UUIDs are missing
-                if (error && error.errors && error.message) {
-                    // Validation error - silently fail
-                    return;
-                }
-                if (window.AppUtils && error !== 'Not authenticated') {
-                    window.AppUtils.error('Error checking cart status:', error);
-                }
-            });
+                .catch(error => {
+                    if (error && (error.isAuthError || error.message === 'Not authenticated')) {
+                        return;
+                    }
+                    if (error && error.errors && error.message) {
+                        return;
+                    }
+                    if (window.AppUtils) {
+                        window.AppUtils.error('Error checking cart status:', error);
+                    }
+                });
         },
 
         loadCartCount: function() {
-            // Don't call API if not authenticated
             if (!this.isAuthenticated()) {
                 this.updateCount(0);
                 return;
             }
 
-            fetch('/cart/count', {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                // Handle 401 Unauthorized - user not authenticated
-                if (response.status === 401) {
-                    // Try to parse JSON response (backend returns JSON even for 401)
-                    return response.json().then(data => {
-                        // Set count to 0 and return null to stop promise chain
+            const requestPromise = window.AjaxUtils && typeof window.AjaxUtils.get === 'function'
+                ? window.AjaxUtils.get('/cart/count', { silentAuth: true })
+                : fetch('/cart/count', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'Accept': 'application/json'
+                    }
+                }).then(response => {
+                    if (response.status === 401) {
+                        return response.json().then(data => {
+                            this.updateCount(0);
+                            return null;
+                        }).catch(() => {
+                            this.updateCount(0);
+                            return null;
+                        });
+                    }
+                    if (!response.ok) {
+                        throw new Error('Failed to load cart count: ' + response.status);
+                    }
+                    return response.json();
+                });
+
+            requestPromise
+                .then(data => {
+                    if (!data) {
+                        return;
+                    }
+                    if (data.success) {
+                        const count = data.data?.count ?? data.count ?? 0;
+                        this.updateCount(count);
+                    } else if (data.error === 'Unauthenticated' || data.message === 'Unauthenticated.' || data.message === 'Please login to continue.') {
                         this.updateCount(0);
-                        return null;
-                    }).catch(() => {
-                        // If JSON parsing fails, just set count to 0
+                    } else {
                         this.updateCount(0);
-                        return null;
-                    });
-                }
-
-                if (!response.ok) {
-                    throw new Error('Failed to load cart count: ' + response.status);
-                }
-
-                return response.json();
-            })
-            .then(data => {
-                // Skip if data is null (401 was handled)
-                if (!data) {
-                    return;
-                }
-
-                if (data.success) {
-                    this.updateCount(data.count);
-                } else if (data.error === 'Unauthenticated' || data.message === 'Unauthenticated.' || data.message === 'Please login to continue.') {
-                    // Handle unauthenticated response
+                    }
+                })
+                .catch(error => {
+                    if (error && (error.isAuthError || error.message === 'Not authenticated')) {
+                        this.updateCount(0);
+                        return;
+                    }
+                    if (window.AppUtils) {
+                        window.AppUtils.error('Error loading cart count:', error);
+                    }
                     this.updateCount(0);
-                } else {
-                    // Other response, set count to 0
-                    this.updateCount(0);
-                }
-            })
-            .catch(error => {
-                // Silently handle errors - don't log authentication errors
-                if (error === 'Not authenticated' || (error && error.message && error.message.includes('authenticated'))) {
-                    this.updateCount(0);
-                    return;
-                }
-                // Only log unexpected errors
-                if (window.AppUtils) {
-                    window.AppUtils.error('Error loading cart count:', error);
-                }
-                this.updateCount(0);
-            });
+                });
         },
 
         toggleSidebar: function() {

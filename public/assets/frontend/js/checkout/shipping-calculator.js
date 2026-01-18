@@ -8,6 +8,8 @@ class ShippingCalculator {
         this.calculateUrl = '/checkout/calculate-shipping';
         this.subtotal = 0;
         this.discount = 0;
+        this.isCalculating = false;
+        this.calculateTimeout = null;
     }
 
     setTotals(subtotal, discount) {
@@ -18,8 +20,26 @@ class ShippingCalculator {
     async calculate(regionId) {
         if (!regionId) {
             this.updateDisplay(0, false);
+            this.updateTotal(0);
             return 0;
         }
+
+        // Debounce: Clear previous timeout
+        if (this.calculateTimeout) {
+            clearTimeout(this.calculateTimeout);
+        }
+
+        // Prevent multiple simultaneous calculations
+        if (this.isCalculating) {
+            return new Promise((resolve) => {
+                this.calculateTimeout = setTimeout(() => {
+                    resolve(this.calculate(regionId));
+                }, 100);
+            });
+        }
+
+        this.isCalculating = true;
+        this.showLoading(true);
 
         try {
             const response = await fetch(this.calculateUrl, {
@@ -36,18 +56,37 @@ class ShippingCalculator {
                 })
             });
 
+            if (!response.ok) {
+                throw new Error('Failed to calculate shipping');
+            }
+
             const data = await response.json();
 
             if (data.success) {
                 const shipping = parseFloat(data.shipping) || 0;
                 this.updateDisplay(shipping, data.is_free_shipping || false);
                 this.updateTotal(shipping);
+                this.isCalculating = false;
+                this.showLoading(false);
                 return shipping;
             }
 
+            this.isCalculating = false;
+            this.showLoading(false);
             return 0;
         } catch (error) {
+            this.isCalculating = false;
+            this.showLoading(false);
             return 0;
+        }
+    }
+
+    showLoading(show) {
+        const shippingValue = document.getElementById('checkoutShipping');
+        if (shippingValue) {
+            if (show) {
+                shippingValue.textContent = 'Calculating...';
+            }
         }
     }
 
@@ -86,34 +125,57 @@ class ShippingCalculator {
     }
 }
 
-window.updateShipping = function(regionId) {
-    if (window.shippingCalculator) {
-        window.shippingCalculator.calculate(regionId);
-    }
-};
+(function() {
+    'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    window.shippingCalculator = new ShippingCalculator();
+    let shippingCalculator = null;
 
-    const subtotalEl = document.getElementById('checkoutSubtotal');
-    const discountEl = document.getElementById('checkoutDiscount');
-
-    if (subtotalEl) {
-        const subtotal = parseFloat(subtotalEl.textContent.replace('$', '').replace(',', '')) || 0;
-        const discount = discountEl ? parseFloat(discountEl.textContent.replace('-$', '').replace(',', '')) || 0 : 0;
-        window.shippingCalculator.setTotals(subtotal, discount);
-    }
-
-    const regionSelect = document.getElementById('shippingRegion');
-    if (regionSelect) {
-        regionSelect.addEventListener('change', function() {
-            if (this.value) {
-                window.shippingCalculator.calculate(parseInt(this.value));
-            }
-        });
-
-        if (regionSelect.value) {
-            window.shippingCalculator.calculate(parseInt(regionSelect.value));
+    function initializeShippingCalculator() {
+        if (shippingCalculator) {
+            return shippingCalculator;
         }
+
+        shippingCalculator = new ShippingCalculator();
+
+        const subtotalEl = document.getElementById('checkoutSubtotal');
+        const discountEl = document.getElementById('checkoutDiscount');
+
+        if (subtotalEl) {
+            const subtotal = parseFloat(subtotalEl.textContent.replace('$', '').replace(',', '')) || 0;
+            const discount = discountEl ? parseFloat(discountEl.textContent.replace('-$', '').replace(',', '')) || 0 : 0;
+            shippingCalculator.setTotals(subtotal, discount);
+        }
+
+        const regionSelect = document.getElementById('shippingRegion');
+        if (regionSelect) {
+            regionSelect.addEventListener('change', function() {
+                if (this.value) {
+                    clearTimeout(shippingCalculator.calculateTimeout);
+                    shippingCalculator.calculateTimeout = setTimeout(() => {
+                        shippingCalculator.calculate(parseInt(this.value));
+                    }, 300);
+                } else {
+                    shippingCalculator.updateDisplay(0, false);
+                    shippingCalculator.updateTotal(0);
+                }
+            });
+
+            if (regionSelect.value) {
+                shippingCalculator.calculate(parseInt(regionSelect.value));
+            }
+        }
+
+        return shippingCalculator;
     }
-});
+
+    window.updateShipping = function(regionId) {
+        const calculator = initializeShippingCalculator();
+        if (calculator) {
+            calculator.calculate(regionId);
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeShippingCalculator();
+    });
+})();

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasUuid;
+use App\Helpers\CacheHelper;
 
 class Order extends Model
 {
@@ -80,6 +81,27 @@ class Order extends Model
         'admin_viewed_at' => 'datetime',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::updating(function ($order) {
+            // Clear dashboard stats cache when order status or payment status changes
+            if ($order->isDirty(['status', 'payment_status'])) {
+                CacheHelper::clearDashboardStats();
+            }
+        });
+
+        static::created(function ($order) {
+            // Clear dashboard stats cache when new order is created
+            CacheHelper::clearDashboardStats();
+        });
+
+        static::deleted(function ($order) {
+            // Clear dashboard stats cache when order is deleted
+            CacheHelper::clearDashboardStats();
+        });
+    }
 
     // Generate unique order number
     public static function generateOrderNumber(): string

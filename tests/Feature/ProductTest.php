@@ -52,7 +52,7 @@ class ProductTest extends TestCase
             'status' => 1
         ]);
 
-        $response = $this->get(route('product.by.category', ['slug' => 'test-category']));
+        $response = $this->get(route('category.show', ['slug' => 'test-category']));
 
         $response->assertStatus(200)
             ->assertViewIs('frontend.category.category');

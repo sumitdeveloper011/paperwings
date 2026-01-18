@@ -1,0 +1,184 @@
+/* ========================================
+   API Settings Page Styles
+   BEM Methodology: Block__Element--Modifier
+   ======================================== */
+
+/* API Key Input Component */
+.api-key-input {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+}
+
+.api-key-input[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    color: #6c757d;
+}
+
+.api-key-input--changed {
+    border-color: #28a745 !important;
+    background-color: #f0fff4 !important;
+}
+
+.api-key-input--changed:focus {
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+}
+
+/* Input Wrapper with Action Button */
+.input-wrapper--with-action {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper--with-action .form-input-modern {
+    padding-right: 100px;
+}
+
+/* Change Button Component */
+.api-key-change-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.4rem 0.75rem;
+    background-color: #374E94;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.3s ease;
+    z-index: 5;
+}
+
+.api-key-change-btn:hover {
+    background-color: #2a3d75;
+    transform: translateY(-50%) scale(1.05);
+}
+
+.api-key-change-btn__icon {
+    font-size: 0.875rem;
+}
+
+/* Status Badge Component */
+.api-status-badge {
+    display: inline-block;
+    padding: 0.35em 0.65em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.375rem;
+}
+
+.api-status-badge--success {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.api-status-badge--warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.api-status-badge--secondary {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+/* Configuration Status Component */
+.api-config-status {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.api-config-status__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.api-config-status__item:last-child {
+    border-bottom: none;
+}
+
+.api-config-status__label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #374E94;
+    font-size: 0.9375rem;
+}
+
+.api-config-status__label-icon {
+    font-size: 1rem;
+}
+
+.api-config-status__value {
+    text-align: right;
+}
+
+/* API Services Overview Component */
+.api-services-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.api-services-list__item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.api-services-list__item:first-child {
+    padding-top: 0;
+}
+
+.api-services-list__item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.api-services-list__icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #374E94;
+    font-size: 1rem;
+    margin-top: 2px;
+}
+
+.api-services-list__content {
+    flex: 1;
+}
+
+.api-services-list__title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #2d3748;
+    font-size: 0.9375rem;
+}
+
+.api-services-list__description {
+    margin: 0;
+    color: #666;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}

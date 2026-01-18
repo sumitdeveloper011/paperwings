@@ -13,7 +13,7 @@ class SettingHelper
     {
         try {
             // Get non-sensitive settings from cache
-            $cachedSettings = Cache::remember('app_settings', 3600, function() {
+            $cachedSettings = Cache::remember(CacheHelper::APP_SETTINGS, 3600, function() {
                 try {
                     $allSettings = Setting::pluck('value', 'key')->toArray();
                     // Remove sensitive keys from cache
@@ -133,7 +133,7 @@ class SettingHelper
     // Clear settings cache
     public static function clearCache(): void
     {
-        Cache::forget('app_settings');
+        Cache::forget(CacheHelper::APP_SETTINGS);
     }
 
     /**

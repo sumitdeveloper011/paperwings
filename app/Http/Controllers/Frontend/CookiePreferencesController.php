@@ -30,9 +30,7 @@ class CookiePreferencesController extends Controller
 
         $this->cookieConsentService->savePreferences($validated, auth()->id());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cookie preferences saved successfully.',
+        return $this->jsonSuccess('Cookie preferences saved successfully.', [
             'preferences' => $this->cookieConsentService->getPreferences()
         ]);
     }

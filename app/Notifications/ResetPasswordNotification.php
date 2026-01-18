@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use App\Helpers\SettingHelper;
+use App\Services\EmailTemplateService;
 
 class ResetPasswordNotification extends Notification
 {
@@ -36,18 +37,37 @@ class ResetPasswordNotification extends Notification
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
+        $emailTemplateService = app(EmailTemplateService::class);
+        $template = $emailTemplateService->getTemplate('password_reset');
+
+        if ($template) {
+            $settings = SettingHelper::all();
+            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+
+            $variables = [
+                'customer_name' => $notifiable->first_name,
+                'reset_link' => $resetUrl,
+                'expiry_time' => '60 minutes',
+                'app_name' => config('app.name'),
+            ];
+
+            $subject = $emailTemplateService->getSubject('password_reset', $variables);
+            $body = $emailTemplateService->getBody('password_reset', $variables);
+
+            return (new MailMessage)
+                ->subject($subject)
+                ->htmlString($body);
+        }
+
+        // Fallback to view if template doesn't exist
         $logoUrl = url('assets/frontend/images/logo.png');
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        // Fetch settings from database (same pattern as AppServiceProvider)
         $settings = SettingHelper::all();
-
-        // Get social links from database
         $socialLinks = SettingHelper::extractSocialLinks($settings);
-
-        // Get contact phone and email from database
         $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
 
