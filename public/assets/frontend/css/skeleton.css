@@ -1,0 +1,306 @@
+/* Skeleton Loading Styles */
+
+/* Base Skeleton Container */
+.skeleton-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+/* Skeleton Image - Product Cards */
+.skeleton-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Skeleton Shimmer Animation */
+.skeleton-shimmer {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.5),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Skeleton for Product Main Image */
+.skeleton-main-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    background: #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Skeleton for Product Thumbnails */
+.skeleton-thumbnail {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* Skeleton for Cart/Wishlist Items */
+.skeleton-small-image {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+/* Fade in animation for loaded images */
+.image-loaded {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Hide skeleton when image loads */
+.skeleton-container.hidden {
+    display: none;
+}
+
+/* Ensure image container maintains aspect ratio */
+.image-wrapper,
+.skeleton-image-wrapper {
+    position: relative;
+    width: 100%;
+    display: block;
+}
+
+.image-wrapper img,
+.skeleton-image-wrapper img {
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.image-wrapper img.loaded,
+.skeleton-image-wrapper img.loaded {
+    opacity: 1;
+}
+
+/* For absolute positioned images (product cards) */
+.cute-stationery__image .skeleton-image-wrapper img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-main-image .skeleton-image-wrapper img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Product card specific skeleton */
+.cute-stationery__image .skeleton-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.cute-stationery__image .skeleton-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.cute-stationery__image .cute-stationery__img {
+    position: relative;
+    z-index: 2;
+}
+
+/* Product detail page skeleton */
+.product-main-image .skeleton-image-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.product-main-image .skeleton-main-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.product-main-image .main-img {
+    position: relative;
+    z-index: 2;
+}
+
+.product-thumbnails .thumbnail-item {
+    position: relative;
+}
+
+.product-thumbnails .skeleton-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.product-thumbnails .skeleton-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.product-thumbnails .thumbnail-item img {
+    position: relative;
+    z-index: 2;
+}
+
+/* Cart and Wishlist sidebar items */
+.cart-sidebar-item__image .skeleton-image-wrapper,
+.wishlist-sidebar-item__image .skeleton-image-wrapper,
+.cart-item__image .skeleton-image-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+}
+
+.cart-sidebar-item__image .skeleton-small-image,
+.wishlist-sidebar-item__image .skeleton-small-image,
+.cart-item__image .skeleton-small-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.cart-sidebar-item__image img,
+.wishlist-sidebar-item__image img,
+.cart-item__image img {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Category cards */
+.category-card__image-wrapper {
+    position: relative;
+}
+
+.category-card__image-wrapper .skeleton-image-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.category-card__image-wrapper .skeleton-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.category-card__image-wrapper .category-card__image {
+    position: relative;
+    z-index: 2;
+}
+
+/* Instagram items */
+.instagram-item__image {
+    position: relative;
+}
+
+.instagram-item__image .skeleton-image-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.instagram-item__image .skeleton-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.instagram-item__image .instagram-item__img {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .skeleton-small-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .product-thumbnails .skeleton-thumbnail {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .cart-sidebar-item__image .skeleton-image-wrapper,
+    .wishlist-sidebar-item__image .skeleton-image-wrapper,
+    .cart-item__image .skeleton-image-wrapper {
+        width: 60px;
+        height: 60px;
+    }
+}

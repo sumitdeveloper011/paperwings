@@ -404,6 +404,36 @@
                         </div>
                         @endif
 
+                        @if($order->platform_fee > 0)
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">
+                                <i class="fas fa-percentage"></i>
+                                Platform Fee
+                            </span>
+                            <span class="order-summary-value">${{ number_format($order->platform_fee, 2) }}</span>
+                        </div>
+                        @endif
+
+                        @if($order->stripe_fee > 0)
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">
+                                <i class="fab fa-stripe"></i>
+                                Stripe Fee
+                            </span>
+                            <span class="order-summary-value">${{ number_format($order->stripe_fee, 2) }}</span>
+                        </div>
+                        @endif
+
+                        @if($order->net_amount > 0)
+                        <div class="order-summary-row">
+                            <span class="order-summary-label">
+                                <i class="fas fa-dollar-sign"></i>
+                                Net Amount
+                            </span>
+                            <span class="order-summary-value">${{ number_format($order->net_amount, 2) }}</span>
+                        </div>
+                        @endif
+
                         <div class="order-summary-divider"></div>
 
                         <div class="order-summary-row order-summary-row--total">

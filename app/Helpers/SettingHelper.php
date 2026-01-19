@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Cache;
 
 class SettingHelper
 {
+    private static ?array $sensitiveKeysCache = null;
+    private static bool $sensitiveKeysLoaded = false;
+
     // Get all settings (cached, but sensitive keys retrieved directly)
     public static function all(): array
     {
@@ -28,12 +31,28 @@ class SettingHelper
                 }
             });
 
-            // Get sensitive keys directly from database (not cached)
-            $sensitiveKeys = ApiKeyEncryptionService::getEncryptedKeys();
-            foreach ($sensitiveKeys as $key) {
-                $setting = Setting::where('key', $key)->first();
-                if ($setting) {
-                    $cachedSettings[$key] = ApiKeyEncryptionService::decrypt($key, $setting->value);
+            // Load sensitive keys only once per request (batch query)
+            if (!self::$sensitiveKeysLoaded) {
+                $sensitiveKeys = ApiKeyEncryptionService::getEncryptedKeys();
+                
+                if (!empty($sensitiveKeys)) {
+                    // Batch load ALL sensitive keys in ONE query instead of individual queries
+                    $sensitiveSettings = Setting::whereIn('key', $sensitiveKeys)->get();
+                    
+                    foreach ($sensitiveSettings as $setting) {
+                        $decryptedValue = ApiKeyEncryptionService::decrypt($setting->key, $setting->value);
+                        $cachedSettings[$setting->key] = $decryptedValue;
+                        self::$sensitiveKeysCache[$setting->key] = $decryptedValue;
+                    }
+                }
+                
+                self::$sensitiveKeysLoaded = true;
+            } else {
+                // Use cached sensitive keys from previous call in same request
+                if (self::$sensitiveKeysCache !== null) {
+                    foreach (self::$sensitiveKeysCache as $key => $value) {
+                        $cachedSettings[$key] = $value;
+                    }
                 }
             }
 
@@ -134,6 +153,8 @@ class SettingHelper
     public static function clearCache(): void
     {
         Cache::forget(CacheHelper::APP_SETTINGS);
+        self::$sensitiveKeysCache = null;
+        self::$sensitiveKeysLoaded = false;
     }
 
     /**

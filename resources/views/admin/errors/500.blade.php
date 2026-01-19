@@ -34,12 +34,46 @@
                                 </a>
                             @endif
                         </div>
-                        @if(app()->environment('local', 'development') && isset($exception))
-                            <div class="mt-4">
-                                <details class="text-left">
-                                    <summary class="cursor-pointer" style="cursor: pointer;">Error Details</summary>
-                                    <pre class="bg-light p-3 mt-2 rounded" style="background: #f8f9fa; padding: 1rem; margin-top: 0.5rem; border-radius: 0.25rem; overflow-x: auto;">{{ $exception->getMessage() ?? 'Unknown error' }}</pre>
-                                </details>
+                        @if(app()->environment('local', 'development'))
+                            <div class="mt-4 text-left">
+                                @if(isset($exception))
+                                    <details open style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1rem;">
+                                        <summary style="cursor: pointer; font-weight: bold; margin-bottom: 1rem; color: #dc3545;">
+                                            <i class="fas fa-bug"></i> Error Details (Development Mode)
+                                        </summary>
+                                        <div style="background: #fff; padding: 1rem; border-radius: 0.25rem; margin-top: 0.5rem;">
+                                            <div style="margin-bottom: 1rem;">
+                                                <strong>Error Message:</strong>
+                                                <pre style="background: #f8f9fa; padding: 0.75rem; border-radius: 0.25rem; overflow-x: auto; margin-top: 0.5rem; white-space: pre-wrap; word-wrap: break-word;">{{ $exception->getMessage() ?? 'Unknown error' }}</pre>
+                                            </div>
+                                            <div style="margin-bottom: 1rem;">
+                                                <strong>File:</strong>
+                                                <code style="background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 0.25rem; display: block; margin-top: 0.5rem;">{{ $exception->getFile() ?? 'Unknown' }}</code>
+                                            </div>
+                                            <div style="margin-bottom: 1rem;">
+                                                <strong>Line:</strong>
+                                                <code style="background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ $exception->getLine() ?? 'Unknown' }}</code>
+                                            </div>
+                                            <div style="margin-bottom: 1rem;">
+                                                <strong>Exception Class:</strong>
+                                                <code style="background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ get_class($exception) }}</code>
+                                            </div>
+                                            @if($exception->getTraceAsString())
+                                            <div>
+                                                <strong>Stack Trace:</strong>
+                                                <details style="margin-top: 0.5rem;">
+                                                    <summary style="cursor: pointer; color: #6c757d;">Click to view stack trace</summary>
+                                                    <pre style="background: #f8f9fa; padding: 0.75rem; border-radius: 0.25rem; overflow-x: auto; margin-top: 0.5rem; max-height: 400px; overflow-y: auto; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">{{ $exception->getTraceAsString() }}</pre>
+                                                </details>
+                                            </div>
+                                            @endif
+                                        </div>
+                                    </details>
+                                @else
+                                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 0.25rem; padding: 1rem; color: #856404;">
+                                        <i class="fas fa-info-circle"></i> No error details available. Check Laravel logs: <code>storage/logs/laravel.log</code>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>

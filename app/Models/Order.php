@@ -66,6 +66,10 @@ class Order extends Model
         'tracking_url',
         'notes',
         'admin_viewed_at',
+        'stripe_fee',
+        'platform_fee',
+        'net_amount',
+        'stripe_balance_transaction_id',
     ];
 
     protected $casts = [
@@ -75,6 +79,9 @@ class Order extends Model
         'shipping' => 'decimal:2',
         'shipping_price' => 'decimal:2',
         'total' => 'decimal:2',
+        'stripe_fee' => 'decimal:2',
+        'platform_fee' => 'decimal:2',
+        'net_amount' => 'decimal:2',
         'refund_amount' => 'decimal:2',
         'payment_confirmed_at' => 'datetime',
         'refunded_at' => 'datetime',

@@ -104,7 +104,7 @@ class ContactStatusUpdateMail extends Mailable
             $body = $emailTemplateService->getBody('contact_status_update', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

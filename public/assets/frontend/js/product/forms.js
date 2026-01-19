@@ -449,9 +449,34 @@
                 const data = Object.fromEntries(formData);
 
                 try {
-                    const response = window.AjaxUtils
-                        ? await window.AjaxUtils.post(`/question/${questionId}/answer`, data, { showMessage: false })
-                        : await fetch(`/question/${questionId}/answer`, {
+                    let response;
+                    if (window.AjaxUtils) {
+                        try {
+                            response = await window.AjaxUtils.post(`/question/${questionId}/answer`, data, { showMessage: false });
+                        } catch (error) {
+                            // AjaxUtils throws errors for validation failures
+                            if (error.isValidationError && error.errors) {
+                                // Extract first error message from validation errors
+                                const errorKeys = Object.keys(error.errors);
+                                if (errorKeys.length > 0) {
+                                    const firstError = error.errors[errorKeys[0]];
+                                    if (Array.isArray(firstError) && firstError.length > 0) {
+                                        showNotification(firstError[0], 'error');
+                                    } else if (typeof firstError === 'string') {
+                                        showNotification(firstError, 'error');
+                                    } else {
+                                        showNotification(error.message || 'Validation failed. Please check your input.', 'error');
+                                    }
+                                } else {
+                                    showNotification(error.message || 'Validation failed. Please check your input.', 'error');
+                                }
+                            } else {
+                                showNotification(error.message || 'Failed to submit answer. Please try again.', 'error');
+                            }
+                            return;
+                        }
+                    } else {
+                        const fetchResponse = await fetch(`/question/${questionId}/answer`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -459,16 +484,35 @@
                                 'Accept': 'application/json'
                             },
                             body: JSON.stringify(data)
-                        }).then(response => response.json());
+                        });
+                        response = await fetchResponse.json();
+                    }
 
                     if (response.success) {
                         showNotification(response.message, 'success');
                         this.reset();
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        showNotification(response.message || 'Failed to submit answer.', 'error');
+                        // Handle validation errors
+                        let errorMessage = response.message || 'Failed to submit answer.';
+                        
+                        if (response.errors && typeof response.errors === 'object') {
+                            // Extract first error message from validation errors
+                            const errorKeys = Object.keys(response.errors);
+                            if (errorKeys.length > 0) {
+                                const firstError = response.errors[errorKeys[0]];
+                                if (Array.isArray(firstError) && firstError.length > 0) {
+                                    errorMessage = firstError[0];
+                                } else if (typeof firstError === 'string') {
+                                    errorMessage = firstError;
+                                }
+                            }
+                        }
+                        
+                        showNotification(errorMessage, 'error');
                     }
                 } catch (error) {
+                    console.error('Answer submission error:', error);
                     showNotification('An error occurred. Please try again.', 'error');
                 }
             });

@@ -29,7 +29,12 @@
                                         <td class="cart-item__product">
                                             <div class="cart-item__image">
                                                 <a href="{{ route('product.detail', $cartItem->product->slug) }}">
-                                                    <img src="{{ $cartItem->product->main_thumbnail_url }}" alt="{{ $cartItem->product->name }}">
+                                                    <div class="image-wrapper skeleton-image-wrapper">
+                                                        <div class="skeleton-small-image">
+                                                            <div class="skeleton-shimmer"></div>
+                                                        </div>
+                                                        <img src="{{ $cartItem->product->main_thumbnail_url }}" alt="{{ $cartItem->product->name }}" width="80" height="80" loading="lazy">
+                                                    </div>
                                                 </a>
                                             </div>
                                             <div class="cart-item__info">

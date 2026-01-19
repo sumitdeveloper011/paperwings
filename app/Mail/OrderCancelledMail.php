@@ -99,7 +99,7 @@ class OrderCancelledMail extends Mailable
             $body = $emailTemplateService->getBody('order_cancelled', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

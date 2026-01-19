@@ -154,9 +154,22 @@
                 };
 
                 this.lightboxImage.onerror = () => {
-                    console.error('Failed to load image:', item.image);
-                    this.lightboxImage.src = '/assets/images/placeholder.jpg';
+                    console.warn('Failed to load image:', item.image);
+                    // Try to get placeholder from window or use default
+                    const placeholderPath = (typeof window !== 'undefined' && window.PLACEHOLDER_IMAGE) 
+                        ? window.PLACEHOLDER_IMAGE 
+                        : '/assets/images/placeholder.jpg';
+                    this.lightboxImage.src = placeholderPath;
+                    this.lightboxImage.alt = 'Image not available';
                     this.isAnimating = false;
+                    
+                    // If placeholder also fails, hide the image
+                    this.lightboxImage.onerror = () => {
+                        if (this.lightboxImage) {
+                            this.lightboxImage.style.display = 'none';
+                        }
+                        this.isAnimating = false;
+                    };
                 };
             }
 

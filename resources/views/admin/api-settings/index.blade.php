@@ -243,6 +243,141 @@
                                 </div>
                             @enderror
                         </div>
+
+                        <!-- Platform Fee Settings -->
+                        <div class="form-hint" style="margin-top: 2rem; margin-bottom: 1.5rem; padding: 1.5rem; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #0066cc;">
+                            <div style="margin-bottom: 1rem;">
+                                <strong style="color: #0066cc; font-size: 1rem;">
+                                    <i class="fas fa-info-circle"></i> Understanding Fees
+                                </strong>
+                            </div>
+                            <div style="margin-bottom: 1rem; padding: 0.75rem; background: #ffffff; border-radius: 6px; border-left: 3px solid #dc3545;">
+                                <strong style="color: #dc3545; display: block; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-exclamation-triangle"></i> Stripe Fee (Cannot Disable)
+                                </strong>
+                                <p style="margin: 0; font-size: 0.9rem; color: #495057; line-height: 1.6;">
+                                    Stripe automatically charges a processing fee (~2.7% + $0.30 for NZ cards). This fee is <strong>deducted by Stripe</strong> from your payment - you cannot disable it. This is standard industry practice and is absorbed as a cost of doing business.
+                                </p>
+                            </div>
+                            <div style="padding: 0.75rem; background: #ffffff; border-radius: 6px; border-left: 3px solid #28a745;">
+                                <strong style="color: #28a745; display: block; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-check-circle"></i> Platform Fee (Optional - Recommended: Disabled)
+                                </strong>
+                                <p style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #495057; line-height: 1.6;">
+                                    Platform fee is an <strong>additional fee charged to customers</strong> on top of their order total. This is optional and can be enabled/disabled below.
+                                </p>
+                                <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                                    <strong style="display: block; margin-bottom: 0.5rem; color: #495057; font-size: 0.85rem;">
+                                        <i class="fas fa-lightbulb"></i> Industry Best Practice:
+                                    </strong>
+                                    <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.85rem; color: #6c757d; line-height: 1.8;">
+                                        <li><strong>Direct Sellers</strong> (like PaperWings): <span style="color: #28a745;">Keep disabled</span> - Build costs into product prices</li>
+                                        <li><strong>Marketplaces</strong> (Etsy, eBay): Enable to charge sellers/platform fee</li>
+                                        <li><strong>Service Businesses</strong> (Uber, Airbnb): Enable as "service fee"</li>
+                                    </ul>
+                                </div>
+                                <div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 0.75rem; border-left: 3px solid #ffc107;">
+                                    <strong style="display: block; margin-bottom: 0.25rem; color: #856404; font-size: 0.85rem;">
+                                        <i class="fas fa-exclamation-circle"></i> Important:
+                                    </strong>
+                                    <p style="margin: 0; font-size: 0.85rem; color: #856404; line-height: 1.6;">
+                                        If enabled, customers will see and pay this fee separately. Make sure it's clearly disclosed and compliant with local regulations.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Platform Fee Enabled Toggle -->
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                Enable Platform Fee
+                                <span style="color: #6c757d; font-weight: normal; font-size: 0.9rem; margin-left: 0.5rem;">
+                                    (Recommended: <span style="color: #28a745;">Disabled</span> for direct sellers)
+                                </span>
+                            </label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" 
+                                       id="platform_fee_enabled" 
+                                       name="platform_fee_enabled" 
+                                       value="1"
+                                       {{ old('platform_fee_enabled', $settings['platform_fee_enabled'] ?? '0') == '1' ? 'checked' : '' }}
+                                       class="toggle-switch__input">
+                                <label for="platform_fee_enabled" class="toggle-switch__label">
+                                    <span class="toggle-switch__slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                When enabled, a platform fee will be added to each order total. <strong>Default: Disabled</strong> (recommended for direct e-commerce stores).
+                            </div>
+                        </div>
+
+                        <!-- Platform Fee Percentage -->
+                        <div class="form-group-modern" id="platform_fee_percentage_group" style="{{ old('platform_fee_enabled', $settings['platform_fee_enabled'] ?? '0') == '1' ? '' : 'display: none;' }}">
+                            <label for="platform_fee_percentage" class="form-label-modern">
+                                Platform Fee Percentage (%)
+                            </label>
+                            <div class="input-wrapper">
+                                <input type="number"
+                                       step="0.01"
+                                       min="0"
+                                       max="100"
+                                       class="form-input-modern @error('platform_fee_percentage') is-invalid @enderror"
+                                       id="platform_fee_percentage"
+                                       name="platform_fee_percentage"
+                                       value="{{ old('platform_fee_percentage', $settings['platform_fee_percentage'] ?? '0') }}"
+                                       placeholder="2.5">
+                                <span class="input-suffix">%</span>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Percentage of order total to charge as platform fee (e.g., 2.5 for 2.5%)
+                            </div>
+                            @error('platform_fee_percentage')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pass Stripe Fee to Customer -->
+                <div class="modern-card">
+                    <div class="modern-card__header">
+                        <h3 class="modern-card__title">
+                            <i class="fas fa-credit-card"></i>
+                            Pass Stripe Processing Fee to Customer
+                        </h3>
+                    </div>
+                    <div class="modern-card__body">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                Pass Stripe Fee to Customer (Recommended: <span style="color: #dc3545;">Disabled</span>)
+                            </label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" 
+                                       id="pass_stripe_fee_to_customer" 
+                                       name="pass_stripe_fee_to_customer" 
+                                       value="1" 
+                                       {{ old('pass_stripe_fee_to_customer', $settings['pass_stripe_fee_to_customer'] ?? '0') == '1' ? 'checked' : '' }} 
+                                       class="toggle-switch__input">
+                                <label for="pass_stripe_fee_to_customer" class="toggle-switch__label">
+                                    <span class="toggle-switch__slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-hint" style="margin-top: 12px; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong>
+                                <ul style="margin: 8px 0 0 20px; padding: 0;">
+                                    <li>Stripe automatically charges a processing fee (2.9% + $0.30 per transaction)</li>
+                                    <li>When enabled, this estimated fee will be added to the customer's order total</li>
+                                    <li><strong>Industry Best Practice:</strong> Most businesses absorb Stripe fees as a cost of doing business</li>
+                                    <li>Only enable this if you explicitly want customers to pay the processing fee</li>
+                                    <li>Note: The actual Stripe fee may vary slightly from the estimate</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -943,6 +1078,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (facebookCheckbox) {
         facebookCheckbox.addEventListener('change', function() {
             toggleProviderFields('facebook');
+        });
+    }
+
+    // Platform Fee Toggle
+    const platformFeeEnabled = document.getElementById('platform_fee_enabled');
+    const platformFeePercentageGroup = document.getElementById('platform_fee_percentage_group');
+    
+    if (platformFeeEnabled && platformFeePercentageGroup) {
+        platformFeeEnabled.addEventListener('change', function() {
+            if (this.checked) {
+                platformFeePercentageGroup.style.display = 'block';
+            } else {
+                platformFeePercentageGroup.style.display = 'none';
+            }
         });
     }
 

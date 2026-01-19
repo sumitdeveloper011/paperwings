@@ -21,6 +21,7 @@
 {{-- Core modules - Must load in order --}}
 <script src="{{ asset('assets/frontend/js/modules/utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/ajax-utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/skeleton-loader.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/form-submission-handler.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/cookie-consent.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/analytics.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>

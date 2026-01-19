@@ -104,7 +104,7 @@ class OrderConfirmationMail extends Mailable
             $body = $emailTemplateService->getBody('order_confirmation', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

@@ -67,7 +67,7 @@ class ContactNotificationMail extends Mailable
             $body = $emailTemplateService->getBody('contact_notification', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

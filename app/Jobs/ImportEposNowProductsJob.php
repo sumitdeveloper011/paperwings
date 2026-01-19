@@ -38,6 +38,7 @@ class ImportEposNowProductsJob implements ShouldQueue
     {
         $this->jobId = $jobId;
         $this->productIds = $productIds; // Optional: specific product IDs to import
+        $this->onQueue('imports'); // Use separate queue for long-running import jobs
     }
 
     // Execute the job

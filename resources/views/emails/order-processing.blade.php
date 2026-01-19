@@ -206,6 +206,34 @@
                                                 </td>
                                             </tr>
             @endif
+                                            @if($order->platform_fee > 0)
+                                            <tr>
+                                                <td style="padding-bottom: 10px;">
+                                                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                                                        Platform Fee
+                                                    </p>
+                                                </td>
+                                                <td align="right" style="padding-bottom: 10px;">
+                                                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                                                        ${{ number_format($order->platform_fee, 2) }}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            @endif
+                                            @if($order->stripe_fee > 0)
+                                            <tr>
+                                                <td style="padding-bottom: 10px;">
+                                                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                                                        Processing Fee
+                                                    </p>
+                                                </td>
+                                                <td align="right" style="padding-bottom: 10px;">
+                                                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                                                        ${{ number_format($order->stripe_fee, 2) }}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            @endif
                                             <tr>
                                                 <td style="padding-top: 15px; border-top: 2px solid #e9ecef;">
                                                     <p style="margin: 0; color: #374E94; font-size: 18px; font-weight: 700;">

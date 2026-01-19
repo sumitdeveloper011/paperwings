@@ -156,7 +156,7 @@ class AuthController extends Controller
 
                 return back()
                     ->withErrors([
-                        'email' => 'Please verify your email address before logging in. Check your inbox for the verification link.'
+                        'email' => 'Your email address has not been verified yet. Please check your inbox for the verification link. You can also resend the verification email below.'
                     ])
                     ->with('unverified_email', $user->email)
                     ->onlyInput('email');
@@ -291,7 +291,7 @@ class AuthController extends Controller
             if ($existingUser) {
                 if ($existingUser->hasVerifiedEmail()) {
                     return back()->withErrors([
-                        'email' => 'This email address is already registered. Please log in instead.'
+                        'email' => 'This email address is already registered and verified. Please log in to your account.'
                     ])->withInput();
                 }
 
@@ -316,6 +316,11 @@ class AuthController extends Controller
                     ]);
 
                     $existingUser->delete();
+
+                    return back()->with([
+                        'warning' => 'We found an unverified account with this email, but we were unable to send a verification email. The old account has been removed. Please try registering again. If the problem persists, please contact support.',
+                        'resend_available' => false
+                    ])->withInput();
                 }
             }
 
@@ -337,8 +342,10 @@ class AuthController extends Controller
                 Log::warning('Could not assign User role: ' . $e->getMessage());
             }
 
+            $emailSent = false;
             try {
                 $user->sendEmailVerificationNotification();
+                $emailSent = true;
             } catch (\Exception $e) {
                 // Log email notification error but don't fail registration
                 Log::error('Email verification notification failed: ' . $e->getMessage());
@@ -352,11 +359,19 @@ class AuthController extends Controller
                 Log::error('Welcome email failed: ' . $e->getMessage());
             }
 
-            return redirect()->route('register')->with([
-                'success' => 'Registration successful! We have sent a verification email to ' . $email . '. Please check your inbox and spam folder to verify your account.',
-                'resend_available' => true,
-                'user_email' => $email
-            ]);
+            if ($emailSent) {
+                return redirect()->route('register')->with([
+                    'success' => 'Registration successful! We have sent a verification email to ' . $email . '. Please check your inbox and spam folder to verify your account.',
+                    'resend_available' => true,
+                    'user_email' => $email
+                ]);
+            } else {
+                return redirect()->route('register')->with([
+                    'warning' => 'Registration successful! However, we were unable to send the verification email. Please use the resend button below to receive your verification email.',
+                    'resend_available' => true,
+                    'user_email' => $email
+                ]);
+            }
 
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());

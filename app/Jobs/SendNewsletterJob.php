@@ -27,6 +27,7 @@ class SendNewsletterJob implements ShouldQueue
         $this->subject = $subject;
         $this->body = $body;
         $this->unsubscribeToken = $unsubscribeToken;
+        $this->onQueue('newsletters'); // Use separate queue for newsletter emails
     }
 
     public function handle(): void

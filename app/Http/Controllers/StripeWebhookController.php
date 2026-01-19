@@ -90,6 +90,8 @@ class StripeWebhookController extends Controller
             $receiptUrl = null;
             $paymentMethodType = null;
             $paymentMethodId = null;
+            $stripeFee = null;
+            $balanceTransactionId = null;
             
             if ($paymentIntent->latest_charge) {
                 try {
@@ -98,6 +100,24 @@ class StripeWebhookController extends Controller
                     
                     if (isset($charge->payment_method_details)) {
                         $paymentMethodType = $charge->payment_method_details->type ?? null;
+                    }
+                    
+                    // Retrieve fee from balance transaction
+                    if ($charge->balance_transaction) {
+                        $balanceTransactionId = is_string($charge->balance_transaction) 
+                            ? $charge->balance_transaction 
+                            : $charge->balance_transaction->id;
+                        
+                        try {
+                            $balanceTransaction = \Stripe\BalanceTransaction::retrieve($balanceTransactionId);
+                            // Fee is in cents, convert to dollars
+                            $stripeFee = ($balanceTransaction->fee ?? 0) / 100;
+                        } catch (\Exception $e) {
+                            Log::warning('Could not retrieve balance transaction', [
+                                'balance_transaction_id' => $balanceTransactionId,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::warning('Could not retrieve charge details', [
@@ -122,6 +142,19 @@ class StripeWebhookController extends Controller
                 'status' => 'processing',
             ];
             
+            // Update fee fields if available
+            if ($stripeFee !== null && !$order->stripe_fee) {
+                $updateData['stripe_fee'] = round($stripeFee, 2);
+                // Calculate net amount: total - stripe_fee
+                // Note: total already includes platform_fee (if enabled), so we only subtract Stripe fee
+                $netAmount = round($order->total - $stripeFee, 2);
+                $updateData['net_amount'] = max(0, $netAmount);
+            }
+            
+            if ($balanceTransactionId && !$order->stripe_balance_transaction_id) {
+                $updateData['stripe_balance_transaction_id'] = $balanceTransactionId;
+            }
+            
             // Update fields only if they're not already set or if we have new data
             if ($receiptUrl && !$order->stripe_receipt_url) {
                 $updateData['stripe_receipt_url'] = $receiptUrl;
@@ -145,6 +178,8 @@ class StripeWebhookController extends Controller
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'receipt_url' => $receiptUrl ? 'saved' : 'not_available',
+                'stripe_fee' => $stripeFee,
+                'net_amount' => isset($updateData['net_amount']) ? $updateData['net_amount'] : null,
             ]);
         } else {
             Log::warning('Order not found for payment intent', [

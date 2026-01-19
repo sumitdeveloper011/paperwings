@@ -116,10 +116,15 @@
                         <div class="category-card">
                             <a href="{{ route('category.show', $category->slug) }}" class="category-card__link">
                                 <div class="category-card__image-wrapper">
-                                    @php
-                                        $categoryImage = !empty($category->thumbnail_url) ? $category->thumbnail_url : asset('assets/images/placeholder.jpg');
-                                    @endphp
-                                    <img src="{{ $categoryImage }}" alt="{{ $category->name }}" class="category-card__image" loading="lazy" onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
+                                    <div class="image-wrapper skeleton-image-wrapper">
+                                        <div class="skeleton-image">
+                                            <div class="skeleton-shimmer"></div>
+                                        </div>
+                                        @php
+                                            $categoryImage = !empty($category->thumbnail_url) ? $category->thumbnail_url : asset('assets/images/placeholder.jpg');
+                                        @endphp
+                                        <img src="{{ $categoryImage }}" alt="{{ $category->name }}" class="category-card__image" loading="lazy" width="300" height="225" onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
+                                    </div>
                                     <div class="category-card__overlay"></div>
                                     @if(isset($category->active_products_count) && $category->active_products_count > 0)
                                         <span class="category-card__badge">{{ $category->active_products_count }} items</span>
@@ -532,11 +537,18 @@
                         <div class="instagram-item">
                             <a href="{{ $post['permalink'] ?? ($instagramLink ?? '#') }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
                                 <div class="instagram-item__image">
-                                    <img src="{{ $post['image_url'] }}"
-                                         alt="{{ $post['caption'] ?? 'Instagram Post' }}"
-                                         class="instagram-item__img"
-                                         loading="lazy"
-                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
+                                    <div class="image-wrapper skeleton-image-wrapper">
+                                        <div class="skeleton-image">
+                                            <div class="skeleton-shimmer"></div>
+                                        </div>
+                                        <img src="{{ $post['image_url'] }}"
+                                             alt="{{ $post['caption'] ?? 'Instagram Post' }}"
+                                             class="instagram-item__img"
+                                             loading="lazy"
+                                             width="200"
+                                             height="200"
+                                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}'">
+                                    </div>
                                     <div class="instagram-item__overlay">
                                         <i class="fab fa-instagram"></i>
                                     </div>
@@ -553,9 +565,16 @@
                             <div class="instagram-item">
                                 <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
                                     <div class="instagram-item__image">
-                                        <img src="{{ asset('assets/images/placeholder.jpg') }}"
-                                             alt="Instagram Post {{ $i }}"
-                                             class="instagram-item__img">
+                                        <div class="image-wrapper skeleton-image-wrapper">
+                                            <div class="skeleton-image">
+                                                <div class="skeleton-shimmer"></div>
+                                            </div>
+                                            <img src="{{ asset('assets/images/placeholder.jpg') }}"
+                                                 alt="Instagram Post {{ $i }}"
+                                                 class="instagram-item__img"
+                                                 width="200"
+                                                 height="200">
+                                        </div>
                                         <div class="instagram-item__overlay">
                                             <i class="fab fa-instagram"></i>
                                         </div>

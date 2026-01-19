@@ -90,6 +90,15 @@
             });
         },
 
+        /**
+         * Auto-track product view if ProductAnalyticsData is available
+         */
+        autoTrackProductView: function() {
+            if (window.ProductAnalyticsData && this.isEnabled()) {
+                this.trackViewItem(window.ProductAnalyticsData);
+            }
+        },
+
         trackAddToCart: function(product, quantity = 1) {
             this.trackEvent('add_to_cart', {
                 currency: 'NZD',
@@ -228,9 +237,13 @@
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => Analytics.init());
+        document.addEventListener('DOMContentLoaded', () => {
+            Analytics.init();
+            Analytics.autoTrackProductView();
+        });
     } else {
         Analytics.init();
+        Analytics.autoTrackProductView();
     }
 
     window.Analytics = Analytics;

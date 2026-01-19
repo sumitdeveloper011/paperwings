@@ -114,7 +114,7 @@
                 stripeKey: @json($stripePublishableKey),
                 createPaymentIntentUrl: '{{ route("checkout.create-payment-intent") }}',
                 csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                total: {{ $totals['total'] }}
+                total: {{ $totals['final_total'] ?? $totals['total'] }}
             });
         });
     </script>

@@ -96,7 +96,7 @@ class OrderShippedMail extends Mailable
             $body = $emailTemplateService->getBody('order_shipped', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

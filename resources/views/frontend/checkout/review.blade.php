@@ -178,9 +178,21 @@
                                     <span>Shipping</span>
                                     <span>${{ number_format($safeShipping, 2) }}</span>
                                 </div>
+                                @if(isset($platformFee) && $platformFee > 0)
+                                <div class="checkout-review-totals__row">
+                                    <span>Platform Fee</span>
+                                    <span>${{ number_format($platformFee, 2) }}</span>
+                                </div>
+                                @endif
+                                @if(isset($estimatedStripeFee) && $estimatedStripeFee > 0)
+                                <div class="checkout-review-totals__row">
+                                    <span>Processing Fee (Est.)</span>
+                                    <span>${{ number_format($estimatedStripeFee, 2) }}</span>
+                                </div>
+                                @endif
                                 <div class="checkout-review-totals__row checkout-review-totals__row--final">
                                     <span>Total</span>
-                                    <span>${{ number_format($safeTotal, 2) }}</span>
+                                    <span>${{ number_format($finalTotal ?? $safeTotal, 2) }}</span>
                                 </div>
                             </div>
                         </div>

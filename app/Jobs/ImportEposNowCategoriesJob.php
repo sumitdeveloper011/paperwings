@@ -34,6 +34,7 @@ class ImportEposNowCategoriesJob implements ShouldQueue
     public function __construct(string $jobId)
     {
         $this->jobId = $jobId;
+        $this->onQueue('imports'); // Use separate queue for long-running import jobs
     }
 
     // Execute the job

@@ -50,6 +50,11 @@ class ApiSettingsController extends Controller
             'stripe_key' => 'nullable|string|max:500',
             'stripe_secret' => 'nullable|string|max:500',
             'stripe_webhook_secret' => 'nullable|string|max:500',
+            
+            // Platform Fee Settings
+            'platform_fee_enabled' => 'nullable|in:0,1',
+            'platform_fee_percentage' => 'nullable|numeric|min:0|max:100',
+            'pass_stripe_fee_to_customer' => 'nullable|in:0,1',
 
             // Google OAuth
             'google_client_id' => 'nullable|string|max:500',
@@ -83,6 +88,21 @@ class ApiSettingsController extends Controller
         $this->updateSetting('stripe_key', $validated['stripe_key'] ?? '');
         $this->updateSetting('stripe_secret', $validated['stripe_secret'] ?? '');
         $this->updateSetting('stripe_webhook_secret', $validated['stripe_webhook_secret'] ?? '');
+        
+        // Update Platform Fee Settings (default: disabled - recommended for direct sellers)
+        $platformFeeEnabled = $validated['platform_fee_enabled'] ?? '0';
+        $this->updateSetting('platform_fee_enabled', $platformFeeEnabled);
+        
+        // If platform fee is disabled, reset percentage to 0
+        if ($platformFeeEnabled == '0') {
+            $this->updateSetting('platform_fee_percentage', '0');
+        } else {
+            $this->updateSetting('platform_fee_percentage', $validated['platform_fee_percentage'] ?? '0');
+        }
+
+        $this->updateSetting('pass_stripe_fee_to_customer', $validated['pass_stripe_fee_to_customer'] ?? '0');
+
+        $this->updateSetting('pass_stripe_fee_to_customer', $validated['pass_stripe_fee_to_customer'] ?? '0');
 
         // Update Google OAuth Settings
         $this->updateSetting('google_client_id', $validated['google_client_id'] ?? '');

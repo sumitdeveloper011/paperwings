@@ -5,11 +5,18 @@
                 $imageUrl = $product->main_thumbnail_url ?? asset('assets/images/placeholder.jpg');
                 $placeholderUrl = asset('assets/images/placeholder.jpg');
             @endphp
-            <img src="{{ $imageUrl }}" 
-                 alt="{{ $product->name }}" 
-                 class="cute-stationery__img" 
-                 loading="lazy" 
-                 onerror="this.onerror=null; this.src='{{ $placeholderUrl }}';">
+            <div class="image-wrapper skeleton-image-wrapper">
+                <div class="skeleton-image">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <img src="{{ $imageUrl }}" 
+                     alt="{{ $product->name }}" 
+                     class="cute-stationery__img" 
+                     loading="lazy" 
+                     width="400"
+                     height="300"
+                     onerror="this.onerror=null; this.src='{{ $placeholderUrl }}';">
+            </div>
         </a>
 
         <!-- Badges Wrapper - Left Side -->

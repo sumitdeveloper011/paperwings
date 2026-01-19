@@ -115,6 +115,20 @@
                                     </div>
                                     @endif
                                     
+                                    @if($order->platform_fee > 0)
+                                    <div class="order-summary-row">
+                                        <span>Platform Fee:</span>
+                                        <span>${{ number_format($order->platform_fee, 2) }}</span>
+                                    </div>
+                                    @endif
+                                    
+                                    @if($order->stripe_fee > 0)
+                                    <div class="order-summary-row">
+                                        <span>Processing Fee:</span>
+                                        <span>${{ number_format($order->stripe_fee, 2) }}</span>
+                                    </div>
+                                    @endif
+                                    
                                     <div class="order-summary-row order-summary-row--total">
                                         <span><strong>Total:</strong></span>
                                         <span><strong>${{ number_format($order->total, 2) }}</strong></span>

@@ -56,8 +56,6 @@
 }
 </script>
 
-<!-- Product Zoom CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css">
 @endpush
 
 @section('content')
@@ -89,15 +87,20 @@
 
                         @if($hasImages)
                             <div class="product-main-image">
-                                <a href="{{ $productImages->first()->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                <div class="image-wrapper skeleton-image-wrapper product-image-clickable" data-image-index="0">
+                                    <div class="skeleton-main-image">
+                                        <div class="skeleton-shimmer"></div>
+                                    </div>
                                     <img src="{{ $productImages->first()->medium_url ?? $productImages->first()->image_url }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
                                          id="mainImage"
                                          data-full-image="{{ $productImages->first()->image_url }}"
                                          data-medium-image="{{ $productImages->first()->medium_url ?? $productImages->first()->image_url }}"
+                                         width="600"
+                                         height="600"
                                          onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
-                                </a>
+                                </div>
                             </div>
                             @if($productImages->count() > 1)
                             <div class="product-thumbnails">
@@ -105,36 +108,60 @@
                                     <div class="thumbnail-item {{ $index === 0 ? 'active' : '' }}"
                                          data-image="{{ $image->image_url }}"
                                          data-medium-image="{{ $image->medium_url ?? $image->image_url }}"
-                                         data-thumbnail="{{ $image->thumbnail_url }}">
-                                        <img src="{{ $image->thumbnail_url }}"
-                                             alt="{{ $product->name }} - Image {{ $index + 1 }}"
-                                             loading="lazy"
-                                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
+                                         data-thumbnail="{{ $image->thumbnail_url }}"
+                                         data-image-index="{{ $index }}">
+                                        <div class="image-wrapper skeleton-image-wrapper">
+                                            <div class="skeleton-thumbnail">
+                                                <div class="skeleton-shimmer"></div>
+                                            </div>
+                                            <img src="{{ $image->thumbnail_url }}"
+                                                 alt="{{ $product->name }} - Image {{ $index + 1 }}"
+                                                 loading="lazy"
+                                                 width="80"
+                                                 height="80"
+                                                 onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
                             @endif
-                            {{-- Hidden lightbox links for all images to enable gallery navigation --}}
-                            @foreach($productImages as $loopIndex => $image)
-                                @if($loopIndex > 0)
-                                @php
-                                    $imageNumber = $loopIndex + 1;
-                                @endphp
-                                <a href="{{ $image->image_url }}" data-lightbox="product-images" data-title="{{ $product->name }} - Image {{ $imageNumber }}" style="display: none;"></a>
-                                @endif
-                            @endforeach
                         @else
                             <!-- Fallback if no images -->
                             <div class="product-main-image">
-                                <a href="{{ $mainImageUrl }}" data-lightbox="product-images" data-title="{{ $product->name }}">
+                                <div class="image-wrapper skeleton-image-wrapper product-image-clickable" data-image-index="0">
+                                    <div class="skeleton-main-image">
+                                        <div class="skeleton-shimmer"></div>
+                                    </div>
                                     <img src="{{ $mainImageUrl }}"
                                          alt="{{ $product->name }}"
                                          class="main-img"
                                          id="mainImage"
                                          loading="lazy"
-                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
-                                </a>
+                                         width="600"
+                                         height="600"
+                                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
+                                    </div>
+                                </div>
                             </div>
+                        @endif
+                        
+                        {{-- Lightbox HTML structure for product images --}}
+                        @if($hasImages && $productImages->count() > 0)
+                        <div class="lightbox" id="lightbox">
+                            <button class="lightbox__close" aria-label="Close lightbox">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <button class="lightbox__prev" aria-label="Previous image">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="lightbox__next" aria-label="Next image">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <div class="lightbox__content">
+                                <img src="" alt="" id="lightbox-image">
+                                <div class="lightbox__caption" id="lightbox-caption"></div>
+                            </div>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -652,147 +679,106 @@
     </section>
 
 @push('scripts')
+{{-- Gallery Lightbox Library --}}
+<script src="{{ asset('assets/frontend/js/gallery-lightbox.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+
+{{-- Analytics: Pass product data to JavaScript --}}
+@php
+    $productData = [
+        'id' => $product->id,
+        'name' => $product->name,
+        'category' => $product->category->name ?? 'Uncategorized',
+        'brand' => $product->brand->name ?? '',
+        'price' => $product->discount_price ?? $product->total_price ?? 0
+    ];
+@endphp
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.Analytics && window.Analytics.isEnabled()) {
-        @php
-            $productData = [
-                'id' => $product->id,
-                'name' => $product->name,
-                'category' => $product->category->name ?? 'Uncategorized',
-                'brand' => $product->brand->name ?? '',
-                'price' => $product->discount_price ?? $product->total_price ?? 0
-            ];
-        @endphp
-        const product = @json($productData);
-        window.Analytics.trackViewItem(product);
-    }
-});
+    window.ProductAnalyticsData = @json($productData);
 </script>
-{{-- Lightbox2 for Product Zoom - Load before other scripts --}}
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+
+{{-- Initialize GalleryLightbox with product images --}}
+@if($hasImages && $productImages->count() > 0)
 <script>
-    // Initialize Lightbox after it's loaded
     document.addEventListener('DOMContentLoaded', function() {
-        if (typeof lightbox !== 'undefined') {
-            lightbox.option({
-                'resizeDuration': 200,
-                'wrapAround': true,
-                'fadeDuration': 300,
-                'imageFadeDuration': 300,
-                'showImageNumberLabel': true,
-                'alwaysShowNavOnTouchDevices': true,
-                'disableScrolling': true
+        // Set placeholder image path for GalleryLightbox
+        window.PLACEHOLDER_IMAGE = '{{ asset('assets/images/placeholder.jpg') }}';
+        
+        @php
+            $placeholderUrl = asset('assets/images/placeholder.jpg');
+            $imageItems = $productImages->filter(function($image) {
+                return $image && $image->image_url && $image->image_url !== '';
+            })->map(function($image, $index) use ($product, $placeholderUrl) {
+                // Ensure we have a valid image URL, fallback to placeholder if needed
+                $imageUrl = $image->image_url ?? $placeholderUrl;
+                return [
+                    'image' => $imageUrl,
+                    'title' => $index === 0 ? $product->name : $product->name . ' - Image ' . ($index + 1),
+                    'description' => null
+                ];
+            })->values()->all();
+        @endphp
+        const productImageItems = @json($imageItems);
+
+        if (productImageItems.length > 0 && typeof GalleryLightbox !== 'undefined') {
+            GalleryLightbox.init(productImageItems);
+
+            // Add click handlers to main image and thumbnails
+            const mainImageWrapper = document.querySelector('.product-image-clickable');
+            if (mainImageWrapper) {
+                mainImageWrapper.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-image-index')) || 0;
+                    GalleryLightbox.open(index);
+                });
+            }
+
+            document.querySelectorAll('.thumbnail-item').forEach(function(thumbnail) {
+                thumbnail.addEventListener('click', function(e) {
+                    // Don't open lightbox if clicking on thumbnail (let gallery.js handle image switching)
+                    // Only open lightbox if double-clicking or if there's a specific lightbox trigger
+                    const imageIndex = parseInt(this.getAttribute('data-image-index')) || 0;
+                    const mainImageWrapper = document.querySelector('.product-image-clickable');
+                    if (mainImageWrapper) {
+                        mainImageWrapper.setAttribute('data-image-index', imageIndex);
+                    }
+                });
             });
+
+            // Open lightbox when clicking on main image
+            const mainImage = document.getElementById('mainImage');
+            if (mainImage) {
+                mainImage.style.cursor = 'zoom-in';
+                mainImage.addEventListener('click', function() {
+                    const mainImageWrapper = document.querySelector('.product-image-clickable');
+                    const index = mainImageWrapper ? parseInt(mainImageWrapper.getAttribute('data-image-index')) || 0 : 0;
+                    GalleryLightbox.open(index);
+                });
+            }
         }
     });
 </script>
+@endif
 
-{{-- Product Page JavaScript Modules --}}
-<script src="{{ asset('assets/frontend/js/product/gallery.js') }}" defer></script>
-<script src="{{ asset('assets/frontend/js/product/quantity.js') }}" defer></script>
-<script src="{{ asset('assets/frontend/js/product/add-to-cart.js') }}" defer></script>
-<script src="{{ asset('assets/frontend/js/product/forms.js') }}" defer></script>
-
-{{-- Product Detail Page Enhancements --}}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Update main image when thumbnail is clicked (use medium for display, original for lightbox)
-    document.querySelectorAll('.thumbnail-item').forEach(function(thumbnail) {
-        thumbnail.addEventListener('click', function(e) {
-            e.preventDefault();
-            const originalImage = this.getAttribute('data-image');
-            const mediumImage = this.getAttribute('data-medium-image');
-            const mainImage = document.getElementById('mainImage');
-            const mainImageLink = mainImage ? mainImage.closest('a') : null;
-
-            if (mainImage && originalImage && mediumImage) {
-                // Add fade effect
-                mainImage.style.opacity = '0.5';
-
-                // Update src to medium image for display
-                setTimeout(function() {
-                    mainImage.src = mediumImage;
-                    mainImage.setAttribute('data-full-image', originalImage);
-                    mainImage.setAttribute('data-medium-image', mediumImage);
-                    mainImage.classList.add('fade-in');
-                    mainImage.style.opacity = '1';
-
-                    // Update lightbox link to original image for zoom
-                    // This ensures lightbox opens the correct image and maintains gallery navigation
-                    if (mainImageLink) {
-                        mainImageLink.href = originalImage;
-                        // Update the data-title if needed
-                        const imageIndex = Array.from(document.querySelectorAll('.thumbnail-item')).indexOf(thumbnail) + 1;
-                        mainImageLink.setAttribute('data-title', '{{ $product->name }}' + (imageIndex > 1 ? ' - Image ' + imageIndex : ''));
-                    }
-                }, 150);
-
-                // Update active state
-                document.querySelectorAll('.thumbnail-item').forEach(function(item) {
-                    item.classList.remove('active');
-                });
-                this.classList.add('active');
-            }
-        });
-    });
-
-    // Copy link functionality
-    const copyBtn = document.querySelector('.share-btn--copy');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', function() {
-            const url = this.getAttribute('data-copy-url');
-            const fullUrl = window.location.origin + url;
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(fullUrl).then(function() {
-                    const originalHTML = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-                    copyBtn.style.background = '#28a745';
-                    setTimeout(function() {
-                        copyBtn.innerHTML = originalHTML;
-                        copyBtn.style.background = '';
-                    }, 2000);
-                });
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = fullUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    const originalHTML = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-                    copyBtn.style.background = '#28a745';
-                    setTimeout(function() {
-                        copyBtn.innerHTML = originalHTML;
-                        copyBtn.style.background = '';
-                    }, 2000);
-                } catch (err) {
-                    alert('Failed to copy link');
-                }
-                document.body.removeChild(textArea);
-            }
-        });
-    }
-});
-</script>
-
-{{-- Pass route URLs to forms module --}}
+{{-- Form URLs: Pass route URLs to JavaScript via data attributes --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const reviewForm = document.getElementById('reviewForm');
         const questionForm = document.getElementById('questionForm');
 
         if (reviewForm) {
-            reviewForm.setAttribute('data-review-url', '{{ route("review.store", $product->slug) }}');
+            reviewForm.dataset.reviewUrl = '{{ route("review.store", $product->slug) }}';
         }
 
         if (questionForm) {
-            questionForm.setAttribute('data-question-url', '{{ route("question.store", $product->slug) }}');
+            questionForm.dataset.questionUrl = '{{ route("question.store", $product->slug) }}';
         }
     });
 </script>
+
+{{-- Product Page JavaScript Modules --}}
+<script src="{{ asset('assets/frontend/js/product/gallery.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/quantity.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/add-to-cart.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/forms.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/product/product-detail.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 @endpush
 @endsection

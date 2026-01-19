@@ -187,10 +187,131 @@ class PriceCalculationService
      * @param float $subtotal Subtotal
      * @param float $discount Discount amount
      * @param float $shipping Shipping cost
-     * @return float Total amount
+     * @return float Total amount (never negative)
      */
     public function calculateTotal(float $subtotal, float $discount = 0.0, float $shipping = 0.0): float
     {
-        return round($subtotal - $discount + $shipping, 2);
+        $total = round($subtotal - $discount + $shipping, 2);
+        return max(0, $total);
+    }
+
+    /**
+     * Check if platform fee is enabled
+     * Default is disabled (recommended for direct sellers)
+     * Only enable for marketplace or service fee models
+     * 
+     * @return bool
+     */
+    public function isPlatformFeeEnabled(): bool
+    {
+        // Default to disabled (0) - recommended for direct e-commerce stores
+        return (bool)\App\Helpers\SettingHelper::get('platform_fee_enabled', '0');
+    }
+
+    /**
+     * Get platform fee percentage
+     * 
+     * @return float Platform fee percentage (e.g., 2.5 for 2.5%)
+     */
+    public function getPlatformFeePercentage(): float
+    {
+        return (float)\App\Helpers\SettingHelper::get('platform_fee_percentage', '0');
+    }
+
+    /**
+     * Calculate platform fee amount
+     * 
+     * @param float $orderTotal Order total (subtotal - discount + shipping)
+     * @return float Platform fee amount (0 if disabled)
+     */
+    public function calculatePlatformFee(float $orderTotal): float
+    {
+        if (!$this->isPlatformFeeEnabled()) {
+            return 0.0;
+        }
+
+        $percentage = $this->getPlatformFeePercentage();
+        if ($percentage <= 0) {
+            return 0.0;
+        }
+
+        return round(($orderTotal * $percentage) / 100, 2);
+    }
+
+    /**
+     * Calculate total with platform fee included
+     * 
+     * @param float $subtotal Subtotal
+     * @param float $discount Discount amount
+     * @param float $shipping Shipping cost
+     * @return array ['total' => float, 'platform_fee' => float, 'final_total' => float]
+     */
+    public function calculateTotalWithPlatformFee(float $subtotal, float $discount = 0.0, float $shipping = 0.0): array
+    {
+        $total = $this->calculateTotal($subtotal, $discount, $shipping);
+        $platformFee = $this->calculatePlatformFee($total);
+        $finalTotal = round($total + $platformFee, 2);
+
+        return [
+            'total' => $total,
+            'platform_fee' => $platformFee,
+            'final_total' => $finalTotal,
+        ];
+    }
+
+    /**
+     * Check if Stripe fee should be passed to customer
+     * 
+     * @return bool
+     */
+    public function shouldPassStripeFeeToCustomer(): bool
+    {
+        return (bool)\App\Helpers\SettingHelper::get('pass_stripe_fee_to_customer', '0');
+    }
+
+    /**
+     * Estimate Stripe processing fee
+     * Stripe charges: 2.9% + $0.30 per transaction (standard rate)
+     * 
+     * @param float $amount Payment amount in dollars
+     * @return float Estimated Stripe fee in dollars
+     */
+    public function estimateStripeFee(float $amount): float
+    {
+        // Stripe standard rate: 2.9% + $0.30
+        $percentageFee = ($amount * 0.029);
+        $fixedFee = 0.30;
+        return round($percentageFee + $fixedFee, 2);
+    }
+
+    /**
+     * Calculate total with all fees (platform fee + estimated Stripe fee if enabled)
+     * 
+     * @param float $subtotal Subtotal
+     * @param float $discount Discount amount
+     * @param float $shipping Shipping cost
+     * @return array ['total' => float, 'platform_fee' => float, 'estimated_stripe_fee' => float, 'final_total' => float]
+     */
+    public function calculateTotalWithAllFees(float $subtotal, float $discount = 0.0, float $shipping = 0.0): array
+    {
+        $total = $this->calculateTotal($subtotal, $discount, $shipping);
+        $platformFee = $this->calculatePlatformFee($total);
+        $baseTotal = round($total + $platformFee, 2);
+        
+        $estimatedStripeFee = 0.0;
+        $finalTotal = $baseTotal;
+        
+        if ($this->shouldPassStripeFeeToCustomer()) {
+            // Estimate Stripe fee on the base total (including platform fee)
+            $estimatedStripeFee = $this->estimateStripeFee($baseTotal);
+            $finalTotal = round($baseTotal + $estimatedStripeFee, 2);
+        }
+
+        return [
+            'total' => $total,
+            'platform_fee' => $platformFee,
+            'estimated_stripe_fee' => $estimatedStripeFee,
+            'final_total' => $finalTotal,
+        ];
     }
 }

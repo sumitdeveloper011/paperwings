@@ -42,9 +42,21 @@
             </span>
             <span class="order-totals__value" id="checkoutShipping">${{ number_format($shipping, 2) }}</span>
         </div>
+        @if(isset($platformFee) && $platformFee > 0)
+        <div class="order-totals__item">
+            <span class="order-totals__label">Platform Fee</span>
+            <span class="order-totals__value" id="checkoutPlatformFee">${{ number_format($platformFee, 2) }}</span>
+        </div>
+        @endif
+        @if(isset($estimatedStripeFee) && $estimatedStripeFee > 0)
+        <div class="order-totals__item">
+            <span class="order-totals__label">Processing Fee (Est.)</span>
+            <span class="order-totals__value" id="checkoutStripeFee">${{ number_format($estimatedStripeFee, 2) }}</span>
+        </div>
+        @endif
         <div class="order-totals__item order-totals__item--total">
             <span class="order-totals__label">Total</span>
-            <span class="order-totals__value" id="checkoutTotal">${{ number_format($total, 2) }}</span>
+            <span class="order-totals__value" id="checkoutTotal">${{ number_format($finalTotal ?? $total, 2) }}</span>
         </div>
     </div>
 

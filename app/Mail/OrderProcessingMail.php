@@ -94,7 +94,7 @@ class OrderProcessingMail extends Mailable
             $body = $emailTemplateService->getBody('order_processing', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

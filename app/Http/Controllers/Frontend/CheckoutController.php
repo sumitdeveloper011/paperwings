@@ -259,11 +259,16 @@ class CheckoutController extends Controller
         }
         
         $discount = (float)$discount;
+        
+        // Ensure discount never exceeds subtotal
+        if ($discount > $subtotal) {
+            $discount = round($subtotal, 2);
+        }
 
         $sessionData = $this->checkoutSession->getCheckoutData();
         // Ensure region_id is integer, not string
         $shippingRegionId = isset($sessionData['shipping']['region_id']) ? (int)$sessionData['shipping']['region_id'] : null;
-        $orderAmount = $subtotal - $discount;
+        $orderAmount = max(0, round($subtotal - $discount, 2));
         
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
         
@@ -284,8 +289,23 @@ class CheckoutController extends Controller
             ]);
         }
         
-        // Calculate total using PriceCalculationService
-        $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
+        // Calculate total with all fees (platform fee + estimated Stripe fee if enabled)
+        $feeCalculation = $this->priceService->calculateTotalWithAllFees($subtotal, $discount, $shipping);
+        $total = $feeCalculation['total'];
+        $platformFee = $feeCalculation['platform_fee'];
+        $estimatedStripeFee = $feeCalculation['estimated_stripe_fee'];
+        $finalTotal = $feeCalculation['final_total'];
+        
+        // Validate final total amount (including all fees)
+        if ($finalTotal < 0.50) {
+            return redirect()->route('checkout.details')
+                ->with('error', 'Order total must be at least $0.50. Please add more items to your cart.');
+        }
+        
+        if ($finalTotal > 999999.99) {
+            return redirect()->route('checkout.details')
+                ->with('error', 'Order total exceeds maximum limit. Please contact support.');
+        }
 
         $regions = Region::where('status', 1)->orderBy('name')->get()->keyBy('id');
 
@@ -294,15 +314,21 @@ class CheckoutController extends Controller
             'discount' => $discount,
             'shipping' => $shipping,
             'total' => $total,
+            'platform_fee' => $platformFee,
+            'estimated_stripe_fee' => $estimatedStripeFee,
+            'final_total' => $finalTotal,
         ]);
 
         return view('frontend.checkout.review', compact(
             'title',
             'cartItems',
+            'estimatedStripeFee',
             'subtotal',
             'shipping',
             'discount',
             'total',
+            'platformFee',
+            'finalTotal',
             'appliedCoupon',
             'sessionData',
             'regions'
@@ -603,7 +629,9 @@ class CheckoutController extends Controller
             'discount' => 'nullable|numeric|min:0',
         ]);
 
-        $orderAmount = $request->subtotal - ($request->discount ?? 0);
+        $subtotal = (float)$request->subtotal;
+        $discount = min((float)($request->discount ?? 0), $subtotal);
+        $orderAmount = max(0, $subtotal - $discount);
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->region_id, $orderAmount);
 
         return $this->jsonSuccess('Shipping calculated.', [
@@ -621,8 +649,18 @@ class CheckoutController extends Controller
     public function createPaymentIntent(Request $request): JsonResponse
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.50'
+            'amount' => 'required|numeric|min:0.50|max:999999.99'
         ]);
+
+        $amount = (float)$request->amount;
+        
+        if ($amount < 0) {
+            return $this->jsonError('Invalid payment amount. Amount cannot be negative.', 'INVALID_AMOUNT', null, 400);
+        }
+        
+        if ($amount > 999999.99) {
+            return $this->jsonError('Payment amount exceeds maximum limit. Please contact support.', 'AMOUNT_EXCEEDS_MAX', null, 400);
+        }
 
         // Read Stripe secret from database settings (with .env fallback)
         $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
@@ -734,26 +772,58 @@ class CheckoutController extends Controller
 
             $appliedCoupon = Session::get('applied_coupon');
             $discount = round((is_array($appliedCoupon) && isset($appliedCoupon['discount'])) ? (float)$appliedCoupon['discount'] : 0, 2);
+            
+            // Ensure discount never exceeds subtotal
+            if ($discount > $subtotal) {
+                $discount = round($subtotal, 2);
+            }
+            
             $couponCode = $appliedCoupon['code'] ?? null;
             $tax = 0.00;
 
             // Calculate shipping based on shipping region
-            $orderAmount = round($subtotal - $discount, 2);
+            $orderAmount = max(0, round($subtotal - $discount, 2));
             $shippingInfo = $this->shippingService->calculateShippingWithInfo($request->shipping_region_id, $orderAmount);
             $shipping = round($shippingInfo['shipping_price'], 2);
             $shippingPrice = round($shippingInfo['shipping_price'], 2);
 
-            // Calculate total using PriceCalculationService
-            $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
+            // Calculate total with all fees (platform fee + estimated Stripe fee if enabled)
+            $feeCalculation = $this->priceService->calculateTotalWithAllFees($subtotal, $discount, $shipping);
+            $total = $feeCalculation['total'];
+            $platformFee = $feeCalculation['platform_fee'];
+            $estimatedStripeFee = $feeCalculation['estimated_stripe_fee'];
+            $finalTotal = $feeCalculation['final_total'];
+            
+            // Validate final total amount (including all fees)
+            if ($total < 0) {
+                Log::error('Negative total calculated in processOrder', [
+                    'subtotal' => $subtotal,
+                    'discount' => $discount,
+                    'shipping' => $shipping,
+                    'total' => $total,
+                ]);
+                return $this->jsonError('Invalid order total. Please refresh and try again.', 'INVALID_TOTAL', null, 400);
+            }
+            
+            if ($finalTotal < 0.50) {
+                return $this->jsonError('Order total must be at least $0.50. Please add more items to your cart.', 'MIN_AMOUNT_NOT_MET', null, 400);
+            }
+            
+            if ($finalTotal > 999999.99) {
+                return $this->jsonError('Order total exceeds maximum limit. Please contact support.', 'MAX_AMOUNT_EXCEEDED', null, 400);
+            }
 
-            // Verify total matches payment amount
+            // Verify final total (including all fees) matches payment amount
             $paymentAmount = $paymentIntent->amount / 100; // Convert from cents
-            $difference = abs($total - $paymentAmount);
+            $difference = abs($finalTotal - $paymentAmount);
 
             // Log the mismatch for debugging (only in local environment)
             if ($difference > 0.01 && app()->environment('local')) {
                 Log::warning('Payment amount mismatch detected', [
                     'calculated_total' => $total,
+                    'platform_fee' => $platformFee,
+                    'estimated_stripe_fee' => $estimatedStripeFee,
+                    'calculated_final_total' => $finalTotal,
                     'payment_amount' => $paymentAmount,
                     'difference' => $difference,
                     'subtotal' => $subtotal,
@@ -770,9 +840,10 @@ class CheckoutController extends Controller
                 $data = null;
                 if (app()->environment('local')) {
                     $data = [
-                        'calculated_total' => round($total, 2),
+                        'calculated_final_total' => round($finalTotal, 2),
                         'payment_amount' => round($paymentAmount, 2),
-                        'difference' => round($difference, 2)
+                        'difference' => round($difference, 2),
+                        'platform_fee' => $platformFee,
                     ];
                 }
                 return $this->jsonError('Payment amount mismatch. Please refresh and try again.', 'PAYMENT_AMOUNT_MISMATCH', null, 400);
@@ -965,7 +1036,9 @@ class CheckoutController extends Controller
                     'tax' => $tax,
                     'shipping' => $shipping,
                     'shipping_price' => $shippingPrice,
-                    'total' => $total,
+                    'total' => $finalTotal,
+                    'platform_fee' => $platformFee,
+                    'stripe_fee' => $estimatedStripeFee > 0 ? $estimatedStripeFee : null,
                     'currency' => 'NZD',
                     'payment_method' => 'stripe',
                     'payment_status' => 'paid', // Will be confirmed by webhook
@@ -978,6 +1051,81 @@ class CheckoutController extends Controller
                     'status' => 'processing', // Start as processing when payment succeeded
                     'notes' => $request->notes ?? null,
                 ]);
+
+                // Save user address and phone details for future use
+                try {
+                    // Save shipping address to user_addresses table
+                    \App\Models\UserAddress::updateOrCreate(
+                        [
+                            'user_id' => Auth::id(),
+                            'type' => 'shipping',
+                            'street_address' => $request->shipping_street_address,
+                            'city' => $request->shipping_city,
+                            'zip_code' => $request->shipping_zip_code,
+                        ],
+                        [
+                            'first_name' => $request->shipping_first_name,
+                            'last_name' => $request->shipping_last_name,
+                            'phone' => $request->shipping_phone,
+                            'email' => $request->shipping_email,
+                            'suburb' => $request->shipping_suburb,
+                            'region_id' => $request->shipping_region_id,
+                            'country' => 'New Zealand',
+                            'is_default' => !\App\Models\UserAddress::where('user_id', Auth::id())
+                                                  ->where('type', 'shipping')
+                                                  ->where('is_default', true)
+                                                  ->exists(),
+                        ]
+                    );
+
+                    // Save billing address if different from shipping
+                    if ($request->billing_street_address !== $request->shipping_street_address || 
+                        $request->billing_city !== $request->shipping_city || 
+                        $request->billing_zip_code !== $request->shipping_zip_code) {
+                        \App\Models\UserAddress::updateOrCreate(
+                            [
+                                'user_id' => Auth::id(),
+                                'type' => 'billing',
+                                'street_address' => $request->billing_street_address,
+                                'city' => $request->billing_city,
+                                'zip_code' => $request->billing_zip_code,
+                            ],
+                            [
+                                'first_name' => $request->billing_first_name,
+                                'last_name' => $request->billing_last_name,
+                                'phone' => $request->billing_phone,
+                                'email' => $request->billing_email,
+                                'suburb' => $request->billing_suburb,
+                                'region_id' => $request->billing_region_id,
+                                'country' => 'New Zealand',
+                                'is_default' => !\App\Models\UserAddress::where('user_id', Auth::id())
+                                                      ->where('type', 'billing')
+                                                      ->where('is_default', true)
+                                                      ->exists(),
+                            ]
+                        );
+                    }
+
+                    // Save phone number to user_details table
+                    \App\Models\UserDetail::updateOrCreate(
+                        ['user_id' => Auth::id()],
+                        ['phone' => $request->shipping_phone]
+                    );
+
+                    if (app()->environment('local')) {
+                        Log::info('User address and phone saved during checkout', [
+                            'user_id' => Auth::id(),
+                            'order_id' => $order->id,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to save user address during checkout', [
+                        'user_id' => Auth::id(),
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
                 
                 // Update PaymentIntent metadata with order number (for better Stripe dashboard tracking)
                 try {

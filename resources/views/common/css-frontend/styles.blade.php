@@ -22,6 +22,9 @@
 {{-- Main style.css (synchronous - required for proper styling, prevents FOUC) --}}
 <link rel="stylesheet" href="{{ asset('assets/frontend/css/style.css') }}?v={{ config('app.asset_version', '1.0.0') }}">
 
+{{-- Skeleton Loading CSS (synchronous - required for skeleton display) --}}
+<link rel="stylesheet" href="{{ asset('assets/frontend/css/skeleton.css') }}?v={{ config('app.asset_version', '1.0.0') }}">
+
 {{-- Swiper CSS (conditional - async load, only when needed) --}}
 @if(request()->routeIs('home') || request()->routeIs('product.*') || request()->routeIs('category.*') || request()->routeIs('shop.*'))
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" media="print" onload="this.media='all'">

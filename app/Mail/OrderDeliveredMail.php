@@ -101,7 +101,7 @@ class OrderDeliveredMail extends Mailable
             $body = $emailTemplateService->getBody('order_delivered', $variables);
 
             return new Content(
-                htmlString: $body,
+                html: $body,
             );
         }
 

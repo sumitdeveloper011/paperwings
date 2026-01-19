@@ -57,7 +57,7 @@ class ResetPasswordNotification extends Notification
 
             return (new MailMessage)
                 ->subject($subject)
-                ->htmlString($body);
+                ->html($body);
         }
 
         // Fallback to view if template doesn't exist
