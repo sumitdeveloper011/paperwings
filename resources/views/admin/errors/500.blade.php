@@ -34,7 +34,7 @@
                                 </a>
                             @endif
                         </div>
-                        @if(app()->environment('local', 'development'))
+                        @if(app()->environment('local', 'development') || config('app.debug'))
                             <div class="mt-4 text-left">
                                 @if(isset($exception))
                                     <details open style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1rem;">

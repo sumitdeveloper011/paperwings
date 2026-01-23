@@ -201,6 +201,8 @@
                 showToast(message, type);
             } else if (window.AppUtils && typeof window.AppUtils.showNotification === 'function') {
                 window.AppUtils.showNotification(message, type);
+            } else if (window.customAlert) {
+                window.customAlert(message, 'Alert', type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
             } else {
                 // Fallback to alert (should rarely happen)
                 alert(message);

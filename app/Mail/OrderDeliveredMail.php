@@ -65,16 +65,16 @@ class OrderDeliveredMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_delivered');
 
-        if ($template) {
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'app_name' => config('app.name'),
-            ];
-            $subject = $emailTemplateService->getSubject('order_delivered', $variables);
-        } else {
-            $subject = 'Order Delivered - Order #' . $this->order->order_number;
+        if (!$template) {
+            throw new \Exception('Order delivered template not found in database');
         }
+
+        $variables = [
+            'order_number' => $this->order->order_number,
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'app_name' => config('app.name'),
+        ];
+        $subject = $emailTemplateService->getSubject('order_delivered', $variables);
 
         return new Envelope(
             subject: $subject,
@@ -87,47 +87,75 @@ class OrderDeliveredMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_delivered');
 
-        if ($template) {
-            $settings = SettingHelper::all();
-            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
-
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'app_name' => config('app.name'),
-            ];
-
-            $body = $emailTemplateService->getBody('order_delivered', $variables);
-
-            return new Content(
-                html: $body,
-            );
+        if (!$template) {
+            throw new \Exception('Order delivered template not found in database');
         }
 
-        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
 
+        // Get logo URL - prefer thumbnail for emails
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = SettingHelper::extractSocialLinks($settings);
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+        // Get delivery date (use updated_at when status changed to delivered, or current date)
+        $deliveryDate = now()->format('F j, Y');
+        
+        // Generate review URL - link to order details page where they can review products
+        $reviewUrl = route('account.order-details', $this->order->order_number);
 
-        $orderViewUrl = route('account.order-details', $this->order->order_number);
+        $variables = [
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'order_number' => $this->order->order_number,
+            'delivery_date' => $deliveryDate,
+            'review_url' => $reviewUrl,
+            'app_name' => config('app.name'),
+        ];
+
+        $body = $emailTemplateService->getBody('order_delivered', $variables);
 
         return new Content(
-            view: 'emails.order-delivered',
+            view: 'emails.template-body',
             with: [
-                'order' => $this->order,
+                'body' => $body,
                 'logoUrl' => $logoUrl,
+                'headerSubtitle' => 'DELIVERY CONFIRMATION',
+                'headerTitle' => 'Your Order Has Been Delivered!',
                 'contactPhone' => $contactPhone,
                 'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
-                'orderViewUrl' => $orderViewUrl,
+                'currentYear' => date('Y'),
+                'appName' => config('app.name'),
             ],
         );
     }
@@ -138,35 +166,43 @@ class OrderDeliveredMail extends Mailable
         // Fetch settings from database for PDF
         $settings = SettingHelper::all();
 
-        // Get logo URL
+        // Get logo URL - prefer thumbnail for PDF
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
         // Get contact phone from database
-        $contactPhone = null;
-        if (isset($settings['phones']) && is_string($settings['phones'])) {
-            $phones = json_decode($settings['phones'], true) ?? [];
-            $contactPhone = !empty($phones) ? $phones[0] : null;
-        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
-            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
-        }
-        if (empty($contactPhone)) {
-            $contactPhone = '+11 111 333 4444';
-        }
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
 
         // Get contact email from database
-        $contactEmail = null;
-        if (isset($settings['emails']) && is_string($settings['emails'])) {
-            $emails = json_decode($settings['emails'], true) ?? [];
-            $contactEmail = !empty($emails) ? $emails[0] : null;
-        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
-            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
-        }
-        if (empty($contactEmail)) {
-            $contactEmail = 'Info@YourCompany.com';
-        }
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
 
         $pdf = Pdf::loadView('emails.order-invoice-pdf', [
             'order' => $this->order,

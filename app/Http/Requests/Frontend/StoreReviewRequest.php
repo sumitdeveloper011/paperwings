@@ -21,7 +21,7 @@ class StoreReviewRequest extends FormRequest
         // If user is not logged in, require name and email
         if (!auth()->check()) {
             $rules['name'] = ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'];
-            $rules['email'] = ['required', 'email', 'max:255'];
+            $rules['email'] = ['required', 'email:dns', 'max:255'];
         }
 
         return $rules;

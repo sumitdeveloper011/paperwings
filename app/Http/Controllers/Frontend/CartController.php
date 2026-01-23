@@ -152,9 +152,16 @@ class CartController extends Controller
                 $cartIdentifier
             );
 
+            $cartItems = $this->cartService->getCartItems($cartIdentifier);
+            $subtotal = $this->cartService->getCartSubtotal($cartIdentifier);
+            $priceService = app(\App\Services\PriceCalculationService::class);
+            $total = $priceService->calculateTotal($subtotal, 0, 0);
+
             return $this->jsonSuccess('Cart updated successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
-                'subtotal' => $cartItem->subtotal
+                'subtotal' => $cartItem->subtotal,
+                'cart_subtotal' => $subtotal,
+                'cart_total' => $total
             ]);
         } catch (\Exception $e) {
             return $this->jsonError($e->getMessage(), 'CART_UPDATE_ERROR', null, 404);
@@ -174,8 +181,15 @@ class CartController extends Controller
             
             $this->cartService->removeFromCart($request->cart_item_id, $cartIdentifier);
 
+            $cartItems = $this->cartService->getCartItems($cartIdentifier);
+            $subtotal = $this->cartService->getCartSubtotal($cartIdentifier);
+            $priceService = app(\App\Services\PriceCalculationService::class);
+            $total = $priceService->calculateTotal($subtotal, 0, 0);
+
             return $this->jsonSuccess('Product removed from cart successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'cart_subtotal' => $subtotal,
+                'cart_total' => $total,
                 'product' => $cartItem && $cartItem->product ? [
                     'id' => $cartItem->product->id,
                     'uuid' => $cartItem->product->uuid,

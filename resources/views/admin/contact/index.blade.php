@@ -15,6 +15,20 @@
         </div>
     </div>
 
+    @if(session('success'))
+        <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-check-circle"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Main Content Card -->
     <div class="modern-card">
         <div class="modern-card__header">
@@ -26,9 +40,16 @@
                 <p class="modern-card__subtitle">{{ $messages->total() }} total messages</p>
             </div>
             <div class="modern-card__header-actions">
-                <form method="GET" class="filter-form" id="search-form">
+                <form method="GET" class="search-form" id="search-form">
                     <div class="search-form__wrapper">
                         <div class="search-form__input-wrapper">
+                            <select name="status" id="status-filter" class="search-form__input" style="width: 150px; margin-right: 0.5rem;">
+                                <option value="">All Status</option>
+                                <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="in_progress" {{ $status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="solved" {{ $status == 'solved' ? 'selected' : '' }}>Solved</option>
+                                <option value="closed" {{ $status == 'closed' ? 'selected' : '' }}>Closed</option>
+                            </select>
                             <input type="text"
                                    name="search"
                                    id="search-input"
@@ -47,13 +68,6 @@
                             </div>
                         </div>
                     </div>
-                    <select name="status" id="status-filter" class="filter-select">
-                        <option value="">All Status</option>
-                        <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="in_progress" {{ $status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="solved" {{ $status == 'solved' ? 'selected' : '' }}>Solved</option>
-                        <option value="closed" {{ $status == 'closed' ? 'selected' : '' }}>Closed</option>
-                    </select>
                 </form>
             </div>
         </div>
@@ -99,83 +113,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // AJAX status filter
+    // Handle status filter change
     const statusFilter = document.getElementById('status-filter');
     if (statusFilter) {
         statusFilter.addEventListener('change', function() {
-            if (typeof AdminSearch !== 'undefined' && AdminSearch.currentRequest) {
-                AdminSearch.currentRequest.abort();
-            }
-            
-            const searchValue = document.getElementById('search-input').value;
-            const statusValue = this.value;
-            
-            const formData = new FormData();
-            if (searchValue) formData.append('search', searchValue);
-            if (statusValue) formData.append('status', statusValue);
-            formData.append('ajax', '1');
-            
-            const url = new URL('{{ route('admin.contacts.index') }}');
-            if (searchValue) url.searchParams.append('search', searchValue);
-            if (statusValue) url.searchParams.append('status', statusValue);
-            url.searchParams.append('ajax', '1');
-            
-            document.getElementById('search-loading').style.display = 'flex';
-            
-            fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('results-container').innerHTML = data.html;
-                    document.getElementById('pagination-container').innerHTML = data.pagination || '';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            })
-            .finally(() => {
-                document.getElementById('search-loading').style.display = 'none';
-            });
+            AdminSearch.performSearch();
         });
     }
+
+    // Intercept pagination links on initial load
+    AdminSearch.interceptPaginationLinks();
 });
 </script>
 @endpush
-
-<style>
-.filter-form {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.filter-select {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    min-width: 150px;
-    height: 38px;
-}
-
-@media (max-width: 768px) {
-    .filter-form {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .filter-form .search-form__wrapper,
-    .filter-form .filter-select {
-        width: 100%;
-    }
-}
-</style>
 @endsection
 

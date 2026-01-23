@@ -165,8 +165,10 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
     });
     Route::middleware('permission:email-templates.view')->group(function () {
         Route::get('email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');
+        Route::get('email-templates/preview-all', [EmailTemplateController::class, 'previewAll'])->name('email-templates.preview-all');
         Route::get('email-templates/{emailTemplate}', [EmailTemplateController::class, 'show'])->name('email-templates.show');
         Route::post('email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+        Route::get('email-templates/{emailTemplate}/preview-browser', [EmailTemplateController::class, 'previewInBrowser'])->name('email-templates.preview-browser');
     });
     Route::middleware('permission:email-templates.edit')->group(function () {
         Route::get('email-templates/{emailTemplate}/edit', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');

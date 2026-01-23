@@ -2,6 +2,7 @@
 
 @section('content')
 <div class="admin-content">
+    <!-- Page Header -->
     <div class="page-header">
         <div class="page-header__content">
             <div class="page-header__title-section">
@@ -35,6 +36,7 @@
     @endif
 
     <div class="row">
+        <!-- Main Form -->
         <div class="col-lg-8">
             <div class="modern-card">
                 <div class="modern-card__header">
@@ -44,16 +46,14 @@
                     </h3>
                 </div>
                 <div class="modern-card__body">
-                    <form method="POST" action="{{ route('admin.subscriptions.send-newsletter') }}" id="newsletterForm">
+                    <form method="POST" action="{{ route('admin.subscriptions.send-newsletter') }}" class="modern-form" id="newsletterForm">
                         @csrf
 
                         <div class="form-group-modern">
                             <label for="email_template_id" class="form-label-modern">
-                                <i class="fas fa-file-alt"></i>
                                 Use Email Template (Optional)
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-file-alt input-icon"></i>
                                 <select class="form-input-modern" id="email_template_id" name="email_template_id">
                                     <option value="">Select a template...</option>
                                     @foreach($templates as $template)
@@ -71,11 +71,9 @@
 
                         <div class="form-group-modern">
                             <label for="subject" class="form-label-modern">
-                                <i class="fas fa-heading"></i>
                                 Subject <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-heading input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('subject') is-invalid @enderror"
                                        id="subject"
@@ -94,17 +92,15 @@
 
                         <div class="form-group-modern">
                             <label for="body" class="form-label-modern">
-                                <i class="fas fa-align-left"></i>
                                 Email Body <span class="required">*</span>
                             </label>
-                            <div class="input-wrapper">
-                                <textarea class="form-input-modern @error('body') is-invalid @enderror"
-                                          id="body"
-                                          name="body"
-                                          rows="15"
-                                          placeholder="Enter newsletter content (HTML supported)"
-                                          required>{{ old('body') }}</textarea>
-                            </div>
+                            <textarea class="form-input-modern @error('body') is-invalid @enderror"
+                                      id="body"
+                                      name="body"
+                                      rows="15"
+                                      style="resize: vertical;"
+                                      placeholder="Enter newsletter content (HTML supported)"
+                                      required>{{ old('body') }}</textarea>
                             <div class="form-hint">
                                 <i class="fas fa-info-circle"></i>
                                 You can use HTML formatting. Available variables: {email}, {unsubscribe_url}
@@ -119,7 +115,6 @@
 
                         <div class="form-group-modern">
                             <label class="form-label-modern">
-                                <i class="fas fa-users"></i>
                                 Send To <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
@@ -146,11 +141,9 @@
 
                         <div class="form-group-modern">
                             <label for="test_email" class="form-label-modern">
-                                <i class="fas fa-vial"></i>
                                 Test Email (Optional)
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-envelope input-icon"></i>
                                 <input type="email"
                                        class="form-input-modern @error('test_email') is-invalid @enderror"
                                        id="test_email"
@@ -170,25 +163,28 @@
                             @enderror
                         </div>
 
-                        <div class="form-group-modern">
-                            <div class="button-group">
-                                <button type="submit" class="btn btn-primary btn-icon" id="sendBtn">
-                                    <i class="fas fa-paper-plane"></i>
-                                    <span id="sendBtnText">Send Newsletter</span>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-lg" id="sendBtn">
+                                <i class="fas fa-paper-plane"></i>
+                                <span id="sendBtnText">Send Newsletter</span>
+                            </button>
+                            @if(old('test_email') || request()->has('test'))
+                                <button type="submit" class="btn btn-outline-primary btn-lg" name="test_only" value="1" id="testBtn">
+                                    <i class="fas fa-vial"></i>
+                                    <span>Send Test Only</span>
                                 </button>
-                                @if(old('test_email') || request()->has('test'))
-                                    <button type="submit" class="btn btn-outline-primary btn-icon" name="test_only" value="1" id="testBtn">
-                                        <i class="fas fa-vial"></i>
-                                        <span>Send Test Only</span>
-                                    </button>
-                                @endif
-                            </div>
+                            @endif
+                            <a href="{{ route('admin.subscriptions.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </a>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
+        <!-- Sidebar -->
         <div class="col-lg-4">
             <div class="modern-card">
                 <div class="modern-card__header">
@@ -198,49 +194,71 @@
                     </h3>
                 </div>
                 <div class="modern-card__body">
-                    <div class="info-box">
-                        <h4 class="info-box__title">
-                            <i class="fas fa-lightbulb"></i>
-                            Best Practices
-                        </h4>
-                        <ul class="info-box__list">
-                            <li>Keep subject lines clear and engaging</li>
-                            <li>Use HTML formatting for better presentation</li>
-                            <li>Always send a test email first</li>
-                            <li>Include an unsubscribe link (automatically added)</li>
-                            <li>Personalize content with {email} variable</li>
-                        </ul>
-                    </div>
-
-                    <div class="info-box" style="margin-top: 1.5rem;">
-                        <h4 class="info-box__title">
-                            <i class="fas fa-code"></i>
-                            Available Variables
-                        </h4>
-                        <ul class="info-box__list">
-                            <li><code>{email}</code> - Subscriber email address</li>
-                            <li><code>{unsubscribe_url}</code> - Unsubscribe link (auto-added)</li>
-                        </ul>
-                    </div>
-
-                    <div class="info-box" style="margin-top: 1.5rem; background: #fff3cd; border-left: 4px solid #ffc107;">
-                        <h4 class="info-box__title" style="color: #856404;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Important Notes
-                        </h4>
-                        <ul class="info-box__list" style="color: #856404;">
-                            <li>Newsletters are sent via queue for better performance</li>
-                            <li>Large lists may take time to process</li>
-                            <li>Only active subscribers receive emails</li>
-                            <li>Test email is sent immediately</li>
-                        </ul>
-                    </div>
+                    <ul class="tips-list">
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Clear Subject Line</strong>
+                                <p>Keep subject lines clear and engaging to improve open rates</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>HTML Formatting</strong>
+                                <p>Use HTML formatting for better presentation and readability</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Test First</strong>
+                                <p>Always send a test email before sending to all subscribers</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Unsubscribe Link</strong>
+                                <p>Unsubscribe link is automatically added to all newsletters</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Personalization</strong>
+                                <p>Use {email} variable to personalize content for each subscriber</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Available Variables</strong>
+                                <p>Use {email} for subscriber email and {unsubscribe_url} for unsubscribe link</p>
+                            </div>
+                        </li>
+                        <li class="tips-list__item">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Queue Processing</strong>
+                                <p>Newsletters are sent via queue for better performance. Large lists may take time to process.</p>
+                            </div>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="{{ asset('assets/js/ckeditor-custom.js') }}"></script>
+@include('components.ckeditor', [
+    'id' => 'body',
+    'uploadUrl' => null,
+    'toolbar' => 'email'
+])
+
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const templateSelect = document.getElementById('email_template_id');
@@ -256,7 +274,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedOption.value && selectedOption.dataset.subject) {
                 if (confirm('This will replace your current subject and body. Continue?')) {
                     subjectInput.value = selectedOption.dataset.subject || '';
-                    bodyTextarea.value = selectedOption.dataset.body || '';
+                    // Update CKEditor content if it exists
+                    if (typeof CKEDITOR !== 'undefined' && CKEDITOR.instances.body) {
+                        CKEDITOR.instances.body.setData(selectedOption.dataset.body || '');
+                    } else {
+                        bodyTextarea.value = selectedOption.dataset.body || '';
+                    }
                 }
             }
         });
@@ -267,7 +290,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const testEmail = document.getElementById('test_email').value;
             const sendTo = document.querySelector('input[name="send_to"]:checked').value;
             const subject = subjectInput.value.trim();
-            const body = bodyTextarea.value.trim();
+            
+            // Get body content from CKEditor if it exists
+            let body = '';
+            if (typeof CKEDITOR !== 'undefined' && CKEDITOR.instances.body) {
+                body = CKEDITOR.instances.body.getData().trim();
+            } else {
+                body = bodyTextarea.value.trim();
+            }
 
             if (!testEmail && !confirm(`Are you sure you want to send this newsletter to ${sendTo === 'active' ? '{{ $activeCount }}' : '{{ $totalCount }}'} subscribers?`)) {
                 e.preventDefault();
@@ -280,4 +310,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+@endpush
 @endsection

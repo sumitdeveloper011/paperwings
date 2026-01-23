@@ -938,7 +938,7 @@
             });
         },
 
-        removeSelected: function() {
+        removeSelected: async function() {
             const removeSelectedBtn = document.getElementById('wishlist-remove-selected');
             
             // Prevent multiple simultaneous calls - use a flag
@@ -959,7 +959,16 @@
                 return;
             }
 
-            if (!confirm(`Are you sure you want to remove ${selectedUuids.length} item(s) from your wishlist?`)) {
+            if (window.customConfirm) {
+                const confirmed = await window.customConfirm(
+                    `Are you sure you want to remove ${selectedUuids.length} item(s) from your wishlist?`,
+                    'Remove from Wishlist',
+                    'question'
+                );
+                if (!confirmed) {
+                    return;
+                }
+            } else if (!confirm(`Are you sure you want to remove ${selectedUuids.length} item(s) from your wishlist?`)) {
                 return;
             }
 

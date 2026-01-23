@@ -53,7 +53,7 @@ class NewsletterMail extends Mailable
             $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
         }
         if (empty($contactEmail)) {
-            $contactEmail = 'info@paperwings.com';
+            $contactEmail = 'info@paperwings.co.nz';
         }
 
         $socialLinks = [];

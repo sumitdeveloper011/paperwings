@@ -12,7 +12,7 @@
                         <h1 class="error-title">500</h1>
                         <h2 class="error-subtitle">Internal Server Error</h2>
                         <p class="error-description">
-                            @if(app()->environment('local', 'development'))
+                            @if(app()->environment('local', 'development') || config('app.debug'))
                                 An error occurred. See details below.
                             @else
                                 Something went wrong on our end. We're working to fix the issue. Please try again in a few moments.
@@ -27,7 +27,7 @@
                             </a>
                         </div>
                         
-                        @if(app()->environment('local', 'development'))
+                        @if(app()->environment('local', 'development') || config('app.debug'))
                             <div class="error-details mt-4" style="text-align: left; margin-top: 2rem;">
                                 @if(isset($exception))
                                     <details open style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1rem;">

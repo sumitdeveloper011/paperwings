@@ -12,6 +12,12 @@
                 <p class="page-header__subtitle">Manage email templates</p>
             </div>
             <div class="page-header__actions">
+                @can('email-templates.view')
+                <a href="{{ route('admin.email-templates.preview-all') }}" class="btn btn-info btn-icon" style="margin-right: 0.5rem;">
+                    <i class="fas fa-eye"></i>
+                    <span>Preview All</span>
+                </a>
+                @endcan
                 @can('email-templates.create')
                 <a href="{{ route('admin.email-templates.create') }}" class="btn btn-primary btn-icon">
                     <i class="fas fa-plus"></i>

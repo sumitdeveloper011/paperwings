@@ -32,21 +32,23 @@
                             <small class="text-muted">{{ $message->created_at->format('h:i A') }}</small>
                         </td>
                         <td class="modern-table__td modern-table__td--actions">
-                            <a href="{{ route('admin.contacts.show', $message->uuid) }}"
-                               class="btn btn-sm btn-info"
-                               title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <form action="{{ route('admin.contacts.destroy', $message->uuid) }}"
-                                  method="POST"
-                                  class="d-inline"
-                                  onsubmit="return confirm('Are you sure you want to delete this message?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                            <div class="action-buttons">
+                                <a href="{{ route('admin.contacts.show', $message->uuid) }}"
+                                   class="action-btn action-btn--view"
+                                   title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <form action="{{ route('admin.contacts.destroy', $message->uuid) }}"
+                                      method="POST"
+                                      class="action-form"
+                                      onsubmit="return confirm('Are you sure you want to delete this message?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="action-btn action-btn--delete" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @endforeach

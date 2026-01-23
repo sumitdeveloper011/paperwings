@@ -33,10 +33,15 @@
             <span class="order-totals__value" style="color: var(--coral-red);" id="checkoutDiscount">-${{ number_format($discount, 2) }}</span>
         </div>
         @endif
-        <div class="order-totals__item" id="shippingRow" style="{{ $shipping == 0 ? 'display: none;' : '' }}">
+        @php
+            $hasShippingRegion = ($shippingAddress && $shippingAddress->region_id) || 
+                                 ($billingAddress && $billingAddress->region_id) || 
+                                 (isset($sessionData['shipping']['region_id']) && $sessionData['shipping']['region_id']);
+        @endphp
+        <div class="order-totals__item" id="shippingRow" style="{{ $hasShippingRegion ? '' : 'display: none;' }}">
             <span class="order-totals__label">
                 Shipping
-                <span id="freeShippingMessage" style="display: none; color: #28a745; font-size: 0.85rem; margin-left: 0.5rem;">
+                <span id="freeShippingMessage" style="{{ (isset($isFreeShipping) && $isFreeShipping) ? 'display: inline;' : 'display: none;' }} color: #28a745; font-size: 0.85rem; margin-left: 0.5rem;">
                     <i class="fas fa-check-circle"></i> Free Shipping!
                 </span>
             </span>

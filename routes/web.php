@@ -228,6 +228,12 @@ Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::get('/account/orders/{orderNumber}', [AccountController::class, 'orderDetails'])->name('account.order-details');
 });
 
+// Order actions with rate limiting
+Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
+    Route::post('/account/orders/{orderNumber}/reorder', [AccountController::class, 'reorder'])->name('account.orders.reorder');
+    Route::post('/account/orders/{orderNumber}/cancel', [AccountController::class, 'cancelOrder'])->name('account.orders.cancel');
+});
+
 Route::post('/api/log-client-error', [UtilityController::class, 'logClientError'])
     ->name('api.log-client-error')
     ->middleware('web');

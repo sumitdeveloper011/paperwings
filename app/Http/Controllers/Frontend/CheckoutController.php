@@ -124,6 +124,7 @@ class CheckoutController extends Controller
         $orderAmount = $subtotal - $discount;
         $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
         $shipping = $shippingInfo['shipping_price'];
+        $isFreeShipping = $shippingInfo['is_free_shipping'] ?? false;
         // Calculate total using PriceCalculationService
         $total = $this->priceService->calculateTotal($subtotal, $discount, $shipping);
 
@@ -141,7 +142,9 @@ class CheckoutController extends Controller
             'billingAddresses',
             'shippingAddresses',
             'regions',
-            'sessionData'
+            'sessionData',
+            'isFreeShipping',
+            'shippingRegionId'
         ));
     }
 
@@ -153,7 +156,7 @@ class CheckoutController extends Controller
         $validated = $request->validate([
             'shipping_first_name' => 'required|string|max:255',
             'shipping_last_name' => 'required|string|max:255',
-            'shipping_email' => 'required|email|max:255',
+            'shipping_email' => 'required|email:dns|max:255',
             'shipping_phone' => 'required|string|max:20',
             'shipping_street_address' => 'required|string|max:500',
             'shipping_city' => 'required|string|max:255',
@@ -162,34 +165,36 @@ class CheckoutController extends Controller
             'shipping_zip_code' => 'required|string|max:10',
             'shipping_country' => 'required|string|max:255',
             'billing_different' => 'nullable|boolean',
-            'billing_first_name' => 'required_if:billing_different,1|string|max:255',
-            'billing_last_name' => 'required_if:billing_different,1|string|max:255',
-            'billing_email' => 'required_if:billing_different,1|email|max:255',
-            'billing_phone' => 'required_if:billing_different,1|string|max:20',
-            'billing_street_address' => 'required_if:billing_different,1|string|max:500',
-            'billing_city' => 'required_if:billing_different,1|string|max:255',
+            'billing_first_name' => 'required_if:billing_different,1|nullable|string|max:255',
+            'billing_last_name' => 'required_if:billing_different,1|nullable|string|max:255',
+            'billing_email' => 'required_if:billing_different,1|nullable|email:dns|max:255',
+            'billing_phone' => 'required_if:billing_different,1|nullable|string|max:20',
+            'billing_street_address' => 'required_if:billing_different,1|nullable|string|max:500',
+            'billing_city' => 'required_if:billing_different,1|nullable|string|max:255',
             'billing_suburb' => 'nullable|string|max:255',
-            'billing_region_id' => 'required_if:billing_different,1|exists:regions,id',
-            'billing_zip_code' => 'required_if:billing_different,1|string|max:10',
-            'billing_country' => 'required_if:billing_different,1|string|max:255',
+            'billing_region_id' => 'required_if:billing_different,1|nullable|exists:regions,id',
+            'billing_zip_code' => 'required_if:billing_different,1|nullable|string|max:10',
+            'billing_country' => 'required_if:billing_different,1|nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $billingDifferent = $request->has('billing_different') && $request->billing_different == '1';
 
+        $shippingData = [
+            'first_name' => $validated['shipping_first_name'],
+            'last_name' => $validated['shipping_last_name'],
+            'email' => $validated['shipping_email'],
+            'phone' => $validated['shipping_phone'],
+            'street_address' => $validated['shipping_street_address'],
+            'city' => $validated['shipping_city'],
+            'suburb' => $validated['shipping_suburb'] ?? '',
+            'region_id' => $validated['shipping_region_id'],
+            'zip_code' => $validated['shipping_zip_code'],
+            'country' => $validated['shipping_country'],
+        ];
+
         $checkoutData = [
-            'shipping' => [
-                'first_name' => $validated['shipping_first_name'],
-                'last_name' => $validated['shipping_last_name'],
-                'email' => $validated['shipping_email'],
-                'phone' => $validated['shipping_phone'],
-                'street_address' => $validated['shipping_street_address'],
-                'city' => $validated['shipping_city'],
-                'suburb' => $validated['shipping_suburb'] ?? '',
-                'region_id' => $validated['shipping_region_id'],
-                'zip_code' => $validated['shipping_zip_code'],
-                'country' => $validated['shipping_country'],
-            ],
+            'shipping' => $shippingData,
             'billing' => $billingDifferent ? [
                 'first_name' => $validated['billing_first_name'],
                 'last_name' => $validated['billing_last_name'],
@@ -201,7 +206,7 @@ class CheckoutController extends Controller
                 'region_id' => $validated['billing_region_id'],
                 'zip_code' => $validated['billing_zip_code'],
                 'country' => $validated['billing_country'],
-            ] : [],
+            ] : $shippingData,
             'notes' => $validated['notes'] ?? '',
             'billing_different' => $billingDifferent,
         ];
@@ -378,7 +383,23 @@ class CheckoutController extends Controller
         $appliedCoupon = Session::get('applied_coupon');
         $sessionData = $this->checkoutSession->getCheckoutData();
 
-        $stripePublishableKey = SettingHelper::get('stripe_key', config('services.stripe.key'));
+        $stripePublishableKey = config('services.stripe.key');
+        
+        // Create payment intent server-side to avoid rate limiting issues
+        $clientSecret = null;
+        $paymentIntentId = null;
+        try {
+            $paymentIntentData = $this->createPaymentIntentInternal($totals['final_total'] ?? $totals['total']);
+            $clientSecret = $paymentIntentData['clientSecret'] ?? null;
+            $paymentIntentId = $paymentIntentData['paymentIntentId'] ?? null;
+        } catch (\Exception $e) {
+            Log::error('Failed to create payment intent in payment page', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id(),
+            ]);
+            return redirect()->route('checkout.review')
+                ->with('error', 'Failed to initialize payment. Please try again.');
+        }
 
         return view('frontend.checkout.payment', compact(
             'title',
@@ -386,7 +407,9 @@ class CheckoutController extends Controller
             'totals',
             'appliedCoupon',
             'sessionData',
-            'stripePublishableKey'
+            'stripePublishableKey',
+            'clientSecret',
+            'paymentIntentId'
         ));
     }
 
@@ -645,7 +668,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    // Create Stripe Payment Intent
+    // Create Stripe Payment Intent (API endpoint - kept for backward compatibility)
     public function createPaymentIntent(Request $request): JsonResponse
     {
         $request->validate([
@@ -662,54 +685,15 @@ class CheckoutController extends Controller
             return $this->jsonError('Payment amount exceeds maximum limit. Please contact support.', 'AMOUNT_EXCEEDS_MAX', null, 400);
         }
 
-        // Read Stripe secret from database settings (with .env fallback)
-        $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
-
-        if (!$stripeSecret) {
-            return $this->jsonError('Stripe is not configured. Please contact support.', 'STRIPE_NOT_CONFIGURED', null, 500);
-        }
-
         try {
-            Stripe::setApiKey($stripeSecret);
-
-            // Prepare metadata for PaymentIntent
-            $metadata = [
-                'user_id' => (string)Auth::id(),
-                'user_email' => Auth::user()->email ?? '',
-            ];
-
-            $paymentIntent = PaymentIntent::create([
-                'amount' => (int)round($request->amount * 100), // Convert to cents
-                'currency' => 'nzd', // Stripe accepts lowercase currency codes
-                'automatic_payment_methods' => [
-                    'enabled' => true,
-                ],
-                'metadata' => $metadata,
-            ]);
-
-            if (!$paymentIntent->client_secret) {
-                return $this->jsonError('Failed to create payment intent. Please try again.', 'PAYMENT_INTENT_CREATION_FAILED', null, 500);
-            }
-
+            $paymentIntentData = $this->createPaymentIntentInternal($amount);
+            
             return $this->jsonSuccess('Payment intent created successfully.', [
-                'clientSecret' => $paymentIntent->client_secret,
-                'payment_intent_id' => $paymentIntent->id
+                'clientSecret' => $paymentIntentData['clientSecret'],
+                'payment_intent_id' => $paymentIntentData['paymentIntentId']
             ]);
-        } catch (ApiErrorException $e) {
-            Log::error('Stripe PaymentIntent creation failed', [
-                'error' => $e->getMessage(),
-                'amount' => $request->amount,
-                'stripe_error_code' => $e->getStripeCode(),
-            ]);
-
-            return $this->jsonError('Payment initialization failed. Please try again.', 'STRIPE_ERROR', null, 500);
         } catch (\Exception $e) {
-            Log::error('PaymentIntent creation exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return $this->jsonError('An error occurred while initializing payment. Please try again.', 'PAYMENT_INIT_ERROR', null, 500);
+            return $this->jsonError($e->getMessage(), 'PAYMENT_INIT_ERROR', null, 500);
         }
     }
 
@@ -736,8 +720,8 @@ class CheckoutController extends Controller
             return $this->jsonError('Your cart is empty. Please add items to your cart before checkout.', 'CART_EMPTY', null, 400);
         }
 
-        // Verify payment with Stripe - Read from database settings (with .env fallback)
-        $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
+        // Verify payment with Stripe - Read from .env config
+        $stripeSecret = config('services.stripe.secret');
 
         if (!$stripeSecret) {
             Log::error('Stripe secret key not configured');
@@ -910,19 +894,31 @@ class CheckoutController extends Controller
                 
                 // Validate price hasn't changed significantly
                 $currentPrice = $product->discount_price ?? $product->total_price;
-                $priceDifference = abs($currentPrice - $cartItem->price);
+                $cartPrice = (float)$cartItem->price;
+                $currentPriceFloat = (float)$currentPrice;
+                $priceDifference = abs($currentPriceFloat - $cartPrice);
                 
-                // Allow small price differences (up to 0.05) due to rounding
-                if ($priceDifference > 0.05) {
+                // Allow small price differences (up to 0.10) due to rounding and floating point precision
+                // Also round both prices to 2 decimal places for comparison
+                $cartPriceRounded = round($cartPrice, 2);
+                $currentPriceRounded = round($currentPriceFloat, 2);
+                $priceDifferenceRounded = abs($currentPriceRounded - $cartPriceRounded);
+                
+                if ($priceDifferenceRounded > 0.10) {
                     $errorMsg = "Product '{$product->name}' price has changed. Please refresh your cart.";
                     $priceValidationErrors[] = $errorMsg;
                     Log::warning('Price mismatch during order validation', [
                         'user_id' => Auth::id(),
                         'product_id' => $product->id,
                         'product_name' => $product->name,
-                        'cart_price' => $cartItem->price,
-                        'current_price' => $currentPrice,
+                        'cart_price' => $cartPrice,
+                        'cart_price_rounded' => $cartPriceRounded,
+                        'current_price' => $currentPriceFloat,
+                        'current_price_rounded' => $currentPriceRounded,
                         'difference' => $priceDifference,
+                        'difference_rounded' => $priceDifferenceRounded,
+                        'product_discount_price' => $product->discount_price,
+                        'product_total_price' => $product->total_price,
                     ]);
                 }
             }
@@ -1041,14 +1037,13 @@ class CheckoutController extends Controller
                     'stripe_fee' => $estimatedStripeFee > 0 ? $estimatedStripeFee : null,
                     'currency' => 'NZD',
                     'payment_method' => 'stripe',
-                    'payment_status' => 'paid', // Will be confirmed by webhook
-                    'payment_confirmed_at' => now(), // Set when order is created (webhook will confirm)
+                    'payment_status' => 'pending', // Will be confirmed by webhook
                     'stripe_payment_intent_id' => $paymentIntent->id,
                     'stripe_charge_id' => $paymentIntent->latest_charge ?? null,
                     'stripe_customer_id' => $customerId,
                     'stripe_payment_method_id' => $paymentMethodId,
                     'stripe_payment_method_type' => $paymentMethodType,
-                    'status' => 'processing', // Start as processing when payment succeeded
+                    'status' => 'pending', // Will be updated to processing when payment is confirmed by webhook
                     'notes' => $request->notes ?? null,
                 ]);
 
@@ -1193,18 +1188,6 @@ class CheckoutController extends Controller
                     ]);
                 }
 
-                // Load order with relationships for email
-                $order->load(['items.product', 'billingRegion', 'shippingRegion']);
-
-                // Send order confirmation email
-                try {
-                    // Queue email for faster response (OrderConfirmationMail already implements ShouldQueue)
-                    Mail::to($order->billing_email)->queue(new OrderConfirmationMail($order));
-                } catch (\Exception $e) {
-                    // Log email error but don't fail the order
-                    Log::error('Failed to send order confirmation email: ' . $e->getMessage());
-                }
-
                 // Create admin notification
                 try {
                     $this->notificationService->createOrderNotification($order);
@@ -1274,8 +1257,8 @@ class CheckoutController extends Controller
             // Double-check with Stripe if payment intent exists
             if ($order->stripe_payment_intent_id) {
                 try {
-                    // Read Stripe secret from database settings
-                    $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
+                    // Read Stripe secret from .env config
+                    $stripeSecret = config('services.stripe.secret');
                     if ($stripeSecret) {
                         Stripe::setApiKey($stripeSecret);
                         $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
@@ -1381,6 +1364,70 @@ class CheckoutController extends Controller
             ]);
 
             return $this->jsonError('Failed to get address details', 'ADDRESS_GET_ERROR', null, 500);
+        }
+    }
+
+    /**
+     * Create payment intent internally (used by payment page)
+     * 
+     * @param float $amount
+     * @return array ['clientSecret' => string, 'paymentIntentId' => string]
+     * @throws \Exception
+     */
+    private function createPaymentIntentInternal(float $amount): array
+    {
+        if ($amount < 0.50) {
+            throw new \Exception('Invalid payment amount. Amount must be at least $0.50.');
+        }
+        
+        if ($amount > 999999.99) {
+            throw new \Exception('Payment amount exceeds maximum limit.');
+        }
+
+        $stripeSecret = config('services.stripe.secret');
+
+        if (!$stripeSecret) {
+            throw new \Exception('Stripe is not configured.');
+        }
+
+        try {
+            Stripe::setApiKey($stripeSecret);
+
+            $metadata = [
+                'user_id' => (string)Auth::id(),
+                'user_email' => Auth::user()->email ?? '',
+            ];
+
+            $paymentIntent = PaymentIntent::create([
+                'amount' => (int)round($amount * 100),
+                'currency' => 'nzd',
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
+                'metadata' => $metadata,
+            ]);
+
+            if (!$paymentIntent->client_secret) {
+                throw new \Exception('Failed to create payment intent.');
+            }
+
+            return [
+                'clientSecret' => $paymentIntent->client_secret,
+                'paymentIntentId' => $paymentIntent->id
+            ];
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe PaymentIntent creation failed', [
+                'error' => $e->getMessage(),
+                'amount' => $amount,
+                'stripe_error_code' => $e->getStripeCode(),
+            ]);
+            throw new \Exception('Payment initialization failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('PaymentIntent creation exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
     }
 }

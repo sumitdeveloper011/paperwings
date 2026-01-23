@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\SettingHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,12 +15,12 @@ class EposNowService
 
     public function __construct()
     {
-        // Read from database settings with .env fallback
+        // Read from .env config file
         $this->baseUrl = rtrim(
-            SettingHelper::get('eposnow_api_base', config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/')),
+            config('eposnow.api_base', 'https://api.eposnowhq.com/api/v4/'),
             '/'
         );
-        $this->apiKey = SettingHelper::get('eposnow_api_key', config('eposnow.api_key'));
+        $this->apiKey = config('eposnow.api_key');
 
         // If base URL doesn't end with /api/v4/, add it
         if (!str_ends_with($this->baseUrl, '/api/v4')) {
@@ -70,7 +69,7 @@ class EposNowService
                 // If empty page, increment empty counter
                 if (empty($products) || count($products) === 0) {
                     $emptyPageCount++;
-                    if (app()->environment('local')) {
+                    if (app()->environment('local') || app()->environment('development')) {
                         Log::info('EPOSNOW Products Import: Empty page detected', [
                             'page' => $page,
                             'empty_page_count' => $emptyPageCount,
@@ -79,7 +78,7 @@ class EposNowService
                     }
 
                     if ($emptyPageCount >= $maxEmptyPages) {
-                        if (app()->environment('local')) {
+                        if (app()->environment('local') || app()->environment('development')) {
                             Log::info('EPOSNOW Products Import: Reached end of pagination (empty pages)', [
                                 'pages_fetched' => $page - 1,
                                 'total_products' => count($allProducts)
@@ -120,7 +119,7 @@ class EposNowService
                 $allProducts = array_merge($allProducts, $products);
 
                 // Log progress for debugging (every page for first 10, then every 5) - only in local environment
-                if (app()->environment('local') && ($page <= 10 || $page % 5 == 0)) {
+                if (app()->environment('local') || app()->environment('development') && ($page <= 10 || $page % 5 == 0)) {
                     Log::info('EPOSNOW Products Import Progress', [
                         'page' => $page,
                         'products_on_page' => count($products),
@@ -189,7 +188,7 @@ class EposNowService
             }
         }
 
-        if (app()->environment('local')) {
+        if (app()->environment('local') && app()->environment('development')) {
             Log::info('EPOSNOW Products Import: Completed fetching', [
                 'total_pages' => $page - 1,
                 'total_products_fetched' => count($allProducts),
@@ -284,7 +283,7 @@ class EposNowService
                 $allCategories = array_merge($allCategories, $categories);
 
                 // Log progress for debugging (every page for first 10, then every 5) - only in local environment
-                if (app()->environment('local') && ($page <= 10 || $page % 5 == 0)) {
+                if (app()->environment('local') && app()->environment('development') && ($page <= 10 || $page % 5 == 0)) {
                     Log::info('EPOSNOW Categories Import Progress', [
                         'page' => $page,
                         'categories_on_page' => count($categories),
@@ -352,7 +351,7 @@ class EposNowService
             }
         }
 
-        if (app()->environment('local')) {
+        if (app()->environment('local') && app()->environment('development')) {
             Log::info('EPOSNOW Categories Import: Completed fetching', [
                 'total_pages' => $page - 1,
                 'total_categories_fetched' => count($allCategories),
@@ -608,7 +607,7 @@ class EposNowService
                     $attempt++;
                     if ($attempt < $retries) {
                         $waitTime = $delay * pow(2, $attempt - 1);
-                        if (app()->environment('local')) {
+                        if (app()->environment('local') && app()->environment('development')) {
                             Log::info('Retrying after rate limit error', [
                                 'attempt' => $attempt,
                                 'wait_time' => $waitTime
@@ -717,7 +716,7 @@ class EposNowService
                 ]);
 
                 if ($duplicatePageCount >= $maxDuplicatePages) {
-                    if (app()->environment('local')) {
+                    if (app()->environment('local') || app()->environment('development')) {
                         Log::info("EPOSNOW {$type} Import: Stopping due to duplicate pages", [
                             'pages_fetched' => $page - 1,
                             'total_items' => $totalItems,

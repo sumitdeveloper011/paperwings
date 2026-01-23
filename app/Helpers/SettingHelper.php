@@ -3,112 +3,81 @@
 namespace App\Helpers;
 
 use App\Models\Setting;
-use App\Services\ApiKeyEncryptionService;
 use Illuminate\Support\Facades\Cache;
 
 class SettingHelper
 {
-    private static ?array $sensitiveKeysCache = null;
-    private static bool $sensitiveKeysLoaded = false;
-
-    // Get all settings (cached, but sensitive keys retrieved directly)
+    // Get all settings (cached)
     public static function all(): array
     {
         try {
-            // Get non-sensitive settings from cache
-            $cachedSettings = Cache::remember(CacheHelper::APP_SETTINGS, 3600, function() {
+            // Check if database connection is available
+            if (!self::isDatabaseAvailable()) {
+                return [];
+            }
+
+            // Get all settings from cache
+            return Cache::remember(CacheHelper::APP_SETTINGS, 3600, function() {
                 try {
-                    $allSettings = Setting::pluck('value', 'key')->toArray();
-                    // Remove sensitive keys from cache
-                    $sensitiveKeys = ApiKeyEncryptionService::getEncryptedKeys();
-                    foreach ($sensitiveKeys as $key) {
-                        unset($allSettings[$key]);
+                    if (!self::isDatabaseAvailable()) {
+                        return [];
                     }
-                    return $allSettings;
+                    return Setting::pluck('value', 'key')->toArray();
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Database connection errors - don't log as warning, just return empty
+                    if (str_contains($e->getMessage(), 'Unknown database') || 
+                        str_contains($e->getMessage(), 'Connection refused') ||
+                        str_contains($e->getMessage(), 'Access denied')) {
+                        return [];
+                    }
+                    \Illuminate\Support\Facades\Log::warning('Failed to fetch settings from database: ' . $e->getMessage());
+                    return [];
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::warning('Failed to fetch settings from database: ' . $e->getMessage());
                     return [];
                 }
             });
-
-            // Load sensitive keys only once per request (batch query)
-            if (!self::$sensitiveKeysLoaded) {
-                $sensitiveKeys = ApiKeyEncryptionService::getEncryptedKeys();
-                
-                if (!empty($sensitiveKeys)) {
-                    // Batch load ALL sensitive keys in ONE query instead of individual queries
-                    $sensitiveSettings = Setting::whereIn('key', $sensitiveKeys)->get();
-                    
-                    foreach ($sensitiveSettings as $setting) {
-                        $decryptedValue = ApiKeyEncryptionService::decrypt($setting->key, $setting->value);
-                        $cachedSettings[$setting->key] = $decryptedValue;
-                        self::$sensitiveKeysCache[$setting->key] = $decryptedValue;
-                    }
-                }
-                
-                self::$sensitiveKeysLoaded = true;
-            } else {
-                // Use cached sensitive keys from previous call in same request
-                if (self::$sensitiveKeysCache !== null) {
-                    foreach (self::$sensitiveKeysCache as $key => $value) {
-                        $cachedSettings[$key] = $value;
-                    }
-                }
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Database connection errors - return empty array silently
+            if (str_contains($e->getMessage(), 'Unknown database') || 
+                str_contains($e->getMessage(), 'Connection refused') ||
+                str_contains($e->getMessage(), 'Access denied')) {
+                return [];
             }
-
-            return $cachedSettings;
+            \Illuminate\Support\Facades\Log::warning('Failed to access settings: ' . $e->getMessage());
+            return [];
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning('Failed to access settings: ' . $e->getMessage());
             return [];
         }
     }
 
-    // Get a specific setting value (with decryption and .env fallback)
-    public static function get(string $key, $default = null)
+    /**
+     * Check if database connection is available
+     *
+     * @return bool
+     */
+    private static function isDatabaseAvailable(): bool
     {
-        // Get from database
-        $settings = self::all();
-        $value = $settings[$key] ?? null;
-
-        // If not in database, try .env file (for frontend fallback)
-        if (empty($value)) {
-            $envKey = self::getEnvKeyName($key);
-            if ($envKey) {
-                $value = env($envKey);
-            }
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            return true;
+        } catch (\Exception $e) {
+            return false;
         }
-
-        return $value ?? $default;
     }
 
     /**
-     * Map setting key to .env variable name
+     * Get a specific setting value from database
      *
      * @param string $key Setting key
-     * @return string|null .env variable name or null
+     * @param mixed $default Default value if setting not found
+     * @return mixed Setting value or default
      */
-    private static function getEnvKeyName(string $key): ?string
+    public static function get(string $key, $default = null)
     {
-        $mapping = [
-            'stripe_key' => 'STRIPE_KEY',
-            'stripe_secret' => 'STRIPE_SECRET',
-            'stripe_webhook_secret' => 'STRIPE_WEBHOOK_SECRET',
-            'google_client_id' => 'GOOGLE_CLIENT_ID',
-            'google_client_secret' => 'GOOGLE_CLIENT_SECRET',
-            'facebook_client_id' => 'FACEBOOK_CLIENT_ID',
-            'facebook_client_secret' => 'FACEBOOK_CLIENT_SECRET',
-            'eposnow_api_key' => 'EPOSNOW_API_KEY',
-            'eposnow_api_secret' => 'EPOSNOW_API_SECRET',
-            'eposnow_api_base' => 'EPOSNOW_API_BASE',
-            'nzpost_api_key' => 'NZPOST_API_KEY',
-            'google_map_api_key' => 'GOOGLE_MAP_API_KEY',
-            'instagram_app_id' => 'INSTAGRAM_APP_ID',
-            'instagram_app_secret' => 'INSTAGRAM_APP_SECRET',
-            'instagram_access_token' => 'INSTAGRAM_ACCESS_TOKEN',
-            'instagram_user_id' => 'INSTAGRAM_USER_ID',
-        ];
-
-        return $mapping[$key] ?? null;
+        $settings = self::all();
+        return $settings[$key] ?? $default;
     }
 
     // Get logo URL with fallback (returns medium size for frontend)
@@ -153,8 +122,6 @@ class SettingHelper
     public static function clearCache(): void
     {
         Cache::forget(CacheHelper::APP_SETTINGS);
-        self::$sensitiveKeysCache = null;
-        self::$sensitiveKeysLoaded = false;
     }
 
     /**

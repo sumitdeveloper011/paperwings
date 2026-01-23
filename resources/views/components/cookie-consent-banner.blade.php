@@ -8,7 +8,7 @@
 @endphp
 
 @if($cookieConsentEnabled && !$hasConsent)
-<div id="cookieConsentBanner" class="cookie-consent-banner">
+<div id="cookieConsentBanner" class="cookie-consent-banner" style="display: block !important;">
     <div class="cookie-consent-banner__container">
         <div class="cookie-consent-banner__content">
             <div class="cookie-consent-banner__text">

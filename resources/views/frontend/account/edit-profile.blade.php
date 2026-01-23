@@ -121,14 +121,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (file) {
                 // Validate file type
                 if (!file.type.match('image.*')) {
-                    alert('Please select an image file.');
+                    if (window.customAlert) {
+                        window.customAlert('Please select an image file.', 'Invalid File', 'warning');
+                    } else {
+                        alert('Please select an image file.');
+                    }
                     this.value = '';
                     return;
                 }
 
                 // Validate file size (2MB = 2 * 1024 * 1024 bytes)
                 if (file.size > 2 * 1024 * 1024) {
-                    alert('Image size should not exceed 2MB.');
+                    if (window.customAlert) {
+                        window.customAlert('Image size should not exceed 2MB.', 'File Too Large', 'warning');
+                    } else {
+                        alert('Image size should not exceed 2MB.');
+                    }
                     this.value = '';
                     return;
                 }

@@ -16,7 +16,6 @@ class CouponHandler {
     }
 
     initCouponToggle() {
-        
         // Try multiple ways to find elements - prioritize ID first
         let couponForm = document.getElementById('couponForm');
         const couponInput = document.getElementById('orderCoupon');
@@ -25,9 +24,14 @@ class CouponHandler {
         // Helper function to verify if a form is the coupon form
         const isCouponForm = (form) => {
             if (!form) return false;
-            return form.id === 'couponForm' || 
-                   form.action.includes('apply-coupon') || 
-                   form.action.includes('remove-coupon');
+            const action = form.action || form.getAttribute('action') || '';
+            const formId = form.id || '';
+            const hasCouponClass = form.classList && form.classList.contains('coupon-form-inline');
+            
+            return formId === 'couponForm' || 
+                   action.includes('apply-coupon') || 
+                   action.includes('remove-coupon') ||
+                   hasCouponClass;
         };
         
         // If form not found by ID, try finding by action attribute (more specific)
@@ -47,29 +51,56 @@ class CouponHandler {
             }
         }
         
-        // Last resort: find via input/button parent, but verify it's the coupon form
-        if ((!couponForm || !isCouponForm(couponForm)) && couponInput) {
-            const parentForm = couponInput.closest('form');
-            // Only use if it's verified as the coupon form
-            if (isCouponForm(parentForm)) {
-                couponForm = parentForm;
+        // Since HTML doesn't allow nested forms, the coupon form might not be properly nested
+        // Try to find it by ID directly and verify it contains the elements
+        if ((!couponForm || !isCouponForm(couponForm)) && couponInput && couponBtn) {
+            // First, try to find form by ID directly
+            const formById = document.getElementById('couponForm');
+            if (formById) {
+                const containsInput = formById.contains(couponInput);
+                const containsButton = formById.contains(couponBtn);
+                
+                if (containsInput && containsButton) {
+                    couponForm = formById;
+                }
             }
-        }
-        if ((!couponForm || !isCouponForm(couponForm)) && couponBtn) {
-            const parentForm = couponBtn.closest('form');
-            // Only use if it's verified as the coupon form
-            if (isCouponForm(parentForm)) {
-                couponForm = parentForm;
+            
+            // If still not found, search all forms for one that contains both elements
+            if (!couponForm || !isCouponForm(couponForm)) {
+                const allForms = document.querySelectorAll('form');
+                
+                for (let form of allForms) {
+                    const containsInput = form.contains(couponInput);
+                    const containsButton = form.contains(couponBtn);
+                    const matchesCoupon = isCouponForm(form);
+                    
+                    if (containsInput && containsButton && matchesCoupon) {
+                        couponForm = form;
+                        break;
+                    }
+                }
             }
         }
         
-        if (!couponForm || !couponInput || !couponBtn) {
+        // We need at least the input and button - form is optional (might be nested/invalid HTML)
+        if (!couponInput || !couponBtn) {
             return;
         }
         
-        // Ensure form has ID for consistency
-        if (!couponForm.id || couponForm.id !== 'couponForm') {
-            couponForm.id = 'couponForm';
+        // If form not found, create a virtual form reference or use null
+        // We'll handle events directly on button/input instead
+        if (!couponForm) {
+            // Create a dummy form object for compatibility
+            couponForm = {
+                id: 'couponForm',
+                action: this.applyUrl,
+                contains: (el) => el === couponInput || el === couponBtn
+            };
+        } else {
+            // Ensure form has ID for consistency
+            if (!couponForm.id || couponForm.id !== 'couponForm') {
+                couponForm.id = 'couponForm';
+            }
         }
 
         // Check if coupon is currently applied
@@ -101,15 +132,13 @@ class CouponHandler {
         // Initial state update
         updateButtonState();
 
-        // Only add input listeners if input is not readonly (coupon not applied)
-        if (!couponInput.readOnly) {
-            couponInput.addEventListener('input', updateButtonState);
-            couponInput.addEventListener('paste', () => {
-                setTimeout(updateButtonState, 10);
-            });
-            couponInput.addEventListener('keyup', updateButtonState);
-            couponInput.addEventListener('change', updateButtonState);
-        }
+        // Always add input listeners - they will check readonly state inside updateButtonState
+        couponInput.addEventListener('input', updateButtonState);
+        couponInput.addEventListener('paste', () => {
+            setTimeout(updateButtonState, 10);
+        });
+        couponInput.addEventListener('keyup', updateButtonState);
+        couponInput.addEventListener('change', updateButtonState);
 
         // Unified handler for both apply and remove
         const handleCouponAction = async () => {
@@ -129,47 +158,49 @@ class CouponHandler {
             }
         };
 
-        // Handle form submission - only for coupon form, not checkout form
-        couponForm.addEventListener('submit', async (e) => {
-            // Check if this submit was triggered by the coupon button
-            const submitter = e.submitter || document.activeElement;
-            
-            const isCouponButton = submitter && (
-                submitter === couponBtn || 
-                submitter.id === 'couponApplyBtn' ||
-                (submitter.closest && submitter.closest('#couponForm') === couponForm)
-            );
-            
-            // Also verify the form itself
-            const isCouponForm = (e.target === couponForm || e.currentTarget === couponForm);
-            const formId = e.target?.id || e.currentTarget?.id;
-            const isCouponFormById = formId === 'couponForm';
-            
-            // Only handle if it's definitely the coupon form AND coupon button
-            if (!isCouponForm && !isCouponFormById) {
-                return; // Not our form, let it continue - DON'T prevent default
-            }
-            
-            if (!isCouponButton) {
-                return; // Not triggered by coupon button, let checkout form submit - DON'T prevent default
-            }
-            
-            e.preventDefault();
-            e.stopPropagation();
-            await handleCouponAction();
-        });
+        // Handle form submission - only if form is a real DOM element
+        if (couponForm && couponForm.addEventListener) {
+            couponForm.addEventListener('submit', async (e) => {
+                // Check if this submit was triggered by the coupon button
+                const submitter = e.submitter || document.activeElement;
+                
+                const isCouponButton = submitter && (
+                    submitter === couponBtn || 
+                    submitter.id === 'couponApplyBtn' ||
+                    (submitter.closest && submitter.closest('#couponForm') === couponForm)
+                );
+                
+                // Also verify the form itself
+                const isCouponFormCheck = (e.target === couponForm || e.currentTarget === couponForm);
+                const formId = e.target?.id || e.currentTarget?.id;
+                const isCouponFormById = formId === 'couponForm';
+                
+                // Only handle if it's definitely the coupon form AND coupon button
+                if (!isCouponFormCheck && !isCouponFormById) {
+                    return; // Not our form, let it continue - DON'T prevent default
+                }
+                
+                if (!isCouponButton) {
+                    return; // Not triggered by coupon button, let checkout form submit - DON'T prevent default
+                }
+                
+                e.preventDefault();
+                e.stopPropagation();
+                await handleCouponAction();
+            });
+        }
 
-        // Handle Enter key (only if not readonly)
-        if (!couponInput.readOnly) {
-            couponInput.addEventListener('keypress', async (e) => {
-                if (e.key === 'Enter' && couponInput.value.trim() && !couponBtn.disabled) {
+        // Handle Enter key
+        couponInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                if (!couponInput.readOnly && couponInput.value.trim() && !couponBtn.disabled) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     await handleCouponAction();
                 }
-            });
-        }
+            }
+        });
 
         // Handle button click - only for coupon button
         couponBtn.addEventListener('click', async (e) => {
@@ -217,6 +248,7 @@ class CouponHandler {
             }
 
             const contentType = response.headers.get('content-type');
+            
             if (!contentType || !contentType.includes('application/json')) {
                 this.showMessage('An error occurred. Please try again.', 'error');
                 button.disabled = false;
@@ -242,7 +274,7 @@ class CouponHandler {
                     window.location.reload();
                 }, 500);
             } else {
-                const errorMsg = data.message || data.error || 'Failed to apply coupon.';
+                const errorMsg = data.message || data.error || data.data?.message || 'Failed to apply coupon.';
                 this.showMessage(errorMsg, 'error');
                 button.disabled = false;
                 button.textContent = originalText;
@@ -279,6 +311,7 @@ class CouponHandler {
             }
 
             const contentType = response.headers.get('content-type');
+            
             if (!contentType || !contentType.includes('application/json')) {
                 this.showMessage('An error occurred. Please try again.', 'error');
                 button.disabled = false;
@@ -304,7 +337,7 @@ class CouponHandler {
                     window.location.reload();
                 }, 500);
             } else {
-                const errorMsg = data.message || data.error || 'Failed to remove coupon.';
+                const errorMsg = data.message || data.error || data.data?.message || 'Failed to remove coupon.';
                 this.showMessage(errorMsg, 'error');
                 button.disabled = false;
                 button.textContent = originalText;
@@ -354,39 +387,35 @@ function initializeCouponHandler() {
     const orderCoupon = document.querySelector('.order-coupon');
     
     if (checkoutForm || orderCoupon) {
-        try {
-            // Wait to ensure all elements are rendered
-            setTimeout(() => {
-                // Try multiple ways to find elements
-                let couponFormCheck = document.getElementById('couponForm');
-                const couponInputCheck = document.getElementById('orderCoupon');
-                const couponBtnCheck = document.getElementById('couponApplyBtn');
-                
-                // If form not found, try finding via input/button
-                if (!couponFormCheck && couponInputCheck) {
-                    couponFormCheck = couponInputCheck.closest('form');
-                }
-                if (!couponFormCheck && couponBtnCheck) {
-                    couponFormCheck = couponBtnCheck.closest('form');
-                }
-                if (!couponFormCheck) {
-                    couponFormCheck = document.querySelector('form[action*="apply-coupon"], form.coupon-form-inline');
-                }
-                
-                // Only need input and button - form can be found via them
-                if (couponInputCheck && couponBtnCheck) {
+        const tryInitialize = () => {
+            const couponInputCheck = document.getElementById('orderCoupon');
+            const couponBtnCheck = document.getElementById('couponApplyBtn');
+            
+            if (couponInputCheck && couponBtnCheck) {
+                try {
                     new CouponHandler();
+                } catch (error) {
+                    // Silently fail initialization
                 }
-            }, 500);
-        } catch (error) {
-            // Silent fail - initialization error
+                return true;
+            }
+            return false;
+        };
+
+        if (tryInitialize()) {
+            return;
         }
+
+        setTimeout(() => {
+            if (!tryInitialize()) {
+                setTimeout(tryInitialize, 500);
+            }
+        }, 100);
     }
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeCouponHandler);
 } else {
-    // DOM already loaded
     initializeCouponHandler();
 }

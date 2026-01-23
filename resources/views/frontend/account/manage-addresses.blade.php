@@ -80,7 +80,7 @@
                                             <button type="button" class="address-card__action" title="Edit" onclick="editAddress({{ $address->id }})">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <form method="POST" action="{{ route('account.addresses.destroy', $address->id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this address?');">
+                                            <form method="POST" action="{{ route('account.addresses.destroy', $address->id) }}" style="display: inline;" class="delete-address-form">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="address-card__action" title="Delete">
@@ -135,7 +135,7 @@
                                             <button type="button" class="address-card__action" title="Edit" onclick="editAddress({{ $address->id }})">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <form method="POST" action="{{ route('account.addresses.destroy', $address->id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this address?');">
+                                            <form method="POST" action="{{ route('account.addresses.destroy', $address->id) }}" style="display: inline;" class="delete-address-form">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="address-card__action" title="Delete">
@@ -361,8 +361,12 @@ function editAddress(addressId) {
                 addressFormContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         })
-        .catch(error => {
-            alert('Error loading address. Please try again.');
+        .catch(async error => {
+            if (window.customAlert) {
+                await window.customAlert('Error loading address. Please try again.', 'Error', 'error');
+            } else {
+                alert('Error loading address. Please try again.');
+            }
         });
 }
 
@@ -677,6 +681,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     initAddressFormValidation();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-address-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = this;
+            
+            if (window.customConfirm) {
+                const confirmed = await window.customConfirm(
+                    'Are you sure you want to delete this address?',
+                    'Delete Address',
+                    'question'
+                );
+                if (confirmed) {
+                    form.submit();
+                }
+            } else {
+                if (confirm('Are you sure you want to delete this address?')) {
+                    form.submit();
+                }
+            }
+        });
+    });
 });
 </script>
 @endpush

@@ -70,7 +70,7 @@
 
     <section class="product-details-section">
         <div class="container">
-            <div class="row">
+            <div class="row g-4">
                 <!-- Product Images -->
                 <div class="col-lg-6">
                     <div class="product-images">
@@ -139,8 +139,7 @@
                                          loading="lazy"
                                          width="600"
                                          height="600"
-                                             onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
-                                    </div>
+                                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
                                 </div>
                             </div>
                         @endif
@@ -653,7 +652,7 @@
             </div>
 
             <!-- Related Products -->
-            <div class="row mt-5">
+            <div class="row mt-5 mb-4">
                 <div class="col-12">
                     <div class="related-products">
                         <div class="related-products__header text-center">

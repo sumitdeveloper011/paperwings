@@ -557,6 +557,23 @@
                     }
                 });
             });
+
+            if (typeof window.initSkeletonLoaders === 'function') {
+                setTimeout(() => {
+                    window.initSkeletonLoaders();
+                }, 50);
+            }
+            
+            const cartImages = sidebarItems.querySelectorAll('.cart-sidebar-item__image img');
+            cartImages.forEach(img => {
+                if (img.complete && img.naturalHeight !== 0) {
+                    img.classList.add('loaded');
+                    const skeleton = img.closest('.skeleton-image-wrapper')?.querySelector('.skeleton-small-image');
+                    if (skeleton && window.skeletonLoader) {
+                        window.skeletonLoader.hideSkeleton(skeleton, img);
+                    }
+                }
+            });
         },
 
         updateSidebarEmpty: function() {

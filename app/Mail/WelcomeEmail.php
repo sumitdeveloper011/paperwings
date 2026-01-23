@@ -48,51 +48,77 @@ class WelcomeEmail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('welcome_email');
 
-        if ($template) {
-            $settings = SettingHelper::all();
-            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
-
-            $variables = [
-                'customer_name' => $this->user->name,
-                'app_name' => config('app.name'),
-                'login_url' => route('login'),
-                'contact_phone' => $contactPhone,
-                'contact_email' => $contactEmail,
-            ];
-
-            $body = $emailTemplateService->getBody('welcome_email', $variables);
-
-            return new Content(
-                view: 'emails.template',
-                with: [
-                    'body' => $body,
-                    'logoUrl' => url('assets/frontend/images/logo.png'),
-                    'contactPhone' => $contactPhone,
-                    'contactEmail' => $contactEmail,
-                    'socialLinks' => SettingHelper::extractSocialLinks($settings),
-                ],
-            );
+        if (!$template) {
+            throw new \Exception('Welcome email template not found in database');
         }
 
         $settings = SettingHelper::all();
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
+
+        // Get logo URL - prefer thumbnail for emails
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = SettingHelper::extractSocialLinks($settings);
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+        $variables = [
+            'logo_url' => $logoUrl,
+            'user_name' => $this->user->name,
+            'customer_name' => $this->user->name,
+            'app_name' => config('app.name'),
+            'shop_link' => route('frontend.home'),
+            'login_url' => route('login'),
+            'contact_phone' => $contactPhone,
+            'contact_email' => $contactEmail,
+            'social_facebook' => $socialLinks['facebook'] ?? '#',
+            'social_instagram' => $socialLinks['instagram'] ?? '#',
+            'social_twitter' => $socialLinks['twitter'] ?? '#',
+            'social_linkedin' => $socialLinks['linkedin'] ?? '#',
+            'current_year' => date('Y'),
+        ];
+
+        $body = $emailTemplateService->getBody('welcome_email', $variables);
 
         return new Content(
-            view: 'emails.welcome',
+            view: 'emails.template-body',
             with: [
-                'user' => $this->user,
+                'body' => $body,
                 'logoUrl' => $logoUrl,
+                'headerSubtitle' => 'WELCOME ABOARD!',
+                'headerTitle' => 'Welcome to ' . config('app.name'),
                 'contactPhone' => $contactPhone,
                 'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
+                'currentYear' => date('Y'),
+                'appName' => config('app.name'),
             ],
         );
     }

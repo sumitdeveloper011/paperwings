@@ -30,7 +30,7 @@ class AuthController extends Controller
     public function authenticate(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|max:255',
+            'email' => 'required|email:dns|max:255',
             'password' => 'required|string|min:8|max:255',
         ], [
             'email.required' => 'Email address is required.',

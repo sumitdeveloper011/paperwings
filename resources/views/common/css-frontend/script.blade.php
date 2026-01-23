@@ -22,11 +22,13 @@
 <script src="{{ asset('assets/frontend/js/modules/utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/ajax-utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/skeleton-loader.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/custom-alert.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/form-submission-handler.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/cookie-consent.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/analytics.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/wishlist.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/cart.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/order-actions.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 
 {{-- Script modules - Load before script.js --}}
 <script src="{{ asset('assets/frontend/js/modules/script-utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>

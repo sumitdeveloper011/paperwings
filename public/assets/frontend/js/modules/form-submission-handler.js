@@ -40,6 +40,16 @@
             let originalDisabled = submitBtn ? submitBtn.disabled : false;
 
             form.addEventListener('submit', function(e) {
+                // Check form validity first
+                const isValid = form.checkValidity();
+                
+                if (!isValid) {
+                    form.classList.add('was-validated');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
                 if (isSubmitting) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -53,7 +63,7 @@
                         return false;
                     }
                 }
-
+                
                 isSubmitting = true;
 
                 if (submitBtn) {

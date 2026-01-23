@@ -29,30 +29,18 @@ class ContactStatusUpdateMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $statusLabels = [
-            'pending' => 'Pending',
-            'in_progress' => 'In Progress',
-            'solved' => 'Solved',
-            'closed' => 'Closed',
-        ];
-
-        $newStatusLabel = $statusLabels[$this->newStatus] ?? $this->newStatus;
-
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('contact_status_update');
 
-        if ($template) {
-            $variables = [
-                'customer_name' => $this->contactMessage->name,
-                'message_subject' => $this->contactMessage->subject,
-                'old_status' => $statusLabels[$this->oldStatus] ?? $this->oldStatus,
-                'new_status' => $newStatusLabel,
-                'app_name' => config('app.name'),
-            ];
-            $subject = $emailTemplateService->getSubject('contact_status_update', $variables);
-        } else {
-            $subject = 'Your Contact Message Status Updated - ' . config('app.name');
+        if (!$template) {
+            throw new \Exception('Contact status update template not found in database');
         }
+
+        $variables = [
+            'contact_name' => $this->contactMessage->name,
+            'app_name' => config('app.name'),
+        ];
+        $subject = $emailTemplateService->getSubject('contact_status_update', $variables);
 
         return new Envelope(
             subject: $subject,
@@ -64,6 +52,10 @@ class ContactStatusUpdateMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('contact_status_update');
 
+        if (!$template) {
+            throw new \Exception('Contact status update template not found in database');
+        }
+
         $statusLabels = [
             'pending' => 'Pending',
             'in_progress' => 'In Progress',
@@ -71,67 +63,70 @@ class ContactStatusUpdateMail extends Mailable
             'closed' => 'Closed',
         ];
 
-        if ($template) {
-            $settings = SettingHelper::all();
-            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
-
-            $logoUrl = url('assets/frontend/images/logo.png');
-            if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
-                $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
-            }
-
-            $adminNotes = '';
-            if ($this->contactMessage->admin_notes) {
-                $adminNotes = '<p style="margin: 30px 0 10px 0; color: #000000; font-size: 16px; font-weight: 600;">Admin Notes:</p>
-                    <p style="margin: 0 0 15px 0; color: #000000; font-size: 14px; font-weight: 400; line-height: 1.6; white-space: pre-wrap;">' . htmlspecialchars($this->contactMessage->admin_notes) . '</p>';
-            }
-
-            $variables = [
-                'customer_name' => $this->contactMessage->name,
-                'message_subject' => $this->contactMessage->subject,
-                'message_content' => $this->contactMessage->message,
-                'old_status' => $statusLabels[$this->oldStatus] ?? $this->oldStatus,
-                'new_status' => $statusLabels[$this->newStatus] ?? $this->newStatus,
-                'app_name' => config('app.name'),
-                'contact_phone' => $contactPhone,
-                'contact_email' => $contactEmail,
-                'logo_url' => $logoUrl,
-                'current_year' => date('Y'),
-                'admin_notes' => $adminNotes,
-            ];
-
-            $body = $emailTemplateService->getBody('contact_status_update', $variables);
-
-            return new Content(
-                html: $body,
-            );
-        }
-
         $settings = SettingHelper::all();
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
 
+        // Get logo URL - prefer thumbnail for emails
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = SettingHelper::extractSocialLinks($settings);
+        // Format reference number
+        $referenceNumber = 'CONT-' . strtoupper(substr($this->contactMessage->uuid, 0, 8)) . '-' . $this->contactMessage->id;
+        
+        // Get status label
+        $statusLabel = $statusLabels[$this->newStatus] ?? ucfirst(str_replace('_', ' ', $this->newStatus));
 
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+        $variables = [
+            'contact_name' => $this->contactMessage->name,
+            'reference_number' => $referenceNumber,
+            'status' => $statusLabel,
+            'app_name' => config('app.name'),
+        ];
+
+        $body = $emailTemplateService->getBody('contact_status_update', $variables);
 
         return new Content(
-            view: 'emails.contact-status-update',
+            view: 'emails.template-body',
             with: [
-                'contactMessage' => $this->contactMessage,
-                'oldStatus' => $statusLabels[$this->oldStatus] ?? $this->oldStatus,
-                'newStatus' => $statusLabels[$this->newStatus] ?? $this->newStatus,
-                'oldStatusValue' => $this->oldStatus,
-                'newStatusValue' => $this->newStatus,
+                'body' => $body,
                 'logoUrl' => $logoUrl,
+                'headerSubtitle' => 'STATUS UPDATE',
+                'headerTitle' => 'Your Contact Message Status Updated',
                 'contactPhone' => $contactPhone,
                 'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
+                'currentYear' => date('Y'),
+                'appName' => config('app.name'),
             ],
         );
     }

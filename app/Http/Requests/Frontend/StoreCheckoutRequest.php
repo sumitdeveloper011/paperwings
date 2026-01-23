@@ -17,7 +17,7 @@ class StoreCheckoutRequest extends FormRequest
             // Billing Address
             'billing_first_name' => ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'],
             'billing_last_name' => ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'],
-            'billing_email' => ['required', 'email', 'max:255'],
+            'billing_email' => ['required', 'email:dns', 'max:255'],
             'billing_phone' => ['required', 'string', 'max:20', 'regex:/^[\d\s\-\+\(\)]+$/'],
             'billing_street_address' => ['required', 'string', 'max:255', 'min:5'],
             'billing_city' => ['required', 'string', 'max:255', 'min:2'],
@@ -29,7 +29,7 @@ class StoreCheckoutRequest extends FormRequest
             // Shipping Address
             'shipping_first_name' => ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'],
             'shipping_last_name' => ['required', 'string', 'max:255', 'min:2', 'regex:/^[a-zA-Z\s\-\'\.]+$/'],
-            'shipping_email' => ['required', 'email', 'max:255'],
+            'shipping_email' => ['required', 'email:dns', 'max:255'],
             'shipping_phone' => ['required', 'string', 'max:20', 'regex:/^[\d\s\-\+\(\)]+$/'],
             'shipping_street_address' => ['required', 'string', 'max:255', 'min:5'],
             'shipping_city' => ['required', 'string', 'max:255', 'min:2'],

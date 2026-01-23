@@ -17,6 +17,29 @@
                                 <h2 class="register-title">Create Your Account</h2>
                                 <p class="register-subtitle">Join us today and start your journey</p>
                             </div>
+                            <!-- Resend Verification Section - Moved to Top -->
+                            @if(session('resend_available') || session('info'))
+                            <div class="resend-verification-section" id="resendVerificationSection">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-envelope-open-text"></i>
+                                    <div class="resend-verification-content">
+                                        <p class="resend-verification-message mb-3">
+                                            <strong>{{ session('info') ? 'Email Verification Required' : 'Verification Email Sent' }}</strong>
+                                        </p>
+                                        <p class="mb-3">{{ session('info') ?? session('success') ?? 'Please check your inbox and spam folder for the verification email.' }}</p>
+                                        @if(session('resend_available') && session('user_email'))
+                                        <form action="{{ route('verification.resend') }}" method="POST" class="resend-verification-form">
+                                            @csrf
+                                            <input type="hidden" name="email" value="{{ session('user_email') }}">
+                                            <button type="submit" class="btn btn-primary btn-resend-verification">
+                                                <i class="fas fa-paper-plane"></i> Resend Verification Email
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
 
                             <form id="registerForm" class="register-form" action="{{ route('register.store') }}" method="POST">
                                 @csrf
@@ -153,26 +176,6 @@
                                     </p>
                                 </div>
                             </form>
-
-                            @if(session('resend_available') || session('info'))
-                            <div class="resend-verification-section mt-4">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i>
-                                    <div>
-                                        <p class="mb-2">{{ session('info') ?? session('success') }}</p>
-                                        @if(session('resend_available') && session('user_email'))
-                                        <form action="{{ route('verification.resend') }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <input type="hidden" name="email" value="{{ session('user_email') }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-paper-plane"></i> Resend Verification Email
-                                            </button>
-                                        </form>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -180,3 +183,44 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-scroll to resend verification section if it exists
+    const resendSection = document.getElementById('resendVerificationSection');
+    if (resendSection) {
+        setTimeout(function() {
+            resendSection.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }, 300);
+    }
+
+    // Auto-scroll to success/warning/error alerts if they exist
+    const successAlert = document.getElementById('registerSuccessAlert');
+    const warningAlert = document.getElementById('registerWarningAlert');
+    const errorAlert = document.getElementById('registerErrorAlert');
+    
+    const alertToScroll = successAlert || warningAlert || errorAlert;
+    if (alertToScroll) {
+        setTimeout(function() {
+            alertToScroll.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }, 300);
+    }
+
+    // Handle form submission with loading state
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm && window.FormSubmissionHandler) {
+        window.FormSubmissionHandler.init('registerForm', {
+            loadingText: 'Creating account...',
+            timeout: 15000
+        });
+    }
+});
+</script>
+@endpush

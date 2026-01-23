@@ -64,7 +64,11 @@
                 document.execCommand('copy');
                 ProductDetail.showCopySuccess(button);
             } catch (err) {
-                alert('Failed to copy link');
+                if (window.customAlert) {
+                    window.customAlert('Failed to copy link', 'Error', 'error');
+                } else {
+                    alert('Failed to copy link');
+                }
             }
 
             document.body.removeChild(textArea);

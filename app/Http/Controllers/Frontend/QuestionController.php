@@ -18,7 +18,7 @@ class QuestionController extends Controller
         $request->validate([
             'question' => 'required|string|min:10|max:500',
             'name' => auth()->check() ? 'nullable' : 'required|string|max:255',
-            'email' => auth()->check() ? 'nullable' : 'required|email|max:255',
+            'email' => auth()->check() ? 'nullable' : 'required|email:dns|max:255',
         ]);
 
         try {

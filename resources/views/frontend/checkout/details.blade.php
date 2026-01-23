@@ -16,6 +16,25 @@
 
     <section class="checkout-section">
         <div class="container">
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-circle"></i> Please fix the following errors:</strong>
+                    <ul class="mb-0 mt-2">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-circle"></i> Error:</strong> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('checkout.store-details') }}" id="checkoutForm">
                 @csrf
                 <div class="row">
@@ -76,9 +95,11 @@
                                     <label for="shippingPhone" class="form-label">Phone Number <span class="required">*</span></label>
                                     <input type="tel" id="shippingPhone" name="shipping_phone" class="form-input"
                                         value="{{ $sessionData['shipping']['phone'] ?? $shippingAddress->phone ?? $user->userDetail->phone ?? '' }}"
-                                        placeholder="Enter your phone number"
-                                        pattern="[\d\+\s\-]+"
+                                        placeholder="Enter your phone number (e.g., 0211234567)"
+                                        pattern="[\d\+\s\-\(\)]+"
                                         inputmode="numeric"
+                                        minlength="8"
+                                        maxlength="20"
                                         required>
                                 </div>
                                 <div class="form-group form-group--full">
@@ -205,9 +226,11 @@
                                     <label for="billingPhone" class="form-label">Phone Number <span class="required">*</span></label>
                                     <input type="tel" id="billingPhone" name="billing_phone" class="form-input"
                                         value="{{ $sessionData['billing']['phone'] ?? $billingAddress->phone ?? $user->userDetail->phone ?? '' }}"
-                                        placeholder="Enter your phone number"
-                                        pattern="[\d\+\s\-]+"
-                                        inputmode="numeric">
+                                        placeholder="Enter your phone number (e.g., 0211234567)"
+                                        pattern="[\d\+\s\-\(\)]+"
+                                        inputmode="numeric"
+                                        minlength="8"
+                                        maxlength="20">
                                 </div>
                                 <div class="form-group form-group--full">
                                     <label for="billingAddress" class="form-label">Street Address <span class="required">*</span></label>
@@ -309,20 +332,152 @@
             // Handle review button click
             if (reviewButton) {
                 reviewButton.addEventListener('click', function(e) {
-                    console.log('[Checkout] Review button clicked');
-                    console.log('[Checkout] Form:', checkoutForm);
-                    console.log('[Checkout] Form validity:', checkoutForm ? checkoutForm.checkValidity() : 'N/A');
+                    // Ensure billing fields are properly set as required/not required before validation
+                    const billingCheckbox = document.getElementById('billingDifferent');
                     
-                    // If form is valid, it will submit naturally via form attribute
-                    // If form is invalid, validation will show errors
-                    if (checkoutForm && !checkoutForm.checkValidity()) {
-                        console.warn('[Checkout] Form validation failed');
+                    if (billingCheckbox && typeof CheckoutFormHandler !== 'undefined') {
+                        const handler = new CheckoutFormHandler();
+                        handler.setBillingFieldsRequired(billingCheckbox.checked);
+                    }
+                    
+                    // Validate form before submission
+                    if (checkoutForm) {
+                        const isValid = checkoutForm.checkValidity();
+                        
+                        if (!isValid) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            checkoutForm.classList.add('was-validated');
+                            
+                            // Find all invalid fields
+                            const invalidFields = checkoutForm.querySelectorAll(':invalid');
+                            
+                            // Focus on first invalid field
+                            const firstInvalid = invalidFields[0];
+                            if (firstInvalid) {
+                                firstInvalid.focus();
+                                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                
+                                // Show custom validation message
+                                showFieldValidationError(firstInvalid);
+                            }
+                            
+                            // Show general validation message
+                            showFormValidationError(invalidFields.length);
+                            
+                            return false;
+                        }
+                        
                         checkoutForm.classList.add('was-validated');
-                        // Don't prevent default - let browser show validation errors
                     } else {
-                        console.log('[Checkout] Form is valid, submitting...');
+                        e.preventDefault();
+                        return false;
                     }
                 });
+            }
+            
+            // Function to show field-specific validation error
+            function showFieldValidationError(field) {
+                const fieldName = field.getAttribute('name') || field.id;
+                const label = document.querySelector(`label[for="${field.id}"]`) || 
+                             field.closest('.form-group')?.querySelector('label');
+                const labelText = label ? label.textContent.trim().replace('*', '').trim() : fieldName;
+                
+                let errorMessage = field.validationMessage || 'Please fill in this field correctly.';
+                
+                // Customize error message based on validation state
+                if (field.validity.valueMissing) {
+                    errorMessage = `${labelText} is required.`;
+                } else if (field.validity.patternMismatch) {
+                    if (field.type === 'tel') {
+                        errorMessage = `Please enter a valid phone number (e.g., 0211234567).`;
+                    } else if (field.name && field.name.includes('zip_code')) {
+                        errorMessage = `Please enter a valid 4-digit postcode.`;
+                    } else {
+                        errorMessage = `${labelText} format is invalid.`;
+                    }
+                } else if (field.validity.typeMismatch) {
+                    if (field.type === 'email') {
+                        errorMessage = `Please enter a valid email address.`;
+                    } else {
+                        errorMessage = `${labelText} format is invalid.`;
+                    }
+                } else if (field.validity.tooShort) {
+                    errorMessage = `${labelText} is too short (minimum ${field.minLength} characters).`;
+                } else if (field.validity.tooLong) {
+                    errorMessage = `${labelText} is too long (maximum ${field.maxLength} characters).`;
+                }
+                
+                // Remove existing error message for this field
+                const existingError = field.closest('.form-group')?.querySelector('.field-error-message');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Create and show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'field-error-message';
+                errorDiv.style.cssText = 'color: #dc3545; font-size: 0.875rem; margin-top: 0.25rem; display: block;';
+                errorDiv.textContent = errorMessage;
+                
+                const formGroup = field.closest('.form-group');
+                if (formGroup) {
+                    formGroup.appendChild(errorDiv);
+                } else {
+                    field.parentNode.insertBefore(errorDiv, field.nextSibling);
+                }
+                
+                // Add error class to field
+                field.classList.add('is-invalid');
+                
+                // Remove error after field is corrected
+                const removeError = () => {
+                    if (field.validity.valid) {
+                        field.classList.remove('is-invalid');
+                        const errorMsg = field.closest('.form-group')?.querySelector('.field-error-message');
+                        if (errorMsg) {
+                            errorMsg.remove();
+                        }
+                    }
+                };
+                
+                field.addEventListener('input', removeError, { once: true });
+                field.addEventListener('change', removeError, { once: true });
+            }
+            
+            // Function to show general form validation error
+            function showFormValidationError(invalidCount) {
+                // Remove existing general error message
+                const existingError = document.querySelector('.form-general-error');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Create general error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'form-general-error alert alert-danger';
+                errorDiv.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; border-radius: 4px;';
+                errorDiv.innerHTML = `<strong><i class="fas fa-exclamation-circle"></i> Please fix the following errors:</strong><br>There ${invalidCount === 1 ? 'is' : 'are'} ${invalidCount} invalid field${invalidCount === 1 ? '' : 's'} in the form. Please check the highlighted fields above.`;
+                
+                // Insert at the top of the form
+                const formHeader = checkoutForm.querySelector('.checkout-block__header-compact') || 
+                                 checkoutForm.querySelector('.checkout-block') ||
+                                 checkoutForm.firstElementChild;
+                if (formHeader && formHeader.parentNode) {
+                    formHeader.parentNode.insertBefore(errorDiv, formHeader);
+                } else {
+                    checkoutForm.insertBefore(errorDiv, checkoutForm.firstChild);
+                }
+                
+                // Scroll to error message
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // Auto-remove after 10 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 10000);
             }
             
             if (window.FormSubmissionHandler && checkoutForm) {
@@ -344,7 +499,33 @@
             
             if (checkoutForm) {
                 checkoutForm.addEventListener('submit', function(e) {
-                    console.log('[Checkout] Form submit event triggered');
+                    // Ensure billing fields are properly set before validation
+                    const billingCheckbox = document.getElementById('billingDifferent');
+                    
+                    if (billingCheckbox && typeof CheckoutFormHandler !== 'undefined') {
+                        const handler = new CheckoutFormHandler();
+                        handler.setBillingFieldsRequired(billingCheckbox.checked);
+                    }
+                    
+                    // Only proceed if form is valid (validation is handled by initFormValidation)
+                    const isValid = checkoutForm.checkValidity();
+                    
+                    if (!isValid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        checkoutForm.classList.add('was-validated');
+                        
+                        // Find invalid fields
+                        const invalidFields = checkoutForm.querySelectorAll(':invalid');
+                        
+                        // Focus on first invalid field
+                        const firstInvalid = invalidFields[0];
+                        if (firstInvalid) {
+                            firstInvalid.focus();
+                            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        return false;
+                    }
                     
                     if (window.Analytics && window.Analytics.isEnabled()) {
                         const cartData = {

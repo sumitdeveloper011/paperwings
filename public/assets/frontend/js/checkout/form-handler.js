@@ -18,6 +18,9 @@ class CheckoutFormHandler {
         const billingSection = document.getElementById('billingAddressSection');
 
         if (billingCheckbox && billingSection) {
+            // Set initial state
+            this.setBillingFieldsRequired(billingCheckbox.checked);
+            
             billingCheckbox.addEventListener('change', () => {
                 if (billingCheckbox.checked) {
                     billingSection.style.display = 'block';
@@ -33,12 +36,27 @@ class CheckoutFormHandler {
 
     setBillingFieldsRequired(required) {
         const billingSection = document.getElementById('billingAddressSection');
-        if (!billingSection) return;
+        if (!billingSection) {
+            console.warn('[CheckoutFormHandler] Billing section not found');
+            return;
+        }
 
         const fields = billingSection.querySelectorAll('input, select, textarea');
+        
         fields.forEach(field => {
             if (field.name && field.name.startsWith('billing_')) {
                 field.required = required;
+                
+                // Remove pattern validation if field is not required (to allow empty values)
+                if (!required && field.hasAttribute('pattern')) {
+                    field.removeAttribute('pattern');
+                    field.removeAttribute('minlength');
+                } else if (required && field.type === 'tel' && !field.hasAttribute('pattern')) {
+                    // Add pattern back if required and it's a phone field
+                    field.setAttribute('pattern', '[\\d\\+\\s\\-\\(\\)]+');
+                    field.setAttribute('minlength', '8');
+                    field.setAttribute('maxlength', '20');
+                }
             }
         });
     }
@@ -186,14 +204,46 @@ class CheckoutFormHandler {
 
     initFormValidation() {
         const form = document.getElementById('checkoutForm');
-        if (!form) return;
+        if (!form) {
+            return;
+        }
+
+        // Check if listener is already attached
+        if (form.dataset.validationInitialized === 'true') {
+            return;
+        }
+
+        form.dataset.validationInitialized = 'true';
 
         form.addEventListener('submit', (e) => {
-            if (!form.checkValidity()) {
+            // Ensure billing fields are properly set as required/not required before validation
+            const billingCheckbox = document.getElementById('billingDifferent');
+            
+            if (billingCheckbox) {
+                this.setBillingFieldsRequired(billingCheckbox.checked);
+            }
+            
+            const isValid = form.checkValidity();
+            
+            if (!isValid) {
                 e.preventDefault();
                 e.stopPropagation();
+                form.classList.add('was-validated');
+                
+                // Find all invalid fields
+                const invalidFields = form.querySelectorAll(':invalid');
+                
+                // Focus on first invalid field
+                const firstInvalid = invalidFields[0];
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                return false;
+            } else {
+                form.classList.add('was-validated');
             }
-            form.classList.add('was-validated');
         }, false);
     }
 }

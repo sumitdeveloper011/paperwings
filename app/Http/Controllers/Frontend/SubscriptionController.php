@@ -16,7 +16,7 @@ class SubscriptionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|max:255',
+            'email' => 'required|email:dns|max:255',
         ], [
             'email.required' => 'Email address is required.',
             'email.email' => 'Please enter a valid email address.',

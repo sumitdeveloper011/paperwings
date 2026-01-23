@@ -226,6 +226,20 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+}
+
+.cart-sidebar-item__image img.loaded,
+.wishlist-sidebar-item__image img.loaded,
+.cart-item__image img.loaded {
+    opacity: 1;
+}
+
+.cart-sidebar-item__image .skeleton-small-image.hidden,
+.wishlist-sidebar-item__image .skeleton-small-image.hidden,
+.cart-item__image .skeleton-small-image.hidden {
+    display: none !important;
 }
 
 /* Category cards */

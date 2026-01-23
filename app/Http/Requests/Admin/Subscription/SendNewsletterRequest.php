@@ -18,7 +18,7 @@ class SendNewsletterRequest extends FormRequest
             'body' => 'required|string',
             'email_template_id' => 'nullable|exists:email_templates,id',
             'send_to' => 'required|in:all,active',
-            'test_email' => 'nullable|email',
+            'test_email' => 'nullable|email:dns',
         ];
     }
 

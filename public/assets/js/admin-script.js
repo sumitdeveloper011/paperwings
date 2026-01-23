@@ -331,15 +331,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Toggle submenu on click
+    // Toggle submenu on click (accordion behavior - close others when opening one)
     const submenuToggles = document.querySelectorAll('.sidebar-link--has-submenu');
     submenuToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
             const parentItem = this.closest('.sidebar-item--has-submenu');
             if (parentItem) {
-                parentItem.classList.toggle('open');
-                parentItem.classList.toggle('active');
+                const isCurrentlyOpen = parentItem.classList.contains('open');
+                
+                // Close all other submenus
+                sidebarItems.forEach(item => {
+                    if (item !== parentItem) {
+                        item.classList.remove('open', 'active');
+                    }
+                });
+                
+                // Toggle current submenu
+                if (isCurrentlyOpen) {
+                    parentItem.classList.remove('open', 'active');
+                } else {
+                    parentItem.classList.add('open', 'active');
+                }
             }
         });
     });

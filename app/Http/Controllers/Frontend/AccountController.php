@@ -9,12 +9,15 @@ use App\Models\User;
 use App\Models\UserAddress;
 use App\Models\UserDetail;
 use App\Services\NZPostAddressService;
+use App\Services\CartService;
+use App\Mail\OrderCancelledMail;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -27,11 +30,16 @@ class AccountController extends Controller
 {
     protected ImageService $imageService;
     protected NZPostAddressService $nzPostService;
+    protected CartService $cartService;
 
-    public function __construct(ImageService $imageService, NZPostAddressService $nzPostService)
-    {
+    public function __construct(
+        ImageService $imageService, 
+        NZPostAddressService $nzPostService,
+        CartService $cartService
+    ) {
         $this->imageService = $imageService;
         $this->nzPostService = $nzPostService;
+        $this->cartService = $cartService;
     }
 
     // Display the account page (redirects to view profile)
@@ -84,7 +92,7 @@ class AccountController extends Controller
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email:dns|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|string|in:male,female,other,prefer-not-to-say',
@@ -278,7 +286,7 @@ class AccountController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|email:dns|max:255',
             'street_address' => 'required|string|max:500',
             'suburb' => 'nullable|string|max:255',
             'city' => 'required|string|max:255',
@@ -430,7 +438,7 @@ class AccountController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|email:dns|max:255',
             'street_address' => 'required|string|max:500',
             'suburb' => 'nullable|string|max:255',
             'city' => 'required|string|max:255',
@@ -683,6 +691,184 @@ class AccountController extends Controller
                 'success' => false,
                 'message' => 'Failed to get address details'
             ], 500);
+        }
+    }
+
+    /**
+     * Reorder - Add all items from a previous order to cart
+     */
+    public function reorder(string $orderNumber): JsonResponse
+    {
+        try {
+            if (!Auth::check()) {
+                return $this->jsonError('Please login to access this feature.', 'UNAUTHORIZED', null, 401);
+            }
+
+            $user = Auth::user();
+            
+            $order = Order::where('order_number', $orderNumber)
+                ->where('user_id', $user->id)
+                ->with(['items.product'])
+                ->first();
+
+            if (!$order) {
+                return $this->jsonError('Order not found.', 'ORDER_NOT_FOUND', null, 404);
+            }
+
+            if (!$order->items || $order->items->isEmpty()) {
+                return $this->jsonError('This order has no items to reorder.', 'NO_ITEMS', null, 400);
+            }
+
+            $productIds = [];
+            $quantities = [];
+            $failedItems = [];
+
+            foreach ($order->items as $item) {
+                if (!$item->product_id) {
+                    $failedItems[] = [
+                        'product_name' => $item->product_name ?? 'Unknown Product',
+                        'reason' => 'Product no longer exists'
+                    ];
+                    continue;
+                }
+
+                $product = $item->product;
+                if (!$product || !$product->status) {
+                    $failedItems[] = [
+                        'product_name' => $item->product_name ?? 'Unknown Product',
+                        'reason' => 'Product is no longer available'
+                    ];
+                    continue;
+                }
+
+                $productIds[] = $item->product_id;
+                $quantities[] = $item->quantity;
+            }
+
+            if (empty($productIds)) {
+                return $this->jsonError('No available products found in this order.', 'NO_AVAILABLE_PRODUCTS', [
+                    'failed_items' => $failedItems
+                ], 400);
+            }
+
+            $cartIdentifier = $this->cartService->getCartIdentifier();
+            $results = $this->cartService->addMultipleToCart(
+                $productIds,
+                $quantities,
+                $cartIdentifier
+            );
+
+            $successCount = count($results['success']);
+            $totalFailedCount = count($results['failed']) + count($failedItems);
+
+            if ($successCount === 0) {
+                return $this->jsonError('Failed to add items to cart. Please try again.', 'CART_ADD_FAILED', [
+                    'failed_items' => array_merge($failedItems, $results['failed'])
+                ], 400);
+            }
+
+            $message = $successCount > 0 
+                ? ($totalFailedCount > 0 
+                    ? "{$successCount} item(s) added to cart successfully. {$totalFailedCount} item(s) could not be added."
+                    : "All {$successCount} item(s) added to cart successfully!")
+                : 'Failed to add items to cart.';
+
+            return $this->jsonSuccess($message, [
+                'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'results' => [
+                    'success' => $results['success'],
+                    'failed' => array_merge($failedItems, $results['failed'])
+                ],
+                'redirect_url' => route('cart.index')
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Reorder failed', [
+                'order_number' => $orderNumber,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->jsonError('Failed to reorder. Please try again.', 'REORDER_ERROR', null, 500);
+        }
+    }
+
+    /**
+     * Cancel order - Allow users to cancel their own orders
+     */
+    public function cancelOrder(string $orderNumber): JsonResponse
+    {
+        try {
+            if (!Auth::check()) {
+                return $this->jsonError('Please login to access this feature.', 'UNAUTHORIZED', null, 401);
+            }
+
+            $user = Auth::user();
+            
+            $order = Order::where('order_number', $orderNumber)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$order) {
+                return $this->jsonError('Order not found.', 'ORDER_NOT_FOUND', null, 404);
+            }
+
+            // Only allow cancellation for pending or processing orders
+            if (!in_array($order->status, ['pending', 'processing'])) {
+                return $this->jsonError(
+                    'This order cannot be cancelled. Only pending or processing orders can be cancelled.',
+                    'CANCEL_NOT_ALLOWED',
+                    ['current_status' => $order->status],
+                    400
+                );
+            }
+
+            // Update order status
+            $oldStatus = $order->status;
+            $order->update([
+                'status' => 'cancelled'
+            ]);
+
+            Log::info('Order cancelled by user', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'old_status' => $oldStatus,
+                'user_id' => $user->id
+            ]);
+
+            // Send cancellation email
+            try {
+                Mail::to($order->billing_email)->queue(new OrderCancelledMail($order));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order cancellation email', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            $refundMessage = '';
+            if ($order->payment_status === 'paid') {
+                $refundMessage = ' A refund will be processed to your original payment method within 5-7 business days.';
+            }
+
+            return $this->jsonSuccess(
+                'Order cancelled successfully.' . $refundMessage,
+                [
+                    'order_number' => $order->order_number,
+                    'status' => $order->status
+                ]
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Cancel order failed', [
+                'order_number' => $orderNumber,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->jsonError('Failed to cancel order. Please try again or contact support.', 'CANCEL_ERROR', null, 500);
         }
     }
 }

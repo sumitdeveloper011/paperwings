@@ -2,9 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\SettingHelper;
-use App\Services\ApiKeyEncryptionService;
-use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -19,11 +16,11 @@ class InstagramService
 
     public function __construct()
     {
-        // Get from database with .env fallback (decryption handled by SettingHelper)
-        $this->appId = SettingHelper::get('instagram_app_id', env('INSTAGRAM_APP_ID'));
-        $this->appSecret = SettingHelper::get('instagram_app_secret', env('INSTAGRAM_APP_SECRET'));
-        $this->accessToken = SettingHelper::get('instagram_access_token', env('INSTAGRAM_ACCESS_TOKEN'));
-        $this->userId = SettingHelper::get('instagram_user_id', env('INSTAGRAM_USER_ID'));
+        // Read from .env config
+        $this->appId = env('INSTAGRAM_APP_ID');
+        $this->appSecret = env('INSTAGRAM_APP_SECRET');
+        $this->accessToken = env('INSTAGRAM_ACCESS_TOKEN');
+        $this->userId = env('INSTAGRAM_USER_ID');
     }
 
     // Check if Instagram API is configured
@@ -164,13 +161,11 @@ class InstagramService
                 $data = $response->json();
                 
                 if (isset($data['access_token'])) {
-                    // Update the access token in settings (with encryption)
-                    $encryptedValue = ApiKeyEncryptionService::encrypt('instagram_access_token', $data['access_token']);
-                    Setting::updateOrCreate(
-                        ['key' => 'instagram_access_token'],
-                        ['value' => $encryptedValue]
-                    );
+                    // Update the access token (should be updated in .env file)
                     $this->accessToken = $data['access_token'];
+                    Log::info('Instagram access token refreshed. Please update INSTAGRAM_ACCESS_TOKEN in your .env file.', [
+                        'new_token_preview' => substr($data['access_token'], 0, 10) . '...'
+                    ]);
                     
                     Cache::forget("instagram_media_{$this->userId}_*");
                     

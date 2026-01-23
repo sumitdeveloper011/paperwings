@@ -19,7 +19,18 @@ class RegisterRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\-\']+$/'],
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\-\']+$/'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => [
+                'required', 
+                'string', 
+                'email:dns', 
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    $existingUser = \App\Models\User::where('email', $value)->first();
+                    if ($existingUser && $existingUser->hasVerifiedEmail()) {
+                        $fail('This email address is already registered and verified. Please log in to your account.');
+                    }
+                }
+            ],
             'password' => [
                 'required',
                 'string',

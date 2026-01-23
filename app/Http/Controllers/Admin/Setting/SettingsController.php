@@ -7,7 +7,6 @@ use App\Models\Setting;
 use App\Helpers\SettingHelper;
 use App\Helpers\CacheHelper;
 use App\Services\ImageService;
-use App\Services\ApiKeyEncryptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,7 +62,7 @@ class SettingsController extends Controller
             'address' => 'required|string|max:500',
             'google_map' => 'required|string',
             'emails' => 'nullable|array',
-            'emails.*' => 'nullable|email|max:255',
+            'emails.*' => 'nullable|email:dns|max:255',
             'phones' => 'nullable|array',
             'phones.*' => 'nullable|string|max:20',
             'social_facebook' => 'nullable|url|max:255',
@@ -79,7 +78,7 @@ class SettingsController extends Controller
             'google_analytics_enabled' => 'nullable|in:0,1',
             'google_analytics_ecommerce' => 'nullable|in:0,1',
             'notification_email_recipients' => 'nullable|array',
-            'notification_email_recipients.*' => 'nullable|email|max:255',
+            'notification_email_recipients.*' => 'nullable|email:dns|max:255',
             'notification_email_preferences' => 'nullable|array',
             'notification_email_preferences.*' => 'nullable|in:0,1',
         ], [
@@ -247,12 +246,9 @@ class SettingsController extends Controller
     // Update or create a setting
     private function updateSetting(string $key, ?string $value): void
     {
-        // Encrypt sensitive keys before storing
-        $encryptedValue = ApiKeyEncryptionService::encrypt($key, $value);
-        
         Setting::updateOrCreate(
             ['key' => $key],
-            ['value' => $encryptedValue]
+            ['value' => $value]
         );
     }
 }

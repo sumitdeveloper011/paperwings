@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Helpers\SettingHelper;
+use App\Mail\OrderConfirmationMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Stripe;
 use Stripe\Webhook;
 use Stripe\Charge;
@@ -19,9 +20,9 @@ class StripeWebhookController extends Controller
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
 
-        // Read Stripe keys from database settings (with .env fallback)
-        $endpointSecret = SettingHelper::get('stripe_webhook_secret', config('services.stripe.webhook_secret'));
-        $stripeSecret = SettingHelper::get('stripe_secret', config('services.stripe.secret'));
+        // Read Stripe keys from .env config
+        $endpointSecret = config('services.stripe.webhook_secret');
+        $stripeSecret = config('services.stripe.secret');
 
         if (!$endpointSecret) {
             Log::error('Stripe webhook secret not configured');
@@ -66,6 +67,22 @@ class StripeWebhookController extends Controller
 
             case 'charge.refunded':
                 $this->handleChargeRefunded($event->data->object);
+                break;
+
+            case 'charge.dispute.created':
+                $this->handleChargeDisputeCreated($event->data->object);
+                break;
+
+            case 'charge.dispute.closed':
+                $this->handleChargeDisputeClosed($event->data->object);
+                break;
+
+            case 'payment_intent.requires_action':
+                $this->handlePaymentIntentRequiresAction($event->data->object);
+                break;
+
+            case 'payment_intent.created':
+                $this->handlePaymentIntentCreated($event->data->object);
                 break;
 
             default:
@@ -173,6 +190,25 @@ class StripeWebhookController extends Controller
             }
 
             $order->update($updateData);
+
+            // Reload order with relationships for email
+            $order->load(['items.product', 'billingRegion', 'shippingRegion']);
+
+            // Send order confirmation email after payment is confirmed
+            try {
+                if (app()->environment('local', 'development')) {
+                    Mail::to($order->billing_email)->send(new OrderConfirmationMail($order));
+                } else {
+                    Mail::to($order->billing_email)->queue(new OrderConfirmationMail($order));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send order confirmation email', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
 
             Log::info('Order updated after payment success', [
                 'order_id' => $order->id,
@@ -283,6 +319,155 @@ class StripeWebhookController extends Controller
                 ]);
             }
         }
+    }
+
+    // Handle charge dispute created
+    protected function handleChargeDisputeCreated($dispute)
+    {
+        Log::warning('Charge dispute created', [
+            'dispute_id' => $dispute->id,
+            'charge_id' => $dispute->charge ?? null,
+            'amount' => $dispute->amount ?? 0,
+            'reason' => $dispute->reason ?? null,
+            'status' => $dispute->status ?? null,
+        ]);
+
+        if ($dispute->charge) {
+            $order = Order::where('stripe_charge_id', $dispute->charge)->first();
+
+            if ($order) {
+                $disputeAmount = ($dispute->amount ?? 0) / 100; // Convert from cents
+                $disputeReason = $dispute->reason ?? 'Unknown';
+                
+                // Map Stripe dispute reasons to readable format
+                $reasonMap = [
+                    'bank_cannot_process' => 'Bank cannot process',
+                    'check_returned' => 'Check returned',
+                    'credit_not_processed' => 'Credit not processed',
+                    'customer_initiated' => 'Customer initiated',
+                    'debit_not_authorized' => 'Debit not authorized',
+                    'duplicate' => 'Duplicate',
+                    'fraudulent' => 'Fraudulent',
+                    'general' => 'General',
+                    'incorrect_account_details' => 'Incorrect account details',
+                    'insufficient_funds' => 'Insufficient funds',
+                    'product_not_received' => 'Product not received',
+                    'product_unacceptable' => 'Product unacceptable',
+                    'subscription_canceled' => 'Subscription canceled',
+                    'unrecognized' => 'Unrecognized',
+                ];
+
+                $disputeReasonLabel = $reasonMap[$disputeReason] ?? ucfirst(str_replace('_', ' ', $disputeReason));
+
+                $order->update([
+                    'dispute_status' => 'open',
+                    'dispute_reason' => $disputeReasonLabel . ' (Amount: $' . number_format($disputeAmount, 2) . ')',
+                ]);
+
+                Log::info('Order updated after dispute created', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'dispute_id' => $dispute->id,
+                    'dispute_amount' => $disputeAmount,
+                    'dispute_reason' => $disputeReasonLabel,
+                ]);
+            }
+        }
+    }
+
+    // Handle charge dispute closed
+    protected function handleChargeDisputeClosed($dispute)
+    {
+        Log::info('Charge dispute closed', [
+            'dispute_id' => $dispute->id,
+            'charge_id' => $dispute->charge ?? null,
+            'status' => $dispute->status ?? null,
+            'outcome' => $dispute->outcome->type ?? null,
+        ]);
+
+        if ($dispute->charge) {
+            $order = Order::where('stripe_charge_id', $dispute->charge)->first();
+
+            if ($order) {
+                $disputeStatus = $dispute->status ?? 'closed';
+                $outcomeType = $dispute->outcome->type ?? null;
+                $outcomeReason = $dispute->outcome->reason ?? null;
+
+                // Determine final dispute status
+                $finalStatus = 'closed';
+                if ($outcomeType === 'lost' || $outcomeType === 'warning_closed') {
+                    $finalStatus = 'lost';
+                } elseif ($outcomeType === 'won') {
+                    $finalStatus = 'won';
+                }
+
+                $disputeReasonUpdate = $order->dispute_reason;
+                if ($outcomeReason) {
+                    $disputeReasonUpdate .= ' | Outcome: ' . ucfirst(str_replace('_', ' ', $outcomeReason));
+                }
+
+                $order->update([
+                    'dispute_status' => $finalStatus,
+                    'dispute_reason' => $disputeReasonUpdate,
+                ]);
+
+                Log::info('Order updated after dispute closed', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'dispute_id' => $dispute->id,
+                    'final_status' => $finalStatus,
+                    'outcome_type' => $outcomeType,
+                ]);
+            }
+        }
+    }
+
+    // Handle payment intent requires action (e.g., 3D Secure)
+    protected function handlePaymentIntentRequiresAction($paymentIntent)
+    {
+        Log::info('Payment intent requires action', [
+            'payment_intent_id' => $paymentIntent->id,
+            'status' => $paymentIntent->status ?? null,
+            'next_action' => $paymentIntent->next_action->type ?? null,
+        ]);
+
+        $order = Order::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+
+        if ($order) {
+            $actionType = $paymentIntent->next_action->type ?? 'unknown';
+            $actionNote = 'Payment requires additional action: ' . ucfirst(str_replace('_', ' ', $actionType));
+
+            // Update order notes to track the action requirement
+            $existingNotes = $order->notes ?? '';
+            $updatedNotes = $existingNotes 
+                ? $existingNotes . "\n\n" . date('Y-m-d H:i:s') . ' - ' . $actionNote
+                : date('Y-m-d H:i:s') . ' - ' . $actionNote;
+
+            $order->update([
+                'notes' => $updatedNotes,
+            ]);
+
+            Log::info('Order updated after payment requires action', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'action_type' => $actionType,
+            ]);
+        }
+    }
+
+    // Handle payment intent created
+    protected function handlePaymentIntentCreated($paymentIntent)
+    {
+        Log::info('Payment intent created', [
+            'payment_intent_id' => $paymentIntent->id,
+            'amount' => $paymentIntent->amount ?? 0,
+            'currency' => $paymentIntent->currency ?? null,
+            'status' => $paymentIntent->status ?? null,
+        ]);
+
+        // Payment intent created is mainly for logging
+        // The order is already created in CheckoutController before payment intent
+        // This webhook is useful for tracking and analytics
     }
 }
 

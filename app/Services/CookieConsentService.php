@@ -58,7 +58,7 @@ class CookieConsentService
             $this->cookieExpiry,
             '/',
             null,
-            true,
+            config('session.secure', false),
             true,
             false,
             'Lax'

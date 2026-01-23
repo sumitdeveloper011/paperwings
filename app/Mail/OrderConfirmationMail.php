@@ -66,17 +66,16 @@ class OrderConfirmationMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_confirmation');
 
-        if ($template) {
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'order_total' => '$' . number_format($this->order->total, 2),
-                'app_name' => config('app.name'),
-            ];
-            $subject = $emailTemplateService->getSubject('order_confirmation', $variables);
-        } else {
-            $subject = 'Order Confirmation - Order #' . $this->order->order_number;
+        if (!$template) {
+            throw new \Exception('Order confirmation template not found in database');
         }
+
+        $variables = [
+            'order_number' => $this->order->order_number,
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'app_name' => config('app.name'),
+        ];
+        $subject = $emailTemplateService->getSubject('order_confirmation', $variables);
 
         return new Envelope(
             subject: $subject,
@@ -89,63 +88,175 @@ class OrderConfirmationMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_confirmation');
 
-        if ($template) {
-            $settings = SettingHelper::all();
-            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
-
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'order_total' => '$' . number_format($this->order->total, 2),
-                'app_name' => config('app.name'),
-            ];
-
-            $body = $emailTemplateService->getBody('order_confirmation', $variables);
-
-            return new Content(
-                html: $body,
-            );
+        if (!$template) {
+            throw new \Exception('Order confirmation template not found in database');
         }
 
-        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
 
+        // Get logo URL - prefer thumbnail for emails
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = [];
-        if (!empty($settings['social_facebook'])) {
-            $socialLinks['facebook'] = $settings['social_facebook'];
-        }
-        if (!empty($settings['social_instagram'])) {
-            $socialLinks['instagram'] = $settings['social_instagram'];
-        }
-        if (!empty($settings['social_twitter'])) {
-            $socialLinks['twitter'] = $settings['social_twitter'];
-        }
-        if (!empty($settings['social_linkedin'])) {
-            $socialLinks['linkedin'] = $settings['social_linkedin'];
+        $orderItemsHtml = $this->buildOrderItemsHtml();
+        $orderDate = $this->order->created_at->format('F j, Y');
+        $orderStatus = ucfirst($this->order->status ?? 'Pending');
+        $paymentStatus = ucfirst($this->order->payment_status ?? 'Pending');
+
+        // Build conditional rows for order totals
+        $couponDiscountRow = '';
+        if ($this->order->discount && $this->order->discount > 0) {
+            $couponDiscountRow = '<tr>
+                <td style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                        Coupon
+                    </p>
+                </td>
+                <td align="right" style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                        $' . number_format($this->order->discount, 2) . '
+                    </p>
+                </td>
+            </tr>';
         }
 
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+        $shippingCostRow = '';
+        if ($this->order->shipping && $this->order->shipping > 0) {
+            $shippingCostRow = '<tr>
+                <td style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                        Shipping
+                    </p>
+                </td>
+                <td align="right" style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                        $' . number_format($this->order->shipping, 2) . '
+                    </p>
+                </td>
+            </tr>';
+        }
 
-        $orderViewUrl = route('account.order-details', $this->order->order_number);
+        $stripeFeeRow = '';
+        if ($this->order->stripe_fee && $this->order->stripe_fee > 0) {
+            $stripeFeeRow = '<tr>
+                <td style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                        Stripe Fee
+                    </p>
+                </td>
+                <td align="right" style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                        $' . number_format($this->order->stripe_fee, 2) . '
+                    </p>
+                </td>
+            </tr>';
+        }
+
+        $platformFeeRow = '';
+        if ($this->order->platform_fee && $this->order->platform_fee > 0) {
+            $platformFeeRow = '<tr>
+                <td style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                        Platform Fee
+                    </p>
+                </td>
+                <td align="right" style="padding-bottom: 10px;">
+                    <p style="margin: 0; color: #000000; font-size: 14px; font-weight: 400;">
+                        $' . number_format($this->order->platform_fee, 2) . '
+                    </p>
+                </td>
+            </tr>';
+        }
+
+        $paymentCardInfo = '';
+        if ($this->order->stripe_payment_method_id) {
+            $paymentCardInfo = '<br>Card ending in ' . substr($this->order->stripe_payment_method_id, -4);
+        }
+
+        $shippingAddressLine2Break = !empty($this->order->shipping_suburb) ? ($this->order->shipping_suburb . '<br>') : '';
+        $billingAddressLine2Break = !empty($this->order->billing_suburb) ? ($this->order->billing_suburb . '<br>') : '';
+
+        $variables = [
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'order_number' => $this->order->order_number,
+            'order_date' => $orderDate,
+            'order_status' => $orderStatus,
+            'payment_status' => $paymentStatus,
+            'order_items' => $orderItemsHtml,
+            'subtotal' => number_format($this->order->subtotal ?? 0, 2),
+            'coupon_discount_row' => $couponDiscountRow,
+            'shipping_cost_row' => $shippingCostRow,
+            'stripe_fee_row' => $stripeFeeRow,
+            'platform_fee_row' => $platformFeeRow,
+            'total' => number_format($this->order->total ?? 0, 2),
+            'shipping_name' => $this->order->shipping_first_name . ' ' . $this->order->shipping_last_name,
+            'shipping_address_line1' => $this->order->shipping_street_address ?? '',
+            'shipping_address_line2_break' => $shippingAddressLine2Break,
+            'shipping_city' => $this->order->shipping_city ?? '',
+            'shipping_state' => $this->order->shippingRegion->name ?? '',
+            'shipping_zip' => $this->order->shipping_zip_code ?? '',
+            'shipping_country' => $this->order->shipping_country ?? '',
+            'billing_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'billing_address_line1' => $this->order->billing_street_address ?? '',
+            'billing_address_line2_break' => $billingAddressLine2Break,
+            'billing_city' => $this->order->billing_city ?? '',
+            'billing_state' => $this->order->billingRegion->name ?? '',
+            'billing_zip' => $this->order->billing_zip_code ?? '',
+            'billing_country' => $this->order->billing_country ?? '',
+            'payment_method' => ucfirst($this->order->payment_method ?? 'Credit Card'),
+            'payment_card_info' => $paymentCardInfo,
+            'order_view_url' => route('account.order-details', $this->order->order_number),
+            'app_name' => config('app.name'),
+        ];
+
+        $body = $emailTemplateService->getBody('order_confirmation', $variables);
 
         return new Content(
-            view: 'emails.order-confirmation',
+            view: 'emails.template-body',
             with: [
-                'order' => $this->order,
+                'body' => $body,
                 'logoUrl' => $logoUrl,
+                'headerSubtitle' => 'ORDER CONFIRMATION',
+                'headerTitle' => 'Thank You For Your Order!',
                 'contactPhone' => $contactPhone,
                 'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
-                'orderViewUrl' => $orderViewUrl,
+                'currentYear' => date('Y'),
+                'appName' => config('app.name'),
             ],
         );
+
     }
 
     // Get the attachments for the message
@@ -154,35 +265,43 @@ class OrderConfirmationMail extends Mailable
         // Fetch settings from database for PDF
         $settings = SettingHelper::all();
 
-        // Get logo URL
+        // Get logo URL - prefer thumbnail for PDF
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
         // Get contact phone from database
-        $contactPhone = null;
-        if (isset($settings['phones']) && is_string($settings['phones'])) {
-            $phones = json_decode($settings['phones'], true) ?? [];
-            $contactPhone = !empty($phones) ? $phones[0] : null;
-        } elseif (isset($settings['phones']) && is_array($settings['phones'])) {
-            $contactPhone = !empty($settings['phones']) ? $settings['phones'][0] : null;
-        }
-        if (empty($contactPhone)) {
-            $contactPhone = '+11 111 333 4444';
-        }
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
 
         // Get contact email from database
-        $contactEmail = null;
-        if (isset($settings['emails']) && is_string($settings['emails'])) {
-            $emails = json_decode($settings['emails'], true) ?? [];
-            $contactEmail = !empty($emails) ? $emails[0] : null;
-        } elseif (isset($settings['emails']) && is_array($settings['emails'])) {
-            $contactEmail = !empty($settings['emails']) ? $settings['emails'][0] : null;
-        }
-        if (empty($contactEmail)) {
-            $contactEmail = 'Info@YourCompany.com';
-        }
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
 
         $pdf = Pdf::loadView('emails.order-invoice-pdf', [
             'order' => $this->order,
@@ -212,5 +331,46 @@ class OrderConfirmationMail extends Mailable
                 ->as('Invoice_' . $this->order->order_number . '.pdf')
                 ->withMime('application/pdf'),
         ];
+    }
+
+    private function buildOrderItemsHtml(): string
+    {
+        $html = '';
+        $items = $this->order->items;
+
+        foreach ($items as $item) {
+            $product = $item->product;
+            $productImage = $product->main_thumbnail_url ?? $product->main_image_url ?? asset('assets/images/placeholder.jpg');
+            $productName = $item->product_name ?? ($product->name ?? 'Product');
+            $productSku = $product->sku ?? 'N/A';
+            $productQuantity = $item->quantity ?? 1;
+            $productPrice = number_format($item->price ?? 0, 2);
+
+            $html .= '<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 20px; border-bottom: 1px solid #e9ecef; padding-bottom: 20px;">
+                <tr>
+                    <td width="100" style="padding-right: 15px; vertical-align: top;">
+                        <img src="' . $productImage . '" alt="' . htmlspecialchars($productName) . '" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; display: block;" />
+                    </td>
+                    <td style="vertical-align: top;">
+                        <p style="margin: 0 0 8px 0; color: #000000; font-size: 16px; font-weight: 600;">
+                            ' . htmlspecialchars($productName) . '
+                        </p>
+                        <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px; font-weight: 400;">
+                            SKU: ' . htmlspecialchars($productSku) . '
+                        </p>
+                        <p style="margin: 0; color: #666666; font-size: 14px; font-weight: 400;">
+                            Quantity: ' . $productQuantity . '
+                        </p>
+                    </td>
+                    <td align="right" style="vertical-align: top;">
+                        <p style="margin: 0; color: #e95c67; font-size: 18px; font-weight: 700;">
+                            $' . $productPrice . '
+                        </p>
+                    </td>
+                </tr>
+            </table>';
+        }
+
+        return $html;
     }
 }

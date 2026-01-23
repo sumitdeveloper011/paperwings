@@ -72,7 +72,11 @@
                 if (videoPlayer) {
                     videoPlayer.play().catch(error => {
                         console.error('Video playback failed:', error);
-                        alert('Unable to play video. Please check your browser settings.');
+                        if (window.customAlert) {
+                            window.customAlert('Unable to play video. Please check your browser settings.', 'Error', 'error');
+                        } else {
+                            alert('Unable to play video. Please check your browser settings.');
+                        }
                     });
                 }
             } else {

@@ -26,8 +26,8 @@
                             </p>
                         </div>
                         <div class="cookie-category__toggle">
-                            <input type="checkbox" id="essentialCookies" checked disabled>
                             <label for="essentialCookies" class="cookie-toggle">
+                                <input type="checkbox" id="essentialCookies" checked disabled>
                                 <span class="cookie-toggle__slider"></span>
                             </label>
                         </div>
@@ -43,8 +43,8 @@
                             </p>
                         </div>
                         <div class="cookie-category__toggle">
-                            <input type="checkbox" id="analyticsCookies" class="cookie-preference-checkbox" data-category="analytics">
                             <label for="analyticsCookies" class="cookie-toggle">
+                                <input type="checkbox" id="analyticsCookies" class="cookie-preference-checkbox" data-category="analytics">
                                 <span class="cookie-toggle__slider"></span>
                             </label>
                         </div>
@@ -60,8 +60,8 @@
                             </p>
                         </div>
                         <div class="cookie-category__toggle">
-                            <input type="checkbox" id="marketingCookies" class="cookie-preference-checkbox" data-category="marketing">
                             <label for="marketingCookies" class="cookie-toggle">
+                                <input type="checkbox" id="marketingCookies" class="cookie-preference-checkbox" data-category="marketing">
                                 <span class="cookie-toggle__slider"></span>
                             </label>
                         </div>
@@ -77,8 +77,8 @@
                             </p>
                         </div>
                         <div class="cookie-category__toggle">
-                            <input type="checkbox" id="functionalityCookies" class="cookie-preference-checkbox" data-category="functionality">
                             <label for="functionalityCookies" class="cookie-toggle">
+                                <input type="checkbox" id="functionalityCookies" class="cookie-preference-checkbox" data-category="functionality">
                                 <span class="cookie-toggle__slider"></span>
                             </label>
                         </div>

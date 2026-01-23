@@ -35,7 +35,7 @@
                                     <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #007bff; margin-bottom: 15px;"></i>
                                     <p style="color: #6c757d; font-size: 0.95rem; margin: 0;">Loading payment options...</p>
                                 </div>
-                                <div id="payment-element" style="display: none;"></div>
+                                <div id="payment-element" style="display: none; min-height: 200px;"></div>
                                 <div id="payment-errors" role="alert" style="color: #dc3545; margin-top: 10px; font-size: 0.9rem; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; display: none;"></div>
                             </div>
 
@@ -112,6 +112,8 @@
 
             new StripePaymentHandler({
                 stripeKey: @json($stripePublishableKey),
+                clientSecret: @json($clientSecret ?? null),
+                paymentIntentId: @json($paymentIntentId ?? null),
                 createPaymentIntentUrl: '{{ route("checkout.create-payment-intent") }}',
                 csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 total: {{ $totals['final_total'] ?? $totals['total'] }}

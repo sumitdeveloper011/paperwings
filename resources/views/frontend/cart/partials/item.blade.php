@@ -12,7 +12,8 @@
                          alt="{{ $item->product->name }}"
                          width="80"
                          height="80"
-                         loading="lazy">
+                         loading="lazy"
+                         onerror="this.src='{{ asset('assets/images/placeholder.jpg') }}';">
                 @else
                     <img src="{{ asset('assets/images/placeholder.jpg') }}"
                          alt="{{ $item->product->name }}"

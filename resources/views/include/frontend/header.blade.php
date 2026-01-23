@@ -7,7 +7,7 @@
                         <div class="header__utility-contact">
                             @php
                                 $phone = isset($headerPhone) && $headerPhone ? $headerPhone : '(+880) 123 4567';
-                                $email = isset($headerEmail) && $headerEmail ? $headerEmail : 'info@paperwings.com';
+                                $email = isset($headerEmail) && $headerEmail ? $headerEmail : 'info@paperwings.co.nz';
                             @endphp
                             <a href="tel:{{ preg_replace('/[^0-9+]/', '', $phone) }}" class="header__utility-item">
                                 <i class="fas fa-phone"></i>

@@ -67,12 +67,21 @@
                                                 View Details
                                             </a>
                                             @if(($order->status ?? 'pending') == 'pending' || ($order->status ?? 'pending') == 'processing')
-                                            <button class="btn btn-outline-secondary btn-sm">
+                                            <button 
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm order-action-btn" 
+                                                data-action="cancel"
+                                                data-order-number="{{ $order->order_number }}"
+                                                data-order-status="{{ $order->status ?? 'pending' }}">
                                                 <i class="fas fa-times"></i>
                                                 Cancel Order
                                             </button>
                                             @else
-                                            <button class="btn btn-outline-secondary btn-sm">
+                                            <button 
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm order-action-btn" 
+                                                data-action="reorder"
+                                                data-order-number="{{ $order->order_number }}">
                                                 <i class="fas fa-redo"></i>
                                                 Reorder
                                             </button>

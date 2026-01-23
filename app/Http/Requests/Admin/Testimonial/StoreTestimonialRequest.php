@@ -15,7 +15,7 @@ class StoreTestimonialRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|email:dns|max:255',
             'review' => 'required|string',
             'rating' => 'required|integer|min:1|max:5',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048|dimensions:ratio=1/1',

@@ -57,18 +57,16 @@ class OrderShippedMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_shipped');
 
-        if ($template) {
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'tracking_id' => $this->order->tracking_id ?? 'N/A',
-                'tracking_url' => $this->order->tracking_url ?? '#',
-                'app_name' => config('app.name'),
-            ];
-            $subject = $emailTemplateService->getSubject('order_shipped', $variables);
-        } else {
-            $subject = 'Order Shipped - Order #' . $this->order->order_number;
+        if (!$template) {
+            throw new \Exception('Order shipped template not found in database');
         }
+
+        $variables = [
+            'order_number' => $this->order->order_number,
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'app_name' => config('app.name'),
+        ];
+        $subject = $emailTemplateService->getSubject('order_shipped', $variables);
 
         return new Envelope(
             subject: $subject,
@@ -80,46 +78,76 @@ class OrderShippedMail extends Mailable
         $emailTemplateService = app(EmailTemplateService::class);
         $template = $emailTemplateService->getTemplate('order_shipped');
 
-        if ($template) {
-            $settings = SettingHelper::all();
-            $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-            $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
-
-            $variables = [
-                'order_number' => $this->order->order_number,
-                'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
-                'tracking_id' => $this->order->tracking_id ?? 'N/A',
-                'tracking_url' => $this->order->tracking_url ?? '#',
-                'app_name' => config('app.name'),
-            ];
-
-            $body = $emailTemplateService->getBody('order_shipped', $variables);
-
-            return new Content(
-                html: $body,
-            );
+        if (!$template) {
+            throw new \Exception('Order shipped template not found in database');
         }
 
-        // Fallback to view if template doesn't exist
         $settings = SettingHelper::all();
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
+        $socialLinks = SettingHelper::extractSocialLinks($settings);
 
+        // Get logo URL - prefer thumbnail for emails
         $logoUrl = url('assets/frontend/images/logo.png');
+        $logo = SettingHelper::get('logo');
+        if ($logo && !empty($logo)) {
+            if (strpos($logo, '/original/') !== false) {
+                $thumbnailPath = str_replace('/original/', '/thumbnails/', $logo);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $mediumPath = str_replace('/original/', '/medium/', $logo);
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($mediumPath)) {
+                        $logoUrl = asset('storage/' . $mediumPath);
+                    } else {
+                        $logoUrl = asset('storage/' . $logo);
+                    }
+                }
+            } else {
+                $pathParts = explode('/', $logo);
+                $fileName = array_pop($pathParts);
+                $basePath = implode('/', $pathParts);
+                $thumbnailPath = $basePath . '/thumbnails/' . $fileName;
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($thumbnailPath)) {
+                    $logoUrl = asset('storage/' . $thumbnailPath);
+                } else {
+                    $logoUrl = asset('storage/' . $logo);
+                }
+            }
+        }
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
 
-        $socialLinks = SettingHelper::extractSocialLinks($settings);
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
-        $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.com';
+        $trackingNumber = $this->order->tracking_id ?? 'N/A';
+        $trackingUrl = $this->order->tracking_url ?? '#';
+        
+        // Calculate estimated delivery date (default: 3-5 business days from now)
+        $estimatedDeliveryDate = now()->addDays(5)->format('F j, Y');
+
+        $variables = [
+            'customer_name' => $this->order->billing_first_name . ' ' . $this->order->billing_last_name,
+            'order_number' => $this->order->order_number,
+            'tracking_number' => $trackingNumber,
+            'tracking_url' => $trackingUrl,
+            'estimated_delivery_date' => $estimatedDeliveryDate,
+            'app_name' => config('app.name'),
+        ];
+
+        $body = $emailTemplateService->getBody('order_shipped', $variables);
 
         return new Content(
-            view: 'emails.order-shipped',
+            view: 'emails.template-body',
             with: [
-                'order' => $this->order,
+                'body' => $body,
                 'logoUrl' => $logoUrl,
+                'headerSubtitle' => 'SHIPPING UPDATE',
+                'headerTitle' => 'Your Order Has Shipped!',
                 'contactPhone' => $contactPhone,
                 'contactEmail' => $contactEmail,
                 'socialLinks' => $socialLinks,
+                'currentYear' => date('Y'),
+                'appName' => config('app.name'),
             ],
         );
     }

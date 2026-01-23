@@ -25,8 +25,9 @@
     </div>
 
     <div class="row">
+        <!-- Main Form -->
         <div class="col-lg-8">
-            <div class="modern-card modern-card--glass">
+            <div class="modern-card">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
                         <i class="fas fa-info-circle"></i>
@@ -43,7 +44,6 @@
                                 Template Name <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-heading input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('name') is-invalid @enderror"
                                        id="name"
@@ -65,7 +65,6 @@
                                 Slug
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-link input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('slug') is-invalid @enderror"
                                        id="slug"
@@ -86,7 +85,6 @@
                                 Category <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-folder input-icon"></i>
                                 <select class="form-input-modern @error('category') is-invalid @enderror"
                                         id="category"
                                         name="category"
@@ -110,7 +108,6 @@
                                 Email Subject <span class="required">*</span>
                             </label>
                             <div class="input-wrapper">
-                                <i class="fas fa-envelope input-icon"></i>
                                 <input type="text"
                                        class="form-input-modern @error('subject') is-invalid @enderror"
                                        id="subject"
@@ -131,14 +128,12 @@
                             <label for="description" class="form-label-modern">
                                 Description
                             </label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-align-left input-icon"></i>
-                                <textarea class="form-input-modern @error('description') is-invalid @enderror"
-                                          id="description"
-                                          name="description"
-                                          rows="3"
-                                          placeholder="Brief description of this template">{{ old('description', $emailTemplate->description) }}</textarea>
-                            </div>
+                            <textarea class="form-input-modern @error('description') is-invalid @enderror"
+                                      id="description"
+                                      name="description"
+                                      rows="3"
+                                      style="resize: vertical;"
+                                      placeholder="Brief description of this template">{{ old('description', $emailTemplate->description) }}</textarea>
                             @error('description')
                                 <div class="form-error">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -165,14 +160,29 @@
                         </div>
 
                         <div class="form-group-modern">
-                            <label class="form-label-modern">
-                                <input type="checkbox" name="is_active" value="1" {{ old('is_active', $emailTemplate->is_active) ? 'checked' : '' }}>
-                                Active
+                            <label for="is_active" class="form-label-modern">
+                                Status <span class="required">*</span>
                             </label>
+                            <div class="input-wrapper">
+                                <select class="form-input-modern @error('is_active') is-invalid @enderror"
+                                        id="is_active"
+                                        name="is_active"
+                                        required>
+                                    <option value="">Select Status</option>
+                                    <option value="1" {{ old('is_active', $emailTemplate->is_active) == '1' || old('is_active', $emailTemplate->is_active) == 1 ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ old('is_active', $emailTemplate->is_active) == '0' || old('is_active', $emailTemplate->is_active) == 0 ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                            </div>
+                            @error('is_active')
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ $message }}
+                                </div>
+                            @enderror
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary btn-lg btn-ripple">
+                            <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-save"></i>
                                 Update Template
                             </button>
@@ -186,8 +196,9 @@
             </div>
         </div>
 
+        <!-- Sidebar -->
         <div class="col-lg-4">
-            <div class="modern-card modern-card--glass">
+            <div class="modern-card">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
                         <i class="fas fa-info-circle"></i>
@@ -215,7 +226,7 @@
             @include('admin.email-template.partials.tips')
 
             @can('email-templates.edit')
-            <div class="modern-card modern-card--glass" style="margin-top: 1.5rem;">
+            <div class="modern-card" style="margin-top: 1.5rem;">
                 <div class="modern-card__header">
                     <h3 class="modern-card__title">
                         <i class="fas fa-bolt"></i>

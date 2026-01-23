@@ -90,7 +90,6 @@
                                         Status <span class="required">*</span>
                                     </label>
                                     <div class="input-wrapper">
-                                        <i class="fas fa-toggle-on input-icon"></i>
                                         <select class="form-input-modern @error('status') is-invalid @enderror"
                                                 id="status"
                                                 name="status"

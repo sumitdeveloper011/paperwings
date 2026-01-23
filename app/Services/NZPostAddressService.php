@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\SettingHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -14,8 +13,8 @@ class NZPostAddressService
 
     public function __construct()
     {
-        // Get API key from database settings with .env fallback
-        $this->apiKey = SettingHelper::get('nzpost_api_key', config('services.nzpost.api_key'));
+        // Read from .env config file
+        $this->apiKey = config('services.nzpost.api_key');
     }
 
     /**

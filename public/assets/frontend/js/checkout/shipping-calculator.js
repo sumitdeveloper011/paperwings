@@ -19,6 +19,10 @@ class ShippingCalculator {
 
     async calculate(regionId) {
         if (!regionId) {
+            const shippingRow = document.getElementById('shippingRow');
+            if (shippingRow) {
+                shippingRow.style.display = 'none';
+            }
             this.updateDisplay(0, false);
             this.updateTotal(0);
             return 0;
@@ -63,8 +67,10 @@ class ShippingCalculator {
             const data = await response.json();
 
             if (data.success) {
-                const shipping = parseFloat(data.shipping) || 0;
-                this.updateDisplay(shipping, data.is_free_shipping || false);
+                const responseData = data.data || {};
+                const shipping = parseFloat(responseData.shipping || responseData.shipping_price || data.shipping || 0) || 0;
+                const isFreeShipping = responseData.is_free_shipping || data.is_free_shipping || false;
+                this.updateDisplay(shipping, isFreeShipping);
                 this.updateTotal(shipping);
                 this.isCalculating = false;
                 this.showLoading(false);
@@ -95,16 +101,16 @@ class ShippingCalculator {
         const shippingValue = document.getElementById('checkoutShipping');
         const freeShippingMessage = document.getElementById('freeShippingMessage');
 
+        if (shippingRow) {
+            shippingRow.style.display = 'flex';
+        }
+
         if (shippingValue) {
             shippingValue.textContent = '$' + shipping.toFixed(2);
         }
 
         if (freeShippingMessage) {
             freeShippingMessage.style.display = isFreeShipping ? 'inline' : 'none';
-        }
-
-        if (shippingRow) {
-            shippingRow.style.display = shipping > 0 || isFreeShipping ? 'flex' : 'none';
         }
     }
 
@@ -155,6 +161,10 @@ class ShippingCalculator {
                         shippingCalculator.calculate(parseInt(this.value));
                     }, 300);
                 } else {
+                    const shippingRow = document.getElementById('shippingRow');
+                    if (shippingRow) {
+                        shippingRow.style.display = 'none';
+                    }
                     shippingCalculator.updateDisplay(0, false);
                     shippingCalculator.updateTotal(0);
                 }
@@ -162,6 +172,11 @@ class ShippingCalculator {
 
             if (regionSelect.value) {
                 shippingCalculator.calculate(parseInt(regionSelect.value));
+            } else {
+                const shippingRow = document.getElementById('shippingRow');
+                if (shippingRow) {
+                    shippingRow.style.display = 'none';
+                }
             }
         }
 
