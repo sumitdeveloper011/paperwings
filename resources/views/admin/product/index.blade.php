@@ -30,6 +30,10 @@
                     <i class="fas fa-download"></i>
                     <span>Import from EposNow</span>
                 </button>
+                <button type="button" id="importStockBtn" class="btn btn-success btn-icon">
+                    <i class="fas fa-boxes"></i>
+                    <span>Import Products Stock from EposNow</span>
+                </button>
                 @endif
             </div>
         </div>
@@ -209,6 +213,66 @@
                 <button type="button" id="retryFailedBtn" class="btn btn-warning" style="display: none;">
                     <i class="fas fa-redo"></i> Retry Failed Products
                 </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stock Import Progress Modal -->
+<div class="modal fade" id="stockImportProgressModal" tabindex="-1" role="dialog" aria-labelledby="stockImportProgressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stockImportProgressModalLabel">
+                    <i class="fas fa-boxes"></i> Importing Products Stock from EposNow
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeStockModalBtn">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="import-progress-container">
+                    <div class="import-progress-message" id="stockImportProgressMessage">
+                        Starting stock import...
+                    </div>
+                    <div class="progress" style="height: 25px; margin-top: 15px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             id="stockImportProgressBar"
+                             style="width: 0%;"
+                             aria-valuenow="0"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            <span id="stockImportProgressText">0%</span>
+                        </div>
+                    </div>
+                    <div class="import-stats" id="stockImportStats" style="margin-top: 15px; display: none;">
+                        <div class="row">
+                            <div class="col-4 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statStockUpdated">0</div>
+                                    <div class="stat-label">Updated</div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statStockSkipped">0</div>
+                                    <div class="stat-label">Skipped</div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="statStockFailed">0</div>
+                                    <div class="stat-label">Failed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="stockImportModalFooter" style="display: none;">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
             </div>
@@ -552,6 +616,203 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             retryFailedBtn.style.display = 'none';
         });
+    }
+
+    // Stock Import Functionality
+    const importStockBtn = document.getElementById('importStockBtn');
+    if (importStockBtn) {
+        const stockModal = document.getElementById('stockImportProgressModal');
+        const stockProgressBar = document.getElementById('stockImportProgressBar');
+        const stockProgressText = document.getElementById('stockImportProgressText');
+        const stockProgressMessage = document.getElementById('stockImportProgressMessage');
+        const stockImportStats = document.getElementById('stockImportStats');
+        const stockModalFooter = document.getElementById('stockImportModalFooter');
+        const closeStockModalBtn = document.getElementById('closeStockModalBtn');
+
+        let stockJobId = null;
+        let stockStatusCheckInterval = null;
+
+        let stockBootstrapModal = null;
+        if (typeof bootstrap !== 'undefined') {
+            stockBootstrapModal = new bootstrap.Modal(stockModal);
+        }
+
+        importStockBtn.addEventListener('click', function() {
+            importStockBtn.disabled = true;
+            importStockBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Starting...</span>';
+
+            stockProgressBar.style.width = '0%';
+            stockProgressBar.setAttribute('aria-valuenow', '0');
+            stockProgressText.textContent = '0%';
+            stockProgressMessage.textContent = 'Starting stock import...';
+            stockImportStats.style.display = 'none';
+            stockModalFooter.style.display = 'none';
+
+            if (stockBootstrapModal) {
+                stockBootstrapModal.show();
+            } else {
+                $(stockModal).modal('show');
+            }
+
+            fetch('{{ route("admin.products.getStockForEposNow") }}', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    return response.text().then(text => {
+                        throw new Error('Response is not JSON. Server returned: ' + text.substring(0, 200));
+                    });
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    stockJobId = data.job_id;
+                    stockProgressMessage.textContent = 'Stock import job started! Checking status...';
+                    startStockStatusPolling();
+                } else {
+                    throw new Error(data.message || 'Failed to start stock import');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                let errorMessage = 'Error: ' + error.message;
+
+                if (error.message.includes('JSON.parse') || error.message.includes('Unexpected token')) {
+                    errorMessage = 'Server returned invalid response. Please check server logs.';
+                }
+
+                stockProgressMessage.textContent = errorMessage;
+                stockProgressBar.classList.remove('progress-bar-animated');
+                stockProgressBar.style.width = '0%';
+                importStockBtn.disabled = false;
+                importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
+            });
+        });
+
+        function startStockStatusPolling() {
+            if (!stockJobId) return;
+
+            stockStatusCheckInterval = setInterval(function() {
+                const baseUrl = '{{ url("admin/products/stock-import-status") }}';
+                const encodedJobId = encodeURIComponent(stockJobId);
+                const statusUrl = `${baseUrl}?jobId=${encodedJobId}`;
+
+                fetch(statusUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    text = text.trim();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        const jsonMatch = text.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            try {
+                                return JSON.parse(jsonMatch[0]);
+                            } catch (e2) {
+                                return null;
+                            }
+                        }
+                        return null;
+                    }
+                })
+                .then(data => {
+                    if (!data) return;
+
+                    if (data.success && data.data) {
+                        const progress = data.data;
+
+                        const percentage = progress.percentage || 0;
+                        stockProgressBar.style.width = percentage + '%';
+                        stockProgressBar.setAttribute('aria-valuenow', percentage);
+                        stockProgressText.textContent = percentage + '%';
+
+                        stockProgressMessage.textContent = progress.message || 'Processing...';
+
+                        if (progress.updated !== undefined || progress.skipped !== undefined) {
+                            stockImportStats.style.display = 'block';
+                            if (progress.updated !== undefined) {
+                                document.getElementById('statStockUpdated').textContent = progress.updated;
+                            }
+                            if (progress.skipped !== undefined) {
+                                document.getElementById('statStockSkipped').textContent = progress.skipped;
+                            }
+                            if (progress.failed !== undefined) {
+                                document.getElementById('statStockFailed').textContent = progress.failed;
+                            }
+                        }
+
+                        if (progress.status === 'completed' || percentage === 100) {
+                            clearInterval(stockStatusCheckInterval);
+                            stockProgressBar.classList.remove('progress-bar-animated');
+                            stockProgressBar.classList.add('bg-success');
+                            stockProgressMessage.textContent = progress.message || 'Stock import completed successfully!';
+                            stockModalFooter.style.display = 'block';
+
+                            importStockBtn.disabled = false;
+                            importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
+                        } else if (progress.status === 'failed' || progress.status === 'rate_limited') {
+                            clearInterval(stockStatusCheckInterval);
+                            stockProgressBar.classList.remove('progress-bar-animated');
+                            stockProgressBar.classList.add('bg-danger');
+
+                            let errorMessage = progress.message || 'Stock import failed!';
+                            if (progress.status === 'rate_limited') {
+                                errorMessage = '⚠️ API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
+                            }
+
+                            stockProgressMessage.textContent = errorMessage;
+                            stockModalFooter.style.display = 'block';
+                            importStockBtn.disabled = false;
+                            importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
+                        }
+                    } else if (!data.success && data.status === 'not_found') {
+                        clearInterval(stockStatusCheckInterval);
+                        stockProgressMessage.textContent = 'Job not found or expired';
+                        stockModalFooter.style.display = 'block';
+                        importStockBtn.disabled = false;
+                        importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
+            }, 2000);
+        }
+
+        if (typeof $ !== 'undefined') {
+            $(stockModal).on('hidden.bs.modal', function() {
+                if (stockStatusCheckInterval) {
+                    clearInterval(stockStatusCheckInterval);
+                    stockStatusCheckInterval = null;
+                }
+            });
+        }
     }
 });
 </script>

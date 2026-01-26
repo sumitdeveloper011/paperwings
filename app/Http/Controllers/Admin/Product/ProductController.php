@@ -15,6 +15,7 @@ use App\Repositories\Interfaces\BrandRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Jobs\ImportEposNowProductsJob;
+use App\Jobs\ImportEposNowStockJob;
 use App\Repositories\Interfaces\SubCategoryRepositoryInterface;
 use App\Services\EposNowService;
 use App\Services\ImageService;
@@ -257,6 +258,125 @@ class ProductController extends Controller
             $jobId = urldecode($jobId);
 
             $cacheKey = "product_import_{$jobId}";
+            $progressData = Cache::get($cacheKey);
+
+            if (!$progressData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job not found or expired. The import may still be processing, please wait...',
+                    'status' => 'not_found',
+                    'jobId' => $jobId,
+                    'cache_key' => $cacheKey
+                ], 200, [
+                    'Content-Type' => 'application/json',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Pragma' => 'no-cache',
+                    'Expires' => '0'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $progressData
+            ], 200, [
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking status: ' . $e->getMessage()
+            ], 500, [
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+        }
+    }
+
+    public function getStockForEposNow(Request $request): JsonResponse|RedirectResponse
+    {
+        try {
+            $apiCheck = $this->eposNow->checkApiLimit();
+
+            if (!$apiCheck['available']) {
+                $message = $apiCheck['message'] . ' Please wait 15-30 minutes and try again.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'status' => 'rate_limited',
+                        'can_retry_after' => now()->addMinutes(30)->toDateTimeString()
+                    ], 429);
+                }
+
+                return redirect()->route('admin.products.index')
+                    ->with('error', $message);
+            }
+
+            $jobId = time() . '_' . uniqid();
+
+            Cache::put("stock_import_{$jobId}", [
+                'percentage' => 0,
+                'processed' => 0,
+                'total' => 0,
+                'message' => 'Job queued, waiting to start...',
+                'status' => 'queued',
+                'updated_at' => now()->toDateTimeString()
+            ], 3600);
+
+            ImportEposNowStockJob::dispatch($jobId);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Stock import started successfully!',
+                    'job_id' => $jobId
+                ]);
+            }
+
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Stock import started! Job ID: ' . $jobId)
+                ->with('job_id', $jobId);
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to start stock import: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->route('admin.products.index')
+                ->with('error', 'Failed to start stock import: ' . $e->getMessage());
+        }
+    }
+
+    public function checkStockImportStatus(Request $request): JsonResponse
+    {
+        try {
+            if (ob_get_level()) {
+                ob_clean();
+            }
+
+            $jobId = $request->input('jobId');
+
+            if (!$jobId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job ID is required',
+                    'status' => 'missing_job_id'
+                ], 400, [
+                    'Content-Type' => 'application/json',
+                ]);
+            }
+
+            $jobId = urldecode($jobId);
+
+            $cacheKey = "stock_import_{$jobId}";
             $progressData = Cache::get($cacheKey);
 
             if (!$progressData) {

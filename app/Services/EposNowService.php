@@ -399,6 +399,46 @@ class EposNowService
         }
     }
 
+    /**
+     * Get product stock from EposNow API
+     *
+     * @param int $productId EposNow product ID
+     * @return int|null Total current stock (sum of all batches) or null if not found/error
+     */
+    public function getProductStock(int $productId): ?int
+    {
+        try {
+            $url = "{$this->baseUrl}/ProductStock/Product/{$productId}";
+            $response = $this->makeRequest($url);
+
+            if (empty($response) || !is_array($response)) {
+                return null;
+            }
+
+            $totalStock = 0;
+
+            foreach ($response as $stockData) {
+                if (!isset($stockData['productStockBatches']) || !is_array($stockData['productStockBatches'])) {
+                    continue;
+                }
+
+                foreach ($stockData['productStockBatches'] as $batch) {
+                    if (isset($batch['currentStock']) && is_numeric($batch['currentStock'])) {
+                        $totalStock += (int) $batch['currentStock'];
+                    }
+                }
+            }
+
+            return $totalStock > 0 ? $totalStock : null;
+        } catch (\Exception $e) {
+            Log::warning('EposNow Stock API Error', [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
     // Download image from URL and save to storage
     public function downloadAndSaveImage(string $imageUrl, string $productId, bool $isMainImage = false): ?string
     {

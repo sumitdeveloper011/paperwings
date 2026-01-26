@@ -29,6 +29,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessing;
+use App\Services\QueueMonitorService;
+use Illuminate\Support\Facades\Queue;
+
 class AppServiceProvider extends ServiceProvider
 {
     // Register any application services
@@ -289,5 +296,54 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             }
         });
+
+        if (app()->environment('local', 'development')) {
+            $monitor = app(QueueMonitorService::class);
+            
+            if ($monitor->shouldMonitor()) {
+                Event::listen(JobProcessing::class, function (JobProcessing $event) use ($monitor) {
+                    static $queueStats = [];
+                    $queue = $event->job->getQueue();
+                    
+                    if (!isset($queueStats[$queue])) {
+                        $queueStats[$queue] = [
+                            'start_time' => microtime(true),
+                            'processed' => 0,
+                            'failed' => 0,
+                        ];
+                        
+                        $pendingJobs = Queue::size($queue);
+                        $monitor->sendQueueStartNotification($queue, $pendingJobs);
+                    }
+                });
+
+                Event::listen(JobProcessed::class, function (JobProcessed $event) use ($monitor) {
+                    static $queueStats = [];
+                    $queue = $event->job->getQueue();
+                    
+                    if (isset($queueStats[$queue])) {
+                        $queueStats[$queue]['processed']++;
+                    }
+                });
+
+                Event::listen(JobFailed::class, function (JobFailed $event) use ($monitor) {
+                    static $queueStats = [];
+                    $queue = $event->job->getQueue();
+                    $jobName = get_class($event->job);
+                    $error = $event->exception->getMessage();
+                    
+                    if (isset($queueStats[$queue])) {
+                        $queueStats[$queue]['failed']++;
+                    }
+
+                    $monitor->sendJobFailedNotification(
+                        $queue,
+                        $jobName,
+                        $error,
+                        $event->job->payload() ?? []
+                    );
+                });
+            }
+        }
     }
 }

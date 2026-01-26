@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\URL;
 use App\Helpers\SettingHelper;
 use App\Services\EmailTemplateService;
 
-class VerifyEmailNotification extends Notification
+class VerifyEmailNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 

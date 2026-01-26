@@ -96,6 +96,8 @@ Route::middleware(['auth', 'admin.auth'])->group(function () {
         Route::prefix('products')->name('products.')->group(function () {
             Route::get('get-products-for-epos-now', [ProductController::class, 'getProductsForEposNow'])->name('getProductsForEposNow');
             Route::get('import-status', [ProductController::class, 'checkImportStatus'])->name('importStatus');
+            Route::get('get-stock-for-epos-now', [ProductController::class, 'getStockForEposNow'])->name('getStockForEposNow');
+            Route::get('stock-import-status', [ProductController::class, 'checkStockImportStatus'])->name('stockImportStatus');
         });
         Route::get('products', [ProductController::class, 'index'])->name('products.index');
         Route::get('products/trash', [ProductController::class, 'trash'])->name('products.trash');
