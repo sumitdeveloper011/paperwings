@@ -13,7 +13,9 @@ class EposNowService
 
     protected string $apiKey;
 
-    public function __construct()
+    protected RateLimitTrackerService $rateLimitTracker;
+
+    public function __construct(RateLimitTrackerService $rateLimitTracker = null)
     {
         // Read from .env config file
         $this->baseUrl = rtrim(
@@ -26,6 +28,8 @@ class EposNowService
         if (!str_ends_with($this->baseUrl, '/api/v4')) {
             $this->baseUrl = rtrim($this->baseUrl, '/') . '/api/v4';
         }
+
+        $this->rateLimitTracker = $rateLimitTracker ?? app(RateLimitTrackerService::class);
     }
 
     protected function headers(): array
@@ -585,23 +589,40 @@ class EposNowService
         }
     }
 
-    // Make HTTP request to EposNow API with retry logic
+    // Make HTTP request to EposNow API with retry logic and rate limit tracking
     protected function makeRequest(string $url, array $params = [], int $retries = 3, int $delay = 2): array
     {
         $attempt = 0;
 
         while ($attempt < $retries) {
             try {
+                $cooldown = $this->rateLimitTracker->checkCooldown();
+                if ($cooldown['in_cooldown']) {
+                    throw new \Exception('EposNow API Rate Limit: In cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes.');
+                }
+
+                $rateLimitStatus = $this->rateLimitTracker->trackCall();
+                
+                if (!$rateLimitStatus['allowed']) {
+                    $this->rateLimitTracker->setCooldown();
+                    throw new \Exception('EposNow API Rate Limit: Maximum calls per minute reached. Please wait and try again later.');
+                }
+
+                if ($rateLimitStatus['delay'] > 0) {
+                    usleep((int)($rateLimitStatus['delay'] * 1000000));
+                }
+
                 $response = Http::withHeaders($this->headers())
                     ->withoutVerifying()
                     ->timeout(60)
                     ->get($url, $params);
 
                 if ($response->status() === 429) {
+                    $this->rateLimitTracker->setCooldown();
                     $attempt++;
                     $waitTime = $delay * pow(2, $attempt - 1);
 
-                    Log::warning('EposNow API Rate Limit Hit', [
+                    Log::warning('EposNow API Rate Limit Hit (HTTP 429)', [
                         'url' => $url,
                         'attempt' => $attempt,
                         'wait_time' => $waitTime,
@@ -624,6 +645,7 @@ class EposNowService
                     if (stripos($errorBody, 'maximum API limit') !== false ||
                         stripos($errorBody, 'rate limit') !== false ||
                         stripos($errorBody, 'too many requests') !== false) {
+                        $this->rateLimitTracker->setCooldown();
                         $errorMessage = 'EposNow API Rate Limit: You have reached your maximum API limit. Please wait and try again later.';
                     } else {
                         $errorMessage .= ': ' . $errorBody;
@@ -643,7 +665,9 @@ class EposNowService
 
             } catch (\Exception $e) {
                 if (stripos($e->getMessage(), 'rate limit') !== false ||
-                    stripos($e->getMessage(), 'maximum API limit') !== false) {
+                    stripos($e->getMessage(), 'maximum API limit') !== false ||
+                    stripos($e->getMessage(), 'cooldown period') !== false) {
+                    $this->rateLimitTracker->setCooldown();
                     $attempt++;
                     if ($attempt < $retries) {
                         $waitTime = $delay * pow(2, $attempt - 1);

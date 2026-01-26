@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Product;
 use App\Services\EposNowService;
+use App\Services\RateLimitTrackerService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -40,10 +41,21 @@ class ImportEposNowStockJob implements ShouldQueue
     {
         try {
             $eposNowService = app(EposNowService::class);
+            $rateLimitTracker = app(RateLimitTrackerService::class);
             
-            $this->updateProgress(0, 0, 0, 'Starting stock import...');
+            $cooldown = $rateLimitTracker->checkCooldown();
+            if ($cooldown['in_cooldown']) {
+                $this->updateProgress(0, 0, 0, 'API is in cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes before retrying.', [
+                    'status' => 'rate_limited',
+                    'cooldown_until' => $cooldown['cooldown_until'],
+                    'minutes_remaining' => $cooldown['minutes_remaining']
+                ]);
+                return;
+            }
+            
+            $this->updateProgress(0, 0, 0, 'Starting stock import...', ['status' => 'starting']);
 
-            $this->updateProgress(5, 0, 0, 'Fetching products from database...');
+            $this->updateProgress(5, 0, 0, 'Fetching products from database...', ['status' => 'fetching']);
 
             $query = Product::whereNotNull('eposnow_product_id')
                 ->where('eposnow_product_id', '!=', 0);
@@ -65,20 +77,57 @@ class ImportEposNowStockJob implements ShouldQueue
             $skipped = 0;
             $failed = [];
 
-            $this->updateProgress(10, 0, $total, "Found {$total} products. Starting stock import...");
+            $this->updateProgress(10, 0, $total, "Found {$total} products. Preparing to import stock...", ['status' => 'processing']);
 
-            $chunks = $products->chunk(25);
+            $chunkSize = 15;
+            $chunks = $products->chunk($chunkSize);
             $totalChunks = $chunks->count();
 
             Log::info('Starting stock import processing', [
                 'total_products' => $total,
                 'total_chunks' => $totalChunks,
-                'chunk_size' => 25
+                'chunk_size' => $chunkSize
             ]);
 
             foreach ($chunks as $chunkIndex => $chunk) {
                 try {
-                    DB::transaction(function () use ($chunk, $eposNowService, &$processed, &$updated, &$skipped, &$failed, $total) {
+                    $cooldown = $rateLimitTracker->checkCooldown();
+                    if ($cooldown['in_cooldown']) {
+                        $this->updateProgress(
+                            min(99, (int)(($processed / $total) * 100)),
+                            $processed,
+                            $total,
+                            'Paused: API cooldown period. Please retry in ' . $cooldown['minutes_remaining'] . ' minutes.',
+                            [
+                                'updated' => $updated,
+                                'skipped' => $skipped,
+                                'failed' => count($failed),
+                                'status' => 'rate_limited',
+                                'cooldown_until' => $cooldown['cooldown_until'],
+                                'remaining_products' => $total - $processed
+                            ]
+                        );
+                        return;
+                    }
+
+                    if ($rateLimitTracker->shouldPause()) {
+                        $status = $rateLimitTracker->getStatus();
+                        $this->updateProgress(
+                            min(99, (int)(($processed / $total) * 100)),
+                            $processed,
+                            $total,
+                            'Pausing: Approaching rate limit (' . round($status['percentage']) . '%). Waiting 60 seconds...',
+                            [
+                                'updated' => $updated,
+                                'skipped' => $skipped,
+                                'failed' => count($failed),
+                                'status' => 'pausing'
+                            ]
+                        );
+                        sleep(60);
+                    }
+
+                    DB::transaction(function () use ($chunk, $eposNowService, $rateLimitTracker, &$processed, &$updated, &$skipped, &$failed, $total) {
                         DB::statement('SET SESSION innodb_lock_wait_timeout = 300');
                         
                         foreach ($chunk as $product) {
@@ -87,6 +136,13 @@ class ImportEposNowStockJob implements ShouldQueue
                                     $skipped++;
                                     $processed++;
                                     continue;
+                                }
+
+                                $rateLimitStatus = $rateLimitTracker->getStatus();
+                                $delay = $rateLimitTracker->getRecommendedDelay();
+                                
+                                if ($delay > 0) {
+                                    usleep((int)($delay * 1000000));
                                 }
 
                                 $stock = $eposNowService->getProductStock($product->eposnow_product_id);
@@ -103,9 +159,13 @@ class ImportEposNowStockJob implements ShouldQueue
                                 }
 
                                 $processed++;
-
-                                usleep(500000);
                             } catch (\Exception $e) {
+                                if (stripos($e->getMessage(), 'rate limit') !== false || 
+                                    stripos($e->getMessage(), 'cooldown period') !== false) {
+                                    $rateLimitTracker->setCooldown();
+                                    throw $e;
+                                }
+                                
                                 $failed[] = [
                                     'id' => $product->eposnow_product_id ?? 'unknown',
                                     'name' => $product->name ?? 'unknown',
@@ -121,6 +181,35 @@ class ImportEposNowStockJob implements ShouldQueue
                         }
                     }, 5);
                 } catch (\Exception $e) {
+                    if (stripos($e->getMessage(), 'rate limit') !== false || 
+                        stripos($e->getMessage(), 'cooldown period') !== false) {
+                        $rateLimitTracker->setCooldown();
+                        $cooldown = $rateLimitTracker->checkCooldown();
+                        
+                        $this->updateProgress(
+                            min(99, (int)(($processed / $total) * 100)),
+                            $processed,
+                            $total,
+                            'Rate limit reached. Cooldown period: ' . $cooldown['minutes_remaining'] . ' minutes. Job will resume automatically.',
+                            [
+                                'updated' => $updated,
+                                'skipped' => $skipped,
+                                'failed' => count($failed),
+                                'status' => 'rate_limited',
+                                'cooldown_until' => $cooldown['cooldown_until'],
+                                'remaining_products' => $total - $processed
+                            ]
+                        );
+                        
+                        Log::warning('Stock import paused due to rate limit', [
+                            'processed' => $processed,
+                            'total' => $total,
+                            'cooldown_minutes' => $cooldown['minutes_remaining']
+                        ]);
+                        
+                        return;
+                    }
+                    
                     Log::error('Stock import chunk failed', [
                         'chunk_index' => $chunkIndex,
                         'error' => $e->getMessage(),

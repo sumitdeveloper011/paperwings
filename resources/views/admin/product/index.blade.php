@@ -235,17 +235,20 @@
             <div class="modal-body">
                 <div class="import-progress-container">
                     <div class="import-progress-message" id="stockImportProgressMessage">
-                        Starting stock import...
+                        <i class="fas fa-spinner fa-spin"></i> Starting stock import...
                     </div>
-                    <div class="progress" style="height: 25px; margin-top: 15px;">
+                    <div class="progress" style="height: 30px; margin-top: 15px; position: relative;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated"
                              role="progressbar"
                              id="stockImportProgressBar"
-                             style="width: 0%;"
+                             style="width: 0%; transition: width 0.3s ease;"
                              aria-valuenow="0"
                              aria-valuemin="0"
                              aria-valuemax="100">
-                            <span id="stockImportProgressText">0%</span>
+                            <span id="stockImportProgressText" style="font-weight: 600; font-size: 13px;">0%</span>
+                        </div>
+                        <div id="stockImportStatusBadge" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 600; color: #666;">
+                            <span class="badge badge-info" id="stockStatusBadge">Queued</span>
                         </div>
                     </div>
                     <div class="import-stats" id="stockImportStats" style="margin-top: 15px; display: none;">
@@ -644,9 +647,15 @@ document.addEventListener('DOMContentLoaded', function() {
             stockProgressBar.style.width = '0%';
             stockProgressBar.setAttribute('aria-valuenow', '0');
             stockProgressText.textContent = '0%';
-            stockProgressMessage.textContent = 'Starting stock import...';
+            stockProgressMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting stock import...';
             stockImportStats.style.display = 'none';
             stockModalFooter.style.display = 'none';
+            
+            const statusBadge = document.getElementById('stockStatusBadge');
+            if (statusBadge) {
+                statusBadge.textContent = 'Initializing';
+                statusBadge.className = 'badge badge-info';
+            }
 
             if (stockBootstrapModal) {
                 stockBootstrapModal.show();
@@ -681,7 +690,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     stockJobId = data.job_id;
-                    stockProgressMessage.textContent = 'Stock import job started! Checking status...';
+                    stockProgressMessage.textContent = 'Job queued successfully! Waiting for queue worker to start processing...';
+                    stockProgressBar.style.width = '5%';
+                    stockProgressBar.setAttribute('aria-valuenow', 5);
+                    stockProgressText.textContent = '5%';
                     startStockStatusPolling();
                 } else {
                     throw new Error(data.message || 'Failed to start stock import');
@@ -703,10 +715,24 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        function updateStatusBadge(text, type) {
+            const badge = document.getElementById('stockStatusBadge');
+            if (badge) {
+                badge.textContent = text;
+                badge.className = 'badge badge-' + type;
+            }
+        }
+
         function startStockStatusPolling() {
             if (!stockJobId) return;
 
+            let pollCount = 0;
+            let lastPercentage = 0;
+            let lastUpdateTime = Date.now();
+            let startTime = Date.now();
+
             stockStatusCheckInterval = setInterval(function() {
+                pollCount++;
                 const baseUrl = '{{ url("admin/products/stock-import-status") }}';
                 const encodedJobId = encodeURIComponent(stockJobId);
                 const statusUrl = `${baseUrl}?jobId=${encodedJobId}`;
@@ -746,13 +772,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     if (data.success && data.data) {
                         const progress = data.data;
-
                         const percentage = progress.percentage || 0;
-                        stockProgressBar.style.width = percentage + '%';
-                        stockProgressBar.setAttribute('aria-valuenow', percentage);
-                        stockProgressText.textContent = percentage + '%';
+                        const status = progress.status || 'processing';
+                        
+                        let displayMessage = progress.message || 'Processing...';
+                        let estimatedTime = '';
+                        
+                        if (status === 'queued') {
+                            const queuePos = progress.queue_position || 0;
+                            if (queuePos > 0) {
+                                displayMessage = `<i class="fas fa-clock"></i> Job queued, waiting in queue (${queuePos} job${queuePos > 1 ? 's' : ''} ahead). Queue worker processes jobs every minute...`;
+                                stockProgressBar.style.width = '10%';
+                                stockProgressBar.setAttribute('aria-valuenow', 10);
+                                stockProgressText.textContent = '10%';
+                            } else {
+                                displayMessage = '<i class="fas fa-hourglass-half"></i> Job queued, waiting for queue worker to start...';
+                                stockProgressBar.style.width = '5%';
+                                stockProgressBar.setAttribute('aria-valuenow', 5);
+                                stockProgressText.textContent = '5%';
+                            }
+                            updateStatusBadge('Queued', 'info');
+                        } else if (status === 'starting' || status === 'fetching') {
+                            displayMessage = '<i class="fas fa-spinner fa-spin"></i> ' + displayMessage;
+                            stockProgressBar.style.width = percentage + '%';
+                            stockProgressBar.setAttribute('aria-valuenow', percentage);
+                            stockProgressText.textContent = percentage + '%';
+                            updateStatusBadge('Starting', 'info');
+                        } else if (status === 'processing' || status === 'pausing') {
+                            stockProgressBar.style.width = percentage + '%';
+                            stockProgressBar.setAttribute('aria-valuenow', percentage);
+                            stockProgressText.textContent = percentage + '%';
+                            
+                            if (percentage > 0 && percentage < 100) {
+                                const currentTime = Date.now();
+                                const timeElapsed = (currentTime - startTime) / 1000;
+                                const rate = percentage / timeElapsed;
+                                
+                                if (rate > 0 && timeElapsed > 5) {
+                                    const remaining = 100 - percentage;
+                                    const estimatedSeconds = remaining / rate;
+                                    const estimatedMinutes = Math.ceil(estimatedSeconds / 60);
+                                    
+                                    if (estimatedMinutes > 0) {
+                                        estimatedTime = ` <span style="color: #666; font-size: 0.9em;">(Est. ${estimatedMinutes} min remaining)</span>`;
+                                    }
+                                }
+                                
+                                displayMessage = '<i class="fas fa-sync fa-spin"></i> ' + progress.message + estimatedTime;
+                            } else {
+                                displayMessage = '<i class="fas fa-sync fa-spin"></i> ' + displayMessage;
+                            }
+                            updateStatusBadge('Processing', 'primary');
+                        } else if (status === 'paused') {
+                            displayMessage = '<i class="fas fa-pause"></i> ' + displayMessage;
+                            stockProgressBar.style.width = percentage + '%';
+                            stockProgressBar.setAttribute('aria-valuenow', percentage);
+                            stockProgressText.textContent = percentage + '%';
+                            updateStatusBadge('Paused', 'warning');
+                        } else {
+                            stockProgressBar.style.width = percentage + '%';
+                            stockProgressBar.setAttribute('aria-valuenow', percentage);
+                            stockProgressText.textContent = percentage + '%';
+                        }
 
-                        stockProgressMessage.textContent = progress.message || 'Processing...';
+                        stockProgressMessage.innerHTML = displayMessage;
 
                         if (progress.updated !== undefined || progress.skipped !== undefined) {
                             stockImportStats.style.display = 'block';
@@ -771,8 +854,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             clearInterval(stockStatusCheckInterval);
                             stockProgressBar.classList.remove('progress-bar-animated');
                             stockProgressBar.classList.add('bg-success');
-                            stockProgressMessage.textContent = progress.message || 'Stock import completed successfully!';
+                            stockProgressMessage.innerHTML = '<i class="fas fa-check-circle text-success"></i> ' + (progress.message || 'Stock import completed successfully!');
                             stockModalFooter.style.display = 'block';
+                            updateStatusBadge('Completed', 'success');
 
                             importStockBtn.disabled = false;
                             importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
@@ -780,16 +864,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             clearInterval(stockStatusCheckInterval);
                             stockProgressBar.classList.remove('progress-bar-animated');
                             stockProgressBar.classList.add('bg-danger');
+                            updateStatusBadge('Failed', 'danger');
 
                             let errorMessage = progress.message || 'Stock import failed!';
                             if (progress.status === 'rate_limited') {
-                                errorMessage = '⚠️ API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
+                                errorMessage = '<i class="fas fa-exclamation-triangle text-warning"></i> API Rate Limit Reached: ' + (progress.message || 'You have reached your maximum API limit. Please wait a few minutes and try again.');
+                            } else {
+                                errorMessage = '<i class="fas fa-times-circle text-danger"></i> ' + errorMessage;
                             }
 
-                            stockProgressMessage.textContent = errorMessage;
+                            stockProgressMessage.innerHTML = errorMessage;
                             stockModalFooter.style.display = 'block';
                             importStockBtn.disabled = false;
                             importStockBtn.innerHTML = '<i class="fas fa-boxes"></i> <span>Import Products Stock from EposNow</span>';
+                        } else if (progress.status === 'paused' || progress.status === 'pausing') {
+                            updateStatusBadge('Paused', 'warning');
                         }
                     } else if (!data.success && data.status === 'not_found') {
                         clearInterval(stockStatusCheckInterval);
@@ -802,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
                     console.error('Status check error:', error);
                 });
-            }, 2000);
+            }, 1000);
         }
 
         if (typeof $ !== 'undefined') {

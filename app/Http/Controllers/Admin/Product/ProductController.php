@@ -30,6 +30,7 @@ use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use App\Models\OrderItem;
 
 class ProductController extends Controller
@@ -380,6 +381,28 @@ class ProductController extends Controller
             $progressData = Cache::get($cacheKey);
 
             if (!$progressData) {
+                $queuePosition = $this->getQueuePosition('imports', $jobId);
+                
+                if ($queuePosition > 0) {
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'percentage' => 0,
+                            'processed' => 0,
+                            'total' => 0,
+                            'message' => "Job queued, waiting in queue (position: {$queuePosition}). Queue worker will process it shortly...",
+                            'status' => 'queued',
+                            'queue_position' => $queuePosition,
+                            'updated_at' => now()->toDateTimeString()
+                        ]
+                    ], 200, [
+                        'Content-Type' => 'application/json',
+                        'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                        'Pragma' => 'no-cache',
+                        'Expires' => '0'
+                    ]);
+                }
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Job not found or expired. The import may still be processing, please wait...',
@@ -392,6 +415,12 @@ class ProductController extends Controller
                     'Pragma' => 'no-cache',
                     'Expires' => '0'
                 ]);
+            }
+
+            $progressData['queue_position'] = $this->getQueuePosition('imports', $jobId);
+            
+            if ($progressData['status'] === 'queued' && $progressData['queue_position'] > 0) {
+                $progressData['message'] = "Job queued, waiting in queue (position: {$progressData['queue_position']}). Queue worker will process it shortly...";
             }
 
             return response()->json([
@@ -851,6 +880,35 @@ class ProductController extends Controller
     protected function autoFillMetaFields(array $validated, ?Product $product = null): array
     {
         return MetaHelper::autoFillMetaFields($validated, $product);
+    }
+
+    /**
+     * Get queue position for a job
+     *
+     * @param string $queue
+     * @param string $jobId
+     * @return int Queue position (0 if not found or processing)
+     */
+    protected function getQueuePosition(string $queue, string $jobId): int
+    {
+        try {
+            $pendingJobs = DB::table('jobs')
+                ->where('queue', $queue)
+                ->count();
+            
+            if ($pendingJobs > 0) {
+                return $pendingJobs;
+            }
+            
+            return 0;
+        } catch (\Exception $e) {
+            Log::warning('Failed to get queue position', [
+                'queue' => $queue,
+                'job_id' => $jobId,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
 }
