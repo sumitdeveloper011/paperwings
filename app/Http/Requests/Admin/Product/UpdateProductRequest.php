@@ -37,6 +37,12 @@ class UpdateProductRequest extends FormRequest
             'discount_price' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'barcode' => 'nullable|string|max:255',
+            'sku' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('products', 'sku')->ignore($productId),
+            ],
             'stock' => 'nullable|integer|min:0',
             'product_type' => 'nullable|integer|in:1,2,3',
             'description' => 'required|string',

@@ -27,6 +27,7 @@ class Product extends Model
         'eposnow_category_id',
         'eposnow_brand_id',
         'barcode',
+        'sku',
         'stock',
         'product_type',
         'name',
@@ -54,6 +55,7 @@ class Product extends Model
         'eposnow_category_id' => 'integer',
         'eposnow_brand_id' => 'integer',
         'barcode' => 'string',
+        'sku' => 'string',
         'stock' => 'integer',
         'product_type' => 'integer',
         'discount_type' => 'string',
@@ -506,5 +508,50 @@ class Product extends Model
     public function getRouteKeyName()
     {
         return 'uuid';
+    }
+
+    /**
+     * Generate SKU for product
+     *
+     * @return string
+     */
+    public static function generateSku(?Category $category = null): string
+    {
+        $categoryCode = 'GEN';
+        
+        if ($category) {
+            $categoryName = $category->name;
+            $words = explode(' ', strtoupper($categoryName));
+            $code = '';
+            
+            foreach ($words as $word) {
+                if (strlen($word) > 0) {
+                    $code .= substr($word, 0, 1);
+                }
+            }
+            
+            if (strlen($code) < 2) {
+                $code = strtoupper(substr($categoryName, 0, 3));
+            }
+            
+            if (strlen($code) > 3) {
+                $code = substr($code, 0, 3);
+            }
+            
+            $code = preg_replace('/[^A-Z0-9]/', '', $code);
+            $categoryCode = $code ?: 'GEN';
+        }
+        
+        $ulid = Str::ulid();
+        $shortUlid = substr($ulid, 0, 11);
+        $sku = "PW-{$categoryCode}-{$shortUlid}";
+        
+        while (static::where('sku', $sku)->exists()) {
+            $ulid = Str::ulid();
+            $shortUlid = substr($ulid, 0, 11);
+            $sku = "PW-{$categoryCode}-{$shortUlid}";
+        }
+        
+        return $sku;
     }
 }

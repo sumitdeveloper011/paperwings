@@ -562,6 +562,12 @@ class ProductController extends Controller
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated);
 
+        // Generate SKU if not provided
+        if (empty($validated['sku'])) {
+            $category = \App\Models\Category::find($validated['category_id']);
+            $validated['sku'] = \App\Models\Product::generateSku($category);
+        }
+
         $product = $this->productRepository->create($validated);
 
         // Upload images using ImageService
@@ -664,6 +670,12 @@ class ProductController extends Controller
 
         // Auto-fill meta fields if empty
         $validated = $this->autoFillMetaFields($validated, $product);
+
+        // Generate SKU if not provided and product doesn't have one
+        if (empty($validated['sku']) && empty($product->sku)) {
+            $category = \App\Models\Category::find($validated['category_id'] ?? $product->category_id);
+            $validated['sku'] = \App\Models\Product::generateSku($category);
+        }
 
         $this->productRepository->update($product, $validated);
 

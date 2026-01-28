@@ -32,7 +32,7 @@
   "name": "{{ $product->name }}",
   "image": "{{ $product->main_image }}",
   "description": "{{ strip_tags($product->description ?? $product->short_description) }}",
-  "sku": "{{ $product->barcode ?? $product->id }}",
+  "sku": "{{ $product->sku ?? ($product->barcode ?? $product->id) }}",
   "brand": {
     "@@type": "Brand",
     "name": "{{ $product->brand->name ?? 'Paper Wings' }}"
@@ -300,7 +300,7 @@
                         <div class="product-meta">
                             <div class="meta-item">
                                 <span class="meta-label">SKU:</span>
-                                <span class="meta-value">{{ $product->barcode ?? 'N/A' }}</span>
+                                <span class="meta-value">{{ $product->sku ?? ($product->barcode ?? 'N/A') }}</span>
                             </div>
                             @if($product->category)
                             <div class="meta-item">

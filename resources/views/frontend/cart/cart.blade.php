@@ -41,8 +41,8 @@
                                                 <h3 class="cart-item__name">
                                                     <a href="{{ route('product.detail', $cartItem->product->slug) }}" class="cart-item__name-link">{{ $cartItem->product->name }}</a>
                                                 </h3>
-                                                @if($cartItem->product->barcode)
-                                                <span class="cart-item__sku">SKU: {{ $cartItem->product->barcode }}</span>
+                                                @if($cartItem->product->sku || $cartItem->product->barcode)
+                                                <span class="cart-item__sku">SKU: {{ $cartItem->product->sku ?? $cartItem->product->barcode }}</span>
                                                 @endif
                                             </div>
                                         </td>

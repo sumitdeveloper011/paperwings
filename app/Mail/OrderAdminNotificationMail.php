@@ -275,7 +275,7 @@ class OrderAdminNotificationMail extends Mailable
             $product = $item->product;
             $productImage = $product->main_thumbnail_url ?? $product->main_image_url ?? asset('assets/images/placeholder.jpg');
             $productName = $item->product_name ?? ($product->name ?? 'Product');
-            $productSku = $product->sku ?? 'N/A';
+            $productSku = $product->sku ?? ($product->barcode ?? 'N/A');
             $productQuantity = $item->quantity ?? 1;
             $productPrice = number_format($item->price ?? 0, 2);
 

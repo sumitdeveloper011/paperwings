@@ -122,7 +122,7 @@
                                 $productImage = $item->product->images->first()->thumbnail_url ?? $item->product->images->first()->image_url ?? asset('assets/images/placeholder.jpg');
                             }
                             $productName = $item->product_name ?? ($item->product->name ?? 'Product');
-                            $productSku = $item->product->sku ?? ($item->product->eposnow_product_id ?? 'N/A');
+                            $productSku = $item->product->sku ?? ($item->product->barcode ?? ($item->product->eposnow_product_id ?? 'N/A'));
                             $productQuantity = $item->quantity ?? 1;
                             $productPrice = number_format($item->price ?? 0, 2);
                         @endphp

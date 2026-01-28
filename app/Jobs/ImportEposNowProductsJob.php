@@ -182,6 +182,13 @@ class ImportEposNowProductsJob implements ShouldQueue
                             ];
 
                             if ($existing) {
+                                if (empty($existing->sku)) {
+                                    $category = Category::find($categoryId);
+                                    $productData['sku'] = Product::generateSku($category);
+                                } else {
+                                    $productData['sku'] = $existing->sku;
+                                }
+                                
                                 $hasChanges = false;
                                 if ($existing->name !== $productName) {
                                     $hasChanges = true;
@@ -208,6 +215,9 @@ class ImportEposNowProductsJob implements ShouldQueue
                                 }
                                 $savedProduct = $existing;
                             } else {
+                                // Generate SKU for new product
+                                $category = Category::find($categoryId);
+                                $productData['sku'] = Product::generateSku($category);
                                 $productData['uuid'] = Str::uuid();
                                 $savedProduct = Product::create($productData);
                                 $inserted++;
