@@ -3,13 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\CartItem;
+use App\Models\Product;
+use App\Models\Coupon;
 use App\Mail\OrderConfirmationMail;
+use App\Services\ShippingService;
+use App\Services\PriceCalculationService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Stripe\Stripe;
 use Stripe\Webhook;
 use Stripe\Charge;
+use Stripe\PaymentIntent;
 use Stripe\Exception\SignatureVerificationException;
 
 class StripeWebhookController extends Controller
@@ -38,13 +49,40 @@ class StripeWebhookController extends Controller
 
         try {
             Stripe::setApiKey($stripeSecret);
+            Log::info('Attempting to construct webhook event', [
+                'payload_length' => strlen($payload),
+                'signature_header_present' => !empty($sigHeader)
+            ]);
+            
             $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
+            
+            Log::info('Webhook event constructed successfully', [
+                'event_id' => $event->id ?? 'N/A',
+                'event_type' => $event->type ?? 'N/A',
+                'event_created' => $event->created ?? 'N/A'
+            ]);
         } catch (\UnexpectedValueException $e) {
-            Log::error('Stripe webhook: Invalid payload', ['error' => $e->getMessage()]);
+            Log::error('Stripe webhook: Invalid payload', [
+                'error' => $e->getMessage(),
+                'payload_preview' => substr($payload, 0, 200),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Invalid payload'], 400);
         } catch (SignatureVerificationException $e) {
-            Log::error('Stripe webhook: Invalid signature', ['error' => $e->getMessage()]);
+            Log::error('Stripe webhook: Invalid signature', [
+                'error' => $e->getMessage(),
+                'signature_header' => $sigHeader ? substr($sigHeader, 0, 50) . '...' : 'missing',
+                'endpoint_secret_set' => !empty($endpointSecret),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Invalid signature'], 400);
+        } catch (\Exception $e) {
+            Log::error('Stripe webhook: Unexpected error', [
+                'error' => $e->getMessage(),
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Webhook processing failed'], 500);
         }
 
         Log::info('Stripe webhook received', [
@@ -95,9 +133,13 @@ class StripeWebhookController extends Controller
     // Handle successful payment intent
     protected function handlePaymentIntentSucceeded($paymentIntent)
     {
-        Log::info('Payment intent succeeded', [
+        Log::info('=== WEBHOOK: Payment intent succeeded ===', [
             'payment_intent_id' => $paymentIntent->id,
             'amount' => $paymentIntent->amount,
+            'currency' => $paymentIntent->currency ?? 'N/A',
+            'status' => $paymentIntent->status ?? 'N/A',
+            'customer' => $paymentIntent->customer ?? 'N/A',
+            'created' => $paymentIntent->created ?? 'N/A'
         ]);
 
         $order = Order::where('stripe_payment_intent_id', $paymentIntent->id)->first();
@@ -210,17 +252,24 @@ class StripeWebhookController extends Controller
                 ]);
             }
 
-            Log::info('Order updated after payment success', [
+            Log::info('=== WEBHOOK: Order updated after payment success ===', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
+                'payment_status' => $order->fresh()->payment_status,
+                'order_status' => $order->fresh()->status,
                 'receipt_url' => $receiptUrl ? 'saved' : 'not_available',
                 'stripe_fee' => $stripeFee,
                 'net_amount' => isset($updateData['net_amount']) ? $updateData['net_amount'] : null,
+                'email_sent' => 'queued'
             ]);
         } else {
-            Log::warning('Order not found for payment intent', [
+            Log::info('=== WEBHOOK: Creating order from cached checkout data ===', [
                 'payment_intent_id' => $paymentIntent->id,
+                'amount' => $paymentIntent->amount,
+                'currency' => $paymentIntent->currency ?? 'N/A',
             ]);
+            
+            $this->createOrderFromWebhook($paymentIntent);
         }
     }
 
@@ -464,10 +513,234 @@ class StripeWebhookController extends Controller
             'currency' => $paymentIntent->currency ?? null,
             'status' => $paymentIntent->status ?? null,
         ]);
+    }
 
-        // Payment intent created is mainly for logging
-        // The order is already created in CheckoutController before payment intent
-        // This webhook is useful for tracking and analytics
+    /**
+     * Create order from cached checkout data (Industry Standard Flow)
+     * Called by webhook after payment confirmation
+     */
+    protected function createOrderFromWebhook($paymentIntent)
+    {
+        $cacheKey = 'checkout_data_' . $paymentIntent->id;
+        $checkoutData = Cache::get($cacheKey);
+
+        if (!$checkoutData) {
+            Log::error('=== WEBHOOK: Checkout data not found in cache ===', [
+                'payment_intent_id' => $paymentIntent->id,
+                'cache_key' => $cacheKey,
+                'note' => 'Checkout data may have expired or was never stored'
+            ]);
+            return;
+        }
+
+        $userId = $checkoutData['user_id'] ?? null;
+        if (!$userId) {
+            Log::error('=== WEBHOOK: User ID missing from checkout data ===', [
+                'payment_intent_id' => $paymentIntent->id
+            ]);
+            return;
+        }
+
+        try {
+            $shippingService = app(ShippingService::class);
+            $priceService = app(PriceCalculationService::class);
+            $notificationService = app(NotificationService::class);
+
+            $cartItems = CartItem::with(['product'])
+                ->where('user_id', $userId)
+                ->get();
+
+            if ($cartItems->isEmpty()) {
+                Log::error('=== WEBHOOK: Cart is empty ===', [
+                    'payment_intent_id' => $paymentIntent->id,
+                    'user_id' => $userId
+                ]);
+                return;
+            }
+
+            $shipping = $checkoutData['shipping'] ?? [];
+            $billing = $checkoutData['billing'] ?? [];
+            $totals = $checkoutData['totals'] ?? [];
+            $appliedCoupon = $checkoutData['applied_coupon'] ?? null;
+
+            $subtotal = $priceService->calculateSubtotal($cartItems);
+            $discount = round($appliedCoupon['discount'] ?? 0, 2);
+            if ($discount > $subtotal) {
+                $discount = round($subtotal, 2);
+            }
+            $couponCode = $appliedCoupon['code'] ?? null;
+            $tax = 0.00;
+
+            $orderAmount = max(0, round($subtotal - $discount, 2));
+            $shippingInfo = $shippingService->calculateShippingWithInfo($shipping['region_id'] ?? null, $orderAmount);
+            $shippingPrice = round($shippingInfo['shipping_price'], 2);
+
+            $feeCalculation = $priceService->calculateTotalWithAllFees($subtotal, $discount, $shippingPrice);
+            $finalTotal = $feeCalculation['final_total'];
+
+            $productIds = $cartItems->pluck('product_id')->unique()->toArray();
+            $products = Product::lockForUpdate()
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
+
+            foreach ($cartItems as $cartItem) {
+                $product = $products->get($cartItem->product_id);
+                if (!$product || !$product->status || $product->stock < $cartItem->quantity) {
+                    Log::error('=== WEBHOOK: Product validation failed ===', [
+                        'payment_intent_id' => $paymentIntent->id,
+                        'product_id' => $cartItem->product_id,
+                        'product_exists' => !!$product,
+                        'product_status' => $product->status ?? null,
+                        'stock_available' => $product->stock ?? null,
+                        'quantity_requested' => $cartItem->quantity
+                    ]);
+                    return;
+                }
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $productsForDecrement = Product::lockForUpdate()
+                    ->whereIn('id', $productIds)
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($cartItems as $cartItem) {
+                    $product = $productsForDecrement->get($cartItem->product_id);
+                    if ($product->stock < $cartItem->quantity) {
+                        throw new \Exception("Insufficient stock for product ID: {$cartItem->product_id}");
+                    }
+                    $product->decrement('stock', $cartItem->quantity);
+                }
+
+                $orderNumber = Order::generateOrderNumber();
+                $paymentMethodId = $paymentIntent->payment_method ?? null;
+                $customerId = $paymentIntent->customer ?? null;
+
+                $order = Order::create([
+                    'order_number' => $orderNumber,
+                    'user_id' => $userId,
+                    'session_id' => null,
+                    'billing_first_name' => $billing['first_name'] ?? '',
+                    'billing_last_name' => $billing['last_name'] ?? '',
+                    'billing_email' => $billing['email'] ?? '',
+                    'billing_phone' => $billing['phone'] ?? '',
+                    'billing_street_address' => $billing['street_address'] ?? '',
+                    'billing_city' => $billing['city'] ?? '',
+                    'billing_suburb' => $billing['suburb'] ?? '',
+                    'billing_region_id' => $billing['region_id'] ?? null,
+                    'billing_zip_code' => $billing['zip_code'] ?? '',
+                    'billing_country' => 'New Zealand',
+                    'shipping_first_name' => $shipping['first_name'] ?? '',
+                    'shipping_last_name' => $shipping['last_name'] ?? '',
+                    'shipping_email' => $shipping['email'] ?? '',
+                    'shipping_phone' => $shipping['phone'] ?? '',
+                    'shipping_street_address' => $shipping['street_address'] ?? '',
+                    'shipping_city' => $shipping['city'] ?? '',
+                    'shipping_suburb' => $shipping['suburb'] ?? '',
+                    'shipping_region_id' => $shipping['region_id'] ?? null,
+                    'shipping_zip_code' => $shipping['zip_code'] ?? '',
+                    'shipping_country' => 'New Zealand',
+                    'subtotal' => $subtotal,
+                    'discount' => $discount,
+                    'coupon_code' => $couponCode,
+                    'tax' => $tax,
+                    'shipping' => $shippingPrice,
+                    'shipping_price' => $shippingPrice,
+                    'total' => $finalTotal,
+                    'platform_fee' => $feeCalculation['platform_fee'] ?? 0,
+                    'currency' => 'NZD',
+                    'payment_method' => 'stripe',
+                    'payment_status' => 'paid',
+                    'payment_confirmed_at' => now(),
+                    'stripe_payment_intent_id' => $paymentIntent->id,
+                    'stripe_charge_id' => $paymentIntent->latest_charge ?? null,
+                    'stripe_customer_id' => $customerId,
+                    'stripe_payment_method_id' => $paymentMethodId,
+                    'status' => 'processing',
+                    'notes' => $checkoutData['notes'] ?? null,
+                ]);
+
+                $orderItems = [];
+                $now = now();
+                foreach ($cartItems as $cartItem) {
+                    $orderItems[] = [
+                        'order_id' => $order->id,
+                        'product_id' => $cartItem->product_id,
+                        'product_name' => $cartItem->product->name,
+                        'product_slug' => $cartItem->product->slug,
+                        'quantity' => $cartItem->quantity,
+                        'price' => $cartItem->price,
+                        'subtotal' => $cartItem->subtotal,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+
+                if (!empty($orderItems)) {
+                    OrderItem::insert($orderItems);
+                }
+
+                if ($appliedCoupon) {
+                    $coupon = Coupon::find($appliedCoupon['id']);
+                    if ($coupon) {
+                        $coupon->increment('usage_count');
+                    }
+                }
+
+                CartItem::where('user_id', $userId)->delete();
+                Cache::forget($cacheKey);
+
+                DB::commit();
+
+                $order->load(['items.product', 'billingRegion', 'shippingRegion']);
+
+                try {
+                    $notificationService->createOrderNotification($order);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create admin notification', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                try {
+                    if (app()->environment('local', 'development')) {
+                        Mail::to($order->billing_email)->send(new OrderConfirmationMail($order));
+                    } else {
+                        Mail::to($order->billing_email)->queue(new OrderConfirmationMail($order));
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to send order confirmation email', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                Log::info('=== WEBHOOK: Order created successfully ===', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_intent_id' => $paymentIntent->id,
+                    'user_id' => $userId
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('=== WEBHOOK: Order creation failed ===', [
+                    'payment_intent_id' => $paymentIntent->id,
+                    'user_id' => $userId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('=== WEBHOOK: Error in createOrderFromWebhook ===', [
+                'payment_intent_id' => $paymentIntent->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }
 

@@ -40,6 +40,20 @@
 
             window.addEventListener('unhandledrejection', event => {
                 if (event?.reason) {
+                    if (window.isRedirecting || document.visibilityState === 'hidden') {
+                        event.preventDefault();
+                        return;
+                    }
+                    
+                    // Suppress Stripe Element load errors (they're handled by event listeners)
+                    if (event.reason?.error?.type === 'payment_element_load_error' || 
+                        event.reason?.message?.includes('payment Element load') ||
+                        event.reason?.message?.includes('payment_element')) {
+                        console.warn('Stripe Element error (handled):', event.reason);
+                        event.preventDefault();
+                        return;
+                    }
+                    
                     console.error('Unhandled Promise Rejection:', event.reason);
                 }
             });
@@ -75,6 +89,20 @@
         setupUnhandledRejectionHandler() {
             window.addEventListener('unhandledrejection', event => {
                 if (!event.reason || event.reason?.handled === true) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (window.isRedirecting || document.visibilityState === 'hidden') {
+                    event.preventDefault();
+                    return;
+                }
+
+                // Suppress Stripe Element load errors (they're handled by event listeners)
+                if (event.reason?.error?.type === 'payment_element_load_error' || 
+                    event.reason?.message?.includes('payment Element load') ||
+                    event.reason?.message?.includes('payment_element')) {
+                    console.warn('Stripe Element error (handled):', event.reason);
                     event.preventDefault();
                     return;
                 }
@@ -116,6 +144,9 @@
 
                 return originalFetch(...args).catch(error => {
                     if (error instanceof TypeError) {
+                        if (window.isRedirecting || document.visibilityState === 'hidden') {
+                            return Promise.reject({ handled: true, silent: true, isRedirecting: true });
+                        }
                         return this.handleHttpError(error, {
                             showMessage: true,
                             silentAbort: true

@@ -9,12 +9,13 @@
         const quantityInput = document.getElementById('quantity');
         const decreaseQty = document.getElementById('decreaseQty');
         const increaseQty = document.getElementById('increaseQty');
-        const minQty = parseInt(quantityInput?.getAttribute('min') || '1');
-        const maxQty = parseInt(quantityInput?.getAttribute('max') || '999');
 
         if (!quantityInput) {
             return;
         }
+
+        const minQty = parseInt(quantityInput.getAttribute('min') || '1');
+        const maxQty = parseInt(quantityInput.getAttribute('max') || '999');
 
         // Decrease quantity
         if (decreaseQty) {
@@ -23,6 +24,7 @@
                 let currentQty = parseInt(quantityInput.value) || minQty;
                 if (currentQty > minQty) {
                     quantityInput.value = currentQty - 1;
+                    quantityInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
         }
@@ -34,6 +36,7 @@
                 let currentQty = parseInt(quantityInput.value) || minQty;
                 if (currentQty < maxQty) {
                     quantityInput.value = currentQty + 1;
+                    quantityInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
         }
@@ -49,11 +52,12 @@
         });
     }
 
-    // Initialize when DOM is ready
+    // Always wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initQuantityControls);
     } else {
-        initQuantityControls();
+        // DOM already loaded, but wait a tick to ensure all elements are available
+        setTimeout(initQuantityControls, 0);
     }
 })();
 

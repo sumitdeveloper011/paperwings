@@ -47,7 +47,14 @@
                 if (addToCartBtn && addToCartBtn.hasAttribute('data-product-uuid')) {
                     e.preventDefault();
                     const productUuid = addToCartBtn.getAttribute('data-product-uuid');
-                    this.addToCart(productUuid, 1, addToCartBtn);
+                    
+                    let quantity = 1;
+                    if (addToCartBtn.id === 'addToCartBtn') {
+                        const quantityInput = document.getElementById('quantity');
+                        quantity = parseInt(quantityInput?.value) || 1;
+                    }
+                    
+                    this.addToCart(productUuid, quantity, addToCartBtn);
                 }
 
                 let cartTrigger = e.target.closest('.cart-trigger') ||
@@ -98,6 +105,20 @@
                 return Promise.reject('Product UUID is missing');
             }
 
+            const btnText = button?.querySelector('.btn-text');
+            const btnIcon = button?.querySelector('i');
+            
+            if (button) {
+                button.disabled = true;
+                if (btnText) {
+                    btnText.textContent = 'Adding...';
+                }
+                if (btnIcon) {
+                    btnIcon.classList.remove('fa-shopping-cart');
+                    btnIcon.classList.add('fa-spinner', 'fa-spin');
+                }
+            }
+            
             if (window.AppUtils) {
                 window.AppUtils.setButtonLoading(button, true, 'fa-shopping-cart');
             }
@@ -120,6 +141,16 @@
                     })
                 }).then(response => {
                     if (response.status === 401) {
+                        if (button) {
+                            button.disabled = false;
+                            if (btnText) {
+                                btnText.textContent = 'Add to Cart';
+                            }
+                            if (btnIcon) {
+                                btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                                btnIcon.classList.add('fa-shopping-cart');
+                            }
+                        }
                         if (window.AppUtils) {
                             window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
                         }
@@ -170,18 +201,31 @@
                         }
                     
                     if (button) {
+                        button.disabled = false;
+                        if (btnText) {
+                            btnText.textContent = 'Add to Cart';
+                        }
+                        if (btnIcon) {
+                            btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                            btnIcon.classList.add('fa-shopping-cart');
+                        }
+                        
                         if (window.AppUtils) {
                             window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
                         }
                         
-                        button.classList.add('in-cart');
-                        button.setAttribute('title', 'Remove from Cart');
-                        button.setAttribute('aria-label', 'Remove from Cart');
-                        const icon = button.querySelector('i');
-                        if (icon) {
-                            icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
-                            icon.classList.add('fas', 'fa-check');
-                            button.disabled = false;
+                        if (button.id !== 'addToCartBtn') {
+                            button.classList.add('in-cart');
+                            button.setAttribute('title', 'Remove from Cart');
+                            button.setAttribute('aria-label', 'Remove from Cart');
+                            const icon = button.querySelector('i');
+                            if (icon) {
+                                icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                                icon.classList.add('fas', 'fa-check');
+                            }
+                        } else {
+                            button.setAttribute('title', 'Add to Cart');
+                            button.setAttribute('aria-label', 'Add to Cart');
                         }
                     }
                     this.checkCartStatus();
@@ -235,6 +279,16 @@
                     } else if (button && window.AppUtils) {
                         window.AppUtils.showNotification(data.message || 'Failed to add product to cart.', 'error');
                     }
+                    if (button) {
+                        button.disabled = false;
+                        if (btnText) {
+                            btnText.textContent = 'Add to Cart';
+                        }
+                        if (btnIcon) {
+                            btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                            btnIcon.classList.add('fa-shopping-cart');
+                        }
+                    }
                     if (window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
                     }
@@ -243,6 +297,16 @@
                         message: data.message || 'Failed to add product to cart.',
                         isApiError: true
                     });
+                }
+                if (button) {
+                    button.disabled = false;
+                    if (btnText) {
+                        btnText.textContent = 'Add to Cart';
+                    }
+                    if (btnIcon) {
+                        btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                        btnIcon.classList.add('fa-shopping-cart');
+                    }
                 }
                 if (window.AppUtils) {
                     window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
@@ -253,6 +317,16 @@
                 });
             })
                 .catch(error => {
+                    if (button) {
+                        button.disabled = false;
+                        if (btnText) {
+                            btnText.textContent = 'Add to Cart';
+                        }
+                        if (btnIcon) {
+                            btnIcon.classList.remove('fa-spinner', 'fa-spin');
+                            btnIcon.classList.add('fa-shopping-cart');
+                        }
+                    }
                     if (window.AppUtils) {
                         window.AppUtils.setButtonLoading(button, false, 'fa-shopping-cart');
                     }
@@ -650,16 +724,27 @@
                         if (!productUuid) return;
                         
                         const icon = button.querySelector('i');
+                        const isProductDetailPage = button.id === 'addToCartBtn';
 
                         if (statusData[productUuid]) {
-                            button.classList.add('in-cart');
-                            button.setAttribute('title', 'Remove from Cart');
-                            button.setAttribute('aria-label', 'Remove from Cart');
-                            button.disabled = false;
-                            if (icon) {
-                                icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
-                                icon.classList.add('fas', 'fa-check');
+                            if (!isProductDetailPage) {
+                                button.classList.add('in-cart');
+                                button.setAttribute('title', 'Remove from Cart');
+                                button.setAttribute('aria-label', 'Remove from Cart');
+                                if (icon) {
+                                    icon.classList.remove('fa-shopping-cart', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                                    icon.classList.add('fas', 'fa-check');
+                                }
+                            } else {
+                                button.classList.remove('in-cart');
+                                button.setAttribute('title', 'Add to Cart');
+                                button.setAttribute('aria-label', 'Add to Cart');
+                                if (icon) {
+                                    icon.classList.remove('fa-check', 'fa-spinner', 'fa-spin', 'far', 'fal', 'fab');
+                                    icon.classList.add('fas', 'fa-shopping-cart');
+                                }
                             }
+                            button.disabled = false;
                         } else {
                             button.classList.remove('in-cart');
                             button.setAttribute('title', 'Add to Cart');

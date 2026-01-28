@@ -188,19 +188,63 @@ class NotificationService
 
     protected function sendAdminOrderEmail($order): void
     {
+        Log::info('Starting admin order email notification', [
+            'order_id' => $order->id ?? 'N/A',
+            'order_number' => $order->order_number ?? 'N/A'
+        ]);
+
         try {
             $recipients = $this->getEmailRecipients();
+            
+            Log::info('Admin email recipients retrieved', [
+                'order_id' => $order->id ?? 'N/A',
+                'recipients_count' => count($recipients),
+                'recipients' => $recipients
+            ]);
+
             if (empty($recipients)) {
+                Log::warning('No admin email recipients found, skipping admin order email', [
+                    'order_id' => $order->id ?? 'N/A',
+                    'order_number' => $order->order_number ?? 'N/A'
+                ]);
                 return;
             }
 
             foreach ($recipients as $email) {
-                Mail::to($email)->queue(new \App\Mail\OrderAdminNotificationMail($order));
+                Log::info('Queuing admin order email', [
+                    'order_id' => $order->id ?? 'N/A',
+                    'order_number' => $order->order_number ?? 'N/A',
+                    'recipient_email' => $email,
+                    'queue' => config('queue.default')
+                ]);
+
+                try {
+                    Mail::to($email)->queue(new \App\Mail\OrderAdminNotificationMail($order));
+                    Log::info('Admin order email queued successfully', [
+                        'order_id' => $order->id ?? 'N/A',
+                        'order_number' => $order->order_number ?? 'N/A',
+                        'recipient_email' => $email
+                    ]);
+                } catch (\Exception $emailException) {
+                    Log::error('Failed to queue admin order email for recipient', [
+                        'order_id' => $order->id ?? 'N/A',
+                        'order_number' => $order->order_number ?? 'N/A',
+                        'recipient_email' => $email,
+                        'error' => $emailException->getMessage(),
+                        'error_class' => get_class($emailException),
+                        'trace' => $emailException->getTraceAsString()
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             Log::error('Failed to send admin order email notification', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage()
+                'order_id' => $order->id ?? 'N/A',
+                'order_number' => $order->order_number ?? 'N/A',
+                'error' => $e->getMessage(),
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
         }
     }

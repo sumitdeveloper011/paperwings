@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Charge;
@@ -392,9 +393,44 @@ class CheckoutController extends Controller
             $paymentIntentData = $this->createPaymentIntentInternal($totals['final_total'] ?? $totals['total']);
             $clientSecret = $paymentIntentData['clientSecret'] ?? null;
             $paymentIntentId = $paymentIntentData['paymentIntentId'] ?? null;
+            
+            // Verify PaymentIntent status is valid for Elements
+            if ($paymentIntentId) {
+                try {
+                    $stripeSecret = config('services.stripe.secret');
+                    Stripe::setApiKey($stripeSecret);
+                    $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+                    
+                    Log::info('PaymentIntent status check before mounting Elements', [
+                        'payment_intent_id' => $paymentIntentId,
+                        'status' => $paymentIntent->status,
+                        'user_id' => Auth::id(),
+                    ]);
+                    
+                    // PaymentIntent must be in requires_payment_method or requires_confirmation state
+                    if (!in_array($paymentIntent->status, ['requires_payment_method', 'requires_confirmation'])) {
+                        Log::warning('PaymentIntent in invalid state for Elements', [
+                            'payment_intent_id' => $paymentIntentId,
+                            'status' => $paymentIntent->status,
+                            'user_id' => Auth::id(),
+                        ]);
+                        // Recreate PaymentIntent if in wrong state
+                        $paymentIntentData = $this->createPaymentIntentInternal($totals['final_total'] ?? $totals['total'], true);
+                        $clientSecret = $paymentIntentData['clientSecret'] ?? null;
+                        $paymentIntentId = $paymentIntentData['paymentIntentId'] ?? null;
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Could not verify PaymentIntent status', [
+                        'payment_intent_id' => $paymentIntentId,
+                        'error' => $e->getMessage(),
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
             Log::error('Failed to create payment intent in payment page', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'user_id' => Auth::id(),
             ]);
             return redirect()->route('checkout.review')
@@ -414,7 +450,9 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Step 3: Process payment
+     * Step 3: Process payment (Industry Standard Flow)
+     * Store checkout data and redirect to processing page
+     * Order will be created by webhook after payment confirmation
      */
     public function processPayment(Request $request)
     {
@@ -422,43 +460,121 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.details')->with('error', 'Please complete the checkout details first.');
         }
 
+        if (empty($request->payment_intent_id)) {
+            return redirect()->route('checkout.payment')->with('error', 'Payment intent ID is missing. Please try again.');
+        }
+
+        try {
+            $stripeSecret = config('services.stripe.secret');
+            if ($stripeSecret) {
+                Stripe::setApiKey($stripeSecret);
+                $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
+                
+                if (in_array($paymentIntent->status, ['canceled', 'payment_failed'])) {
+                    return redirect()->route('checkout.payment')
+                        ->with('error', 'Payment was not successful. Please try again.');
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Could not verify PaymentIntent status', [
+                'payment_intent_id' => $request->payment_intent_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
         $sessionData = $this->checkoutSession->getCheckoutData();
         $totals = $this->checkoutSession->getTotals();
 
-        $request->merge([
-            'shipping_first_name' => $sessionData['shipping']['first_name'],
-            'shipping_last_name' => $sessionData['shipping']['last_name'],
-            'shipping_email' => $sessionData['shipping']['email'],
-            'shipping_phone' => $sessionData['shipping']['phone'],
-            'shipping_street_address' => $sessionData['shipping']['street_address'],
-            'shipping_city' => $sessionData['shipping']['city'],
-            'shipping_suburb' => $sessionData['shipping']['suburb'] ?? '',
-            'shipping_region_id' => $sessionData['shipping']['region_id'],
-            'shipping_zip_code' => $sessionData['shipping']['zip_code'],
-            'shipping_country' => $sessionData['shipping']['country'],
-            'billing_first_name' => $sessionData['billing_different'] ? $sessionData['billing']['first_name'] : $sessionData['shipping']['first_name'],
-            'billing_last_name' => $sessionData['billing_different'] ? $sessionData['billing']['last_name'] : $sessionData['shipping']['last_name'],
-            'billing_email' => $sessionData['billing_different'] ? $sessionData['billing']['email'] : $sessionData['shipping']['email'],
-            'billing_phone' => $sessionData['billing_different'] ? $sessionData['billing']['phone'] : $sessionData['shipping']['phone'],
-            'billing_street_address' => $sessionData['billing_different'] ? $sessionData['billing']['street_address'] : $sessionData['shipping']['street_address'],
-            'billing_city' => $sessionData['billing_different'] ? $sessionData['billing']['city'] : $sessionData['shipping']['city'],
-            'billing_suburb' => $sessionData['billing_different'] ? ($sessionData['billing']['suburb'] ?? '') : ($sessionData['shipping']['suburb'] ?? ''),
-            'billing_region_id' => $sessionData['billing_different'] ? $sessionData['billing']['region_id'] : $sessionData['shipping']['region_id'],
-            'billing_zip_code' => $sessionData['billing_different'] ? $sessionData['billing']['zip_code'] : $sessionData['shipping']['zip_code'],
-            'billing_country' => $sessionData['billing_different'] ? $sessionData['billing']['country'] : $sessionData['shipping']['country'],
+        $checkoutData = [
+            'user_id' => Auth::id(),
+            'payment_intent_id' => $request->payment_intent_id,
+            'shipping' => $sessionData['shipping'],
+            'billing' => $sessionData['billing_different'] ? $sessionData['billing'] : $sessionData['shipping'],
+            'billing_different' => $sessionData['billing_different'] ?? false,
             'notes' => $sessionData['notes'] ?? '',
-        ]);
+            'totals' => $totals,
+            'applied_coupon' => Session::get('applied_coupon'),
+            'created_at' => now()->toDateTimeString(),
+        ];
 
-        $storeRequest = new StoreCheckoutRequest();
-        $storeRequest->merge($request->all());
-        
-        $result = $this->processOrder($storeRequest);
-        
-        if ($result instanceof \Illuminate\Http\RedirectResponse && $result->getTargetUrl() !== route('checkout.payment')) {
-            $this->checkoutSession->clear();
+        $cacheKey = 'checkout_data_' . $request->payment_intent_id;
+        Cache::put($cacheKey, $checkoutData, now()->addHours(2));
+
+        try {
+            $redirectUrl = route('checkout.processing', ['paymentIntent' => $request->payment_intent_id]);
+        } catch (\Exception $e) {
+            $redirectUrl = url('/checkout/processing/' . $request->payment_intent_id);
         }
-        
-        return $result;
+
+        if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+            return $this->jsonSuccess('Payment processing started. Please wait for confirmation.', [
+                'redirect_url' => $redirectUrl,
+                'payment_intent_id' => $request->payment_intent_id
+            ]);
+        }
+
+        return redirect($redirectUrl);
+    }
+
+    /**
+     * Save form data temporarily (for coupon apply)
+     * This saves form data to session without full validation
+     */
+    public function saveFormData(Request $request)
+    {
+        try {
+            $billingDifferent = $request->has('billing_different') && $request->billing_different == '1';
+            
+            $shippingData = [
+                'first_name' => $request->input('shipping_first_name', ''),
+                'last_name' => $request->input('shipping_last_name', ''),
+                'email' => $request->input('shipping_email', ''),
+                'phone' => $request->input('shipping_phone', ''),
+                'street_address' => $request->input('shipping_street_address', ''),
+                'city' => $request->input('shipping_city', ''),
+                'suburb' => $request->input('shipping_suburb', ''),
+                'region_id' => $request->input('shipping_region_id', ''),
+                'zip_code' => $request->input('shipping_zip_code', ''),
+                'country' => $request->input('shipping_country', ''),
+            ];
+
+            $checkoutData = [
+                'shipping' => $shippingData,
+                'billing' => $billingDifferent ? [
+                    'first_name' => $request->input('billing_first_name', ''),
+                    'last_name' => $request->input('billing_last_name', ''),
+                    'email' => $request->input('billing_email', ''),
+                    'phone' => $request->input('billing_phone', ''),
+                    'street_address' => $request->input('billing_street_address', ''),
+                    'city' => $request->input('billing_city', ''),
+                    'suburb' => $request->input('billing_suburb', ''),
+                    'region_id' => $request->input('billing_region_id', ''),
+                    'zip_code' => $request->input('billing_zip_code', ''),
+                    'country' => $request->input('billing_country', ''),
+                ] : $shippingData,
+                'notes' => $request->input('notes', ''),
+                'billing_different' => $billingDifferent,
+            ];
+
+            $this->checkoutSession->storeDetails($checkoutData);
+
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return $this->jsonSuccess('Form data saved successfully.');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Form data saved']);
+        } catch (\Exception $e) {
+            Log::error('Failed to save form data', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return $this->jsonError('Failed to save form data: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => false, 'message' => 'Failed to save form data']);
+        }
     }
 
     // Apply coupon code
@@ -595,6 +711,25 @@ class CheckoutController extends Controller
 
         // Handle AJAX/JSON requests
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+            $sessionData = $this->checkoutSession->getCheckoutData();
+            $shippingRegionId = $sessionData['shipping']['region_id'] ?? null;
+            
+            $shippingPrice = 0;
+            if ($shippingRegionId) {
+                try {
+                    $orderAmount = max(0, $subtotal - $discount);
+                    $shippingInfo = $this->shippingService->calculateShippingWithInfo($shippingRegionId, $orderAmount);
+                    $shippingPrice = $shippingInfo['shipping_price'] ?? 0;
+                } catch (\Exception $e) {
+                    Log::warning('Failed to calculate shipping for coupon response', [
+                        'error' => $e->getMessage(),
+                        'region_id' => $shippingRegionId
+                    ]);
+                }
+            }
+            
+            $finalTotal = $this->priceService->calculateTotal($subtotal, $discount, $shippingPrice);
+            
             return $this->jsonSuccess('Coupon applied successfully!', [
                 'coupon' => [
                     'code' => $coupon->code,
@@ -602,7 +737,9 @@ class CheckoutController extends Controller
                     'discount' => $discount
                 ],
                 'discount' => $discount,
-                'total' => $total
+                'subtotal' => $subtotal,
+                'shipping' => $shippingPrice,
+                'total' => $finalTotal
             ]);
         }
 
@@ -1002,6 +1139,16 @@ class CheckoutController extends Controller
                 // Payment method type will be retrieved from webhook for more reliable data
                 // Webhook has access to complete charge details after payment is confirmed
 
+                Log::info('Creating order in database', [
+                    'order_number' => $orderNumber,
+                    'user_id' => Auth::id(),
+                    'payment_intent_id' => $paymentIntent->id,
+                    'subtotal' => $subtotal,
+                    'discount' => $discount,
+                    'shipping' => $shippingPrice,
+                    'total' => $finalTotal
+                ]);
+
                 $order = Order::create([
                     'order_number' => $orderNumber,
                     'user_id' => Auth::id(),
@@ -1037,7 +1184,7 @@ class CheckoutController extends Controller
                     'stripe_fee' => $estimatedStripeFee > 0 ? $estimatedStripeFee : null,
                     'currency' => 'NZD',
                     'payment_method' => 'stripe',
-                    'payment_status' => 'pending', // Will be confirmed by webhook
+                    'payment_status' => 'pending', // Will be confirmed by webhook (source of truth)
                     'stripe_payment_intent_id' => $paymentIntent->id,
                     'stripe_charge_id' => $paymentIntent->latest_charge ?? null,
                     'stripe_customer_id' => $customerId,
@@ -1045,6 +1192,13 @@ class CheckoutController extends Controller
                     'stripe_payment_method_type' => $paymentMethodType,
                     'status' => 'pending', // Will be updated to processing when payment is confirmed by webhook
                     'notes' => $request->notes ?? null,
+                ]);
+
+                Log::info('Order created in database', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'billing_email' => $order->billing_email,
+                    'total' => $order->total
                 ]);
 
                 // Save user address and phone details for future use
@@ -1178,28 +1332,81 @@ class CheckoutController extends Controller
 
                 DB::commit();
 
-                if (app()->environment('local')) {
-                    Log::info('Order created successfully', [
-                        'user_id' => Auth::id(),
+                Log::info('Order created successfully', [
+                    'user_id' => Auth::id(),
+                    'user_email' => Auth::user()->email ?? 'N/A',
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'billing_email' => $order->billing_email,
+                    'subtotal' => $order->subtotal,
+                    'discount' => $order->discount,
+                    'shipping' => $order->shipping,
+                    'total' => $order->total,
+                    'payment_intent_id' => $paymentIntent->id,
+                    'payment_status' => $order->payment_status,
+                    'order_status' => $order->status,
+                    'items_count' => count($orderItems)
+                ]);
+
+                // Create admin notification
+                Log::info('Creating admin order notification', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number
+                ]);
+
+                try {
+                    $this->notificationService->createOrderNotification($order);
+                    Log::info('Admin order notification created successfully', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create order notification', [
                         'order_id' => $order->id,
                         'order_number' => $order->order_number,
-                        'total' => $order->total,
-                        'payment_intent_id' => $paymentIntent->id,
+                        'error' => $e->getMessage(),
+                        'error_class' => get_class($e),
+                        'trace' => $e->getTraceAsString(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
                     ]);
                 }
 
-                // Create admin notification
-                try {
-                    $this->notificationService->createOrderNotification($order);
-                } catch (\Exception $e) {
-                    Log::error('Failed to create order notification: ' . $e->getMessage());
-                }
-
-                return $this->jsonSuccess('Order placed successfully!', [
+                $redirectUrl = route('checkout.success', ['order' => $order->order_number]);
+                
+                Log::info('Preparing JSON response for order success', [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
-                    'redirect_url' => route('checkout.success', ['order' => $order->order_number])
+                    'redirect_url' => $redirectUrl,
+                    'is_ajax' => $request->ajax(),
+                    'expects_json' => $request->expectsJson(),
+                    'wants_json' => $request->wantsJson(),
+                    'headers' => $request->headers->all()
                 ]);
+
+                $responseData = [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'redirect_url' => $redirectUrl
+                ];
+
+                Log::info('Creating JSON success response', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'response_data' => $responseData
+                ]);
+
+                $response = $this->jsonSuccess('Order placed successfully!', $responseData);
+
+                Log::info('JSON response created, returning to client', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'response_status' => $response->getStatusCode(),
+                    'response_content_type' => $response->headers->get('Content-Type'),
+                    'response_content' => $response->getContent()
+                ]);
+
+                return $response;
 
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -1242,41 +1449,213 @@ class CheckoutController extends Controller
         }
     }
 
+    /**
+     * Check order payment status (for client-side polling)
+     */
+    public function checkOrderStatus(Request $request, $orderNumber): JsonResponse
+    {
+        try {
+            $order = Order::where('order_number', $orderNumber)
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            return $this->jsonSuccess('Order status retrieved', [
+                'order_number' => $order->order_number,
+                'payment_status' => $order->payment_status,
+                'status' => $order->status
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error checking order status', [
+                'order_number' => $orderNumber,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->jsonError('Order not found', 'ORDER_NOT_FOUND', null, 404);
+        }
+    }
+
+    /**
+     * Check payment status by PaymentIntent ID (for processing page polling)
+     */
+    public function checkPaymentStatus(Request $request, $paymentIntentId): JsonResponse
+    {
+        try {
+            $order = Order::where('stripe_payment_intent_id', $paymentIntentId)
+                ->where('user_id', Auth::id())
+                ->first();
+
+            if (!$order) {
+                return $this->jsonSuccess('Payment processing', [
+                    'payment_intent_id' => $paymentIntentId,
+                    'order_exists' => false,
+                    'status' => 'processing',
+                    'message' => 'Waiting for payment confirmation...'
+                ]);
+            }
+
+            return $this->jsonSuccess('Payment status retrieved', [
+                'payment_intent_id' => $paymentIntentId,
+                'order_exists' => true,
+                'order_number' => $order->order_number,
+                'payment_status' => $order->payment_status,
+                'status' => $order->status,
+                'redirect_url' => $order->payment_status === 'paid' 
+                    ? route('checkout.success', ['order' => $order->order_number])
+                    : null
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error checking payment status', [
+                'payment_intent_id' => $paymentIntentId,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->jsonError('Error checking payment status', 'PAYMENT_STATUS_ERROR', null, 500);
+        }
+    }
+
+    /**
+     * Show payment processing page (waits for webhook confirmation)
+     */
+    public function processing(Request $request, $paymentIntent)
+    {
+        $title = 'Processing Payment';
+
+        try {
+            $stripeSecret = config('services.stripe.secret');
+            if ($stripeSecret) {
+                Stripe::setApiKey($stripeSecret);
+                $stripePaymentIntent = PaymentIntent::retrieve($paymentIntent);
+                
+                if ($stripePaymentIntent->status === 'succeeded') {
+                    $order = Order::where('stripe_payment_intent_id', $paymentIntent)
+                        ->where('user_id', Auth::id())
+                        ->first();
+                    
+                    if ($order && $order->payment_status === 'paid') {
+                        return redirect()->route('checkout.success', ['order' => $order->order_number]);
+                    }
+                } elseif (in_array($stripePaymentIntent->status, ['canceled', 'payment_failed'])) {
+                    return redirect()->route('checkout.payment')
+                        ->with('error', 'Payment was not successful. Please try again.');
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error retrieving PaymentIntent on processing page', [
+                'payment_intent_id' => $paymentIntent,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return view('frontend.checkout.processing', compact('title', 'paymentIntent'));
+    }
+
     // Show order success page (only show success if payment is actually confirmed)
     public function success(Request $request, $orderNumber)
     {
         try {
             $order = Order::where('order_number', $orderNumber)->firstOrFail();
 
-            // Verify payment status before showing success
-            if ($order->payment_status !== 'paid') {
+            Log::info('Accessing order success page', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'payment_status' => $order->payment_status,
+                'user_id' => Auth::id(),
+                'order_user_id' => $order->user_id
+            ]);
+
+            // CRITICAL: Check if payment has failed or been cancelled
+            // This prevents showing success page if webhook already marked it as failed
+            if (in_array($order->payment_status, ['failed', 'cancelled', 'refunded'])) {
+                Log::warning('Order payment status indicates failure, redirecting from success page', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_status' => $order->payment_status
+                ]);
                 return redirect()->route('checkout.index')
-                    ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+                    ->with('error', 'Payment was not successful. Please try again or contact support.');
             }
 
-            // Double-check with Stripe if payment intent exists
-            if ($order->stripe_payment_intent_id) {
+            // Verify payment before showing success page
+            // Best practice: Allow if payment_status is 'paid' (webhook confirmed) 
+            // OR if PaymentIntent exists and is succeeded (immediate confirmation for UX)
+            // Webhook remains source of truth for final confirmation and email sending
+            $paymentConfirmed = false;
+            $verificationMethod = null;
+            
+            if ($order->payment_status === 'paid') {
+                // Webhook has already confirmed payment (best case - most reliable)
+                $paymentConfirmed = true;
+                $verificationMethod = 'webhook_confirmed';
+                Log::info('Payment confirmed via webhook (payment_status = paid)', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number
+                ]);
+            } elseif ($order->stripe_payment_intent_id) {
+                // PaymentIntent exists - verify with Stripe server-side for immediate UX
+                // IMPORTANT: We verify server-side (not client-side) to prevent manipulation
+                // Note: Webhook will still update order and send email (source of truth)
                 try {
-                    // Read Stripe secret from .env config
                     $stripeSecret = config('services.stripe.secret');
                     if ($stripeSecret) {
                         Stripe::setApiKey($stripeSecret);
                         $paymentIntent = PaymentIntent::retrieve($order->stripe_payment_intent_id);
-
-                        if ($paymentIntent->status !== 'succeeded') {
-                            return redirect()->route('checkout.index')
-                                ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+                        
+                        // Double-check: PaymentIntent must be 'succeeded' AND not in failed state
+                        if ($paymentIntent->status === 'succeeded') {
+                            // Additional safety: Check if there's a failure reason
+                            if (isset($paymentIntent->last_payment_error) && $paymentIntent->last_payment_error) {
+                                Log::warning('PaymentIntent shows succeeded but has error, treating as failed', [
+                                    'order_id' => $order->id,
+                                    'order_number' => $order->order_number,
+                                    'error' => $paymentIntent->last_payment_error
+                                ]);
+                                $paymentConfirmed = false;
+                            } else {
+                                $paymentConfirmed = true;
+                                $verificationMethod = 'payment_intent_verified';
+                                Log::info('Payment confirmed via PaymentIntent status (webhook will finalize)', [
+                                    'order_id' => $order->id,
+                                    'order_number' => $order->order_number,
+                                    'payment_intent_status' => $paymentIntent->status,
+                                    'note' => 'Webhook will provide final confirmation and send email'
+                                ]);
+                            }
+                        } else {
+                            Log::warning('PaymentIntent status is not succeeded', [
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                                'payment_intent_status' => $paymentIntent->status
+                            ]);
                         }
                     }
                 } catch (\Exception $e) {
                     Log::error('Error verifying payment on success page', [
                         'order_number' => $orderNumber,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
                     ]);
-                    // Continue to show success page even if Stripe verification fails
-                    // The payment_status check above is sufficient
                 }
             }
+
+            if (!$paymentConfirmed) {
+                Log::warning('Payment not confirmed, redirecting from success page', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_status' => $order->payment_status,
+                    'has_payment_intent' => !!$order->stripe_payment_intent_id
+                ]);
+                return redirect()->route('checkout.index')
+                    ->with('error', 'Payment is still being processed. Please check your order status in your account.');
+            }
+
+            // Log verification method for debugging
+            Log::info('Success page access granted', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'verification_method' => $verificationMethod,
+                'payment_status' => $order->payment_status
+            ]);
+
 
             // Load order relationships for e-commerce tracking (with error handling)
             try {
@@ -1371,10 +1750,11 @@ class CheckoutController extends Controller
      * Create payment intent internally (used by payment page)
      * 
      * @param float $amount
+     * @param bool $forceNew Force creation of new PaymentIntent (ignore idempotency)
      * @return array ['clientSecret' => string, 'paymentIntentId' => string]
      * @throws \Exception
      */
-    private function createPaymentIntentInternal(float $amount): array
+    private function createPaymentIntentInternal(float $amount, bool $forceNew = false): array
     {
         if ($amount < 0.50) {
             throw new \Exception('Invalid payment amount. Amount must be at least $0.50.');
@@ -1393,11 +1773,17 @@ class CheckoutController extends Controller
         try {
             Stripe::setApiKey($stripeSecret);
 
+            $userId = Auth::id();
+            $userEmail = Auth::user()->email ?? '';
+            
             $metadata = [
-                'user_id' => (string)Auth::id(),
-                'user_email' => Auth::user()->email ?? '',
+                'user_id' => (string)$userId,
+                'user_email' => $userEmail,
             ];
 
+            // Use timestamp in idempotency key to ensure uniqueness if forceNew is true
+            $idempotencyKey = 'pi_' . $userId . '_' . md5($amount . $userId . ($forceNew ? now()->timestamp : now()->format('Y-m-d')));
+            
             $paymentIntent = PaymentIntent::create([
                 'amount' => (int)round($amount * 100),
                 'currency' => 'nzd',
@@ -1405,11 +1791,21 @@ class CheckoutController extends Controller
                     'enabled' => true,
                 ],
                 'metadata' => $metadata,
+            ], [
+                'idempotency_key' => $idempotencyKey,
             ]);
 
             if (!$paymentIntent->client_secret) {
                 throw new \Exception('Failed to create payment intent.');
             }
+            
+            Log::info('PaymentIntent created successfully', [
+                'payment_intent_id' => $paymentIntent->id,
+                'status' => $paymentIntent->status,
+                'amount' => $amount,
+                'user_id' => $userId,
+                'force_new' => $forceNew,
+            ]);
 
             return [
                 'clientSecret' => $paymentIntent->client_secret,

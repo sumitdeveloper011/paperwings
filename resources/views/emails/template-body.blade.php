@@ -5,7 +5,7 @@
 ])
 {!! $body !!}
 @include('emails.partials.footer', [
-    'contactPhone' => $contactPhone ?? '+880 123 4567',
+    'contactPhone' => $contactPhone ?? '+64 4-568 7770',
     'contactEmail' => $contactEmail ?? 'info@paperwings.co.nz',
     'socialLinks' => $socialLinks ?? [],
     'currentYear' => $currentYear ?? date('Y'),

@@ -28,7 +28,7 @@ class ImportEposNowStockJob implements ShouldQueue
     /**
      * The maximum number of seconds the job can run before timing out.
      */
-    public $timeout = 3600;
+    public $timeout = 300;
 
     public function __construct(string $jobId, ?array $productIds = null)
     {
@@ -68,6 +68,42 @@ class ImportEposNowStockJob implements ShouldQueue
 
             if ($products->isEmpty()) {
                 $this->updateProgress(100, 0, 0, 'No products found with EposNow product ID');
+                return;
+            }
+
+            if ($this->productIds === null && $products->count() > 100) {
+                $this->updateProgress(10, 0, $products->count(), "Found {$products->count()} products. Splitting into batches...", ['status' => 'batching']);
+                
+                $batchSize = 100;
+                $batches = $products->chunk($batchSize);
+                $totalBatches = $batches->count();
+                
+                Log::info('Splitting stock import into batches', [
+                    'total_products' => $products->count(),
+                    'total_batches' => $totalBatches,
+                    'batch_size' => $batchSize
+                ]);
+
+                $batchIndex = 0;
+                foreach ($batches as $batch) {
+                    $batchProductIds = $batch->pluck('eposnow_product_id')->toArray();
+                    $batchJobId = $this->jobId . '_batch_' . ($batchIndex + 1);
+                    
+                    self::dispatch($batchJobId, $batchProductIds);
+                    
+                    $batchIndex++;
+                }
+
+                $this->updateProgress(100, 0, $products->count(), "Dispatched {$totalBatches} batch jobs for {$products->count()} products.", [
+                    'status' => 'batched',
+                    'total_batches' => $totalBatches
+                ]);
+
+                Log::info('Stock import batches dispatched', [
+                    'total_batches' => $totalBatches,
+                    'job_id' => $this->jobId
+                ]);
+
                 return;
             }
 

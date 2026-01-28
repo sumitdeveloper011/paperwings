@@ -53,7 +53,7 @@ class WelcomeEmail extends Mailable
         }
 
         $settings = SettingHelper::all();
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
         $socialLinks = SettingHelper::extractSocialLinks($settings);
 
@@ -94,7 +94,7 @@ class WelcomeEmail extends Mailable
             'user_name' => $this->user->name,
             'customer_name' => $this->user->name,
             'app_name' => config('app.name'),
-            'shop_link' => route('frontend.home'),
+            'shop_link' => route('shop'),
             'login_url' => route('login'),
             'contact_phone' => $contactPhone,
             'contact_email' => $contactEmail,

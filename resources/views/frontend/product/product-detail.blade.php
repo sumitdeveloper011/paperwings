@@ -776,7 +776,6 @@
 {{-- Product Page JavaScript Modules --}}
 <script src="{{ asset('assets/frontend/js/product/gallery.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/product/quantity.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
-<script src="{{ asset('assets/frontend/js/product/add-to-cart.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/product/forms.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/product/product-detail.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 @endpush

@@ -14,6 +14,7 @@ class StripePaymentHandler {
         this.elements = null;
         this.paymentElement = null;
         this.isProcessing = false;
+        this.retryInProgress = false;
         this.init();
     }
 
@@ -127,6 +128,50 @@ class StripePaymentHandler {
             this.paymentElement = this.elements.create('payment');
             console.log('[StripePayment] Payment element created:', !!this.paymentElement);
             
+            // Add event listeners for payment element
+            this.paymentElement.on('ready', () => {
+                console.log('[StripePayment] Payment element ready');
+            });
+            
+            this.paymentElement.on('change', (event) => {
+                if (event.error) {
+                    console.warn('[StripePayment] Payment element change error:', event.error);
+                    this.showError(event.error.message);
+                } else {
+                    this.clearError();
+                }
+            });
+            
+            this.paymentElement.on('loaderror', (event) => {
+                console.error('[StripePayment] Payment element load error:', event);
+                console.error('[StripePayment] Error details:', {
+                    elementType: event.elementType,
+                    error: event.error,
+                    errorType: event.error?.type,
+                    errorCode: event.error?.code,
+                    errorMessage: event.error?.message,
+                    errorDeclineCode: event.error?.decline_code,
+                    errorParam: event.error?.param,
+                    clientSecret: clientSecret ? clientSecret.substring(0, 20) + '...' : 'missing'
+                });
+                
+                let errorMessage = 'Failed to load payment form. ';
+                if (event.error?.message) {
+                    errorMessage += event.error.message;
+                } else if (event.error?.type) {
+                    errorMessage += 'Error type: ' + event.error.type;
+                } else {
+                    errorMessage += 'Please refresh the page and try again.';
+                }
+                
+                this.showError(errorMessage);
+                this.setPaymentReady(false);
+            });
+            
+            this.paymentElement.on('loaderstart', () => {
+                console.log('[StripePayment] Payment element loader started');
+            });
+            
             console.log('[StripePayment] Mounting payment element to #payment-element...');
             this.paymentElement.mount('#payment-element');
             console.log('[StripePayment] Payment element mounted');
@@ -231,7 +276,10 @@ class StripePaymentHandler {
     }
 
     async processPayment() {
+        console.log('[StripePayment] processPayment called');
+        
         if (this.isProcessing) {
+            console.warn('[StripePayment] Payment already processing, ignoring duplicate call');
             return;
         }
 
@@ -239,11 +287,18 @@ class StripePaymentHandler {
         const buttonText = document.getElementById('placeOrderBtnText');
         const spinner = document.getElementById('placeOrderSpinner');
 
+        console.log('[StripePayment] Starting payment processing', {
+            submitButton: !!submitButton,
+            buttonText: !!buttonText,
+            spinner: !!spinner
+        });
+
         this.isProcessing = true;
         this.setButtonLoading(submitButton, buttonText, spinner, true);
         this.clearError();
 
         try {
+            console.log('[StripePayment] Confirming payment with Stripe');
             const { error, paymentIntent } = await this.stripe.confirmPayment({
                 elements: this.elements,
                 confirmParams: {
@@ -252,19 +307,43 @@ class StripePaymentHandler {
                 redirect: 'if_required'
             });
 
+            console.log('[StripePayment] Payment confirmation response', {
+                error: error ? error.message : null,
+                paymentIntent: paymentIntent ? {
+                    id: paymentIntent.id,
+                    status: paymentIntent.status
+                } : null
+            });
+
             if (error) {
+                console.error('[StripePayment] Payment error', {
+                    error: error.message,
+                    code: error.code,
+                    type: error.type
+                });
                 this.showError(error.message || 'Payment failed. Please try again.');
                 this.setButtonLoading(submitButton, buttonText, spinner, false);
                 this.isProcessing = false;
             } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-                // Submit form via AJAX to handle JSON response and redirect
+                console.log('[StripePayment] Payment succeeded, submitting order form', {
+                    paymentIntentId: paymentIntent.id,
+                    status: paymentIntent.status
+                });
                 await this.submitOrderForm(paymentIntent.id, submitButton, buttonText, spinner);
             } else {
+                console.warn('[StripePayment] Unexpected payment status', {
+                    paymentIntent: paymentIntent,
+                    status: paymentIntent?.status
+                });
                 this.showError('Payment status is unexpected. Please try again.');
                 this.setButtonLoading(submitButton, buttonText, spinner, false);
                 this.isProcessing = false;
             }
         } catch (err) {
+            console.error('[StripePayment] Exception during payment processing', {
+                error: err.message,
+                stack: err.stack
+            });
             this.showError('An error occurred while processing payment. Please try again.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
             this.isProcessing = false;
@@ -278,8 +357,16 @@ class StripePaymentHandler {
     }
 
     async submitOrderForm(paymentIntentId, submitButton, buttonText, spinner) {
+        console.log('[StripePayment] submitOrderForm called', {
+            paymentIntentId: paymentIntentId
+        });
+
         const form = document.getElementById('checkoutForm');
         if (!form || !paymentIntentId) {
+            console.error('[StripePayment] Missing form or payment intent ID', {
+                form: !!form,
+                paymentIntentId: paymentIntentId
+            });
             this.showError('Payment succeeded but payment intent ID is missing. Please contact support.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
             this.isProcessing = false;
@@ -287,9 +374,15 @@ class StripePaymentHandler {
         }
 
         try {
-            // Create FormData from form
+            console.log('[StripePayment] Creating form data and submitting order', {
+                formAction: form.action,
+                paymentIntentId: paymentIntentId
+            });
+
             const formData = new FormData(form);
             formData.append('payment_intent_id', paymentIntentId);
+
+            console.log('[StripePayment] Sending order request to server');
 
             const response = await fetch(form.action, {
                 method: 'POST',
@@ -301,24 +394,168 @@ class StripePaymentHandler {
                 body: formData
             });
 
+            console.log('[StripePayment] Order response received', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                contentType: response.headers.get('content-type'),
+                url: response.url
+            });
+
             if (!response.ok) {
-                throw new Error('Failed to process order. Please try again.');
+                let errorText = '';
+                let errorData = null;
+                try {
+                    errorText = await response.text();
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        // Not JSON, use as text
+                    }
+                } catch (e) {
+                    console.error('[StripePayment] Failed to read error response', e);
+                }
+
+                console.error('[StripePayment] Order request failed', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorText: errorText.substring(0, 500),
+                    errorData: errorData
+                });
+
+                // Handle rate limiting (429) with retry information
+                if (response.status === 429) {
+                    const retryAfter = errorData?.errors?.retry_after || errorData?.retry_after || 10;
+                    const errorMessage = errorData?.message || 'Too many requests. Please wait a moment before trying again.';
+                    
+                    console.warn('[StripePayment] Rate limit exceeded, will retry', {
+                        retryAfter: retryAfter,
+                        paymentIntentId: paymentIntentId
+                    });
+
+                    // Prevent multiple retry attempts
+                    if (this.retryInProgress) {
+                        console.warn('[StripePayment] Retry already in progress, skipping');
+                        this.showError('Please wait for the automatic retry to complete.');
+                        return;
+                    }
+
+                    this.retryInProgress = true;
+                    this.isProcessing = true; // Keep button disabled during retry
+
+                    // Show user-friendly error with retry countdown
+                    this.showRateLimitError(errorMessage, retryAfter);
+                    
+                    // Auto-retry after the specified time
+                    setTimeout(async () => {
+                        console.log('[StripePayment] Retrying order submission after rate limit', {
+                            paymentIntentId: paymentIntentId
+                        });
+                        this.retryInProgress = false;
+                        this.clearError();
+                        await this.submitOrderForm(paymentIntentId, submitButton, buttonText, spinner);
+                    }, (retryAfter + 1) * 1000); // Add 1 second buffer
+                    
+                    return; // Exit early, retry will happen
+                }
+
+                // For other errors, show generic message
+                const errorMessage = errorData?.message || 'Failed to process order. Please try again.';
+                throw new Error(errorMessage);
             }
 
-            const data = await response.json();
+            let data;
+            try {
+                const responseText = await response.text();
+                console.log('[StripePayment] Raw response text', {
+                    length: responseText.length,
+                    preview: responseText.substring(0, 200)
+                });
+                
+                data = JSON.parse(responseText);
+                console.log('[StripePayment] Parsed JSON response', {
+                    success: data.success,
+                    message: data.message,
+                    hasData: !!data.data,
+                    hasRedirectUrl: !!(data.data?.redirect_url || data.redirect_url),
+                    fullData: data
+                });
+            } catch (parseError) {
+                console.error('[StripePayment] Failed to parse JSON response', {
+                    error: parseError.message,
+                    stack: parseError.stack
+                });
+                throw new Error('Invalid response from server. Please try again.');
+            }
 
-            // Extract redirect_url from data.data (jsonSuccess wraps it)
+            console.log('[StripePayment] Order response data', {
+                success: data.success,
+                message: data.message,
+                hasRedirectUrl: !!(data.data?.redirect_url || data.redirect_url),
+                redirectUrl: data.data?.redirect_url || data.redirect_url
+            });
+
             const redirectUrl = data.data?.redirect_url || data.redirect_url;
 
+            console.log('[StripePayment] Processing response', {
+                success: data.success,
+                redirectUrl: redirectUrl,
+                hasRedirectUrl: !!redirectUrl
+            });
+
             if (data.success && redirectUrl) {
-                // Redirect to success page
-                window.location.href = redirectUrl;
+                console.log('[StripePayment] Order placed successfully, preparing redirect', {
+                    redirectUrl: redirectUrl,
+                    currentUrl: window.location.href
+                });
+                
+                this.isProcessing = false;
+                this.setButtonLoading(submitButton, buttonText, spinner, false);
+                
+                window.isRedirecting = true;
+                
+                console.log('[StripePayment] Setting redirect flag and initiating redirect');
+                
+                setTimeout(() => {
+                    console.log('[StripePayment] Executing redirect now', {
+                        redirectUrl: redirectUrl
+                    });
+                    try {
+                        window.location.replace(redirectUrl);
+                        console.log('[StripePayment] Redirect initiated successfully');
+                    } catch (redirectError) {
+                        console.error('[StripePayment] Error during redirect, trying alternative method', {
+                            error: redirectError.message,
+                            stack: redirectError.stack
+                        });
+                        try {
+                            window.location.href = redirectUrl;
+                        } catch (fallbackError) {
+                            console.error('[StripePayment] Fallback redirect also failed', {
+                                error: fallbackError.message
+                            });
+                            this.showError('Order placed but redirect failed. Please navigate manually.');
+                        }
+                    }
+                }, 100);
             } else {
+                console.error('[StripePayment] Order placement failed or missing redirect URL', {
+                    success: data.success,
+                    message: data.message,
+                    redirectUrl: redirectUrl,
+                    hasRedirectUrl: !!redirectUrl,
+                    fullData: data
+                });
                 this.showError(data.message || 'Failed to place order. Please try again.');
                 this.setButtonLoading(submitButton, buttonText, spinner, false);
                 this.isProcessing = false;
             }
         } catch (error) {
+            console.error('[StripePayment] Exception during order submission', {
+                error: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             this.showError('An error occurred while placing your order. Please try again.');
             this.setButtonLoading(submitButton, buttonText, spinner, false);
             this.isProcessing = false;
@@ -330,9 +567,46 @@ class StripePaymentHandler {
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            errorElement.className = 'alert alert-danger';
             
             // Scroll to error if needed
             errorElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    showRateLimitError(message, retryAfter) {
+        const errorElement = document.getElementById('payment-errors');
+        if (!errorElement) return;
+
+        let countdown = retryAfter;
+        errorElement.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-clock" style="font-size: 1.2rem;"></i>
+                <div>
+                    <strong>${message}</strong>
+                    <div style="margin-top: 0.25rem; font-size: 0.9rem;">
+                        Retrying automatically in <span id="rate-limit-countdown" style="font-weight: bold;">${countdown}</span> second${countdown !== 1 ? 's' : ''}...
+                    </div>
+                </div>
+            </div>
+        `;
+        errorElement.style.display = 'block';
+        errorElement.className = 'alert alert-warning';
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Update countdown
+        const countdownElement = document.getElementById('rate-limit-countdown');
+        if (countdownElement) {
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdownElement) {
+                    countdownElement.textContent = countdown;
+                    if (countdown <= 0) {
+                        clearInterval(countdownInterval);
+                        errorElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Retrying...';
+                    }
+                }
+            }, 1000);
         }
     }
 
@@ -340,7 +614,9 @@ class StripePaymentHandler {
         const errorElement = document.getElementById('payment-errors');
         if (errorElement) {
             errorElement.textContent = '';
+            errorElement.innerHTML = '';
             errorElement.style.display = 'none';
+            errorElement.className = '';
         }
     }
 }

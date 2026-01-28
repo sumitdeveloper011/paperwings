@@ -14,7 +14,7 @@
                             Get in touch
                         </p>
                         <p style="margin: 0 0 8px 0; color: #000000; font-size: 14px; font-weight: 400; text-align: center;">
-                            {{ $contactPhone ?? '+880 123 4567' }}
+                            {{ $contactPhone ?? '+64 4-568 7770' }}
                         </p>
                         <p style="margin: 0 0 25px 0; color: #000000; font-size: 14px; font-weight: 400; text-align: center;">
                             {{ $contactEmail ?? 'info@paperwings.co.nz' }}

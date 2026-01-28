@@ -92,7 +92,7 @@ class OrderDeliveredMail extends Mailable
         }
 
         $settings = SettingHelper::all();
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
         $socialLinks = SettingHelper::extractSocialLinks($settings);
 
@@ -199,7 +199,7 @@ class OrderDeliveredMail extends Mailable
         }
 
         // Get contact phone from database
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
 
         // Get contact email from database
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';

@@ -181,13 +181,25 @@ Route::middleware(['auth', 'prevent.admin', 'throttle:30,1'])->group(function ()
         // General checkout actions - 30 requests per minute
         Route::post('/details', [CheckoutController::class, 'storeDetails'])->name('store-details');
         Route::post('/review', [CheckoutController::class, 'confirmReview'])->name('confirm-review');
-        Route::post('/payment', [CheckoutController::class, 'processPayment'])->name('process-payment');
+        Route::post('/save-form-data', [CheckoutController::class, 'saveFormData'])->name('save-form-data');
         Route::post('/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('apply-coupon');
         Route::post('/remove-coupon', [CheckoutController::class, 'removeCoupon'])->name('remove-coupon');
         Route::post('/calculate-shipping', [CheckoutController::class, 'calculateShipping'])->name('calculate-shipping');
         Route::post('/search-address', [CheckoutController::class, 'searchAddress'])->name('search-address');
         Route::get('/get-address/{id}', [CheckoutController::class, 'getAddress'])->name('get-address');
         Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
+        Route::get('/processing/{paymentIntent}', [CheckoutController::class, 'processing'])->name('processing');
+        Route::get('/order-status/{orderNumber}', [CheckoutController::class, 'checkOrderStatus'])->name('check-order-status');
+        Route::get('/payment-status/{paymentIntentId}', [CheckoutController::class, 'checkPaymentStatus'])
+            ->where('paymentIntentId', 'pi_[a-zA-Z0-9_]+')
+            ->name('check-payment-status');
+    });
+});
+
+// Order payment processing - higher rate limit (60 per minute) for critical action
+Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function () {
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::post('/payment', [CheckoutController::class, 'processPayment'])->name('process-payment');
     });
 });
 
@@ -205,9 +217,59 @@ Route::middleware(['auth', 'prevent.admin', 'throttle:5,1'])->group(function () 
     });
 });
 
+// Stripe webhook endpoint - NO CSRF protection (Stripe signs requests)
+// POST: For Stripe to send webhook events
 Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
     ->name('stripe.webhook')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// GET: Informational endpoint (for testing/verification)
+Route::get('/stripe/webhook', function() {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Stripe webhook endpoint is active',
+        'method' => 'This endpoint accepts POST requests only',
+        'webhook_url' => url('/stripe/webhook'),
+        'test_endpoint' => route('stripe.webhook.test'),
+        'instructions' => [
+            'This is a POST-only endpoint for Stripe webhooks',
+            'Stripe will send POST requests to this URL when payment events occur',
+            'To test webhook configuration, visit: ' . route('stripe.webhook.test'),
+            'Configure this URL in Stripe Dashboard → Developers → Webhooks'
+        ]
+    ], 200);
+});
+
+// Webhook test endpoint (for debugging)
+Route::get('/stripe/webhook/test', function() {
+    try {
+        $webhookUrl = url('/stripe/webhook');
+        return response()->json([
+            'status' => 'ok',
+            'webhook_url' => $webhookUrl,
+            'webhook_secret_configured' => !empty(config('services.stripe.webhook_secret')),
+            'stripe_secret_configured' => !empty(config('services.stripe.secret')),
+            'environment' => app()->environment(),
+            'app_url' => config('app.url'),
+            'message' => 'Webhook endpoint is accessible. Configure this URL in Stripe Dashboard: ' . $webhookUrl,
+            'instructions' => [
+                '1. Go to Stripe Dashboard → Developers → Webhooks',
+                '2. Click "Add endpoint"',
+                '3. Enter URL: ' . $webhookUrl,
+                '4. Select events: payment_intent.succeeded, payment_intent.payment_failed',
+                '5. Copy the webhook signing secret to your .env file as STRIPE_WEBHOOK_SECRET'
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'error' => $e->getMessage(),
+            'webhook_url' => url('/stripe/webhook'),
+            'webhook_secret_configured' => !empty(config('services.stripe.webhook_secret')),
+            'stripe_secret_configured' => !empty(config('services.stripe.secret'))
+        ], 500);
+    }
+})->name('stripe.webhook.test');
 
 Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account.index');

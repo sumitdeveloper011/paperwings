@@ -227,7 +227,45 @@ class CouponHandler {
         const originalText = button.textContent;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
+        console.log('[CouponHandler] Starting coupon apply process', { code });
+
         try {
+            const checkoutForm = document.getElementById('checkoutForm');
+            let formData = {};
+
+            if (checkoutForm) {
+                console.log('[CouponHandler] Saving form data before applying coupon');
+                const formDataObj = new FormData(checkoutForm);
+                
+                for (let [key, value] of formDataObj.entries()) {
+                    formData[key] = value;
+                }
+
+                try {
+                    const saveResponse = await fetch('/checkout/save-form-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(formData),
+                        redirect: 'manual'
+                    });
+
+                    if (saveResponse.ok) {
+                        const saveData = await saveResponse.json();
+                        console.log('[CouponHandler] Form data saved successfully', saveData);
+                    } else {
+                        console.warn('[CouponHandler] Failed to save form data, continuing with coupon apply');
+                    }
+                } catch (saveError) {
+                    console.warn('[CouponHandler] Error saving form data:', saveError);
+                }
+            }
+
+            console.log('[CouponHandler] Applying coupon code:', code);
             const response = await fetch(this.applyUrl, {
                 method: 'POST',
                 headers: {
@@ -267,13 +305,17 @@ class CouponHandler {
             }
 
             if (response.ok && data.success) {
+                console.log('[CouponHandler] Coupon applied successfully', data);
                 this.showMessage('Coupon applied successfully!', 'success');
                 
-                // Reload page to update order summary
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                input.readOnly = true;
+                button.textContent = 'Remove';
+                button.setAttribute('data-action', 'remove');
+                button.disabled = false;
+                
+                this.updateOrderSummary(data);
             } else {
+                console.error('[CouponHandler] Coupon apply failed', data);
                 const errorMsg = data.message || data.error || data.data?.message || 'Failed to apply coupon.';
                 this.showMessage(errorMsg, 'error');
                 button.disabled = false;
@@ -330,13 +372,34 @@ class CouponHandler {
             }
 
             if (response.ok && data.success) {
+                console.log('[CouponHandler] Coupon removed successfully', data);
                 this.showMessage('Coupon removed successfully!', 'success');
                 
-                // Reload page to update order summary
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                const couponInput = document.getElementById('orderCoupon');
+                const couponBtn = document.getElementById('couponApplyBtn');
+                
+                if (couponInput) {
+                    couponInput.readOnly = false;
+                    couponInput.value = '';
+                }
+                
+                if (couponBtn) {
+                    couponBtn.textContent = 'Apply';
+                    couponBtn.setAttribute('data-action', 'apply');
+                    couponBtn.disabled = false;
+                }
+
+                const discountRow = document.getElementById('couponDiscountRow');
+                if (discountRow) {
+                    discountRow.style.display = 'none';
+                }
+
+                const totalEl = document.getElementById('checkoutTotal');
+                if (totalEl && data.data && data.data.total) {
+                    totalEl.textContent = `$${parseFloat(data.data.total).toFixed(2)}`;
+                }
             } else {
+                console.error('[CouponHandler] Coupon remove failed', data);
                 const errorMsg = data.message || data.error || data.data?.message || 'Failed to remove coupon.';
                 this.showMessage(errorMsg, 'error');
                 button.disabled = false;
@@ -346,6 +409,56 @@ class CouponHandler {
             this.showMessage('An error occurred. Please try again.', 'error');
             button.disabled = false;
             button.textContent = originalText;
+        }
+    }
+
+    updateOrderSummary(data) {
+        console.log('[CouponHandler] Updating order summary', data);
+        
+        try {
+            const discount = data.discount || data.data?.discount || 0;
+            const total = data.total || data.data?.total || 0;
+            const coupon = data.coupon || data.data?.coupon;
+
+            const subtotalEl = document.getElementById('checkoutSubtotal');
+            const discountRow = document.getElementById('couponDiscountRow');
+            const discountEl = document.getElementById('checkoutDiscount');
+            const totalEl = document.getElementById('checkoutTotal');
+
+            if (discount > 0 && coupon) {
+                if (!discountRow) {
+                    const orderTotals = document.querySelector('.order-totals');
+                    if (orderTotals && subtotalEl) {
+                        const newRow = document.createElement('div');
+                        newRow.className = 'order-totals__item';
+                        newRow.id = 'couponDiscountRow';
+                        newRow.innerHTML = `
+                            <span class="order-totals__label">Discount (${coupon.code || coupon.name || ''})</span>
+                            <span class="order-totals__value" style="color: var(--coral-red);" id="checkoutDiscount">-$${discount.toFixed(2)}</span>
+                        `;
+                        subtotalEl.closest('.order-totals__item').after(newRow);
+                    }
+                } else {
+                    discountRow.style.display = '';
+                    if (discountEl) {
+                        discountEl.textContent = `-$${discount.toFixed(2)}`;
+                    }
+                }
+            } else {
+                if (discountRow) {
+                    discountRow.style.display = 'none';
+                }
+            }
+
+            if (totalEl) {
+                const currentTotal = parseFloat(totalEl.textContent.replace('$', '').replace(',', ''));
+                totalEl.textContent = `$${total.toFixed(2)}`;
+                console.log('[CouponHandler] Updated total:', total);
+            }
+
+            console.log('[CouponHandler] Order summary updated successfully');
+        } catch (error) {
+            console.error('[CouponHandler] Error updating order summary:', error);
         }
     }
 

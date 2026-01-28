@@ -11,12 +11,13 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use App\Helpers\SettingHelper;
 use App\Services\ProductImageService;
 use App\Services\EmailTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class OrderConfirmationMail extends Mailable
+class OrderConfirmationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -25,7 +26,19 @@ class OrderConfirmationMail extends Mailable
     // Create a new message instance
     public function __construct(Order $order)
     {
+        Log::info('OrderConfirmationMail: Constructing email', [
+            'order_id' => $order->id ?? 'N/A',
+            'order_number' => $order->order_number ?? 'N/A',
+            'billing_email' => $order->billing_email ?? 'N/A'
+        ]);
+
         $order->load(['items.product.images', 'billingRegion', 'shippingRegion']);
+        
+        Log::info('OrderConfirmationMail: Order loaded with relationships', [
+            'order_id' => $order->id ?? 'N/A',
+            'order_number' => $order->order_number ?? 'N/A',
+            'items_count' => $order->items->count() ?? 0
+        ]);
 
         // Load product images efficiently
         $productIds = $order->items->pluck('product_id')->unique()->filter();
@@ -93,7 +106,7 @@ class OrderConfirmationMail extends Mailable
         }
 
         $settings = SettingHelper::all();
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
         $socialLinks = SettingHelper::extractSocialLinks($settings);
 
@@ -298,7 +311,7 @@ class OrderConfirmationMail extends Mailable
         }
 
         // Get contact phone from database
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
 
         // Get contact email from database
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';

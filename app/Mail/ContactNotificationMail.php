@@ -53,7 +53,7 @@ class ContactNotificationMail extends Mailable
         }
 
         $settings = SettingHelper::all();
-        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
         $contactEmail = SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
         $socialLinks = SettingHelper::extractSocialLinks($settings);
 

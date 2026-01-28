@@ -13,6 +13,16 @@ class PreventAdminAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Log processing page access attempts
+        if ($request->is('checkout/processing/*')) {
+            Log::info('PreventAdminAccess: Processing page access attempt', [
+                'url' => $request->fullUrl(),
+                'path' => $request->path(),
+                'user_id' => Auth::id(),
+                'user_authenticated' => Auth::check(),
+            ]);
+        }
+        
         try {
             if (Auth::check()) {
                 $user = Auth::user();

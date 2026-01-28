@@ -230,7 +230,7 @@ class EmailTemplateController extends Controller
         if (!filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             $logoUrl = config('app.url') . '/assets/frontend/images/logo.png';
         }
-        $contactPhone = \App\Helpers\SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+880 123 4567';
+        $contactPhone = \App\Helpers\SettingHelper::getFirstFromArraySetting($settings, 'phones') ?? '+64 4-568 7770';
         $contactEmail = \App\Helpers\SettingHelper::getFirstFromArraySetting($settings, 'emails') ?? 'info@paperwings.co.nz';
         $socialLinks = \App\Helpers\SettingHelper::extractSocialLinks($settings);
 
