@@ -111,7 +111,7 @@ class CheckStockImportStatus extends Command
     {
         $this->info('3. Scheduled Task:');
         $this->line("   Scheduled time: 01:00 AM daily");
-        $this->line("   Timezone: " . config('app.timezone'));
+        $this->line("   Timezone: Pacific/Auckland");
         $this->line("   Current time: " . now()->format('Y-m-d H:i:s'));
         $this->newLine();
         
