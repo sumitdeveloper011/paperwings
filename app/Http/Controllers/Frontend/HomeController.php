@@ -44,25 +44,15 @@ class HomeController extends Controller
                 return $category;
             });
 
-        // Featured Products - Show latest products (product_type 2) for testing
-        $featuredProducts = Product::active()
-            ->where('product_type', 2)
-            ->withFirstImage()
-            ->selectMinimal()
-            ->orderBy('created_at', 'desc')
-            ->orderBy('id', 'desc')
-            ->take(8)
-            ->get();
-
         $allProducts = Product::active()
-            ->whereIn('product_type', [1,3])
+            ->whereIn('product_type', [1,2,3])
             ->withFirstImage()
             ->selectMinimal()
             ->get()
             ->shuffle()
             ->groupBy('product_type');
 
-        // $featuredProducts = $allProducts->get(1, collect())->take(8);
+        $featuredProducts = $allProducts->get(1, collect())->take(8);
         $onSaleProducts = $allProducts->get(2, collect())->take(8);
         $topRatedProducts = $allProducts->get(3, collect())->take(8);
 

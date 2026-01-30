@@ -219,7 +219,10 @@ class Product extends Model
     // Scope to filter active products
     public function scopeActive($query)
     {
-        return $query->where('status', 1);
+        return $query->where('status', 1)
+            ->whereHas('category', function($q) {
+                $q->where('status', 1);
+            });
     }
 
     // Scope to filter inactive products
@@ -258,19 +261,31 @@ class Product extends Model
     // Scope to filter featured products (exclude bundles)
     public function scopeFeatured($query)
     {
-        return $query->where('status', 1)->where('product_type', 1);
+        return $query->where('status', 1)
+            ->where('product_type', 1)
+            ->whereHas('category', function($q) {
+                $q->where('status', 1);
+            });
     }
 
     // Scope to filter products on sale (exclude bundles)
     public function scopeOnSale($query)
     {
-        return $query->where('status', 1)->where('product_type', 2);
+        return $query->where('status', 1)
+            ->where('product_type', 2)
+            ->whereHas('category', function($q) {
+                $q->where('status', 1);
+            });
     }
 
     // Scope to filter top rated products (exclude bundles)
     public function scopeTopRated($query)
     {
-        return $query->where('status', 1)->where('product_type', 3);
+        return $query->where('status', 1)
+            ->where('product_type', 3)
+            ->whereHas('category', function($q) {
+                $q->where('status', 1);
+            });
     }
 
     // Scope to eager load first image
