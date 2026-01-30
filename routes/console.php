@@ -12,21 +12,21 @@ Schedule::command('users:cleanup-unverified --days=30')
     ->weekly()
     ->sundays()
     ->at('02:00')
-    >timezone('Pacific/Auckland')
+    ->timezone('Pacific/Auckland')
     ->description('Clean up unverified users older than 30 days');
 
 Schedule::call(function () {
     $jobId = time() . '_' . uniqid();
     \App\Jobs\ImportEposNowCategoriesJob::dispatch($jobId);
 })->dailyAt('00:05')
-    >timezone('Pacific/Auckland')
+    ->timezone('Pacific/Auckland')
     ->description('Daily category import from EposNow at midnight');
 
 Schedule::call(function () {
     $jobId = time() . '_' . uniqid();
     \App\Jobs\ImportEposNowProductsJob::dispatch($jobId);
 })->dailyAt('00:30')
-    >timezone('Pacific/Auckland')
+    ->timezone('Pacific/Auckland')
     ->description('Daily product import from EposNow at 00:30 AM');
 
 Schedule::call(function () {

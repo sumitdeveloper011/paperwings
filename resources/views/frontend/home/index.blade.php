@@ -223,6 +223,16 @@
                 @foreach($specialOfferBanners as $banner)
                 <div class="swiper-slide">
                     <div class="special-offers-banner" style="background-image: url('{{ $banner->image_url ?? asset('assets/images/placeholder.jpg') }}');">
+                        <div class="floating-bubbles">
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                            <span class="bubble"></span>
+                        </div>
                 <div class="container">
                     <div class="row">
                         <div class="col-12">
@@ -265,6 +275,32 @@
                 @endforeach
             </div>
             <div class="swiper-pagination"></div>
+        </div>
+    </section>
+    @else
+    <section class="special-offers-banner-section offer-coming-soon-section">
+        <div class="floating-bubbles">
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="offer-coming-soon__content">
+                        <h2 class="offer-coming-soon__title">Offer Coming Soon</h2>
+                        <h3 class="offer-coming-soon__subtitle">Stay Tuned for Exciting Deals</h3>
+                        <div class="offer-coming-soon__info">
+                            <p>We're preparing something special for you. Check back soon for amazing offers and exclusive discounts!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
     @endif

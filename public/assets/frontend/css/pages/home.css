@@ -1,7 +1,221 @@
 /* Home Page Specific Styles */
 /* Styles specific to the home page only */
 
-/* Note: This is a placeholder file.
- * Extract home page specific styles from style.css
- * including: hero sections, featured products, sliders, etc.
- */
+/* Special Offers Banner - Coming Soon Section */
+.offer-coming-soon-section {
+    padding: 80px 0;
+    margin: 0;
+    width: 100%;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.offer-coming-soon-section .floating-bubbles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble {
+    position: absolute;
+    bottom: -50px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    animation: float-up 12s infinite ease-in-out;
+    backdrop-filter: blur(2px);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(1) {
+    left: 10%;
+    width: 30px;
+    height: 30px;
+    animation-delay: 0s;
+    animation-duration: 10s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(2) {
+    left: 20%;
+    width: 50px;
+    height: 50px;
+    animation-delay: 0.5s;
+    animation-duration: 14s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(3) {
+    left: 35%;
+    width: 35px;
+    height: 35px;
+    animation-delay: 1s;
+    animation-duration: 11s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(4) {
+    left: 50%;
+    width: 45px;
+    height: 45px;
+    animation-delay: 0.3s;
+    animation-duration: 13s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(5) {
+    left: 65%;
+    width: 32px;
+    height: 32px;
+    animation-delay: 0.8s;
+    animation-duration: 10.5s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(6) {
+    left: 75%;
+    width: 48px;
+    height: 48px;
+    animation-delay: 1.2s;
+    animation-duration: 15s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(7) {
+    left: 85%;
+    width: 38px;
+    height: 38px;
+    animation-delay: 0.6s;
+    animation-duration: 12s;
+}
+
+.offer-coming-soon-section .floating-bubbles .bubble:nth-child(8) {
+    left: 95%;
+    width: 42px;
+    height: 42px;
+    animation-delay: 1.5s;
+    animation-duration: 16s;
+}
+
+@keyframes float-up {
+    0% {
+        transform: translateY(0) translateX(0) scale(1);
+        opacity: 0;
+    }
+    5% {
+        opacity: 0.9;
+    }
+    50% {
+        transform: translateX(20px) scale(1.1);
+        opacity: 0.85;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(-600px) translateX(-20px) scale(0.8);
+        opacity: 0;
+    }
+}
+
+.offer-coming-soon-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(55, 78, 148, 0.3) 0%, rgba(233, 92, 103, 0.15) 100%);
+    z-index: 1;
+}
+
+.offer-coming-soon__content {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    color: white;
+    padding: 40px 20px;
+}
+
+.offer-coming-soon__title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.offer-coming-soon__subtitle {
+    font-size: 1.8rem;
+    font-weight: 400;
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.95);
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 1px;
+}
+
+.offer-coming-soon__info {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.offer-coming-soon__info p {
+    margin-bottom: 0;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .offer-coming-soon-section {
+        padding: 60px 0;
+    }
+
+    .offer-coming-soon__content {
+        padding: 30px 15px;
+    }
+
+    .offer-coming-soon__title {
+        font-size: 2.5rem;
+        letter-spacing: 1px;
+    }
+
+    .offer-coming-soon__subtitle {
+        font-size: 1.4rem;
+    }
+
+    .offer-coming-soon__info {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .offer-coming-soon-section {
+        padding: 50px 0;
+    }
+
+    .offer-coming-soon__content {
+        padding: 20px 15px;
+    }
+
+    .offer-coming-soon__title {
+        font-size: 2rem;
+        letter-spacing: 0.5px;
+    }
+
+    .offer-coming-soon__subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    .offer-coming-soon__info {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+}
