@@ -617,6 +617,20 @@ class EposNowService
                     ->timeout(60)
                     ->get($url, $params);
 
+                if ($response->status() === 403) {
+                    $errorBody = $response->body();
+                    $this->rateLimitTracker->setCooldown(30);
+                    
+                    Log::error('EposNow API Rate Limit Hit (HTTP 403)', [
+                        'url' => $url,
+                        'params' => $params,
+                        'body' => $errorBody,
+                        'cooldown_minutes' => 30
+                    ]);
+                    
+                    throw new \Exception('EposNow API Rate Limit (HTTP 403): Maximum daily limit reached. Cooldown period: 30 minutes.');
+                }
+
                 if ($response->status() === 429) {
                     $this->rateLimitTracker->setCooldown();
                     $attempt++;
@@ -642,11 +656,12 @@ class EposNowService
                     $errorBody = $response->body();
                     $errorMessage = 'EposNow API Error';
 
-                    if (stripos($errorBody, 'maximum API limit') !== false ||
+                    if ($response->status() === 403 ||
+                        stripos($errorBody, 'maximum API limit') !== false ||
                         stripos($errorBody, 'rate limit') !== false ||
                         stripos($errorBody, 'too many requests') !== false) {
-                        $this->rateLimitTracker->setCooldown();
-                        $errorMessage = 'EposNow API Rate Limit: You have reached your maximum API limit. Please wait and try again later.';
+                        $this->rateLimitTracker->setCooldown(30);
+                        $errorMessage = 'EposNow API Rate Limit (HTTP 403): You have reached your maximum API limit. Please wait 30 minutes and try again.';
                     } else {
                         $errorMessage .= ': ' . $errorBody;
                     }

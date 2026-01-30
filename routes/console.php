@@ -42,11 +42,12 @@ Schedule::call(function () {
 // Single queue worker processes ALL queues in priority order
 // Priority: default (emails/notifications) > newsletters > imports
 // This approach is safe for shared hosting - no background processes
-Schedule::command('queue:work database --queue=default,newsletters,imports --stop-when-empty --tries=3 --max-time=300 --max-jobs=50')
+// Optimized settings: lower max-jobs and max-time to prevent memory issues and OOM kills
+Schedule::command('queue:work database --queue=default,newsletters,imports --stop-when-empty --tries=3 --max-time=120 --max-jobs=15 --memory=128 --sleep=5')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(3)
     ->sendOutputTo(storage_path('logs/queue-worker.log'))
-    ->description('Process all queued jobs - runs every minute, processes all queues in priority order');
+    ->description('Process queued jobs - optimized for stability and rate limit handling');
 
 // Restart queue worker every 15 minutes to prevent memory leaks
 // This ensures workers pick up code changes and don't accumulate memory

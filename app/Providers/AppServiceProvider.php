@@ -79,6 +79,21 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
+        DB::listen(function ($query) {
+            static $lastReconnect = 0;
+            
+            if (time() - $lastReconnect > 300) {
+                try {
+                    $pdo = DB::connection()->getPdo();
+                    $pdo->query('SELECT 1');
+                } catch (\Exception $e) {
+                    Log::warning('Database connection check failed, reconnecting...', ['error' => $e->getMessage()]);
+                    DB::reconnect();
+                    $lastReconnect = time();
+                }
+            }
+        });
+
         view()->composer('include.frontend.header', function ($view) {
             try {
                 $settings = SettingHelper::all();

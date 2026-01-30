@@ -19,296 +19,317 @@ class ImportEposNowStockJob implements ShouldQueue
 
     protected string $jobId;
     protected ?array $productIds;
+    protected int $processedCount = 0;
+    protected array $processedProductIds = [];
 
-    /**
-     * The number of times the job may be attempted.
-     */
-    public $tries = 1;
+    public $tries = 3;
+    public $backoff = [300, 900, 1800];
+    public $timeout = 180;
+    public $maxExceptions = 2;
 
-    /**
-     * The maximum number of seconds the job can run before timing out.
-     */
-    public $timeout = 300;
-
-    public function __construct(string $jobId, ?array $productIds = null)
+    public function __construct(string $jobId, ?array $productIds = null, int $processedCount = 0, array $processedProductIds = [])
     {
         $this->jobId = $jobId;
         $this->productIds = $productIds;
+        $this->processedCount = $processedCount;
+        $this->processedProductIds = $processedProductIds;
         $this->onQueue('imports');
     }
 
     public function handle(): void
     {
         try {
+            $this->ensureDatabaseConnection();
+            
             $eposNowService = app(EposNowService::class);
             $rateLimitTracker = app(RateLimitTrackerService::class);
             
             $cooldown = $rateLimitTracker->checkCooldown();
             if ($cooldown['in_cooldown']) {
-                $this->updateProgress(0, 0, 0, 'API is in cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes before retrying.', [
-                    'status' => 'rate_limited',
-                    'cooldown_until' => $cooldown['cooldown_until'],
-                    'minutes_remaining' => $cooldown['minutes_remaining']
-                ]);
+                $this->releaseJobWithDelay($cooldown['minutes_remaining'] * 60);
                 return;
             }
             
-            $this->updateProgress(0, 0, 0, 'Starting stock import...', ['status' => 'starting']);
+            $this->updateProgress(0, $this->processedCount, 0, 'Starting stock import...', ['status' => 'starting']);
 
-            $this->updateProgress(5, 0, 0, 'Fetching products from database...', ['status' => 'fetching']);
-
-            $query = Product::whereNotNull('eposnow_product_id')
-                ->where('eposnow_product_id', '!=', 0);
-
-            if ($this->productIds !== null && !empty($this->productIds)) {
-                $query->whereIn('eposnow_product_id', $this->productIds);
-            }
-
-            $products = $query->get(['id', 'eposnow_product_id', 'name', 'stock']);
-
+            $products = $this->fetchProducts();
+            
             if ($products->isEmpty()) {
-                $this->updateProgress(100, 0, 0, 'No products found with EposNow product ID');
+                $this->updateProgress(100, $this->processedCount, 0, 'No products found with EposNow product ID');
                 return;
             }
 
-            if ($this->productIds === null && $products->count() > 100) {
-                $this->updateProgress(10, 0, $products->count(), "Found {$products->count()} products. Splitting into batches...", ['status' => 'batching']);
-                
-                $batchSize = 100;
-                $batches = $products->chunk($batchSize);
-                $totalBatches = $batches->count();
-                
-                Log::info('Splitting stock import into batches', [
-                    'total_products' => $products->count(),
-                    'total_batches' => $totalBatches,
-                    'batch_size' => $batchSize
-                ]);
-
-                $batchIndex = 0;
-                foreach ($batches as $batch) {
-                    $batchProductIds = $batch->pluck('eposnow_product_id')->toArray();
-                    $batchJobId = $this->jobId . '_batch_' . ($batchIndex + 1);
-                    
-                    self::dispatch($batchJobId, $batchProductIds);
-                    
-                    $batchIndex++;
-                }
-
-                $this->updateProgress(100, 0, $products->count(), "Dispatched {$totalBatches} batch jobs for {$products->count()} products.", [
-                    'status' => 'batched',
-                    'total_batches' => $totalBatches
-                ]);
-
-                Log::info('Stock import batches dispatched', [
-                    'total_batches' => $totalBatches,
-                    'job_id' => $this->jobId
-                ]);
-
+            if ($this->shouldBatch($products)) {
+                $this->dispatchBatches($products);
                 return;
             }
 
-            $total = $products->count();
-            $processed = 0;
-            $updated = 0;
-            $skipped = 0;
-            $failed = [];
-
-            $this->updateProgress(10, 0, $total, "Found {$total} products. Preparing to import stock...", ['status' => 'processing']);
-
-            $chunkSize = 15;
-            $chunks = $products->chunk($chunkSize);
-            $totalChunks = $chunks->count();
-
-            Log::info('Starting stock import processing', [
-                'total_products' => $total,
-                'total_chunks' => $totalChunks,
-                'chunk_size' => $chunkSize
-            ]);
-
-            foreach ($chunks as $chunkIndex => $chunk) {
-                try {
-                    $cooldown = $rateLimitTracker->checkCooldown();
-                    if ($cooldown['in_cooldown']) {
-                        $this->updateProgress(
-                            min(99, (int)(($processed / $total) * 100)),
-                            $processed,
-                            $total,
-                            'Paused: API cooldown period. Please retry in ' . $cooldown['minutes_remaining'] . ' minutes.',
-                            [
-                                'updated' => $updated,
-                                'skipped' => $skipped,
-                                'failed' => count($failed),
-                                'status' => 'rate_limited',
-                                'cooldown_until' => $cooldown['cooldown_until'],
-                                'remaining_products' => $total - $processed
-                            ]
-                        );
-                        return;
-                    }
-
-                    if ($rateLimitTracker->shouldPause()) {
-                        $status = $rateLimitTracker->getStatus();
-                        $this->updateProgress(
-                            min(99, (int)(($processed / $total) * 100)),
-                            $processed,
-                            $total,
-                            'Pausing: Approaching rate limit (' . round($status['percentage']) . '%). Waiting 60 seconds...',
-                            [
-                                'updated' => $updated,
-                                'skipped' => $skipped,
-                                'failed' => count($failed),
-                                'status' => 'pausing'
-                            ]
-                        );
-                        sleep(60);
-                    }
-
-                    DB::transaction(function () use ($chunk, $eposNowService, $rateLimitTracker, &$processed, &$updated, &$skipped, &$failed, $total) {
-                        DB::statement('SET SESSION innodb_lock_wait_timeout = 300');
-                        
-                        foreach ($chunk as $product) {
-                            try {
-                                if (!$product->eposnow_product_id) {
-                                    $skipped++;
-                                    $processed++;
-                                    continue;
-                                }
-
-                                $rateLimitStatus = $rateLimitTracker->getStatus();
-                                $delay = $rateLimitTracker->getRecommendedDelay();
-                                
-                                if ($delay > 0) {
-                                    usleep((int)($delay * 1000000));
-                                }
-
-                                $stock = $eposNowService->getProductStock($product->eposnow_product_id);
-
-                                if ($stock === null) {
-                                    $skipped++;
-                                    $processed++;
-                                    continue;
-                                }
-
-                                if ($product->stock != $stock) {
-                                    $product->update(['stock' => $stock]);
-                                    $updated++;
-                                }
-
-                                $processed++;
-                            } catch (\Exception $e) {
-                                if (stripos($e->getMessage(), 'rate limit') !== false || 
-                                    stripos($e->getMessage(), 'cooldown period') !== false) {
-                                    $rateLimitTracker->setCooldown();
-                                    throw $e;
-                                }
-                                
-                                $failed[] = [
-                                    'id' => $product->eposnow_product_id ?? 'unknown',
-                                    'name' => $product->name ?? 'unknown',
-                                    'error' => $e->getMessage()
-                                ];
-                                $processed++;
-                                Log::error('Stock import failed for product', [
-                                    'product_id' => $product->id,
-                                    'eposnow_product_id' => $product->eposnow_product_id,
-                                    'error' => $e->getMessage()
-                                ]);
-                            }
-                        }
-                    }, 5);
-                } catch (\Exception $e) {
-                    if (stripos($e->getMessage(), 'rate limit') !== false || 
-                        stripos($e->getMessage(), 'cooldown period') !== false) {
-                        $rateLimitTracker->setCooldown();
-                        $cooldown = $rateLimitTracker->checkCooldown();
-                        
-                        $this->updateProgress(
-                            min(99, (int)(($processed / $total) * 100)),
-                            $processed,
-                            $total,
-                            'Rate limit reached. Cooldown period: ' . $cooldown['minutes_remaining'] . ' minutes. Job will resume automatically.',
-                            [
-                                'updated' => $updated,
-                                'skipped' => $skipped,
-                                'failed' => count($failed),
-                                'status' => 'rate_limited',
-                                'cooldown_until' => $cooldown['cooldown_until'],
-                                'remaining_products' => $total - $processed
-                            ]
-                        );
-                        
-                        Log::warning('Stock import paused due to rate limit', [
-                            'processed' => $processed,
-                            'total' => $total,
-                            'cooldown_minutes' => $cooldown['minutes_remaining']
-                        ]);
-                        
-                        return;
-                    }
-                    
-                    Log::error('Stock import chunk failed', [
-                        'chunk_index' => $chunkIndex,
-                        'error' => $e->getMessage(),
-                    ]);
-                    
-                    foreach ($chunk as $product) {
-                        $failed[] = [
-                            'id' => $product->eposnow_product_id ?? 'unknown',
-                            'name' => $product->name ?? 'unknown',
-                            'error' => 'Chunk processing failed: ' . $e->getMessage()
-                        ];
-                        $processed++;
-                    }
-                }
-
-                $percentage = min(99, (int)(($processed / $total) * 100));
-                $status = "Processing... {$processed}/{$total} products (Chunk " . ($chunkIndex + 1) . "/{$totalChunks})";
-                $this->updateProgress($percentage, $processed, $total, $status, [
-                    'updated' => $updated,
-                    'skipped' => $skipped,
-                    'failed' => count($failed)
-                ]);
-            }
-
-            $finalStatus = "Stock import completed! Updated: {$updated}, Skipped: {$skipped}, Failed: " . count($failed);
-            $this->updateProgress(100, $processed, $total, $finalStatus, [
-                'updated' => $updated,
-                'skipped' => $skipped,
-                'failed' => count($failed),
-                'failed_items' => $failed,
-                'status' => 'completed'
-            ]);
-
-            Log::info('Stock import completed', [
-                'total' => $total,
-                'updated' => $updated,
-                'skipped' => $skipped,
-                'failed' => count($failed)
-            ]);
+            $this->processProducts($products, $eposNowService, $rateLimitTracker);
+            
         } catch (\Exception $e) {
-            if (stripos($e->getMessage(), 'rate limit') !== false || 
-                stripos($e->getMessage(), 'maximum API limit') !== false) {
-                $errorMsg = $e->getMessage();
-                $errorMsg = preg_replace('/^(API Rate Limit|EposNow API Rate Limit):\s*/i', '', $errorMsg);
-                $errorMsg = preg_replace('/Please try again later\.?\s*$/i', '', $errorMsg);
-                
-                $this->updateProgress(0, 0, 0, 'API Rate Limit Reached: You have reached your maximum API limit. Please wait a few minutes and try again later.', [
-                    'error' => $errorMsg,
-                    'status' => 'rate_limited'
-                ]);
+            if ($this->isRateLimitError($e)) {
+                $this->handleRateLimitError($e);
                 return;
             }
+            $this->handleException($e);
+        } finally {
+            $this->cleanup();
+        }
+    }
 
-            $this->updateProgress(0, 0, 0, 'Stock import failed: ' . $e->getMessage(), [
-                'status' => 'failed',
-                'error' => $e->getMessage()
-            ]);
+    protected function ensureDatabaseConnection(): void
+    {
+        try {
+            $pdo = DB::connection()->getPdo();
+            $pdo->query('SELECT 1');
+        } catch (\Exception $e) {
+            Log::warning('Database connection lost, reconnecting...', ['error' => $e->getMessage()]);
+            DB::reconnect();
+        }
+    }
 
-            Log::error('Stock import job failed', [
-                'job_id' => $this->jobId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+    protected function fetchProducts()
+    {
+        $this->updateProgress(5, $this->processedCount, 0, 'Fetching products from database...', ['status' => 'fetching']);
+
+        $query = Product::whereNotNull('eposnow_product_id')
+            ->where('eposnow_product_id', '!=', 0);
+
+        if ($this->productIds !== null && !empty($this->productIds)) {
+            $query->whereIn('eposnow_product_id', $this->productIds);
+        }
+
+        if (!empty($this->processedProductIds)) {
+            $query->whereNotIn('eposnow_product_id', $this->processedProductIds);
+        }
+
+        return $query->get(['id', 'eposnow_product_id', 'name', 'stock']);
+    }
+
+    protected function shouldBatch($products): bool
+    {
+        return $this->productIds === null && $products->count() > 10;
+    }
+
+    protected function dispatchBatches($products): void
+    {
+        $batchSize = 10;
+        $batches = $products->chunk($batchSize);
+        $totalBatches = $batches->count();
+        
+        Log::info('Splitting stock import into batches', [
+            'total_products' => $products->count(),
+            'total_batches' => $totalBatches,
+            'batch_size' => $batchSize
+        ]);
+
+        $batchIndex = 0;
+        foreach ($batches as $batch) {
+            $batchProductIds = $batch->pluck('eposnow_product_id')->toArray();
+            $batchJobId = $this->jobId . '_batch_' . ($batchIndex + 1);
+            
+            self::dispatch($batchJobId, $batchProductIds)->delay(now()->addSeconds($batchIndex * 10));
+            
+            $batchIndex++;
+        }
+
+        $this->updateProgress(100, $this->processedCount, $products->count(), "Dispatched {$totalBatches} batch jobs for {$products->count()} products.", [
+            'status' => 'batched',
+            'total_batches' => $totalBatches
+        ]);
+    }
+
+    protected function processProducts($products, EposNowService $eposNowService, RateLimitTrackerService $rateLimitTracker): void
+    {
+        $total = $products->count() + $this->processedCount;
+        $processed = $this->processedCount;
+        $updated = 0;
+        $skipped = 0;
+        $failed = [];
+
+        $this->updateProgress(10, $processed, $total, "Processing {$products->count()} products...", ['status' => 'processing']);
+
+        foreach ($products as $index => $product) {
+            try {
+                $this->ensureDatabaseConnection();
+                
+                $cooldown = $rateLimitTracker->checkCooldown();
+                if ($cooldown['in_cooldown']) {
+                    $this->releaseJobWithDelay($cooldown['minutes_remaining'] * 60, $processed, $total, $updated, $skipped);
+                    return;
+                }
+
+                if ($rateLimitTracker->shouldPause()) {
+                    $status = $rateLimitTracker->getStatus();
+                    $this->updateProgress(
+                        min(99, (int)(($processed / $total) * 100)),
+                        $processed,
+                        $total,
+                        'Pausing: Approaching rate limit. Waiting 60 seconds...',
+                        ['status' => 'pausing']
+                    );
+                    sleep(60);
+                }
+
+                $result = $this->processProduct($product, $eposNowService, $rateLimitTracker);
+                
+                if ($result['updated']) $updated++;
+                if ($result['skipped']) $skipped++;
+                
+                $processed++;
+                $this->processedProductIds[] = $product->eposnow_product_id;
+
+                if (($index + 1) % 3 === 0) {
+                    $this->updateProgress(
+                        min(99, (int)(($processed / $total) * 100)),
+                        $processed,
+                        $total,
+                        "Processing... {$processed}/{$total} products",
+                        ['updated' => $updated, 'skipped' => $skipped, 'failed' => count($failed)]
+                    );
+                    
+                    $this->cleanupMemory();
+                }
+
+            } catch (\Exception $e) {
+                if ($this->isRateLimitError($e)) {
+                    $rateLimitTracker->setCooldown();
+                    $this->releaseJobWithDelay(1800, $processed, $total, $updated, $skipped);
+                    return;
+                }
+                
+                $failed[] = [
+                    'id' => $product->eposnow_product_id ?? 'unknown',
+                    'name' => $product->name ?? 'unknown',
+                    'error' => $e->getMessage()
+                ];
+                $processed++;
+                
+                Log::error('Stock import failed for product', [
+                    'product_id' => $product->id,
+                    'eposnow_product_id' => $product->eposnow_product_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        $finalStatus = "Stock import completed! Updated: {$updated}, Skipped: {$skipped}, Failed: " . count($failed);
+        $this->updateProgress(100, $processed, $total, $finalStatus, [
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'failed' => count($failed),
+            'failed_items' => $failed,
+            'status' => 'completed'
+        ]);
+
+        Log::info('Stock import completed', [
+            'total' => $total,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'failed' => count($failed)
+        ]);
+    }
+
+    protected function processProduct($product, EposNowService $eposNowService, RateLimitTrackerService $rateLimitTracker): array
+    {
+        if (!$product->eposnow_product_id) {
+            return ['updated' => false, 'skipped' => true];
+        }
+
+        $delay = $rateLimitTracker->getRecommendedDelay();
+        if ($delay > 0) {
+            usleep((int)($delay * 1000000));
+        }
+
+        $stock = $eposNowService->getProductStock($product->eposnow_product_id);
+
+        if ($stock === null) {
+            return ['updated' => false, 'skipped' => true];
+        }
+
+        $updated = false;
+        DB::transaction(function () use ($product, $stock, &$updated) {
+            if ($product->stock != $stock) {
+                $product->update(['stock' => $stock]);
+                $updated = true;
+            }
+        }, 3);
+
+        return ['updated' => $updated, 'skipped' => false];
+    }
+
+    protected function isRateLimitError(\Exception $e): bool
+    {
+        $message = $e->getMessage();
+        return stripos($message, 'rate limit') !== false ||
+               stripos($message, 'maximum API limit') !== false ||
+               stripos($message, 'cooldown period') !== false ||
+               stripos($message, '403') !== false;
+    }
+
+    protected function handleRateLimitError(\Exception $e): void
+    {
+        $rateLimitTracker = app(RateLimitTrackerService::class);
+        $rateLimitTracker->setCooldown(30);
+        $cooldown = $rateLimitTracker->checkCooldown();
+        
+        $this->releaseJobWithDelay($cooldown['minutes_remaining'] * 60);
+    }
+
+    protected function releaseJobWithDelay(int $seconds, int $processed = 0, int $total = 0, int $updated = 0, int $skipped = 0): void
+    {
+        $minutes = round($seconds / 60);
+        $this->updateProgress(
+            $total > 0 ? min(99, (int)(($processed / $total) * 100)) : 0,
+            $processed,
+            $total,
+            "Rate limit reached. Job will retry in {$minutes} minutes.",
+            [
+                'status' => 'rate_limited',
+                'retry_at' => now()->addSeconds($seconds)->toDateTimeString(),
+                'updated' => $updated,
+                'skipped' => $skipped
+            ]
+        );
+        
+        $this->release($seconds);
+    }
+
+    protected function handleException(\Exception $e): void
+    {
+        $this->updateProgress(0, $this->processedCount, 0, 'Stock import failed: ' . $e->getMessage(), [
+            'status' => 'failed',
+            'error' => $e->getMessage()
+        ]);
+
+        Log::error('Stock import job failed', [
+            'job_id' => $this->jobId,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        throw $e;
+    }
+
+    protected function cleanup(): void
+    {
+        try {
+            if (DB::connection()->getPdo() !== null) {
+                DB::disconnect();
+            }
+        } catch (\Exception $e) {
+            Log::debug('Error disconnecting database: ' . $e->getMessage());
+        }
+        
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
+        }
+    }
+
+    protected function cleanupMemory(): void
+    {
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
         }
     }
 
@@ -323,6 +344,28 @@ class ImportEposNowStockJob implements ShouldQueue
             'updated_at' => now()->toDateTimeString()
         ], $additional);
 
-        Cache::put("stock_import_{$this->jobId}", $progressData, 3600);
+        Cache::put("stock_import_{$this->jobId}", $progressData, 7200);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        if ($this->isRateLimitError($exception)) {
+            Log::warning('Stock import job failed due to rate limit - will retry', [
+                'job_id' => $this->jobId,
+                'error' => $exception->getMessage()
+            ]);
+            return;
+        }
+
+        $this->updateProgress(0, $this->processedCount, 0, 'Stock import job failed permanently: ' . $exception->getMessage(), [
+            'status' => 'failed',
+            'error' => $exception->getMessage()
+        ]);
+
+        Log::error('Stock import job failed permanently', [
+            'job_id' => $this->jobId,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString()
+        ]);
     }
 }
