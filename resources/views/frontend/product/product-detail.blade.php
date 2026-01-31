@@ -661,7 +661,7 @@
                         <div class="row g-4">
                             @if($relatedProducts->count() > 0)
                                 @foreach($relatedProducts as $relatedProduct)
-                                    <div class="col-lg-3 col-md-4 col-sm-6">
+                                    <div class="col-lg-3 col-md-4 col-sm-6 col-6">
                                         @include('frontend.product.partials.product-card', ['product' => $relatedProduct])
                                     </div>
                                 @endforeach

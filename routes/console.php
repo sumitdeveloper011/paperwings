@@ -34,7 +34,7 @@ Schedule::call(function () {
     \App\Jobs\ImportEposNowStockJob::dispatch($jobId);
 })->dailyAt('01:00')
     ->timezone('Pacific/Auckland')
-    ->description('Daily stock import from EposNow at 01:00 AM');
+    ->description('Daily stock import from EposNow at 01:00 AM (bulk API - optimized)');
 
 Schedule::command('queue:work database --queue=default,newsletters,imports --stop-when-empty --tries=3 --max-time=120 --max-jobs=15 --memory=256 --sleep=5')
     ->everyTwoMinutes()

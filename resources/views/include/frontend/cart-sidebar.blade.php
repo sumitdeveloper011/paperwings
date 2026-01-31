@@ -2,7 +2,7 @@
 <div class="cart-sidebar-overlay" id="cart-sidebar-overlay"></div>
     <div class="cart-sidebar" id="cart-sidebar">
         <div class="cart-sidebar__header">
-            <h3 class="cart-sidebar__title">Shopping Cart</h3>
+            <h3 class="cart-sidebar__title">Shopping Cart <span id="cart-sidebar-count" class="cart-sidebar-count" style="display: none;">(0)</span></h3>
             <button class="cart-sidebar__close" id="cart-sidebar-close">
                 <i class="fas fa-times"></i>
             </button>

@@ -15,7 +15,7 @@
 
         // Main Banner Slider (Swiper.js - migrated from Slick Slider)
         const mainBannerSlider = document.querySelector('.main-banner-slider');
-        if (mainBannerSlider) {
+        if (mainBannerSlider && !mainBannerSlider.swiper) {
             const swiperWrapper = mainBannerSlider.querySelector('.swiper-wrapper');
             const slidesCount = swiperWrapper ? swiperWrapper.children.length : 0;
             
@@ -42,10 +42,15 @@
 
         // Products Carousel (Swiper)
         document.querySelectorAll('.products-carousel').forEach(carousel => {
+            if (carousel.swiper) {
+                return;
+            }
             const items = carousel.children.length;
             new Swiper(carousel, {
-                loop: items > 5,
+                loop: items > 6,
                 spaceBetween: 20,
+                slidesOffsetBefore: 15,
+                slidesOffsetAfter: 15,
                 autoplay: items > 1 ? {
                     delay: 5000,
                     pauseOnMouseEnter: true,
@@ -56,11 +61,11 @@
                     clickable: true
                 },
                 breakpoints: {
-                    0: { slidesPerView: 1 },
+                    0: { slidesPerView: 2 },
                     576: { slidesPerView: 2 },
                     768: { slidesPerView: 3 },
                     992: { slidesPerView: 4 },
-                    1200: { slidesPerView: 5 }
+                    1200: { slidesPerView: 6 }
                 }
             });
         });
@@ -68,10 +73,15 @@
         // Cute Stationery Carousels (Swiper)
         document.querySelectorAll('.cute-stationery-carousel').forEach((carousel, index) => {
             try {
+                if (carousel.swiper) {
+                    return;
+                }
                 const items = carousel.children.length;
                 new Swiper(carousel, {
-                    loop: items > 5,
+                    loop: items > 6,
                     spaceBetween: 20,
+                    slidesOffsetBefore: 15,
+                    slidesOffsetAfter: 15,
                     autoplay: items > 1 ? {
                         delay: 5000,
                         pauseOnMouseEnter: true,
@@ -82,11 +92,11 @@
                         clickable: true
                     },
                     breakpoints: {
-                        0: { slidesPerView: 1 },
+                        0: { slidesPerView: 2 },
                         576: { slidesPerView: 2 },
                         768: { slidesPerView: 3 },
                         992: { slidesPerView: 4 },
-                        1200: { slidesPerView: 5 }
+                        1200: { slidesPerView: 6 }
                     }
                 });
                 Utils.log('Carousel', index + 1, 'initialized successfully');

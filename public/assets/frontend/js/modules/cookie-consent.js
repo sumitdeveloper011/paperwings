@@ -205,6 +205,9 @@
             if (modal) {
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
+                setTimeout(() => {
+                    modal.classList.add('active');
+                }, 10);
                 this.updateModalPreferences();
             }
         },
@@ -212,8 +215,11 @@
         hideModal: function() {
             const modal = document.getElementById('cookiePreferencesModal');
             if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }, 300);
             }
         },
 

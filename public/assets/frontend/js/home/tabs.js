@@ -33,6 +33,15 @@
                 
                 if (targetContent) {
                     targetContent.classList.add('active');
+                    
+                    setTimeout(() => {
+                        const carousel = targetContent.querySelector('.cute-stationery-carousel');
+                        if (carousel && carousel.swiper) {
+                            carousel.swiper.update();
+                            carousel.swiper.updateSlides();
+                            carousel.swiper.updateSlidesClasses();
+                        }
+                    }, 50);
                 }
             });
         });

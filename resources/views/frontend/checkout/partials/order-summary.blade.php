@@ -94,7 +94,7 @@
         </form>
     </div>
 
-    <div class="order-summary__action" style="margin-top: 1.5rem;">
+    <div class="order-summary__action d-none d-lg-block" style="margin-top: 1.5rem;">
         <button type="submit" form="checkoutForm" class="place-order-btn" style="width: 100%;">
             <span>Continue to Review</span>
             <i class="fas fa-arrow-right"></i>

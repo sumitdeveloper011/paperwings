@@ -108,19 +108,26 @@ class ImportEposNowStockJob implements ShouldQueue
 
     protected function shouldBatch($products): bool
     {
-        return $this->productIds === null && $products->count() > 10;
+        // With bulk API, batching is less critical since we fetch all stock in 1-10 API calls
+        // However, batching can still help with memory management for extremely large datasets
+        // Only batch if we have a very large number of products (e.g., > 2000)
+        // Note: Each batch job will still fetch ALL stock from API, but processes fewer products in memory
+        return $this->productIds === null && $products->count() > 2000;
     }
 
     protected function dispatchBatches($products): void
     {
-        $batchSize = 10;
+        // With bulk API, we can use larger batch sizes since API calls are efficient
+        // Each batch job fetches all stock but processes only its assigned products
+        $batchSize = 500; // Increased from 10 since API is now efficient
         $batches = $products->chunk($batchSize);
         $totalBatches = $batches->count();
         
-        Log::info('Splitting stock import into batches', [
+        Log::info('Splitting stock import into batches (using bulk API)', [
             'total_products' => $products->count(),
             'total_batches' => $totalBatches,
-            'batch_size' => $batchSize
+            'batch_size' => $batchSize,
+            'note' => 'Each batch uses bulk API but processes subset of products for memory management'
         ]);
 
         $batchIndex = 0;
@@ -128,14 +135,16 @@ class ImportEposNowStockJob implements ShouldQueue
             $batchProductIds = $batch->pluck('eposnow_product_id')->toArray();
             $batchJobId = $this->jobId . '_batch_' . ($batchIndex + 1);
             
-            self::dispatch($batchJobId, $batchProductIds)->delay(now()->addSeconds($batchIndex * 10));
+            // Reduced delay since bulk API is faster
+            self::dispatch($batchJobId, $batchProductIds)->delay(now()->addSeconds($batchIndex * 5));
             
             $batchIndex++;
         }
 
-        $this->updateProgress(100, $this->processedCount, $products->count(), "Dispatched {$totalBatches} batch jobs for {$products->count()} products.", [
+        $this->updateProgress(100, $this->processedCount, $products->count(), "Dispatched {$totalBatches} batch jobs for {$products->count()} products (using bulk API).", [
             'status' => 'batched',
-            'total_batches' => $totalBatches
+            'total_batches' => $totalBatches,
+            'batch_size' => $batchSize
         ]);
     }
 
@@ -147,116 +156,198 @@ class ImportEposNowStockJob implements ShouldQueue
         $skipped = 0;
         $failed = [];
 
-        $this->updateProgress(10, $processed, $total, "Processing {$products->count()} products...", ['status' => 'processing']);
+        // Edge case: Check rate limit before starting bulk fetch
+        $cooldown = $rateLimitTracker->checkCooldown();
+        if ($cooldown['in_cooldown']) {
+            $this->releaseJobWithDelay($cooldown['minutes_remaining'] * 60, $processed, $total, $updated, $skipped);
+            return;
+        }
 
-        foreach ($products as $index => $product) {
-            try {
-                $this->ensureDatabaseConnection();
-                
-                $cooldown = $rateLimitTracker->checkCooldown();
-                if ($cooldown['in_cooldown']) {
-                    $this->releaseJobWithDelay($cooldown['minutes_remaining'] * 60, $processed, $total, $updated, $skipped);
-                    return;
-                }
+        $this->updateProgress(10, $processed, $total, 'Fetching all stock data from EposNow (bulk)...', ['status' => 'fetching']);
 
-                if ($rateLimitTracker->shouldPause()) {
-                    $status = $rateLimitTracker->getStatus();
-                    $this->updateProgress(
-                        min(99, (int)(($processed / $total) * 100)),
-                        $processed,
-                        $total,
-                        'Pausing: Approaching rate limit. Waiting 60 seconds...',
-                        ['status' => 'pausing']
-                    );
-                    sleep(60);
-                }
-
-                $result = $this->processProduct($product, $eposNowService, $rateLimitTracker);
-                
-                if ($result['updated']) $updated++;
-                if ($result['skipped']) $skipped++;
-                
-                $processed++;
-                $this->processedProductIds[] = $product->eposnow_product_id;
-
-                if (($index + 1) % 3 === 0) {
-                    $this->updateProgress(
-                        min(99, (int)(($processed / $total) * 100)),
-                        $processed,
-                        $total,
-                        "Processing... {$processed}/{$total} products",
-                        ['updated' => $updated, 'skipped' => $skipped, 'failed' => count($failed)]
-                    );
-                    
-                    $this->cleanupMemory();
-                }
-
-            } catch (\Exception $e) {
-                if ($this->isRateLimitError($e)) {
-                    $rateLimitTracker->setCooldown();
-                    $this->releaseJobWithDelay(1800, $processed, $total, $updated, $skipped);
-                    return;
-                }
-                
-                $failed[] = [
-                    'id' => $product->eposnow_product_id ?? 'unknown',
-                    'name' => $product->name ?? 'unknown',
-                    'error' => $e->getMessage()
-                ];
-                $processed++;
-                
-                Log::error('Stock import failed for product', [
-                    'product_id' => $product->id,
-                    'eposnow_product_id' => $product->eposnow_product_id,
-                    'error' => $e->getMessage()
+        try {
+            // Fetch all product stock in one bulk API call (with pagination handled internally)
+            $allStock = $eposNowService->getAllProductStock();
+            
+            // Edge case: Handle empty stock data
+            if (empty($allStock) || !is_array($allStock)) {
+                $this->updateProgress(100, $processed, $total, 'No stock data found from EposNow API', [
+                    'status' => 'completed',
+                    'updated' => 0,
+                    'skipped' => $total,
+                    'failed' => 0,
+                    'message' => 'EposNow API returned empty stock data'
                 ]);
+                Log::warning('Stock import: No stock data returned from EposNow API', [
+                    'total_products' => $total
+                ]);
+                return;
             }
+
+            $this->updateProgress(30, $processed, $total, 'Processing stock updates...', [
+                'status' => 'processing',
+                'stock_data_fetched' => count($allStock)
+            ]);
+
+            // Edge case: Create lookup map for faster access
+            $stockLookup = $allStock; // Already indexed by productId
+
+            // Update products based on fetched stock data
+            foreach ($products as $index => $product) {
+                try {
+                    $this->ensureDatabaseConnection();
+                    
+                    // Edge case: Validate product has eposnow_product_id
+                    $eposNowProductId = $product->eposnow_product_id;
+                    
+                    if (!$eposNowProductId || !is_numeric($eposNowProductId) || $eposNowProductId <= 0) {
+                        $skipped++;
+                        $processed++;
+                        continue;
+                    }
+
+                    $eposNowProductId = (int) $eposNowProductId;
+
+                    // Edge case: Get stock for this product from bulk data
+                    $newStock = $stockLookup[$eposNowProductId] ?? null;
+
+                    // Edge case: Handle products not found in stock data
+                    if ($newStock === null) {
+                        // Product not found in stock data - skip it (might be new product or deleted from EposNow)
+                        $skipped++;
+                        $processed++;
+                        continue;
+                    }
+
+                    // Edge case: Validate stock is numeric (should be, but double-check)
+                    if (!is_numeric($newStock)) {
+                        Log::warning('Stock import: Invalid stock value for product', [
+                            'product_id' => $product->id,
+                            'eposnow_product_id' => $eposNowProductId,
+                            'stock_value' => $newStock,
+                            'type' => gettype($newStock)
+                        ]);
+                        $skipped++;
+                        $processed++;
+                        continue;
+                    }
+
+                    $newStock = (int) $newStock;
+
+                    // Edge case: Handle stock value of 0 (valid - means out of stock)
+                    // We update even if stock is 0, as it's a valid value
+
+                    // Update if stock changed
+                    $wasUpdated = false;
+                    $updateError = null;
+                    
+                    try {
+                        DB::transaction(function () use ($product, $newStock, &$wasUpdated) {
+                            // Edge case: Only update if stock actually changed (avoid unnecessary DB writes)
+                            if ($product->stock != $newStock) {
+                                $product->update(['stock' => $newStock]);
+                                $wasUpdated = true;
+                            }
+                        }, 3); // Edge case: Retry transaction up to 3 times
+                    } catch (\Exception $dbException) {
+                        // Edge case: Handle database transaction failures
+                        $updateError = $dbException->getMessage();
+                        Log::error('Stock update: Database transaction failed', [
+                            'product_id' => $product->id,
+                            'eposnow_product_id' => $eposNowProductId,
+                            'error' => $updateError
+                        ]);
+                        throw $dbException; // Re-throw to be caught by outer catch
+                    }
+
+                    if ($wasUpdated) {
+                        $updated++;
+                    } else {
+                        $skipped++; // Stock didn't change, so skipped
+                    }
+                    
+                    $processed++;
+                    $this->processedProductIds[] = $eposNowProductId;
+
+                    // Edge case: Update progress every 10 products (less frequent than before since we're faster)
+                    if (($index + 1) % 10 === 0 || ($index + 1) === $products->count()) {
+                        $percentage = min(99, 30 + (int)(($processed / $total) * 70));
+                        $this->updateProgress(
+                            $percentage,
+                            $processed,
+                            $total,
+                            "Processing... {$processed}/{$total} products (Updated: {$updated}, Skipped: {$skipped})",
+                            [
+                                'updated' => $updated,
+                                'skipped' => $skipped,
+                                'failed' => count($failed)
+                            ]
+                        );
+                        
+                        // Edge case: Cleanup memory periodically for large datasets
+                        $this->cleanupMemory();
+                    }
+
+                } catch (\Exception $e) {
+                    // Edge case: Handle individual product processing errors
+                    if ($this->isRateLimitError($e)) {
+                        $rateLimitTracker->setCooldown();
+                        $this->releaseJobWithDelay(1800, $processed, $total, $updated, $skipped);
+                        return;
+                    }
+                    
+                    $failed[] = [
+                        'id' => $product->eposnow_product_id ?? 'unknown',
+                        'name' => $product->name ?? 'unknown',
+                        'error' => $e->getMessage()
+                    ];
+                    $processed++;
+                    
+                    Log::error('Stock update failed for product', [
+                        'product_id' => $product->id ?? null,
+                        'eposnow_product_id' => $product->eposnow_product_id ?? null,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
+            $finalStatus = "Stock import completed! Updated: {$updated}, Skipped: {$skipped}, Failed: " . count($failed);
+            $this->updateProgress(100, $processed, $total, $finalStatus, [
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'failed' => count($failed),
+                'failed_items' => $failed,
+                'status' => 'completed',
+                'stock_data_fetched' => count($allStock)
+            ]);
+
+            Log::info('Stock import completed', [
+                'total' => $total,
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'failed' => count($failed),
+                'stock_data_fetched' => count($allStock),
+                'products_with_stock' => count(array_filter($allStock, fn($stock) => $stock > 0))
+            ]);
+
+        } catch (\Exception $e) {
+            // Edge case: Handle bulk fetch errors
+            if ($this->isRateLimitError($e)) {
+                $this->handleRateLimitError($e);
+                return;
+            }
+            
+            // Edge case: Handle other bulk fetch errors
+            Log::error('Stock import: Bulk fetch failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->handleException($e);
         }
-
-        $finalStatus = "Stock import completed! Updated: {$updated}, Skipped: {$skipped}, Failed: " . count($failed);
-        $this->updateProgress(100, $processed, $total, $finalStatus, [
-            'updated' => $updated,
-            'skipped' => $skipped,
-            'failed' => count($failed),
-            'failed_items' => $failed,
-            'status' => 'completed'
-        ]);
-
-        Log::info('Stock import completed', [
-            'total' => $total,
-            'updated' => $updated,
-            'skipped' => $skipped,
-            'failed' => count($failed)
-        ]);
     }
 
-    protected function processProduct($product, EposNowService $eposNowService, RateLimitTrackerService $rateLimitTracker): array
-    {
-        if (!$product->eposnow_product_id) {
-            return ['updated' => false, 'skipped' => true];
-        }
-
-        $delay = $rateLimitTracker->getRecommendedDelay();
-        if ($delay > 0) {
-            usleep((int)($delay * 1000000));
-        }
-
-        $stock = $eposNowService->getProductStock($product->eposnow_product_id);
-
-        if ($stock === null) {
-            return ['updated' => false, 'skipped' => true];
-        }
-
-        $updated = false;
-        DB::transaction(function () use ($product, $stock, &$updated) {
-            if ($product->stock != $stock) {
-                $product->update(['stock' => $stock]);
-                $updated = true;
-            }
-        }, 3);
-
-        return ['updated' => $updated, 'skipped' => false];
-    }
 
     protected function isRateLimitError(\Exception $e): bool
     {

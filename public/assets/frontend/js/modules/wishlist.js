@@ -493,6 +493,9 @@
             sidebarItems.style.display = 'flex';
             sidebarItems.innerHTML = html;
 
+            // Handle image loading - hide skeleton when image loads
+            this.initImageLoading();
+
             document.querySelectorAll('.wishlist-sidebar-item__remove').forEach(button => {
                 button.addEventListener('click', () => {
                     const productUuid = button.getAttribute('data-product-uuid');
@@ -542,7 +545,7 @@
             // Sidebar count - hide when 0
             if (countBadge) {
                 countBadge.textContent = count;
-                countBadge.style.display = count > 0 ? 'flex' : 'none';
+                countBadge.style.display = count > 0 ? 'inline-block' : 'none';
             }
 
             // Header badges - always show (so wishlist icon is always visible)
@@ -1113,6 +1116,41 @@
                         ? error.message 
                         : 'An error occurred. Please try again.';
                     showToast(errorMsg, 'error');
+                }
+            });
+        },
+
+        initImageLoading: function() {
+            const imageWrappers = document.querySelectorAll('.wishlist-sidebar-item__image .skeleton-image-wrapper');
+            
+            imageWrappers.forEach(wrapper => {
+                const img = wrapper.querySelector('img');
+                const skeleton = wrapper.querySelector('.skeleton-small-image');
+                
+                if (!img) return;
+                
+                // If image is already loaded
+                if (img.complete && img.naturalHeight !== 0) {
+                    img.classList.add('loaded');
+                    if (skeleton) {
+                        skeleton.classList.add('hidden');
+                    }
+                } else {
+                    // Wait for image to load
+                    img.addEventListener('load', function() {
+                        img.classList.add('loaded');
+                        if (skeleton) {
+                            skeleton.classList.add('hidden');
+                        }
+                    });
+                    
+                    // Handle image load errors
+                    img.addEventListener('error', function() {
+                        img.classList.add('loaded');
+                        if (skeleton) {
+                            skeleton.classList.add('hidden');
+                        }
+                    });
                 }
             });
         }

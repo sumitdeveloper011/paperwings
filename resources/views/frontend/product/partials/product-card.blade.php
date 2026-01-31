@@ -59,30 +59,22 @@
             $avgRating = $product->average_rating ?? 0;
             $reviewsCount = $product->reviews_count ?? 0;
         @endphp
+        @if($reviewsCount > 0)
         <div class="cute-stationery__rating">
-            @if($reviewsCount > 0)
-                <div class="cute-stationery__stars">
-                    @for($i = 1; $i <= 5; $i++)
-                        @if($i <= floor($avgRating))
-                            <i class="fas fa-star"></i>
-                        @elseif($i - 0.5 <= $avgRating)
-                            <i class="fas fa-star-half-alt"></i>
-                        @else
-                            <i class="far fa-star"></i>
-                        @endif
-                    @endfor
-                </div>
-                <span class="cute-stationery__rating-text">({{ $reviewsCount }})</span>
-            @else
-                <div class="cute-stationery__stars" style="visibility: hidden;">
-                    <i class="far fa-star"></i>
-                    <i class="far fa-star"></i>
-                    <i class="far fa-star"></i>
-                    <i class="far fa-star"></i>
-                    <i class="far fa-star"></i>
-                </div>
-            @endif
+            <div class="cute-stationery__stars">
+                @for($i = 1; $i <= 5; $i++)
+                    @if($i <= floor($avgRating))
+                        <i class="fas fa-star"></i>
+                    @elseif($i - 0.5 <= $avgRating)
+                        <i class="fas fa-star-half-alt"></i>
+                    @else
+                        <i class="far fa-star"></i>
+                    @endif
+                @endfor
+            </div>
+            <span class="cute-stationery__rating-text">({{ $reviewsCount }})</span>
         </div>
+        @endif
 
         <div class="cute-stationery__price">
             @if($product->discount_price)

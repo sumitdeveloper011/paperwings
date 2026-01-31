@@ -665,6 +665,7 @@
             
             const headerBadge = document.getElementById('cart-header-badge');
             const headerBadgeMobile = document.getElementById('cart-header-badge-mobile');
+            const sidebarCount = document.getElementById('cart-sidebar-count');
             
             if (headerBadge) {
                 headerBadge.textContent = count;
@@ -674,6 +675,12 @@
             if (headerBadgeMobile) {
                 headerBadgeMobile.textContent = count;
                 headerBadgeMobile.style.display = 'flex';
+            }
+            
+            if (sidebarCount) {
+                const itemText = count === 1 ? 'item' : 'items';
+                sidebarCount.textContent = `(${count} ${itemText})`;
+                sidebarCount.style.display = count > 0 ? 'inline' : 'none';
             }
         },
 

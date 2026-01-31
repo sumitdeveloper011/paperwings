@@ -91,11 +91,112 @@
         },
 
         /**
+         * Initialize tab scrolling functionality for mobile
+         */
+        initTabScrolling: function() {
+            const productTabs = document.querySelector('.product-tabs');
+            const navTabs = document.querySelector('.product-tabs .nav-tabs');
+            
+            if (!productTabs || !navTabs) {
+                return;
+            }
+
+            // Check if tabs are scrollable
+            const checkScrollable = () => {
+                const isScrollable = navTabs.scrollWidth > navTabs.clientWidth;
+                if (isScrollable) {
+                    productTabs.classList.add('has-scroll');
+                    this.updateScrollIndicators(navTabs, productTabs);
+                } else {
+                    productTabs.classList.remove('has-scroll');
+                }
+            };
+
+            // Update scroll indicators based on scroll position
+            this.updateScrollIndicators = (tabsContainer, tabsWrapper) => {
+                const scrollLeft = tabsContainer.scrollLeft;
+                const scrollWidth = tabsContainer.scrollWidth;
+                const clientWidth = tabsContainer.clientWidth;
+                const maxScroll = scrollWidth - clientWidth;
+
+                // Remove all indicator classes
+                tabsWrapper.classList.remove('scrollable-left', 'scrollable-right');
+
+                // Add indicators based on scroll position
+                if (scrollLeft > 10) {
+                    tabsWrapper.classList.add('scrollable-left');
+                }
+                if (scrollLeft < maxScroll - 10) {
+                    tabsWrapper.classList.add('scrollable-right');
+                }
+            };
+
+            // Listen for scroll events
+            navTabs.addEventListener('scroll', () => {
+                this.updateScrollIndicators(navTabs, productTabs);
+            });
+
+            // Check on resize
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    checkScrollable();
+                    this.updateScrollIndicators(navTabs, productTabs);
+                }, 250);
+            });
+
+            // Auto-scroll active tab into view on mobile
+            const scrollActiveTabIntoView = () => {
+                const activeTab = navTabs.querySelector('.nav-link.active');
+                if (!activeTab) return;
+
+                const isMobile = window.innerWidth <= 768;
+                if (!isMobile) return;
+
+                const tabRect = activeTab.getBoundingClientRect();
+                const containerRect = navTabs.getBoundingClientRect();
+                const scrollLeft = navTabs.scrollLeft;
+
+                // Calculate if tab is out of view
+                const tabLeft = activeTab.offsetLeft;
+                const tabWidth = activeTab.offsetWidth;
+                const containerWidth = navTabs.clientWidth;
+
+                // Scroll to center the active tab
+                const targetScroll = tabLeft - (containerWidth / 2) + (tabWidth / 2);
+                
+                navTabs.scrollTo({
+                    left: targetScroll,
+                    behavior: 'smooth'
+                });
+            };
+
+            // Listen for tab changes (Bootstrap tab events)
+            const tabButtons = navTabs.querySelectorAll('.nav-link[data-bs-toggle="tab"]');
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', () => {
+                    setTimeout(scrollActiveTabIntoView, 100);
+                });
+            });
+
+            // Initial check
+            checkScrollable();
+            
+            // Check after a short delay to ensure layout is complete
+            setTimeout(() => {
+                checkScrollable();
+                scrollActiveTabIntoView();
+            }, 300);
+        },
+
+        /**
          * Initialize all product detail functionality
          */
         init: function() {
             this.initCopyLink();
             this.initFormUrls();
+            this.initTabScrolling();
         }
     };
 

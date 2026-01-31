@@ -10,8 +10,8 @@
     <section class="category-products-section">
         <div class="container">
             <div class="row">
-                <!-- Sidebar Filters -->
-                <div class="col-lg-3 col-md-4">
+                <!-- Sidebar Filters (Desktop) -->
+                <div class="col-lg-3 col-md-4 category-sidebar-desktop">
                     <div class="category-sidebar">
                         @include('frontend.partials.sidebar-categories', [
                             'categories' => $categories,
@@ -30,7 +30,7 @@
                 </div>
 
                 <!-- Products Grid -->
-                <div class="col-lg-9 col-md-8">
+                <div class="col-lg-9 col-md-8 col-12">
                     @include('frontend.partials.products-header', [
                         'products' => $products,
                         'sort' => $sort ?? null,
@@ -50,6 +50,34 @@
             </div>
         </div>
     </section>
+
+    <!-- Filter Drawer (Mobile) -->
+    <div class="filter-drawer" id="categoryFilterDrawer">
+        <div class="filter-drawer__overlay" id="categoryFilterDrawerOverlay"></div>
+        <div class="filter-drawer__content">
+            <div class="filter-drawer__header">
+                <h2 class="filter-drawer__title">Filters</h2>
+                <button class="filter-drawer__close" id="categoryFilterDrawerClose" aria-label="Close Filters">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="filter-drawer__body">
+                @include('frontend.partials.sidebar-categories', [
+                    'categories' => $categories,
+                    'type' => 'link',
+                    'currentCategory' => $category ?? null
+                ])
+
+                @include('frontend.partials.sidebar-price-filter', [
+                    'priceMin' => $priceMin ?? 0,
+                    'priceMax' => $priceMax ?? 100,
+                    'minPrice' => $minPrice ?? null,
+                    'maxPrice' => $maxPrice ?? null,
+                    'showApplyButton' => true
+                ])
+            </div>
+        </div>
+    </div>
 
 
 @push('scripts')

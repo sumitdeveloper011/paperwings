@@ -16,6 +16,7 @@
             @include('frontend.partials.products-header', [
                 'products' => $bundles,
                 'sort' => $sort ?? null,
+                'showFilters' => false,
                 'sortOptions' => [
                     'featured' => 'Sort by: Featured',
                     'price_low_high' => 'Price: Low to High',
@@ -49,10 +50,6 @@
 
 @push('styles')
 <style>
-.bundles-section {
-    padding: 3rem 0 4rem;
-}
-
 .cute-stationery__action {
     text-decoration: none;
 }

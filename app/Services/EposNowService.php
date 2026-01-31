@@ -443,6 +443,231 @@ class EposNowService
         }
     }
 
+    /**
+     * Get all product stock from EposNow API (bulk fetch with pagination)
+     * Fetches all stock data in paginated requests and returns mapped by productId
+     * Handles edge cases: pagination, duplicates, invalid data, multiple locations
+     *
+     * @return array Array of [productId => totalStock] where totalStock is sum of all batches and locations
+     */
+    public function getAllProductStock(): array
+    {
+        $page = 1;
+        $allStock = [];
+        $maxPages = 1000; // Safety limit to prevent infinite loops
+        $emptyPageCount = 0;
+        $maxEmptyPages = 2; // Stop after 2 consecutive empty pages
+        $previousPageIds = []; // Track IDs from previous page to detect duplicates
+        $duplicatePageCount = 0;
+        $maxDuplicatePages = 2; // Stop after 2 consecutive duplicate pages
+
+        while ($page <= $maxPages) {
+            try {
+                $stockData = $this->makeRequest(
+                    "{$this->baseUrl}/ProductStock",
+                    ['page' => $page]
+                );
+
+                // Edge case: Check if response is valid array
+                if (!is_array($stockData)) {
+                    Log::warning('EposNow Stock API returned non-array response', [
+                        'page' => $page,
+                        'response_type' => gettype($stockData),
+                        'response' => is_string($stockData) ? substr($stockData, 0, 200) : $stockData
+                    ]);
+                    break;
+                }
+
+                // Edge case: If empty page, increment empty counter
+                if (empty($stockData) || count($stockData) === 0) {
+                    $emptyPageCount++;
+                    if (app()->environment('local') || app()->environment('development')) {
+                        Log::info('EPOSNOW Stock Import: Empty page detected', [
+                            'page' => $page,
+                            'empty_page_count' => $emptyPageCount,
+                            'total_products_so_far' => count($allStock)
+                        ]);
+                    }
+
+                    if ($emptyPageCount >= $maxEmptyPages) {
+                        if (app()->environment('local') || app()->environment('development')) {
+                            Log::info('EPOSNOW Stock Import: Reached end of pagination (empty pages)', [
+                                'pages_fetched' => $page - 1,
+                                'total_products' => count($allStock)
+                            ]);
+                        }
+                        break;
+                    }
+                    $page++;
+                    continue;
+                }
+
+                // Reset empty counter if we got data
+                $emptyPageCount = 0;
+
+                // Edge case: Check for duplicate pages (custom check for stock entries)
+                $currentPageIds = [];
+                foreach ($stockData as $entry) {
+                    // Stock entries might have 'id' or 'Id' or we can use 'productId'
+                    $entryId = $entry['id'] ?? $entry['Id'] ?? $entry['productId'] ?? null;
+                    if ($entryId !== null) {
+                        $currentPageIds[] = (string)$entryId;
+                    }
+                }
+
+                // Check if current page has same IDs as previous page (duplicate data)
+                if (!empty($previousPageIds) && !empty($currentPageIds)) {
+                    $isDuplicate = count(array_intersect($previousPageIds, $currentPageIds)) === count($currentPageIds)
+                        && count($currentPageIds) === count($previousPageIds);
+
+                    if ($isDuplicate) {
+                        $duplicatePageCount++;
+                        Log::warning('EPOSNOW Stock Import: Duplicate page detected', [
+                            'page' => $page,
+                            'duplicate_page_count' => $duplicatePageCount,
+                            'item_ids' => array_slice($currentPageIds, 0, 5)
+                        ]);
+
+                        if ($duplicatePageCount >= $maxDuplicatePages) {
+                            Log::info('EPOSNOW Stock Import: Stopping due to duplicate pages', [
+                                'pages_fetched' => $page - 1,
+                                'total_items' => count($allStock),
+                                'last_page' => $page - 1
+                            ]);
+                            break;
+                        }
+                        $page++;
+                        continue;
+                    }
+                }
+
+                // Reset duplicate counter if we got new data
+                $duplicatePageCount = 0;
+                $previousPageIds = $currentPageIds;
+
+                // Process each product stock entry
+                foreach ($stockData as $stockEntry) {
+                    // Edge case: Validate productId exists and is numeric
+                    $productId = null;
+                    if (isset($stockEntry['productId'])) {
+                        if (is_numeric($stockEntry['productId'])) {
+                            $productId = (int) $stockEntry['productId'];
+                        } else {
+                            Log::warning('EposNow Stock: Invalid productId type', [
+                                'productId' => $stockEntry['productId'],
+                                'type' => gettype($stockEntry['productId'])
+                            ]);
+                            continue;
+                        }
+                    } else {
+                        // Edge case: Missing productId - skip this entry
+                        Log::warning('EposNow Stock: Missing productId in stock entry', [
+                            'entry_keys' => array_keys($stockEntry)
+                        ]);
+                        continue;
+                    }
+
+                    // Edge case: Skip if productId is 0 or negative
+                    if ($productId <= 0) {
+                        continue;
+                    }
+
+                    // Sum currentStock from all batches for this product
+                    $totalStock = 0;
+                    
+                    // Edge case: Check if productStockBatches exists and is array
+                    if (isset($stockEntry['productStockBatches']) && is_array($stockEntry['productStockBatches'])) {
+                        foreach ($stockEntry['productStockBatches'] as $batch) {
+                            // Edge case: Validate batch is array and has currentStock
+                            if (!is_array($batch)) {
+                                continue;
+                            }
+
+                            // Edge case: Handle currentStock - can be null, 0, or positive number
+                            if (isset($batch['currentStock'])) {
+                                // Edge case: Check if currentStock is numeric (handles string numbers too)
+                                if (is_numeric($batch['currentStock'])) {
+                                    $stockValue = (int) $batch['currentStock'];
+                                    // Edge case: Only add positive stock values (negative stock doesn't make sense)
+                                    if ($stockValue >= 0) {
+                                        $totalStock += $stockValue;
+                                    } else {
+                                        Log::warning('EposNow Stock: Negative currentStock value', [
+                                            'productId' => $productId,
+                                            'currentStock' => $batch['currentStock']
+                                        ]);
+                                    }
+                                } else {
+                                    // Edge case: Non-numeric currentStock
+                                    Log::warning('EposNow Stock: Non-numeric currentStock', [
+                                        'productId' => $productId,
+                                        'currentStock' => $batch['currentStock'],
+                                        'type' => gettype($batch['currentStock'])
+                                    ]);
+                                }
+                            }
+                            // Edge case: Missing currentStock in batch - silently skip (some batches might not have stock)
+                        }
+                    }
+                    // Edge case: Missing productStockBatches - product has no stock batches, totalStock remains 0
+
+                    // Edge case: If product has multiple locations/entries, sum them
+                    if (isset($allStock[$productId])) {
+                        $allStock[$productId] += $totalStock;
+                    } else {
+                        // Edge case: Store 0 stock if product exists but has no stock (don't skip it)
+                        $allStock[$productId] = $totalStock;
+                    }
+                }
+
+                // Logging for monitoring
+                if (app()->environment('local') || app()->environment('development')) {
+                    if ($page <= 10 || $page % 5 == 0) {
+                        Log::info('EPOSNOW Stock Import: Fetched page', [
+                            'page' => $page,
+                            'items_on_page' => count($stockData),
+                            'total_products_so_far' => count($allStock)
+                        ]);
+                    }
+                }
+
+                $page++;
+
+            } catch (\Exception $e) {
+                // Edge case: Handle API errors gracefully
+                Log::error('EposNow Stock API Error (bulk)', [
+                    'page' => $page,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                // Edge case: If it's a rate limit error, break to allow retry
+                if (stripos($e->getMessage(), 'rate limit') !== false || 
+                    stripos($e->getMessage(), '403') !== false) {
+                    Log::warning('EposNow Stock API: Rate limit hit, stopping pagination', [
+                        'page' => $page,
+                        'total_products_fetched' => count($allStock)
+                    ]);
+                    break;
+                }
+                
+                // Edge case: For other errors, try next page (might be temporary issue)
+                $page++;
+                if ($page > $maxPages) {
+                    break;
+                }
+            }
+        }
+
+        Log::info('EPOSNOW Stock Import: Completed bulk fetch', [
+            'total_pages' => $page - 1,
+            'total_products' => count($allStock),
+            'products_with_stock' => count(array_filter($allStock, fn($stock) => $stock > 0))
+        ]);
+
+        return $allStock;
+    }
+
     // Download image from URL and save to storage
     public function downloadAndSaveImage(string $imageUrl, string $productId, bool $isMainImage = false): ?string
     {

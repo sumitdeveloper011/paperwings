@@ -34,6 +34,8 @@
 <script src="{{ asset('assets/frontend/js/modules/script-utils.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/carousels.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/search.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/filter-drawer.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
+<script src="{{ asset('assets/frontend/js/modules/account-drawer.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/register-page.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 <script src="{{ asset('assets/frontend/js/modules/form-validation-native.js') }}?v={{ config('app.asset_version', '1.0.0') }}" defer></script>
 

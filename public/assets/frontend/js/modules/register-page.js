@@ -194,11 +194,13 @@
         if (userDropdownTrigger && userDropdown) {
             userDropdownTrigger.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 userDropdown.classList.toggle('open');
             });
 
+            // Close dropdown when clicking outside
             document.addEventListener('click', function(e) {
-                if (!userDropdown.contains(e.target) && !userDropdownTrigger.contains(e.target)) {
+                if (userDropdown && !userDropdown.contains(e.target)) {
                     userDropdown.classList.remove('open');
                 }
             });

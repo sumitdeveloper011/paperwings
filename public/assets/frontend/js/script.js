@@ -865,6 +865,13 @@
                     // Toggle this dropdown
                     userDropdownMobile.classList.toggle('open');
                 });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (userDropdownMobile && !userDropdownMobile.contains(e.target) && !userDropdownTriggerMobile.contains(e.target)) {
+                        userDropdownMobile.classList.remove('open');
+                    }
+                });
             }
 
             // Mobile Navigation Menu Toggle

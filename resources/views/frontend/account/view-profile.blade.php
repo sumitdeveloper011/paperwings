@@ -14,7 +14,15 @@
             @include('frontend.account.partials.sidebar')
 
             <!-- Account Content -->
-            <div class="col-lg-9">
+            <div class="col-lg-9 col-12">
+                <!-- Mobile Menu Button -->
+                <div class="account-content__mobile-menu">
+                    <button class="account-menu-btn" id="accountMenuBtn" aria-label="Open Account Menu">
+                        <i class="fas fa-bars"></i>
+                        <span>Account Menu</span>
+                    </button>
+                </div>
+                
                 <!-- View Profile -->
                 <div class="account-content">
                     <div class="account-block">

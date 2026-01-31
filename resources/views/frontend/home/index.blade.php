@@ -569,7 +569,7 @@
                 @if(isset($instagramPosts) && count($instagramPosts) > 0)
                     <!-- Display real Instagram posts -->
                     @foreach($instagramPosts as $post)
-                    <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="col-6 col-md-4 col-lg-2">
                         <div class="instagram-item">
                             <a href="{{ $post['permalink'] ?? ($instagramLink ?? '#') }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
                                 <div class="instagram-item__image">
@@ -597,7 +597,7 @@
                     <!-- Fill remaining slots with placeholders if less than 6 posts -->
                     @if(count($instagramPosts) < 6)
                         @for($i = count($instagramPosts) + 1; $i <= 6; $i++)
-                        <div class="col-lg-2 col-md-4 col-sm-6">
+                        <div class="col-6 col-md-4 col-lg-2">
                             <div class="instagram-item">
                                 <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
                                     <div class="instagram-item__image">
@@ -623,7 +623,7 @@
                 @else
                     <!-- Fallback: Display placeholder images if API is not configured or no posts -->
                     @for($i = 1; $i <= 6; $i++)
-                    <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="col-6 col-md-4 col-lg-2">
                         <div class="instagram-item">
                             <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
                                 <div class="instagram-item__image">

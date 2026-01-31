@@ -1,4 +1,4 @@
-<div id="cookiePreferencesModal" class="cookie-preferences-modal" style="display: none;">
+<div id="cookiePreferencesModal" class="cookie-preferences-modal" style="display: none; opacity: 0; visibility: hidden;">
     <div class="cookie-preferences-modal__overlay"></div>
     <div class="cookie-preferences-modal__content">
         <div class="cookie-preferences-modal__header">

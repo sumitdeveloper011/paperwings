@@ -57,6 +57,12 @@
                     }
 
                     currentUrl.searchParams.delete('page');
+                    
+                    const categoryDrawer = document.getElementById('categoryFilterDrawer');
+                    if (categoryDrawer && window.FilterDrawer) {
+                        window.FilterDrawer.closeDrawer(categoryDrawer);
+                    }
+                    
                     window.location.href = currentUrl.toString();
                 });
             }

@@ -64,7 +64,7 @@
                                                 data-region-id="{{ $address->region_id }}"
                                                 data-postcode="{{ $address->zip_code }}"
                                                 {{ $address->is_default ? 'selected' : '' }}>
-                                            {{ $address->full_name }} - {{ $address->city }}, {{ $address->region->name ?? '' }} {{ $address->zip_code }}
+                                            {{ $address->city }}, {{ $address->region->name ?? '' }} {{ $address->zip_code }}
                                             @if($address->is_default) (Default) @endif
                                         </option>
                                     @endforeach
@@ -195,7 +195,7 @@
                                                 data-region-id="{{ $address->region_id }}"
                                                 data-postcode="{{ $address->zip_code }}"
                                                 {{ $address->is_default ? 'selected' : '' }}>
-                                            {{ $address->full_name }} - {{ $address->city }}, {{ $address->region->name ?? '' }} {{ $address->zip_code }}
+                                            {{ $address->city }}, {{ $address->region->name ?? '' }} {{ $address->zip_code }}
                                             @if($address->is_default) (Default) @endif
                                         </option>
                                     @endforeach
@@ -305,6 +305,18 @@
                     </div>
                 </div>
             </form>
+
+            <!-- Mobile Sticky Button (Hidden on Desktop) -->
+            <div class="checkout-mobile-footer d-lg-none">
+                <div class="checkout-mobile-footer__summary">
+                    <span class="checkout-mobile-footer__label">Total:</span>
+                    <span class="checkout-mobile-footer__total" id="checkoutMobileTotal">${{ number_format($finalTotal ?? $total, 2) }}</span>
+                </div>
+                <button type="submit" form="checkoutForm" class="checkout-mobile-footer__btn">
+                    <span>Continue to Review</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
         </div>
     </section>
 
@@ -312,6 +324,64 @@
     <script src="{{ asset('assets/frontend/js/checkout/address-autocomplete.js') }}"></script>
     <script src="{{ asset('assets/frontend/js/checkout/shipping-calculator.js') }}"></script>
     <script src="{{ asset('assets/frontend/js/checkout/coupon-handler.js') }}"></script>
+    <script>
+        // Update mobile footer total when totals change
+        function updateMobileFooterTotal() {
+            const desktopTotal = document.getElementById('checkoutTotal');
+            const mobileTotal = document.getElementById('checkoutMobileTotal');
+            if (desktopTotal && mobileTotal) {
+                mobileTotal.textContent = desktopTotal.textContent;
+            }
+        }
+
+        // Collapsible order summary on mobile
+        function initCollapsibleOrderSummary() {
+            const orderSummary = document.getElementById('orderSummary');
+            const orderSummaryTitle = document.getElementById('orderSummaryTitle');
+            
+            if (orderSummary && orderSummaryTitle && window.innerWidth <= 991) {
+                orderSummaryTitle.style.cursor = 'pointer';
+                orderSummaryTitle.addEventListener('click', function() {
+                    orderSummary.classList.toggle('collapsed');
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize collapsible order summary
+            initCollapsibleOrderSummary();
+
+            // Update mobile footer total on page load
+            updateMobileFooterTotal();
+
+            // Watch for total changes (from shipping calculator, coupon handler, etc.)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                        updateMobileFooterTotal();
+                    }
+                });
+            });
+
+            const checkoutTotal = document.getElementById('checkoutTotal');
+            if (checkoutTotal) {
+                observer.observe(checkoutTotal, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true
+                });
+            }
+
+            // Re-initialize collapsible on resize
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    initCollapsibleOrderSummary();
+                }, 250);
+            });
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize form handler
