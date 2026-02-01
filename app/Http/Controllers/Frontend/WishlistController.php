@@ -28,7 +28,11 @@ class WishlistController extends Controller
             
             $this->wishlistService->addToWishlist(Auth::id(), $product->id);
 
-            $product->load(['category', 'brand']);
+            $product->load(['category', 'brand', 'images' => function($query) {
+                $query->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+            }]);
+
+            $price = $product->discount_price ?? $product->total_price;
 
             return $this->jsonSuccess('Product added to wishlist successfully.', [
                 'wishlist_count' => $this->wishlistService->getWishlistCount(Auth::id()),
@@ -36,9 +40,14 @@ class WishlistController extends Controller
                     'id' => $product->id,
                     'uuid' => $product->uuid,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                     'category' => $product->category->name ?? 'Uncategorized',
                     'brand' => $product->brand->name ?? '',
-                    'price' => $product->price
+                    'price' => $price,
+                    'total_price' => $product->total_price,
+                    'discount_price' => $product->discount_price,
+                    'image_url' => $product->images->isNotEmpty() ? $product->images->first()->thumbnail_url : asset('assets/images/placeholder.jpg'),
+                    'image_alt' => $product->name
                 ] : null
             ]);
         } catch (\Exception $e) {

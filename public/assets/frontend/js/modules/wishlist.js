@@ -169,8 +169,16 @@
                         } else if (window.AppUtils) {
                             window.AppUtils.showNotification('Product added to wishlist!', 'success');
                         }
+                        
+                        // Optimistic UI update - add item to sidebar immediately
+                        if (button && productData) {
+                            this.addItemToSidebarOptimistically(productData);
+                            this.toggleSidebar();
+                        } else if (button) {
+                            // Fallback: load full sidebar if optimistic update fails
                         this.loadSidebar();
                         this.toggleSidebar();
+                        }
                     } else {
                         if (window.AppUtils) {
                             window.AppUtils.setButtonLoading(button, false, 'fa-heart');

@@ -36,18 +36,37 @@ class CartController extends Controller
                 $cartIdentifier
             );
 
-            $product->load(['category', 'brand']);
+            $product->load(['category', 'brand', 'images' => function($query) {
+                $query->select('id', 'product_id', 'image')->orderBy('id')->limit(1);
+            }]);
+
+            // Get the cart item that was just created/updated
+            $cartItem = CartItem::where('product_id', $product->id)
+                ->where('user_id', $cartIdentifier['user_id'])
+                ->first();
+
+            $price = $product->discount_price ?? $product->total_price;
+            $quantity = $request->quantity ?? 1;
 
             return $this->jsonSuccess('Product added to cart successfully.', [
                 'cart_count' => $this->cartService->getCartCount($cartIdentifier),
+                'cart_item' => $cartItem ? [
+                    'id' => $cartItem->id,
+                    'price' => $cartItem->price,
+                    'quantity' => $cartItem->quantity,
+                    'subtotal' => $cartItem->subtotal
+                ] : null,
                 'product' => $product ? [
                     'id' => $product->id,
                     'uuid' => $product->uuid,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                     'category' => $product->category->name ?? 'Uncategorized',
                     'brand' => $product->brand->name ?? '',
-                    'price' => $product->price,
-                    'quantity' => $request->quantity ?? 1
+                    'price' => $price,
+                    'quantity' => $quantity,
+                    'image_url' => $product->images->isNotEmpty() ? $product->images->first()->thumbnail_url : asset('assets/images/placeholder.jpg'),
+                    'image_alt' => $product->name
                 ] : null
             ]);
         } catch (\Exception $e) {

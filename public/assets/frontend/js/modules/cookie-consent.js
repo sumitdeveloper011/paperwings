@@ -217,8 +217,8 @@
             if (modal) {
                 modal.classList.remove('active');
                 setTimeout(() => {
-                    modal.style.display = 'none';
-                    document.body.style.overflow = '';
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
                 }, 300);
             }
         },

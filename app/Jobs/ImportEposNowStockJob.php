@@ -24,7 +24,7 @@ class ImportEposNowStockJob implements ShouldQueue
 
     public $tries = 3;
     public $backoff = [300, 900, 1800];
-    public $timeout = 180;
+    public $timeout = 300;
     public $maxExceptions = 2;
 
     public function __construct(string $jobId, ?array $productIds = null, int $processedCount = 0, array $processedProductIds = [])
@@ -80,11 +80,33 @@ class ImportEposNowStockJob implements ShouldQueue
     protected function ensureDatabaseConnection(): void
     {
         try {
-            $pdo = DB::connection()->getPdo();
-            $pdo->query('SELECT 1');
+            $connection = DB::connection();
+            $pdo = $connection->getPdo();
+            
+            // Check if PDO is null before using it
+            if ($pdo === null) {
+                Log::warning('Database connection PDO is null, reconnecting...');
+                DB::reconnect();
+                $pdo = DB::connection()->getPdo();
+            }
+            
+            // Verify connection is active
+            if ($pdo !== null) {
+                $pdo->query('SELECT 1');
+            } else {
+                Log::error('Database connection failed: PDO is still null after reconnect');
+                throw new \Exception('Database connection failed: Unable to establish PDO connection');
+            }
         } catch (\Exception $e) {
             Log::warning('Database connection lost, reconnecting...', ['error' => $e->getMessage()]);
             DB::reconnect();
+            
+            // Verify reconnection worked
+            $pdo = DB::connection()->getPdo();
+            if ($pdo === null) {
+                Log::error('Database reconnection failed: PDO is still null');
+                throw new \Exception('Database reconnection failed: Unable to establish PDO connection');
+            }
         }
     }
 
@@ -155,6 +177,7 @@ class ImportEposNowStockJob implements ShouldQueue
         $updated = 0;
         $skipped = 0;
         $failed = [];
+        $allStock = [];
 
         // Edge case: Check rate limit before starting bulk fetch
         $cooldown = $rateLimitTracker->checkCooldown();
@@ -189,6 +212,15 @@ class ImportEposNowStockJob implements ShouldQueue
                 'stock_data_fetched' => count($allStock)
             ]);
 
+            // DEBUG: Log stock lookup data
+            $sampleLookup = array_slice($allStock, 0, 10, true);
+            Log::info('DEBUG: Stock lookup data received', [
+                'total_stock_entries' => count($allStock),
+                'sample_productIds' => array_keys($sampleLookup),
+                'sample_stock_values' => array_values($sampleLookup),
+                'products_to_process' => $products->count()
+            ]);
+
             // Edge case: Create lookup map for faster access
             $stockLookup = $allStock; // Already indexed by productId
 
@@ -211,9 +243,32 @@ class ImportEposNowStockJob implements ShouldQueue
                     // Edge case: Get stock for this product from bulk data
                     $newStock = $stockLookup[$eposNowProductId] ?? null;
 
+                    // DEBUG: Log first few product lookups
+                    if ($index < 5) {
+                        Log::info('DEBUG: Product stock lookup', [
+                            'product_id' => $product->id,
+                            'product_name' => $product->name,
+                            'eposnow_product_id' => $eposNowProductId,
+                            'current_stock_in_db' => $product->stock,
+                            'found_in_lookup' => isset($stockLookup[$eposNowProductId]),
+                            'new_stock_value' => $newStock,
+                            'lookup_keys_sample' => array_slice(array_keys($stockLookup), 0, 5)
+                        ]);
+                    }
+
                     // Edge case: Handle products not found in stock data
                     if ($newStock === null) {
                         // Product not found in stock data - skip it (might be new product or deleted from EposNow)
+                        // DEBUG: Log why product was skipped
+                        if ($index < 10) {
+                            Log::info('DEBUG: Product skipped - not found in stock data', [
+                                'product_id' => $product->id,
+                                'eposnow_product_id' => $eposNowProductId,
+                                'product_name' => $product->name,
+                                'stock_lookup_has_key' => isset($stockLookup[$eposNowProductId]),
+                                'sample_lookup_keys' => array_slice(array_keys($stockLookup), 0, 10)
+                            ]);
+                        }
                         $skipped++;
                         $processed++;
                         continue;
@@ -242,11 +297,42 @@ class ImportEposNowStockJob implements ShouldQueue
                     $updateError = null;
                     
                     try {
-                        DB::transaction(function () use ($product, $newStock, &$wasUpdated) {
+                        DB::transaction(function () use ($product, $newStock, &$wasUpdated, $index) {
                             // Edge case: Only update if stock actually changed (avoid unnecessary DB writes)
                             if ($product->stock != $newStock) {
+                                // DEBUG: Log database update
+                                if ($index < 5) {
+                                    Log::info('DEBUG: Updating product stock in database', [
+                                        'product_id' => $product->id,
+                                        'eposnow_product_id' => $product->eposnow_product_id,
+                                        'old_stock' => $product->stock,
+                                        'new_stock' => $newStock,
+                                        'update_query' => "UPDATE products SET stock = {$newStock} WHERE id = {$product->id}"
+                                    ]);
+                                }
+                                
                                 $product->update(['stock' => $newStock]);
                                 $wasUpdated = true;
+                                
+                                // DEBUG: Verify update
+                                if ($index < 5) {
+                                    $product->refresh();
+                                    Log::info('DEBUG: Product stock updated - verification', [
+                                        'product_id' => $product->id,
+                                        'stock_after_update' => $product->stock,
+                                        'update_successful' => $product->stock == $newStock
+                                    ]);
+                                }
+                            } else {
+                                // DEBUG: Log when stock didn't change
+                                if ($index < 5) {
+                                    Log::info('DEBUG: Product stock unchanged - skipping update', [
+                                        'product_id' => $product->id,
+                                        'eposnow_product_id' => $product->eposnow_product_id,
+                                        'current_stock' => $product->stock,
+                                        'new_stock' => $newStock
+                                    ]);
+                                }
                             }
                         }, 3); // Edge case: Retry transaction up to 3 times
                     } catch (\Exception $dbException) {
@@ -265,7 +351,7 @@ class ImportEposNowStockJob implements ShouldQueue
                     } else {
                         $skipped++; // Stock didn't change, so skipped
                     }
-                    
+                
                     $processed++;
                     $this->processedProductIds[] = $eposNowProductId;
 
@@ -283,7 +369,7 @@ class ImportEposNowStockJob implements ShouldQueue
                                 'failed' => count($failed)
                             ]
                         );
-                        
+                    
                         // Edge case: Cleanup memory periodically for large datasets
                         $this->cleanupMemory();
                     }
@@ -295,14 +381,14 @@ class ImportEposNowStockJob implements ShouldQueue
                         $this->releaseJobWithDelay(1800, $processed, $total, $updated, $skipped);
                         return;
                     }
-                    
+                
                     $failed[] = [
                         'id' => $product->eposnow_product_id ?? 'unknown',
                         'name' => $product->name ?? 'unknown',
                         'error' => $e->getMessage()
                     ];
                     $processed++;
-                    
+                
                     Log::error('Stock update failed for product', [
                         'product_id' => $product->id ?? null,
                         'eposnow_product_id' => $product->eposnow_product_id ?? null,
@@ -338,18 +424,31 @@ class ImportEposNowStockJob implements ShouldQueue
                 return;
             }
             
-            // Edge case: Handle other bulk fetch errors
+            // Edge case: Handle other bulk fetch errors - log and fail gracefully
             Log::error('Stock import: Bulk fetch failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'processed_so_far' => $processed,
+                'total' => $total,
+                'job_id' => $this->jobId
             ]);
+            
+            // If we processed some products before the error, log partial success
+            if ($processed > 0) {
+                Log::warning('Stock import: Partial completion before error', [
+                    'processed' => $processed,
+                    'total' => $total,
+                    'updated' => $updated,
+                    'skipped' => $skipped
+                ]);
+            }
             
             $this->handleException($e);
         }
     }
 
 
-    protected function isRateLimitError(\Exception $e): bool
+    protected function isRateLimitError(\Throwable $e): bool
     {
         $message = $e->getMessage();
         return stripos($message, 'rate limit') !== false ||
@@ -358,7 +457,7 @@ class ImportEposNowStockJob implements ShouldQueue
                stripos($message, '403') !== false;
     }
 
-    protected function handleRateLimitError(\Exception $e): void
+    protected function handleRateLimitError(\Throwable $e): void
     {
         $rateLimitTracker = app(RateLimitTrackerService::class);
         $rateLimitTracker->setCooldown(30);
@@ -386,7 +485,7 @@ class ImportEposNowStockJob implements ShouldQueue
         $this->release($seconds);
     }
 
-    protected function handleException(\Exception $e): void
+    protected function handleException(\Throwable $e): void
     {
         $this->updateProgress(0, $this->processedCount, 0, 'Stock import failed: ' . $e->getMessage(), [
             'status' => 'failed',

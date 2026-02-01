@@ -267,7 +267,14 @@
                     } else if (window.AppUtils) {
                         window.AppUtils.showNotification('Product added to cart successfully!', 'success');
                     }
-                    if (button) {
+                    
+                    // Optimistic UI update - add item to sidebar immediately
+                    if (button && productData && data.data?.cart_item) {
+                        const cartItem = data.data.cart_item;
+                        this.addItemToSidebarOptimistically(productData, cartItem);
+                        this.toggleSidebar();
+                    } else if (button) {
+                        // Fallback: load full sidebar if optimistic update fails
                         this.loadSidebar();
                         this.toggleSidebar();
                     }
@@ -592,6 +599,178 @@
                         sidebarItems.innerHTML = '<div class="cart-sidebar__error" style="text-align: center; padding: 2rem; color: #dc3545;"><p>Error loading cart. Please try again.</p></div>';
                     }
                 });
+        },
+
+        /**
+         * Build cart sidebar item HTML client-side
+         * @param {Object} product - Product data
+         * @param {Object} cartItem - Cart item data
+         * @returns {string} HTML string
+         */
+        buildCartItemHtml: function(product, cartItem) {
+            const imageUrl = product.image_url || '/assets/images/placeholder.jpg';
+            const productUrl = `/products/${product.slug}`;
+            const price = cartItem.price || product.price;
+            const quantity = cartItem.quantity || 1;
+            const subtotal = cartItem.subtotal || (price * quantity);
+
+            return `
+                <div class="cart-sidebar-item" data-cart-item-id="${cartItem.id}" data-product-uuid="${product.uuid}">
+                    <div class="cart-sidebar-item__image">
+                        <a href="${productUrl}">
+                            <div class="image-wrapper skeleton-image-wrapper">
+                                <div class="skeleton-small-image">
+                                    <div class="skeleton-shimmer"></div>
+                                </div>
+                                <img src="${imageUrl}"
+                                     alt="${product.image_alt || product.name}"
+                                     width="80"
+                                     height="80"
+                                     loading="lazy"
+                                     onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
+                            </div>
+                        </a>
+                    </div>
+                    <div class="cart-sidebar-item__info">
+                        <h4 class="cart-sidebar-item__name">
+                            <a href="${productUrl}" class="cart-sidebar-item__name-link">${this.escapeHtml(product.name)}</a>
+                        </h4>
+                        <div class="cart-sidebar-item__price-row">
+                            <span class="cart-sidebar-item__price">
+                                $${this.formatPrice(price)} x ${quantity}
+                            </span>
+                            <span class="cart-sidebar-item__total">
+                                = $${this.formatPrice(subtotal)}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="cart-sidebar-item__remove"
+                            data-cart-item-id="${cartItem.id}"
+                            data-product-uuid="${product.uuid}"
+                            title="Remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        },
+
+        /**
+         * Add item to sidebar optimistically (without full reload)
+         * @param {Object} product - Product data from API
+         * @param {Object} cartItem - Cart item data from API
+         */
+        addItemToSidebarOptimistically: function(product, cartItem) {
+            const sidebarItems = document.getElementById('cart-sidebar-items');
+            const sidebarEmpty = document.getElementById('cart-sidebar-empty');
+            const sidebarSummary = document.getElementById('cart-sidebar-summary');
+
+            if (!sidebarItems || !sidebarEmpty) {
+                // Fallback to full reload if sidebar elements not found
+                this.loadSidebar();
+                return;
+            }
+
+            // Hide empty state
+            sidebarEmpty.style.display = 'none';
+            sidebarItems.style.display = 'flex';
+            if (sidebarSummary) sidebarSummary.style.display = 'block';
+
+            // Check if item already exists (in case of quantity update)
+            const existingItem = sidebarItems.querySelector(`[data-cart-item-id="${cartItem.id}"]`);
+            if (existingItem) {
+                // Update existing item
+                existingItem.outerHTML = this.buildCartItemHtml(product, cartItem);
+            } else {
+                // Add new item at the top
+                const itemHtml = this.buildCartItemHtml(product, cartItem);
+                sidebarItems.insertAdjacentHTML('afterbegin', itemHtml);
+            }
+
+            // Initialize remove button event
+            const removeBtn = sidebarItems.querySelector(`[data-cart-item-id="${cartItem.id}"] .cart-sidebar-item__remove`);
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.removeFromCart(cartItem.id, removeBtn);
+                });
+            }
+
+            // Update summary
+            this.updateSidebarSummary();
+
+            // Handle image loading
+            this.initImageLoading(sidebarItems);
+
+            // Refresh in background to ensure sync (optional, can be removed for even faster UX)
+            setTimeout(() => {
+                this.loadSidebar();
+            }, 1000);
+        },
+
+        /**
+         * Escape HTML to prevent XSS
+         */
+        escapeHtml: function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+
+        /**
+         * Format price to 2 decimal places
+         */
+        formatPrice: function(price) {
+            return parseFloat(price).toFixed(2);
+        },
+
+        /**
+         * Initialize image loading handlers
+         */
+        initImageLoading: function(container = document) {
+            const images = container.querySelectorAll('.cart-sidebar-item__image img');
+            images.forEach(img => {
+                const skeleton = img.closest('.image-wrapper')?.querySelector('.skeleton-small-image');
+                if (img.complete && img.naturalHeight !== 0) {
+                    img.classList.add('loaded');
+                    if (skeleton) skeleton.classList.add('hidden');
+                } else {
+                    img.addEventListener('load', () => {
+                        img.classList.add('loaded');
+                        if (skeleton) skeleton.classList.add('hidden');
+                    });
+                    img.addEventListener('error', () => {
+                        img.src = '/assets/images/placeholder.jpg';
+                        img.classList.add('loaded');
+                        if (skeleton) skeleton.classList.add('hidden');
+                    });
+                }
+            });
+        },
+
+        /**
+         * Update sidebar summary totals
+         */
+        updateSidebarSummary: function() {
+            const sidebarItems = document.getElementById('cart-sidebar-items');
+            const sidebarSummary = document.getElementById('cart-sidebar-summary');
+            
+            if (!sidebarItems || !sidebarSummary) return;
+
+            let total = 0;
+            sidebarItems.querySelectorAll('.cart-sidebar-item').forEach(item => {
+                const totalText = item.querySelector('.cart-sidebar-item__total')?.textContent;
+                if (totalText) {
+                    const match = totalText.match(/\$([\d.]+)/);
+                    if (match) {
+                        total += parseFloat(match[1]);
+                    }
+                }
+            });
+
+            const summaryValue = sidebarSummary.querySelector('.cart-sidebar__summary-value');
+            if (summaryValue) {
+                summaryValue.textContent = `$${this.formatPrice(total)}`;
+            }
         },
 
         updateSidebarFromHtml: function(html, total = 0, count = 0) {

@@ -545,24 +545,48 @@ class EposNowService
                 $duplicatePageCount = 0;
                 $previousPageIds = $currentPageIds;
 
+                // DEBUG: Log first entry structure to understand API response
+                if ($page === 1 && count($stockData) > 0) {
+                    Log::info('DEBUG: First stock entry structure from API', [
+                        'first_entry' => $stockData[0],
+                        'first_entry_keys' => array_keys($stockData[0]),
+                        'total_entries_on_page' => count($stockData)
+                    ]);
+                }
+
                 // Process each product stock entry
                 foreach ($stockData as $stockEntry) {
                     // Edge case: Validate productId exists and is numeric
+                    // API returns ProductId (PascalCase), check both cases for compatibility
                     $productId = null;
-                    if (isset($stockEntry['productId'])) {
-                        if (is_numeric($stockEntry['productId'])) {
-                            $productId = (int) $stockEntry['productId'];
+                    $productIdValue = $stockEntry['ProductId'] ?? $stockEntry['productId'] ?? null;
+                    
+                    // DEBUG: Log entry structure for first few entries
+                    if ($page === 1 && count($allStock) < 3) {
+                        Log::info('DEBUG: Processing stock entry', [
+                            'entry' => $stockEntry,
+                            'entry_keys' => array_keys($stockEntry),
+                            'ProductId' => $stockEntry['ProductId'] ?? 'NOT_SET',
+                            'productId' => $stockEntry['productId'] ?? 'NOT_SET',
+                            'productIdValue' => $productIdValue
+                        ]);
+                    }
+                    
+                    if ($productIdValue !== null) {
+                        if (is_numeric($productIdValue)) {
+                            $productId = (int) $productIdValue;
                         } else {
                             Log::warning('EposNow Stock: Invalid productId type', [
-                                'productId' => $stockEntry['productId'],
-                                'type' => gettype($stockEntry['productId'])
+                                'productId' => $productIdValue,
+                                'type' => gettype($productIdValue)
                             ]);
                             continue;
                         }
                     } else {
                         // Edge case: Missing productId - skip this entry
                         Log::warning('EposNow Stock: Missing productId in stock entry', [
-                            'entry_keys' => array_keys($stockEntry)
+                            'entry_keys' => array_keys($stockEntry),
+                            'entry_sample' => array_slice($stockEntry, 0, 5) // First 5 keys/values
                         ]);
                         continue;
                     }
@@ -576,37 +600,86 @@ class EposNowService
                     $totalStock = 0;
                     
                     // Edge case: Check if productStockBatches exists and is array
-                    if (isset($stockEntry['productStockBatches']) && is_array($stockEntry['productStockBatches'])) {
-                        foreach ($stockEntry['productStockBatches'] as $batch) {
+                    // API returns ProductStockBatches (PascalCase), check both cases for compatibility
+                    // DEBUG: Log batch structure for first few products
+                    $productStockBatches = $stockEntry['ProductStockBatches'] ?? $stockEntry['productStockBatches'] ?? null;
+                    $hasBatches = $productStockBatches !== null;
+                    $isBatchesArray = is_array($productStockBatches);
+                    
+                    if ($page === 1 && count($allStock) < 3) {
+                        Log::info('DEBUG: Stock entry batch structure', [
+                            'productId' => $productId,
+                            'has_ProductStockBatches_key' => isset($stockEntry['ProductStockBatches']),
+                            'has_productStockBatches_key' => isset($stockEntry['productStockBatches']),
+                            'is_array' => $isBatchesArray,
+                            'ProductStockBatches' => $stockEntry['ProductStockBatches'] ?? 'NOT_SET',
+                            'productStockBatches' => $stockEntry['productStockBatches'] ?? 'NOT_SET',
+                            'all_entry_keys' => array_keys($stockEntry)
+                        ]);
+                    }
+                    
+                    if ($productStockBatches !== null && is_array($productStockBatches)) {
+                        foreach ($productStockBatches as $batchIndex => $batch) {
                             // Edge case: Validate batch is array and has currentStock
                             if (!is_array($batch)) {
                                 continue;
                             }
 
+                            // DEBUG: Log batch structure for first product
+                            if ($page === 1 && count($allStock) < 1 && $batchIndex === 0) {
+                                Log::info('DEBUG: First batch structure', [
+                                    'productId' => $productId,
+                                    'batch' => $batch,
+                                    'batch_keys' => array_keys($batch),
+                                    'currentStock' => $batch['currentStock'] ?? 'NOT_SET'
+                                ]);
+                            }
+
                             // Edge case: Handle currentStock - can be null, 0, or positive number
-                            if (isset($batch['currentStock'])) {
+                            // API returns CurrentStock (PascalCase), check both cases
+                            $currentStock = $batch['CurrentStock'] ?? $batch['currentStock'] ?? null;
+                            
+                            if ($currentStock !== null) {
                                 // Edge case: Check if currentStock is numeric (handles string numbers too)
-                                if (is_numeric($batch['currentStock'])) {
-                                    $stockValue = (int) $batch['currentStock'];
+                                if (is_numeric($currentStock)) {
+                                    $stockValue = (int) $currentStock;
                                     // Edge case: Only add positive stock values (negative stock doesn't make sense)
                                     if ($stockValue >= 0) {
                                         $totalStock += $stockValue;
                                     } else {
+                                        // DEBUG: Log negative stock for first few
+                                        if ($page === 1 && count($allStock) < 3) {
+                                            Log::info('DEBUG: Negative stock value (skipping)', [
+                                                'productId' => $productId,
+                                                'currentStock' => $currentStock,
+                                                'batch' => $batch
+                                            ]);
+                                        }
                                         Log::warning('EposNow Stock: Negative currentStock value', [
                                             'productId' => $productId,
-                                            'currentStock' => $batch['currentStock']
+                                            'currentStock' => $currentStock
                                         ]);
                                     }
                                 } else {
                                     // Edge case: Non-numeric currentStock
                                     Log::warning('EposNow Stock: Non-numeric currentStock', [
                                         'productId' => $productId,
-                                        'currentStock' => $batch['currentStock'],
-                                        'type' => gettype($batch['currentStock'])
+                                        'currentStock' => $currentStock,
+                                        'type' => gettype($currentStock)
                                     ]);
                                 }
                             }
                             // Edge case: Missing currentStock in batch - silently skip (some batches might not have stock)
+                        }
+                    } else {
+                        // DEBUG: Log when productStockBatches is missing or not array
+                        if ($page === 1 && count($allStock) < 3) {
+                            Log::info('DEBUG: No productStockBatches found', [
+                                'productId' => $productId,
+                                'has_key' => $hasBatches,
+                                'is_array' => $isBatchesArray,
+                                'entry_keys' => array_keys($stockEntry)
+                            ]);
                         }
                     }
                     // Edge case: Missing productStockBatches - product has no stock batches, totalStock remains 0
@@ -617,6 +690,15 @@ class EposNowService
                     } else {
                         // Edge case: Store 0 stock if product exists but has no stock (don't skip it)
                         $allStock[$productId] = $totalStock;
+                    }
+                    
+                    // DEBUG: Log first few processed products
+                    if ($page === 1 && count($allStock) <= 5) {
+                        Log::info('DEBUG: Stock processed for product', [
+                            'productId' => $productId,
+                            'totalStock' => $totalStock,
+                            'stored_in_allStock' => $allStock[$productId] ?? 'NOT_SET'
+                        ]);
                     }
                 }
 
@@ -659,10 +741,14 @@ class EposNowService
             }
         }
 
+        // DEBUG: Log sample of final stock data
+        $sampleStock = array_slice($allStock, 0, 10, true);
         Log::info('EPOSNOW Stock Import: Completed bulk fetch', [
             'total_pages' => $page - 1,
             'total_products' => count($allStock),
-            'products_with_stock' => count(array_filter($allStock, fn($stock) => $stock > 0))
+            'products_with_stock' => count(array_filter($allStock, fn($stock) => $stock > 0)),
+            'sample_productIds' => array_keys($sampleStock),
+            'sample_stock_values' => array_values($sampleStock)
         ]);
 
         return $allStock;
