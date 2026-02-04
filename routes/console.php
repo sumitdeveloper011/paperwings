@@ -25,16 +25,16 @@ Schedule::call(function () {
 Schedule::call(function () {
     $jobId = time() . '_' . uniqid();
     \App\Jobs\ImportEposNowProductsJob::dispatch($jobId);
-})->dailyAt('00:30')
+})->dailyAt('00:45')
     ->timezone('Pacific/Auckland')
-    ->description('Daily product import from EposNow at 00:30 AM');
+    ->description('Daily product import from EposNow at 00:45 AM (rescheduled for better rate limit coordination)');
 
 Schedule::call(function () {
     $jobId = time() . '_' . uniqid();
     \App\Jobs\ImportEposNowStockJob::dispatch($jobId);
-})->dailyAt('01:00')
+})->dailyAt('01:30')
     ->timezone('Pacific/Auckland')
-    ->description('Daily stock import from EposNow at 01:00 AM (bulk API - optimized)');
+    ->description('Daily stock import from EposNow at 01:30 AM (rescheduled for better rate limit coordination, bulk API - optimized)');
 
 Schedule::command('queue:work database --queue=default,newsletters,imports --stop-when-empty --tries=3 --max-time=120 --max-jobs=15 --memory=256 --sleep=5')
     ->everyTwoMinutes()

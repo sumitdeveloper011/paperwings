@@ -109,12 +109,17 @@
 
                     // Handle 429 Too Many Requests (Rate Limiting)
                     if (response.status === 429) {
+                        const retryAfter = data.retry_after || data.data?.retry_after || data.errors?.retry_after || 
+                                          parseInt(response.headers.get('Retry-After')) || 60;
+                        const errorMessage = data.message || 'Too many requests. Please wait a moment and try again.';
+                        
                         return Promise.reject({
                             status: 429,
-                            message: data.message || 'Too many requests. Please wait a moment and try again.',
+                            message: errorMessage,
                             isApiError: true,
                             isRateLimit: true,
-                            retryAfter: data.retry_after || null,
+                            retryAfter: retryAfter,
+                            retryable: true,
                             handled: true
                         });
                     }
@@ -262,11 +267,23 @@
             let errorMessage = 'An error occurred. Please try again.';
             
             if (error && typeof error === 'object') {
-                // Handle rate limiting
+                // Handle rate limiting with improved messaging
                 if (error.isRateLimit) {
-                    errorMessage = error.message || 'Too many requests. Please wait a moment and try again.';
-                    if (error.retryAfter) {
-                        errorMessage += ` Please try again in ${error.retryAfter} seconds.`;
+                    const retryAfter = error.retryAfter || 60;
+                    const minutes = Math.ceil(retryAfter / 60);
+                    const seconds = retryAfter % 60;
+                    
+                    if (minutes > 1) {
+                        errorMessage = `Too many requests. Please wait ${minutes} minute${minutes > 1 ? 's' : ''} before trying again.`;
+                    } else if (retryAfter >= 60) {
+                        errorMessage = `Too many requests. Please wait 1 minute before trying again.`;
+                    } else {
+                        errorMessage = `Too many requests. Please wait ${retryAfter} second${retryAfter !== 1 ? 's' : ''} before trying again.`;
+                    }
+                    
+                    // Add helpful suggestion
+                    if (!error.retryable) {
+                        errorMessage += ' The system will automatically retry your request.';
                     }
                 }
                 // Handle server errors
@@ -399,29 +416,65 @@
         },
 
         /**
-         * Make a custom fetch request with standardized error handling
+         * Make a custom fetch request with standardized error handling and automatic retry for rate limits
          * @param {string} url - Request URL
          * @param {Object} fetchOptions - Fetch API options
          * @param {Object} errorOptions - Error handling options
+         * @param {number} maxRetries - Maximum number of retries for rate limit errors (default: 1)
          * @returns {Promise<Object>} Response data
          */
-        request: async function(url, fetchOptions = {}, errorOptions = {}) {
-            try {
-                // Merge headers
-                const headers = this.getDefaultHeaders(fetchOptions.headers);
-                
-                const response = await fetch(url, {
-                    ...fetchOptions,
-                    headers: {
-                        ...headers,
-                        ...(fetchOptions.headers || {})
-                    }
-                });
+        request: async function(url, fetchOptions = {}, errorOptions = {}, maxRetries = 1) {
+            let attempt = 0;
+            
+            while (attempt <= maxRetries) {
+                try {
+                    // Merge headers
+                    const headers = this.getDefaultHeaders(fetchOptions.headers);
+                    
+                    const response = await fetch(url, {
+                        ...fetchOptions,
+                        headers: {
+                            ...headers,
+                            ...(fetchOptions.headers || {})
+                        }
+                    });
 
-                return await this.parseJsonResponse(response);
-            } catch (error) {
-                return this.handleError(error, errorOptions);
+                    const result = await this.parseJsonResponse(response);
+                    
+                    // If successful, return result
+                    if (result && !result.error) {
+                        return result;
+                    }
+                    
+                    // If rate limit error and we have retries left, retry
+                    if (result && result.isRateLimit && result.retryable && attempt < maxRetries) {
+                        const retryAfter = result.retryAfter || 60;
+                        console.log(`[AjaxUtils] Rate limit hit, retrying in ${retryAfter} seconds (attempt ${attempt + 1}/${maxRetries})`);
+                        
+                        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                        attempt++;
+                        continue;
+                    }
+                    
+                    return result;
+                } catch (error) {
+                    // Handle rate limit errors with retry
+                    if (error && error.isRateLimit && error.retryable && attempt < maxRetries) {
+                        const retryAfter = error.retryAfter || 60;
+                        console.log(`[AjaxUtils] Rate limit error, retrying in ${retryAfter} seconds (attempt ${attempt + 1}/${maxRetries})`);
+                        
+                        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                        attempt++;
+                        continue;
+                    }
+                    
+                    // No more retries or non-retryable error
+                    return this.handleError(error, errorOptions);
+                }
             }
+            
+            // All retries exhausted
+            return this.handleError({ message: 'Maximum retries reached for rate limit' }, errorOptions);
         }
     };
 

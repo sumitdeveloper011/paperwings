@@ -237,11 +237,29 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Handle 429 - Too Many Requests (Rate Limiting)
             if ($statusCode === 429) {
+                $retryAfter = $e->getHeaders()['Retry-After'] ?? 60;
+                $retryAfterSeconds = is_numeric($retryAfter) ? (int)$retryAfter : 60;
+                $retryAfterMinutes = ceil($retryAfterSeconds / 60);
+                
+                // User-friendly message with retry time
+                $message = 'Too many requests. ';
+                if ($retryAfterMinutes > 1) {
+                    $message .= "Please wait {$retryAfterMinutes} minutes before trying again.";
+                } else if ($retryAfterSeconds >= 60) {
+                    $message .= "Please wait 1 minute before trying again.";
+                } else {
+                    $message .= "Please wait {$retryAfterSeconds} second" . ($retryAfterSeconds !== 1 ? 's' : '') . " before trying again.";
+                }
+                
                 if ($request->expectsJson()) {
                     return \App\Helpers\JsonResponseHelper::error(
-                        'Too many requests. Please wait a moment before trying again.',
+                        $message,
                         'RATE_LIMIT_EXCEEDED',
-                        ['retry_after' => $e->getHeaders()['Retry-After'] ?? 60],
+                        [
+                            'retry_after' => $retryAfterSeconds,
+                            'retry_after_minutes' => $retryAfterMinutes,
+                            'message' => $message
+                        ],
                         429
                     );
                 }

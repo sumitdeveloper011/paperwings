@@ -55,6 +55,32 @@ class EposNowService
 
         while ($page <= $maxPages) {
             try {
+                // Check rate limit status before making request
+                $cooldown = $this->rateLimitTracker->checkCooldown();
+                if ($cooldown['in_cooldown']) {
+                    throw new \Exception('EposNow API Rate Limit: In cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes.');
+                }
+
+                // Smart rate limiting: auto-pause at 80% threshold
+                $waitTime = $this->rateLimitTracker->getWaitTimeIfNeeded();
+                if ($waitTime > 0) {
+                    Log::info('EposNow API: Auto-pausing due to rate limit threshold', [
+                        'wait_seconds' => $waitTime,
+                        'page' => $page
+                    ]);
+                    sleep((int)$waitTime);
+                }
+
+                // Get adaptive delay based on current rate limit usage
+                $recommendedDelay = $this->rateLimitTracker->getRecommendedDelay();
+                $minDelay = config('eposnow.rate_limit.min_delay', 0.6);
+                $delay = max($minDelay, $recommendedDelay);
+                
+                // Apply adaptive delay before API call
+                if ($delay > 0 && $delay < 60) { // Don't sleep if cooldown (already handled above)
+                    usleep((int)($delay * 1000000));
+                }
+
                 $products = $this->makeRequest(
                     "{$this->baseUrl}/Product",
                     ['page' => $page]
@@ -133,7 +159,6 @@ class EposNowService
                 }
 
                 $page++;
-                usleep(500000); // 0.5 second delay between requests
 
             } catch (\Exception $e) {
                 // If rate limit error and we have data, return partial data
@@ -226,6 +251,32 @@ class EposNowService
 
         while ($page <= $maxPages) {
             try {
+                // Check rate limit status before making request
+                $cooldown = $this->rateLimitTracker->checkCooldown();
+                if ($cooldown['in_cooldown']) {
+                    throw new \Exception('EposNow API Rate Limit: In cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes.');
+                }
+
+                // Smart rate limiting: auto-pause at 80% threshold
+                $waitTime = $this->rateLimitTracker->getWaitTimeIfNeeded();
+                if ($waitTime > 0) {
+                    Log::info('EposNow API: Auto-pausing due to rate limit threshold', [
+                        'wait_seconds' => $waitTime,
+                        'page' => $page
+                    ]);
+                    sleep((int)$waitTime);
+                }
+
+                // Get adaptive delay based on current rate limit usage
+                $recommendedDelay = $this->rateLimitTracker->getRecommendedDelay();
+                $minDelay = config('eposnow.rate_limit.min_delay', 0.6);
+                $delay = max($minDelay, $recommendedDelay);
+                
+                // Apply adaptive delay before API call
+                if ($delay > 0 && $delay < 60) { // Don't sleep if cooldown (already handled above)
+                    usleep((int)($delay * 1000000));
+                }
+
                 $categories = $this->getCategories($page);
 
                 // Check if response is valid array
@@ -297,7 +348,6 @@ class EposNowService
                 }
 
                 $page++;
-                usleep(500000); // 0.5 second delay between requests
             } catch (\Exception $e) {
                 // If rate limit error and we have data, return partial data
                 if ((stripos($e->getMessage(), 'rate limit') !== false ||
@@ -463,6 +513,32 @@ class EposNowService
 
         while ($page <= $maxPages) {
             try {
+                // Check rate limit status before making request
+                $cooldown = $this->rateLimitTracker->checkCooldown();
+                if ($cooldown['in_cooldown']) {
+                    throw new \Exception('EposNow API Rate Limit: In cooldown period. Please wait ' . $cooldown['minutes_remaining'] . ' more minutes.');
+                }
+
+                // Smart rate limiting: auto-pause at 80% threshold
+                $waitTime = $this->rateLimitTracker->getWaitTimeIfNeeded();
+                if ($waitTime > 0) {
+                    Log::info('EposNow API: Auto-pausing due to rate limit threshold', [
+                        'wait_seconds' => $waitTime,
+                        'page' => $page
+                    ]);
+                    sleep((int)$waitTime);
+                }
+
+                // Get adaptive delay based on current rate limit usage
+                $recommendedDelay = $this->rateLimitTracker->getRecommendedDelay();
+                $minDelay = config('eposnow.rate_limit.min_delay', 0.6);
+                $delay = max($minDelay, $recommendedDelay);
+                
+                // Apply adaptive delay before API call
+                if ($delay > 0 && $delay < 60) { // Don't sleep if cooldown (already handled above)
+                    usleep((int)($delay * 1000000));
+                }
+
                 $stockData = $this->makeRequest(
                     "{$this->baseUrl}/ProductStock",
                     ['page' => $page]
@@ -945,21 +1021,34 @@ class EposNowService
                 if ($response->status() === 429) {
                     $this->rateLimitTracker->setCooldown();
                     $attempt++;
-                    $waitTime = $delay * pow(2, $attempt - 1);
+                    
+                    // Exponential backoff: 2^attempt seconds (2s, 4s, 8s, etc.)
+                    $baseDelay = $delay;
+                    $waitTime = $baseDelay * pow(2, $attempt - 1);
+                    $maxWaitTime = 60; // Cap at 60 seconds
+                    $waitTime = min($waitTime, $maxWaitTime);
 
                     Log::warning('EposNow API Rate Limit Hit (HTTP 429)', [
                         'url' => $url,
                         'attempt' => $attempt,
+                        'max_retries' => $retries,
                         'wait_time' => $waitTime,
-                        'retry_after' => $response->header('Retry-After', $waitTime)
+                        'retry_after' => $response->header('Retry-After', $waitTime),
+                        'exponential_backoff' => true
                     ]);
 
                     if ($attempt < $retries) {
                         $retryAfter = (int) $response->header('Retry-After', $waitTime);
-                        sleep(min($retryAfter, 60));
+                        $finalWaitTime = min($retryAfter, $maxWaitTime);
+                        Log::info('EposNow API: Retrying after exponential backoff', [
+                            'attempt' => $attempt,
+                            'wait_seconds' => $finalWaitTime,
+                            'next_attempt' => $attempt + 1
+                        ]);
+                        sleep($finalWaitTime);
                         continue;
                     } else {
-                        throw new \Exception('EposNow API Rate Limit: Maximum retries reached. Please try again later.');
+                        throw new \Exception('EposNow API Rate Limit: Maximum retries (' . $retries . ') reached after exponential backoff. Please try again later.');
                     }
                 }
 
@@ -996,15 +1085,26 @@ class EposNowService
                     $this->rateLimitTracker->setCooldown();
                     $attempt++;
                     if ($attempt < $retries) {
+                        // Exponential backoff for rate limit errors
                         $waitTime = $delay * pow(2, $attempt - 1);
-                        if (app()->environment('local') && app()->environment('development')) {
-                            Log::info('Retrying after rate limit error', [
-                                'attempt' => $attempt,
-                                'wait_time' => $waitTime
-                            ]);
-                        }
-                        sleep(min($waitTime, 60));
+                        $maxWaitTime = 60;
+                        $finalWaitTime = min($waitTime, $maxWaitTime);
+                        
+                        Log::info('EposNow API: Retrying after rate limit error (exponential backoff)', [
+                            'attempt' => $attempt,
+                            'max_retries' => $retries,
+                            'wait_time' => $finalWaitTime,
+                            'error' => $e->getMessage(),
+                            'next_attempt' => $attempt + 1
+                        ]);
+                        sleep($finalWaitTime);
                         continue;
+                    } else {
+                        Log::error('EposNow API: All retries exhausted for rate limit error', [
+                            'total_attempts' => $attempt,
+                            'error' => $e->getMessage(),
+                            'url' => $url
+                        ]);
                     }
                 }
 

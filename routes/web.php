@@ -25,16 +25,24 @@ Route::middleware('prevent.admin')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'authenticate'])->name('login.authenticate');
     Route::get('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/register', [AuthController::class, 'store'])->name('register.store');
+    // Registration with rate limiting (3 per hour per IP to prevent spam)
+    Route::post('/register', [AuthController::class, 'store'])
+        ->middleware('throttle:3,60')
+        ->name('register.store');
     Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
-    Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+    // Password reset with rate limiting (3 per hour per IP to prevent email abuse)
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])
+        ->middleware('throttle:3,60')
+        ->name('password.email');
 
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
         ->name('verification.verify');
+    // Email verification resend with rate limiting (5 per hour to prevent email abuse)
     Route::post('/email/verification/resend', [AuthController::class, 'resendVerification'])
+        ->middleware('throttle:5,60')
         ->name('verification.resend');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -59,8 +67,13 @@ Route::middleware('prevent.admin')->group(function () {
 Route::middleware('prevent.admin')->group(function () {
     // Products - new clean URLs
     Route::get('/products/{slug}', [ProductController::class, 'productDetail'])->name('product.detail');
-    Route::post('/products/{slug}/review', [ReviewController::class, 'store'])->name('review.store');
-    Route::post('/products/{slug}/question', [QuestionController::class, 'store'])->name('question.store');
+    // Review and question submissions with rate limiting (5 per minute to prevent spam)
+    Route::post('/products/{slug}/review', [ReviewController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('review.store');
+    Route::post('/products/{slug}/question', [QuestionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('question.store');
 
     // Categories - new clean URLs
     Route::get('/categories/{slug}', [ProductController::class, 'productByCategory'])->name('category.show');
@@ -68,10 +81,16 @@ Route::middleware('prevent.admin')->group(function () {
     // Shop
     Route::get('/shop', [ProductController::class, 'shop'])->name('shop');
 
-    // Reviews and Questions (keep as is for API endpoints)
-    Route::post('/review/{review}/helpful', [ReviewController::class, 'helpful'])->name('review.helpful');
-    Route::post('/question/{question}/answer', [QuestionController::class, 'storeAnswer'])->name('question.answer');
-    Route::post('/answer/{answer}/helpful', [QuestionController::class, 'helpful'])->name('answer.helpful');
+    // Reviews and Questions with rate limiting (keep as is for API endpoints)
+    Route::post('/review/{review}/helpful', [ReviewController::class, 'helpful'])
+        ->middleware('throttle:10,1')
+        ->name('review.helpful');
+    Route::post('/question/{question}/answer', [QuestionController::class, 'storeAnswer'])
+        ->middleware('throttle:5,1')
+        ->name('question.answer');
+    Route::post('/answer/{answer}/helpful', [QuestionController::class, 'helpful'])
+        ->middleware('throttle:10,1')
+        ->name('answer.helpful');
 
     // Bundles - fix singular to plural
     Route::get('/bundles', [ProductController::class, 'bundles'])->name('bundles.index');
@@ -150,6 +169,7 @@ Route::middleware(['prevent.admin', 'throttle:30,1'])->group(function () {
     Route::post('/wishlist/check', [WishlistController::class, 'check'])->name('wishlist.check');
 });
 
+// Cart operations with rate limiting (60 requests per minute)
 Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::get('/cart/list', [CartController::class, 'index'])->name('cart.list');
@@ -203,15 +223,15 @@ Route::middleware(['auth', 'prevent.admin', 'throttle:60,1'])->group(function ()
     });
 });
 
-// Payment intent creation - more restrictive (10 per minute)
-Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
+// Payment intent creation - increased limit (20 per minute for better user experience)
+Route::middleware(['auth', 'prevent.admin', 'throttle:20,1'])->group(function () {
     Route::prefix('checkout')->name('checkout.')->group(function () {
         Route::post('/create-payment-intent', [CheckoutController::class, 'createPaymentIntent'])->name('create-payment-intent');
     });
 });
 
-// Order processing - most restrictive (5 per minute to prevent abuse)
-Route::middleware(['auth', 'prevent.admin', 'throttle:5,1'])->group(function () {
+// Order processing - increased limit (10 per minute to prevent abuse while allowing legitimate retries)
+Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
     Route::prefix('checkout')->name('checkout.')->group(function () {
         Route::post('/process-order', [CheckoutController::class, 'processOrder'])->name('process-order');
     });
@@ -271,23 +291,34 @@ Route::get('/stripe/webhook/test', function() {
     }
 })->name('stripe.webhook.test');
 
+// Account read operations (no rate limit needed for GET requests)
 Route::middleware(['auth', 'prevent.admin'])->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account.index');
     Route::get('/account/view-profile', [AccountController::class, 'viewProfile'])->name('account.view-profile');
     Route::get('/account/edit-profile', [AccountController::class, 'editProfile'])->name('account.edit-profile');
-    Route::put('/account/update-profile', [AccountController::class, 'updateProfile'])->name('account.update-profile');
     Route::get('/account/change-password', [AccountController::class, 'changePassword'])->name('account.change-password');
-    Route::put('/account/update-password', [AccountController::class, 'updatePassword'])->name('account.update-password');
     Route::get('/account/manage-addresses', [AccountController::class, 'manageAddresses'])->name('account.manage-addresses');
-    Route::post('/account/addresses', [AccountController::class, 'storeAddress'])->name('account.addresses.store');
     Route::get('/account/addresses/{id}/edit', [AccountController::class, 'editAddress'])->name('account.addresses.edit');
+    Route::get('/account/get-address/{id}', [AccountController::class, 'getAddress'])->name('account.get-address');
+    Route::get('/account/my-orders', [AccountController::class, 'myOrders'])->name('account.my-orders');
+    Route::get('/account/orders/{orderNumber}', [AccountController::class, 'orderDetails'])->name('account.order-details');
+});
+
+// Account write operations with rate limiting
+Route::middleware(['auth', 'prevent.admin', 'throttle:30,1'])->group(function () {
+    Route::put('/account/update-profile', [AccountController::class, 'updateProfile'])->name('account.update-profile');
+});
+
+Route::middleware(['auth', 'prevent.admin', 'throttle:20,1'])->group(function () {
+    Route::post('/account/addresses', [AccountController::class, 'storeAddress'])->name('account.addresses.store');
     Route::put('/account/addresses/{id}', [AccountController::class, 'updateAddress'])->name('account.addresses.update');
     Route::delete('/account/addresses/{id}', [AccountController::class, 'destroyAddress'])->name('account.addresses.destroy');
     Route::put('/account/addresses/{id}/set-default', [AccountController::class, 'setDefaultAddress'])->name('account.addresses.set-default');
     Route::post('/account/search-address', [AccountController::class, 'searchAddress'])->name('account.search-address');
-    Route::get('/account/get-address/{id}', [AccountController::class, 'getAddress'])->name('account.get-address');
-    Route::get('/account/my-orders', [AccountController::class, 'myOrders'])->name('account.my-orders');
-    Route::get('/account/orders/{orderNumber}', [AccountController::class, 'orderDetails'])->name('account.order-details');
+});
+
+Route::middleware(['auth', 'prevent.admin', 'throttle:10,1'])->group(function () {
+    Route::put('/account/update-password', [AccountController::class, 'updatePassword'])->name('account.update-password');
 });
 
 // Order actions with rate limiting
