@@ -1,5 +1,8 @@
 <?php
 
+use App\Jobs\ImportEposNowCategoriesJob;
+use App\Jobs\ImportEposNowProductsJob;
+use App\Jobs\ImportEposNowStockJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -8,36 +11,64 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('users:cleanup-unverified --days=30')
+/*
+|--------------------------------------------------------------------------
+| Scheduled tasks (Laravel 12.x scheduling)
+|--------------------------------------------------------------------------
+| See: https://laravel.com/docs/12.x/scheduling
+|--------------------------------------------------------------------------
+*/
+
+Schedule::command('users:cleanup-unverified', ['--days' => 30])
     ->weekly()
     ->sundays()
     ->at('02:00')
     ->timezone('Pacific/Auckland')
     ->description('Clean up unverified users older than 30 days');
 
-Schedule::call(function () {
-    $jobId = time() . '_' . uniqid();
-    \App\Jobs\ImportEposNowCategoriesJob::dispatch($jobId);
-})->dailyAt('00:05')
+/*
+|--------------------------------------------------------------------------
+| EposNow imports (Pacific/Auckland)
+|--------------------------------------------------------------------------
+*/
+Schedule::job(new ImportEposNowCategoriesJob(time() . '_' . uniqid()), 'imports')
+    ->dailyAt('00:05')
     ->timezone('Pacific/Auckland')
-    ->description('Daily category import from EposNow at midnight');
+    ->withoutOverlapping(55)
+    ->description('Daily category import from EposNow');
 
-Schedule::call(function () {
-    $jobId = time() . '_' . uniqid();
-    \App\Jobs\ImportEposNowProductsJob::dispatch($jobId);
-})->dailyAt('00:45')
+Schedule::job(new ImportEposNowProductsJob(time() . '_' . uniqid()), 'imports')
+    ->dailyAt('00:45')
     ->timezone('Pacific/Auckland')
-    ->description('Daily product import from EposNow at 00:45 AM (rescheduled for better rate limit coordination)');
+    ->withoutOverlapping(55)
+    ->description('Daily product import from EposNow');
 
-Schedule::call(function () {
-    $jobId = time() . '_' . uniqid();
-    \App\Jobs\ImportEposNowStockJob::dispatch($jobId);
-})->dailyAt('01:30')
+Schedule::job(new ImportEposNowStockJob(time() . '_' . uniqid()), 'imports')
+    ->dailyAt('01:30')
     ->timezone('Pacific/Auckland')
-    ->description('Daily stock import from EposNow at 01:30 AM (rescheduled for better rate limit coordination, bulk API - optimized)');
+    ->withoutOverlapping(55)
+    ->description('Daily stock import from EposNow');
 
-Schedule::command('queue:work database --queue=default,newsletters,imports --stop-when-empty --tries=3 --max-time=120 --max-jobs=15 --memory=256 --sleep=5')
+/*
+|--------------------------------------------------------------------------
+| Queue worker (run via scheduler on shared hosting)
+|--------------------------------------------------------------------------
+| Uses queue:work with --stop-when-empty so the process exits after
+| processing available jobs; next schedule run starts a fresh worker.
+| See: https://laravel.com/docs/12.x/queues#running-the-queue-worker
+|--------------------------------------------------------------------------
+*/
+Schedule::command('queue:work', [
+    'database',
+    '--queue=default,newsletters,imports',
+    '--stop-when-empty',
+    '--tries=3',
+    '--max-time=120',
+    '--timeout=3600',
+    '--memory=256',
+    '--sleep=5',
+])
     ->everyTwoMinutes()
     ->withoutOverlapping(3)
     ->sendOutputTo(storage_path('logs/queue-worker.log'))
-    ->description('Process queued jobs - optimized for stability and rate limit handling');
+    ->description('Process queued jobs (shared hosting)');
