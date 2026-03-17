@@ -63,7 +63,7 @@ Schedule::command('queue:work', [
     '--queue=default,newsletters,imports',
     '--stop-when-empty',
     '--tries=3',
-    '--max-time=120',
+    '--max-time=3600',
     '--timeout=3600',
     '--memory=256',
     '--sleep=5',

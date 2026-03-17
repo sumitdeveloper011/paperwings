@@ -44,6 +44,14 @@ class ImportEposNowProductsJob implements ShouldQueue
     // Execute the job
     public function handle(): void
     {
+        Log::info('ImportEposNowProductsJob started', [
+            'job_id' => $this->jobId,
+            'product_ids_count' => $this->productIds !== null ? count($this->productIds) : null,
+            'queue' => $this->queue ?? null,
+            'tries' => $this->tries,
+            'timeout' => $this->timeout,
+        ]);
+
         try {
             $eposNowService = app(EposNowService::class);
             $categoryRepository = app(CategoryRepositoryInterface::class);
@@ -110,6 +118,16 @@ class ImportEposNowProductsJob implements ShouldQueue
             ]);
 
             foreach ($chunks as $chunkIndex => $chunk) {
+                Log::info('Product import: starting chunk', [
+                    'job_id' => $this->jobId,
+                    'chunk_index' => $chunkIndex,
+                    'chunk_number' => $chunkIndex + 1,
+                    'total_chunks' => $totalChunks,
+                    'chunk_size' => count($chunk),
+                    'processed_so_far' => $processed,
+                    'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                ]);
+
                 try {
                     DB::transaction(function () use ($chunk, $categoryRepository, &$processed, &$inserted, &$updated, &$failed, $total) {
                         // Set transaction timeout
@@ -346,11 +364,15 @@ class ImportEposNowProductsJob implements ShouldQueue
                 'status' => 'completed'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('ImportEposNowProductsJob failed', [
                 'job_id' => $this->jobId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'exception_class' => get_class($e),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             $this->updateProgress(0, 0, 0, 'Import failed: ' . $e->getMessage(), [

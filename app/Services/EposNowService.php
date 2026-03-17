@@ -53,6 +53,12 @@ class EposNowService
         $duplicatePageCount = 0;
         $maxDuplicatePages = 2; // Stop after 2 consecutive duplicate pages
 
+        Log::info('EPOSNOW Products Import: Starting fetch', [
+            'base_url' => $this->baseUrl,
+            'max_pages' => $maxPages,
+            'environment' => app()->environment(),
+        ]);
+
         while ($page <= $maxPages) {
             try {
                 // Check rate limit status before making request
@@ -182,7 +188,9 @@ class EposNowService
                 Log::error('EposNow Products API Error', [
                     'page' => $page,
                     'error' => $e->getMessage(),
-                    'total_products_so_far' => count($allProducts)
+                    'exception_class' => get_class($e),
+                    'code' => $e->getCode(),
+                    'total_products_so_far' => count($allProducts),
                 ]);
 
                 // If we have some data, return it instead of failing completely
@@ -217,7 +225,7 @@ class EposNowService
             }
         }
 
-        if (app()->environment('local') && app()->environment('development')) {
+        if (app()->environment('local') || app()->environment('development')) {
             Log::info('EPOSNOW Products Import: Completed fetching', [
                 'total_pages' => $page - 1,
                 'total_products_fetched' => count($allProducts),
