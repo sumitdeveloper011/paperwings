@@ -594,9 +594,9 @@
                     </div>
                     @endforeach
 
-                    <!-- Fill remaining slots with placeholders if less than 6 posts -->
-                    @if(count($instagramPosts) < 6)
-                        @for($i = count($instagramPosts) + 1; $i <= 6; $i++)
+                    <!-- Fill remaining slots with placeholders if less than 12 posts -->
+                    @if(count($instagramPosts) < 12)
+                        @for($i = count($instagramPosts) + 1; $i <= 12; $i++)
                         <div class="col-6 col-md-4 col-lg-2">
                             <div class="instagram-item">
                                 <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">
@@ -622,7 +622,7 @@
                     @endif
                 @else
                     <!-- Fallback: Display placeholder images if API is not configured or no posts -->
-                    @for($i = 1; $i <= 6; $i++)
+                    @for($i = 1; $i <= 12; $i++)
                     <div class="col-6 col-md-4 col-lg-2">
                         <div class="instagram-item">
                             <a href="{{ $instagramLink ?? '#' }}" target="_blank" rel="noopener noreferrer" class="instagram-item__link">

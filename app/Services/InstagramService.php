@@ -72,7 +72,7 @@ class InstagramService
 
         $cacheKey = "instagram_media_{$this->userId}_{$limit}";
         
-        return Cache::remember($cacheKey, 3600, function () use ($limit) {
+        //return Cache::remember($cacheKey, 3600, function () use ($limit) {
             try {
                 $response = Http::timeout(10)->get("{$this->baseUrl}/{$this->userId}/media", [
                     'fields' => 'id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count',
@@ -100,7 +100,7 @@ class InstagramService
                 ]);
                 return [];
             }
-        });
+        //});
     }
 
     // Format media data for frontend display
@@ -109,7 +109,13 @@ class InstagramService
         $formatted = [];
 
         foreach ($media as $item) {
-            $imageUrl = $item['media_url'] ?? $item['thumbnail_url'] ?? null;
+            $type = strtoupper((string) ($item['media_type'] ?? 'IMAGE'));
+
+            // For VIDEO/REELS, Instagram returns an mp4 in media_url; we need thumbnail_url for <img>.
+            $imageUrl = match ($type) {
+                'VIDEO' => $item['thumbnail_url'] ?? $item['media_url'] ?? null,
+                default => $item['media_url'] ?? $item['thumbnail_url'] ?? null,
+            };
             
             if (!$imageUrl) {
                 continue;
@@ -117,7 +123,7 @@ class InstagramService
 
             $formatted[] = [
                 'id' => $item['id'] ?? null,
-                'type' => $item['media_type'] ?? 'IMAGE',
+                'type' => $type,
                 'image_url' => $imageUrl,
                 'permalink' => $item['permalink'] ?? '#',
                 'caption' => $this->truncateCaption($item['caption'] ?? ''),

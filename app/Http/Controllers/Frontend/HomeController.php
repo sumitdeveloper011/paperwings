@@ -195,7 +195,7 @@ class HomeController extends Controller
         $instagramPosts = [];
         $instagramService = new InstagramService();
         if ($instagramService->isConfigured()) {
-            $instagramPosts = $instagramService->getRecentMedia(6);
+            $instagramPosts = $instagramService->getRecentMedia(12);
         }
 
         $testimonials = Testimonial::active()

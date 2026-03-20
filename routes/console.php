@@ -69,6 +69,6 @@ Schedule::command('queue:work', [
     '--sleep=5',
 ])
     ->everyTwoMinutes()
-    ->withoutOverlapping(3)
+    ->withoutOverlapping(65)
     ->sendOutputTo(storage_path('logs/queue-worker.log'))
     ->description('Process queued jobs (shared hosting)');
